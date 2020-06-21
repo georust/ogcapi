@@ -11,14 +11,8 @@ struct Distribution {
     form: String,
 }
 
-
-
 // Abstract of a real world phenomena [ISO 19101-1:2014]
-struct Feature {
-
-}
+struct Feature {}
 
 // A set of features from a dataset
-struct Collection {
-
-} 
+struct Collection {}
