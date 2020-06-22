@@ -1,7 +1,7 @@
 use geojson::Feature;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct Link {
     pub href: String,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,10 +1,10 @@
 use openapiv3::OpenAPI;
+use serde::{Deserialize, Serialize};
 use serde_yaml;
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::fs::File;
 use std::str::FromStr;
-use tide::http::{mime::JSON, url::Position, Mime};
+use tide::http::{mime::JSON, url::Position, Mime, Url};
 use tide::{After, Body, Request, Response, Result, StatusCode};
 
 use oapi::schema::{
@@ -12,70 +12,46 @@ use oapi::schema::{
     SpatialExtent,
 };
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize)]
 struct Service {
     api: OpenAPI,
+    conformance: Conformance,
+    root_links: Vec<Link>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Config {
+    conformance: Conformance,
+    root_links: Vec<Link>,
 }
 
 impl Service {
-    fn from_file(filepath: &str) -> Service {
-        let path = Path::new(filepath);
-        let content = &fs::read(path).expect("Read openapi file to string");
-        if let Some(extension) = path.extension() {
-            let openapi = match extension.to_str() {
-                Some("yaml") => {
-                    serde_yaml::from_slice(content).expect("Deserialize openapi string")
-                }
-                Some("json") => {
-                    serde_json::from_slice(content).expect("Deserialize openapi string")
-                }
-                _ => panic!("Unable to read API definition from '{}'", filepath),
-            };
-            Service { api: openapi }
-        } else {
-            panic!("Unable to read API definition from '{}'", filepath)
+    fn new(api: &str) -> Service {
+        let config = File::open("Config.json").expect("Open config");
+        let config: Config = serde_json::from_reader(config).expect("Deserialize config");
+        let api = File::open(api).expect("Open api file");
+        let api: OpenAPI = serde_yaml::from_reader(api).expect("Deserialize api document");
+        Service {
+            api,
+            conformance: config.conformance,
+            root_links: config.root_links,
         }
     }
 }
 
 async fn handle_root(req: Request<Service>) -> Result {
-    let root = req.url();
+    let url = req.url();
+
     let info = req.state().api.info.clone();
+    let mut links = req.state().root_links.clone();
+    for link in links.iter_mut() {
+        link.href = format!("{}{}", url, link.href.trim_matches('/'));
+    }
+
     let landing_page = LandingPage {
         title: Some(info.title),
         description: info.description,
-        links: vec![
-            Link {
-                href: format!("{}", root),
-                rel: Some(String::from("self")),
-                r#type: Some(String::from("application/json")),
-                title: Some(String::from("this document")),
-                ..Default::default()
-            },
-            Link {
-                href: format!("{}api", root),
-                rel: Some(String::from("service-desc")),
-                r#type: Some(String::from("application/vnd.oai.openapi+json;version=3.0")),
-                title: Some(String::from("the API definition")),
-                ..Default::default()
-            },
-            Link {
-                href: format!("{}conformance", root),
-                rel: Some(String::from("conformance")),
-                r#type: Some(String::from("application/json")),
-                title: Some(String::from(
-                    "OGC conformance classes implemented by this API",
-                )),
-                ..Default::default()
-            },
-            Link {
-                href: format!("{}collections", root),
-                rel: Some(String::from("data")),
-                r#type: Some(String::from("application/json")),
-                title: Some(String::from("Metadata about the resource collections")),
-                ..Default::default()
-            },
-        ],
+        links,
     };
 
     let mut res = Response::new(200);
@@ -91,19 +67,10 @@ async fn handle_api(req: Request<Service>) -> Result {
     Ok(res)
 }
 
-async fn handle_conformance(_: Request<Service>) -> Result {
-    let conformance = Conformance {
-        conforms_to: vec![
-            String::from("http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core"),
-            String::from("http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30"),
-            // String::from("http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/html"),
-            String::from("http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson"),
-        ],
-    };
-
+async fn handle_conformance(req: Request<Service>) -> Result {
     let mut res = Response::new(200);
     res.set_content_type(JSON);
-    res.set_body(Body::from_json(&conformance)?);
+    res.set_body(Body::from_json(&req.state().conformance)?);
     Ok(res)
 }
 
@@ -187,8 +154,6 @@ async fn handle_collection(req: Request<Service>) -> Result {
 }
 
 async fn handle_items(req: Request<Service>) -> Result {
-    let mut res = Response::new(200);
-
     let url = req.url();
 
     let mut params: HashMap<String, String> = req.query()?;
@@ -267,12 +232,13 @@ async fn exception(result: Result) -> Result {
 #[async_std::main]
 async fn main() -> Result<()> {
     // parse openapi definition
-    let service = Service::from_file("api/ogcapi-features-1.yaml");
+    let service = Service::new("api/ogcapi-features-1.yaml");
+    let url = Url::from_str(&service.api.servers[0].url).expect("Parse url from string");
 
     // serve
     tide::log::start();
 
-    let mut app = tide::with_state(service.clone());
+    let mut app = tide::with_state(service);
 
     app.middleware(After(exception));
 
@@ -284,8 +250,7 @@ async fn main() -> Result<()> {
     app.at("/collections/:collection_id/items")
         .get(handle_items);
 
-    let server = &service.api.servers[0];
-    let address = server.url.replace("http://", "");
-    app.listen(address).await?;
+    app.listen(&url[Position::BeforeHost..Position::AfterPort])
+        .await?;
     Ok(())
 }
