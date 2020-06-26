@@ -1,5 +1,5 @@
 [package]
-name = "oapi"
+name = "ogcapi"
 version = "0.1.0"
 authors = ["Balthasar Teuscher <balthasar.teuscher@gmail.com>"]
 edition = "2018"
@@ -13,4 +13,5 @@ serde = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
 openapiv3 = "0.3"
-geojson = "0.18.0"
+geojson = "0.19"
+sqlx = { git = "https://github.com/launchbadge/sqlx", features = ["postgres", "json"] }

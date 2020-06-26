@@ -1,7 +1,10 @@
-use geojson::Feature;
-use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+use serde::{Deserialize, Serialize};
+use sqlx::types::Json;
+
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct Link {
     pub href: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -37,16 +40,17 @@ pub struct Collections {
     pub collections: Vec<Collection>,
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(sqlx::FromRow)]
 pub struct Collection {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    pub links: Vec<Link>,
+    pub links: Vec<Json<Link>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub extent: Option<Extent>,
+    pub extent: Option<Json<Extent>>,
     #[serde(rename(serialize = "itemType", deserialize = "item_type"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub item_type: Option<String>,
@@ -54,15 +58,15 @@ pub struct Collection {
     pub crs: Option<Vec<String>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Extent {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub spatial: Option<SpatialExtent>,
+    pub spatial: Option<Json<SpatialExtent>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub temporal: Option<TemporalExtent>,
+    pub temporal: Option<Json<TemporalExtent>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SpatialExtent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox: Option<Vec<Vec<f64>>>,
@@ -70,7 +74,7 @@ pub struct SpatialExtent {
     pub crs: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct TemporalExtent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub interval: Option<Vec<Vec<String>>>,
@@ -92,6 +96,16 @@ pub struct FeatureCollection {
     #[serde(rename(serialize = "numberReturned", deserialize = "number_returned"))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub number_returned: Option<u32>,
+}
+
+#[derive(sqlx::FromRow)]
+#[derive(Serialize, Deserialize)]
+pub struct Feature {
+    pub r#type: String,
+    pub id: Option<String>,
+    pub properties: Value,
+    pub geometry: Value,
+    pub links: Option<Json<Vec<Link>>>,
 }
 
 #[derive(Serialize, Deserialize)]

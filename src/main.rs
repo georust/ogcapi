@@ -1,22 +1,22 @@
 use openapiv3::OpenAPI;
 use serde::{Deserialize, Serialize};
 use serde_yaml;
+use sqlx::postgres::PgPool;
+use sqlx::types::Json;
 use std::collections::HashMap;
 use std::fs::File;
 use std::str::FromStr;
 use tide::http::{mime::JSON, url::Position, Mime, Url};
 use tide::{After, Body, Request, Response, Result, StatusCode};
 
-use oapi::schema::{
-    Collection, Collections, Conformance, Exception, Extent, FeatureCollection, LandingPage, Link,
-    SpatialExtent,
+use ogcapi::schema::{
+    Collection, Collections, Conformance, Exception, Feature, FeatureCollection, LandingPage, Link,
 };
 
-#[derive(Serialize, Deserialize)]
-struct Service {
+struct State {
     api: OpenAPI,
-    conformance: Conformance,
-    root_links: Vec<Link>,
+    config: Config,
+    pool: PgPool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -25,25 +25,22 @@ struct Config {
     root_links: Vec<Link>,
 }
 
-impl Service {
-    fn new(api: &str) -> Service {
+impl State {
+    async fn new(api: &str, db_url: &str) -> State {
         let config = File::open("Config.json").expect("Open config");
         let config: Config = serde_json::from_reader(config).expect("Deserialize config");
         let api = File::open(api).expect("Open api file");
         let api: OpenAPI = serde_yaml::from_reader(api).expect("Deserialize api document");
-        Service {
-            api,
-            conformance: config.conformance,
-            root_links: config.root_links,
-        }
+        let pool = PgPool::new(db_url).await.expect("Create pg pool");
+        State { api, config, pool }
     }
 }
 
-async fn handle_root(req: Request<Service>) -> Result {
+async fn handle_root(req: Request<State>) -> Result {
     let url = req.url();
 
     let info = req.state().api.info.clone();
-    let mut links = req.state().root_links.clone();
+    let mut links = req.state().config.root_links.clone();
     for link in links.iter_mut() {
         link.href = format!("{}{}", url, link.href.trim_matches('/'));
     }
@@ -60,53 +57,47 @@ async fn handle_root(req: Request<Service>) -> Result {
     Ok(res)
 }
 
-async fn handle_api(req: Request<Service>) -> Result {
+async fn handle_api(req: Request<State>) -> Result {
     let mut res = Response::new(200);
     res.set_content_type(Mime::from_str("application/vnd.oai.openapi+json;version=3.0").unwrap());
     res.set_body(Body::from_json(&req.state().api)?);
     Ok(res)
 }
 
-async fn handle_conformance(req: Request<Service>) -> Result {
+async fn handle_conformance(req: Request<State>) -> Result {
     let mut res = Response::new(200);
     res.set_content_type(JSON);
-    res.set_body(Body::from_json(&req.state().conformance)?);
+    res.set_body(Body::from_json(&req.state().config.conformance)?);
     Ok(res)
 }
 
-async fn handle_collections(req: Request<Service>) -> Result {
-    let root = req.url();
+async fn handle_collections(req: Request<State>) -> Result {
+    let url = req.url();
+
+    let mut collections: Vec<Collection> = sqlx::query_as("SELECT * FROM meta.collections")
+        .fetch_all(&req.state().pool)
+        .await?;
+
+    for collection in &mut collections {
+        let link = Json(Link {
+            href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
+            rel: Some("items".to_string()),
+            r#type: Some("application/geo+json".to_string()),
+            title: collection.title.clone(),
+            ..Default::default()
+        });
+        collection.links.push(link);
+    }
+
     let collections = Collections {
         links: vec![Link {
-            href: format!("{}", root),
-            rel: Some(String::from("self")),
-            r#type: Some(String::from("application/json")),
-            title: Some(String::from("this document")),
+            href: url[..Position::AfterPath].to_string(),
+            rel: Some("self".to_string()),
+            r#type: Some(JSON.to_string()),
+            title: Some("this document".to_string()),
             ..Default::default()
         }],
-        collections: vec![Collection {
-            id: String::from("fc"),
-            title: Some(String::from("Test Collection")),
-            description: None,
-            extent: Some(Extent {
-                spatial: Some(SpatialExtent {
-                    bbox: Some(vec![vec![-180.0, -90.0, 180.0, 90.0]]),
-                    crs: Some(String::from("http://www.opengis.net/def/crs/OGC/1.3/CRS84")),
-                }),
-                temporal: None,
-            }),
-            item_type: Some(String::from("feature")),
-            crs: Some(vec![String::from(
-                "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-            )]),
-            links: vec![Link {
-                href: format!("{}/fc/items", root),
-                rel: Some(String::from("items")),
-                r#type: Some(String::from("application/geo+json")),
-                title: Some(String::from("Features")),
-                ..Default::default()
-            }],
-        }],
+        collections,
     };
 
     let mut res = Response::new(200);
@@ -115,49 +106,40 @@ async fn handle_collections(req: Request<Service>) -> Result {
     Ok(res)
 }
 
-async fn handle_collection(req: Request<Service>) -> Result {
-    let root = req.url();
-    let collecetion_id: String = req.param("collection_id").unwrap();
+async fn handle_collection(req: Request<State>) -> Result {
+    let url = req.url();
 
-    if !vec!["fc"].iter().any(|&i| i == collecetion_id) {
-        return Ok(Response::new(404));
-    }
+    let id: String = req.param("collection")?;
 
-    let collection = Collection {
-        id: String::from("fc"),
-        title: Some(String::from("Test Collection")),
-        description: None,
-        extent: Some(Extent {
-            spatial: Some(SpatialExtent {
-                bbox: Some(vec![vec![-180.0, -90.0, 180.0, 90.0]]),
-                crs: Some(String::from("http://www.opengis.net/def/crs/OGC/1.3/CRS84")),
-            }),
-            temporal: None,
-        }),
-        item_type: Some(String::from("feature")),
-        crs: Some(vec![String::from(
-            "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-        )]),
-        links: vec![Link {
-            href: format!("{}/fc/items", root),
-            rel: Some(String::from("items")),
-            r#type: Some(String::from("application/geo+json")),
-            title: Some(String::from("Features")),
+    let collection: Option<Collection> =
+        sqlx::query_as("SELECT * FROM meta.collections WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&req.state().pool)
+            .await?;
+
+    if let Some(mut collection) = collection {
+        let link = Json(Link {
+            href: format!("{}/items", &url[..Position::AfterPath]),
+            rel: Some("items".to_string()),
+            r#type: Some("application/geo+json".to_string()),
+            title: collection.title.clone(),
             ..Default::default()
-        }],
-    };
+        });
+        collection.links.push(link);
 
-    let mut res = Response::new(200);
-    res.set_content_type(JSON);
-    res.set_body(Body::from_json(&collection)?);
-    Ok(res)
+        let mut res = Response::new(200);
+        res.set_content_type(JSON);
+        res.set_body(Body::from_json(&collection)?);
+        Ok(res)
+    } else {
+        Ok(Response::new(404))
+    }
 }
 
-async fn handle_items(req: Request<Service>) -> Result {
+async fn handle_items(req: Request<State>) -> Result {
     let url = req.url();
 
     let mut params: HashMap<String, String> = req.query()?;
-    println!("{:#?}", params);
     let limit_string = params.remove("limit");
     let bbox_string = params.remove("bbox");
     let datetime_string = params.remove("datetime");
@@ -166,7 +148,7 @@ async fn handle_items(req: Request<Service>) -> Result {
         return Ok(Response::new(400));
     }
 
-    let mut limit: u32 = 10;
+    let mut limit: u32 = 10; // default limit
     if let Some(number) = limit_string {
         match number.parse::<u32>() {
             Err(_) => return Ok(Response::new(400)),
@@ -174,19 +156,30 @@ async fn handle_items(req: Request<Service>) -> Result {
         }
     };
 
-    let collecetion_id: String = req.param("collection_id").unwrap();
-    println!("Collection ID: {:#?}", collecetion_id);
+    let collection: String = req.param("collection")?;
+    let sql = r#"
+    SELECT id, type, ST_AsGeoJSON(geometry)::jsonb as geometry, properties, links
+    FROM data.features
+    WHERE collection = $1
+    LIMIT $2
+    "#;
+    let features: Vec<Feature> = sqlx::query_as(sql)
+        .bind(collection)
+        .bind(limit)
+        .fetch_all(&req.state().pool)
+        .await?;
 
-    if !vec!["fc"].iter().any(|&i| i == collecetion_id) {
+    if features.len() == 0 {
         return Ok(Response::new(404));
     }
+
     let feature_collection = FeatureCollection {
-        r#type: String::from("FeatureCollection"),
-        features: vec![],
+        r#type: "FeatureCollection".to_string(),
+        features,
         links: Some(vec![Link {
             href: format!("{}", &url[..Position::AfterPath]),
-            rel: Some(String::from("self")),
-            r#type: Some(String::from("application/geo+json")),
+            rel: Some("self".to_string()),
+            r#type: Some("application/geo+json".to_string()),
             ..Default::default()
         }]),
         ..Default::default()
@@ -198,47 +191,106 @@ async fn handle_items(req: Request<Service>) -> Result {
     Ok(res)
 }
 
-async fn exception(result: Result) -> Result {
-    let mut res = result.unwrap_or_else(|e| Response::new(e.status()));
+async fn handle_item(req: Request<State>) -> Result {
+    let url = req.url();
 
-    if res.status().is_success() {
-        return Ok(res);
+    let id: String = req.param("id")?;
+    let collection: String = req.param("collection")?;
+
+    let sql = r#"
+    SELECT id, type, ST_AsGeoJSON(geometry)::jsonb as geometry, properties, links
+    FROM data.features
+    WHERE collection = $1 AND id = $2
+    "#;
+    let feature: Option<Feature> = sqlx::query_as(sql)
+        .bind(collection)
+        .bind(&id)
+        .fetch_optional(&req.state().pool)
+        .await?;
+
+    if let Some(mut feature) = feature {
+        feature.links = Some(Json(vec![
+            Link {
+                href: url[..Position::AfterPath].to_string(),
+                rel: Some("self".to_string()),
+                r#type: Some("application/geo+json".to_string()),
+                ..Default::default()
+            },
+            Link {
+                href: url[..Position::AfterPath].replace(&format!("/items/{}", id), ""),
+                rel: Some("collection".to_string()),
+                r#type: Some("application/geo+json".to_string()),
+                ..Default::default()
+            },
+        ]));
+        let mut res = Response::new(200);
+        res.set_content_type(JSON);
+        res.set_body(Body::from_json(&feature)?);
+        Ok(res)
+    } else {
+        return Ok(Response::new(404));
     }
+}
 
-    let exception = match res.status() {
-        StatusCode::BadRequest => Exception {
-            code: res.status().to_string(),
-            description: Some(String::from("A query parameter has an invalid value.")),
-        },
-        StatusCode::NotFound => Exception {
-            code: res.status().to_string(),
-            description: Some(String::from("The requested URI was not found.")),
-        },
-        StatusCode::InternalServerError => Exception {
-            code: res.status().to_string(),
-            description: Some(String::from("A server error occurred.")),
-        },
-        _ => Exception {
-            code: res.status().to_string(),
-            description: None,
-        },
-    };
-
-    res.set_content_type(JSON);
-    res.set_body(Body::from_json(&exception)?);
-    Ok(res)
+async fn exception(result: Result) -> Result {
+    match result {
+        Ok(mut res) => {
+            if res.status().is_success() {
+                Ok(res)
+            } else {
+                let exception = match res.status() {
+                    StatusCode::BadRequest => Exception {
+                        code: res.status().to_string(),
+                        description: Some("A query parameter has an invalid value.".to_string()),
+                    },
+                    StatusCode::NotFound => Exception {
+                        code: res.status().to_string(),
+                        description: Some("The requested URI was not found.".to_string()),
+                    },
+                    StatusCode::InternalServerError => Exception {
+                        code: res.status().to_string(),
+                        description: Some("A server error occurred.".to_string()),
+                    },
+                    _ => Exception {
+                        code: res.status().to_string(),
+                        description: Some("Unknown error.".to_string()),
+                    },
+                };
+                res.set_content_type(JSON);
+                res.set_body(Body::from_json(&exception)?);
+                Ok(res)
+            }
+        }
+        Err(err) => {
+            let status = err.status();
+            let mut res = Response::new(status);
+            let exception = Exception {
+                code: status.to_string(),
+                description: Some(err.to_string()),
+            };
+            res.set_content_type(JSON);
+            res.set_body(Body::from_json(&exception)?);
+            Ok(res)
+        }
+    }
 }
 
 #[async_std::main]
 async fn main() -> Result<()> {
-    // parse openapi definition
-    let service = Service::new("api/ogcapi-features-1.yaml");
-    let url = Url::from_str(&service.api.servers[0].url).expect("Parse url from string");
+    println!("{}", JSON.to_string());
+    // create state
+    let state = State::new(
+        "api/ogcapi-features-1.yaml",
+        "postgresql://postgres:postgres@localhost/ogcapi",
+    )
+    .await;
+
+    let url = Url::from_str(&state.api.servers[0].url).expect("Parse url from string");
 
     // serve
     tide::log::start();
 
-    let mut app = tide::with_state(service);
+    let mut app = tide::with_state(state);
 
     app.middleware(After(exception));
 
@@ -246,9 +298,10 @@ async fn main() -> Result<()> {
     app.at("/api").get(handle_api);
     app.at("/conformance").get(handle_conformance);
     app.at("/collections").get(handle_collections);
-    app.at("/collections/:collection_id").get(handle_collection);
-    app.at("/collections/:collection_id/items")
-        .get(handle_items);
+    app.at("/collections/:collection").get(handle_collection);
+    app.at("/collections/:collection/items").get(handle_items);
+    app.at("/collections/:collection/items/:id")
+        .get(handle_item);
 
     app.listen(&url[Position::BeforeHost..Position::AfterPort])
         .await?;
