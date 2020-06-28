@@ -1,17 +1,20 @@
+use chrono::{SecondsFormat, Utc};
 use openapiv3::OpenAPI;
 use serde::{Deserialize, Serialize};
 use serde_yaml;
 use sqlx::postgres::PgPool;
 use sqlx::types::Json;
-use std::collections::HashMap;
 use std::fs::File;
 use std::str::FromStr;
-use tide::http::{mime::JSON, url::Position, Mime, Url};
+use tide::http::{mime, url::Position, Mime, Url};
 use tide::{After, Body, Request, Response, Result, StatusCode};
 
 use ogcapi::schema::{
     Collection, Collections, Conformance, Exception, Feature, FeatureCollection, LandingPage, Link,
+    Query,
 };
+
+static GEOJSON: &str = "application/geo+json";
 
 struct State {
     api: OpenAPI,
@@ -52,7 +55,7 @@ async fn handle_root(req: Request<State>) -> Result {
     };
 
     let mut res = Response::new(200);
-    res.set_content_type(JSON);
+    res.set_content_type(mime::JSON);
     res.set_body(Body::from_json(&landing_page)?);
     Ok(res)
 }
@@ -66,7 +69,7 @@ async fn handle_api(req: Request<State>) -> Result {
 
 async fn handle_conformance(req: Request<State>) -> Result {
     let mut res = Response::new(200);
-    res.set_content_type(JSON);
+    res.set_content_type(mime::JSON);
     res.set_body(Body::from_json(&req.state().config.conformance)?);
     Ok(res)
 }
@@ -82,7 +85,7 @@ async fn handle_collections(req: Request<State>) -> Result {
         let link = Json(Link {
             href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
             rel: Some("items".to_string()),
-            r#type: Some("application/geo+json".to_string()),
+            r#type: Some(GEOJSON.to_string()),
             title: collection.title.clone(),
             ..Default::default()
         });
@@ -93,7 +96,7 @@ async fn handle_collections(req: Request<State>) -> Result {
         links: vec![Link {
             href: url[..Position::AfterPath].to_string(),
             rel: Some("self".to_string()),
-            r#type: Some(JSON.to_string()),
+            r#type: Some(mime::JSON.to_string()),
             title: Some("this document".to_string()),
             ..Default::default()
         }],
@@ -101,7 +104,7 @@ async fn handle_collections(req: Request<State>) -> Result {
     };
 
     let mut res = Response::new(200);
-    res.set_content_type(JSON);
+    res.set_content_type(mime::JSON);
     res.set_body(Body::from_json(&collections)?);
     Ok(res)
 }
@@ -121,14 +124,14 @@ async fn handle_collection(req: Request<State>) -> Result {
         let link = Json(Link {
             href: format!("{}/items", &url[..Position::AfterPath]),
             rel: Some("items".to_string()),
-            r#type: Some("application/geo+json".to_string()),
+            r#type: Some(GEOJSON.to_string()),
             title: collection.title.clone(),
             ..Default::default()
         });
         collection.links.push(link);
 
         let mut res = Response::new(200);
-        res.set_content_type(JSON);
+        res.set_content_type(mime::JSON);
         res.set_body(Body::from_json(&collection)?);
         Ok(res)
     } else {
@@ -137,56 +140,87 @@ async fn handle_collection(req: Request<State>) -> Result {
 }
 
 async fn handle_items(req: Request<State>) -> Result {
-    let url = req.url();
-
-    let mut params: HashMap<String, String> = req.query()?;
-    let limit_string = params.remove("limit");
-    let bbox_string = params.remove("bbox");
-    let datetime_string = params.remove("datetime");
-
-    if params.len() > 0 {
-        return Ok(Response::new(400));
-    }
-
-    let mut limit: u32 = 10; // default limit
-    if let Some(number) = limit_string {
-        match number.parse::<u32>() {
-            Err(_) => return Ok(Response::new(400)),
-            Ok(number) => limit = number,
-        }
-    };
+    let mut url = req.url().to_owned();
 
     let collection: String = req.param("collection")?;
-    let sql = r#"
-    SELECT id, type, ST_AsGeoJSON(geometry)::jsonb as geometry, properties, links
-    FROM data.features
-    WHERE collection = $1
-    LIMIT $2
-    "#;
-    let features: Vec<Feature> = sqlx::query_as(sql)
-        .bind(collection)
-        .bind(limit)
+
+    let query: Query = req.query()?;
+    let limit = query.limit.0;
+    let offset = query.offset.0;
+
+    let mut sql = vec![
+        "SELECT id, type, ST_AsGeoJSON(geometry)::jsonb as geometry, properties, links",
+        "FROM data.features",
+        "WHERE collection = $1",
+    ];
+
+    let number_matched = sqlx::query(sql.join(" ").as_str())
+        .bind(&collection)
+        .execute(&req.state().pool)
+        .await?;
+
+    sql.push("ORDER BY id");
+    sql.push("LIMIT $2");
+    sql.push("OFFSET $3");
+
+    let features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
+        .bind(&collection)
+        .bind(&limit)
+        .bind(&offset)
         .fetch_all(&req.state().pool)
         .await?;
 
-    if features.len() == 0 {
-        return Ok(Response::new(404));
+    let number_returned = features.len();
+
+    url.set_query(Some(&format!("limit={}&offset={}", &limit, &offset)));
+    let mut links = vec![Link {
+        href: url.to_string(),
+        rel: Some("self".to_string()),
+        r#type: Some(GEOJSON.to_string()),
+        ..Default::default()
+    }];
+
+    if offset != 0 && offset >= limit {
+        url.set_query(Some(&format!(
+            "limit={}&offset={}",
+            &limit,
+            &offset - &limit
+        )));
+        let previous = Link {
+            href: url.to_string(),
+            rel: Some("previous".to_string()),
+            r#type: Some(GEOJSON.to_string()),
+            ..Default::default()
+        };
+        links.push(previous);
+    }
+
+    if !(&query.offset.0 + limit) as u64 >= number_matched {
+        url.set_query(Some(&format!(
+            "limit={}&offset={}",
+            &limit,
+            &offset + &limit
+        )));
+        let next = Link {
+            href: url.to_string(),
+            rel: Some("next".to_string()),
+            r#type: Some(GEOJSON.to_string()),
+            ..Default::default()
+        };
+        links.push(next);
     }
 
     let feature_collection = FeatureCollection {
         r#type: "FeatureCollection".to_string(),
         features,
-        links: Some(vec![Link {
-            href: format!("{}", &url[..Position::AfterPath]),
-            rel: Some("self".to_string()),
-            r#type: Some("application/geo+json".to_string()),
-            ..Default::default()
-        }]),
-        ..Default::default()
+        links: Some(links),
+        time_stamp: Some(Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)),
+        number_matched: Some(number_matched),
+        number_returned: Some(number_returned),
     };
 
     let mut res = Response::new(200);
-    res.set_content_type(JSON);
+    res.set_content_type(mime::JSON);
     res.set_body(Body::from_json(&feature_collection)?);
     Ok(res)
 }
@@ -213,18 +247,18 @@ async fn handle_item(req: Request<State>) -> Result {
             Link {
                 href: url[..Position::AfterPath].to_string(),
                 rel: Some("self".to_string()),
-                r#type: Some("application/geo+json".to_string()),
+                r#type: Some(GEOJSON.to_string()),
                 ..Default::default()
             },
             Link {
                 href: url[..Position::AfterPath].replace(&format!("/items/{}", id), ""),
                 rel: Some("collection".to_string()),
-                r#type: Some("application/geo+json".to_string()),
+                r#type: Some(GEOJSON.to_string()),
                 ..Default::default()
             },
         ]));
         let mut res = Response::new(200);
-        res.set_content_type(JSON);
+        res.set_content_type(mime::JSON);
         res.set_body(Body::from_json(&feature)?);
         Ok(res)
     } else {
@@ -256,7 +290,7 @@ async fn exception(result: Result) -> Result {
                         description: Some("Unknown error.".to_string()),
                     },
                 };
-                res.set_content_type(JSON);
+                res.set_content_type(mime::JSON);
                 res.set_body(Body::from_json(&exception)?);
                 Ok(res)
             }
@@ -268,7 +302,7 @@ async fn exception(result: Result) -> Result {
                 code: status.to_string(),
                 description: Some(err.to_string()),
             };
-            res.set_content_type(JSON);
+            res.set_content_type(mime::JSON);
             res.set_body(Body::from_json(&exception)?);
             Ok(res)
         }
@@ -277,7 +311,6 @@ async fn exception(result: Result) -> Result {
 
 #[async_std::main]
 async fn main() -> Result<()> {
-    println!("{}", JSON.to_string());
     // create state
     let state = State::new(
         "api/ogcapi-features-1.yaml",

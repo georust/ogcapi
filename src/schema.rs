@@ -1,8 +1,6 @@
-use serde_json::Value;
-
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::types::Json;
-
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
 pub struct Link {
@@ -16,7 +14,7 @@ pub struct Link {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub length: Option<i32>,
+    pub length: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -40,8 +38,7 @@ pub struct Collections {
     pub collections: Vec<Collection>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[derive(sqlx::FromRow)]
+#[derive(Serialize, Deserialize, Default, Debug, sqlx::FromRow)]
 pub struct Collection {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -92,14 +89,13 @@ pub struct FeatureCollection {
     pub time_stamp: Option<String>,
     #[serde(rename(serialize = "numberMatched", deserialize = "number_matched"))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub number_matched: Option<u32>,
+    pub number_matched: Option<u64>,
     #[serde(rename(serialize = "numberReturned", deserialize = "number_returned"))]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub number_returned: Option<u32>,
+    pub number_returned: Option<usize>,
 }
 
-#[derive(sqlx::FromRow)]
-#[derive(Serialize, Deserialize)]
+#[derive(sqlx::FromRow, Serialize, Deserialize)]
 pub struct Feature {
     pub r#type: String,
     pub id: Option<String>,
@@ -112,4 +108,31 @@ pub struct Feature {
 pub struct Exception {
     pub code: String,
     pub description: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Query {
+    #[serde(default)]
+    pub limit: Limit,
+    #[serde(default)]
+    pub offset: Offset,
+    pub bbox: Option<String>,
+    pub datetime: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Limit(pub u32);
+impl Default for Limit {
+    fn default() -> Self {
+        Limit(10)
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Offset(pub u32);
+impl Default for Offset {
+    fn default() -> Self {
+        Offset(0)
+    }
 }
