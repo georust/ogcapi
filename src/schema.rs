@@ -114,25 +114,9 @@ pub struct Exception {
 #[serde(deny_unknown_fields)]
 pub struct Query {
     #[serde(default)]
-    pub limit: Limit,
+    pub limit: Option<isize>,
     #[serde(default)]
-    pub offset: Offset,
+    pub offset: Option<isize>,
     pub bbox: Option<String>,
     pub datetime: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Limit(pub u32);
-impl Default for Limit {
-    fn default() -> Self {
-        Limit(10)
-    }
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Offset(pub u32);
-impl Default for Offset {
-    fn default() -> Self {
-        Offset(0)
-    }
 }

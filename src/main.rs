@@ -144,35 +144,8 @@ async fn handle_items(req: Request<State>) -> Result {
 
     let collection: String = req.param("collection")?;
 
-    let query: Query = req.query()?;
-    let limit = query.limit.0;
-    let offset = query.offset.0;
+    let mut query: Query = req.query()?;
 
-    let mut sql = vec![
-        "SELECT id, type, ST_AsGeoJSON(geometry)::jsonb as geometry, properties, links",
-        "FROM data.features",
-        "WHERE collection = $1",
-    ];
-
-    let number_matched = sqlx::query(sql.join(" ").as_str())
-        .bind(&collection)
-        .execute(&req.state().pool)
-        .await?;
-
-    sql.push("ORDER BY id");
-    sql.push("LIMIT $2");
-    sql.push("OFFSET $3");
-
-    let features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
-        .bind(&collection)
-        .bind(&limit)
-        .bind(&offset)
-        .fetch_all(&req.state().pool)
-        .await?;
-
-    let number_returned = features.len();
-
-    url.set_query(Some(&format!("limit={}&offset={}", &limit, &offset)));
     let mut links = vec![Link {
         href: url.to_string(),
         rel: Some("self".to_string()),
@@ -180,35 +153,58 @@ async fn handle_items(req: Request<State>) -> Result {
         ..Default::default()
     }];
 
-    if offset != 0 && offset >= limit {
-        url.set_query(Some(&format!(
-            "limit={}&offset={}",
-            &limit,
-            &offset - &limit
-        )));
-        let previous = Link {
-            href: url.to_string(),
-            rel: Some("previous".to_string()),
-            r#type: Some(GEOJSON.to_string()),
-            ..Default::default()
-        };
-        links.push(previous);
+    let mut sql = vec![
+        "SELECT id, type, ST_AsGeoJSON(geometry)::jsonb as geometry, properties, links".to_string(),
+        "FROM data.features".to_string(),
+        "WHERE collection = $1".to_string(),
+    ];
+
+    let number_matched = sqlx::query(sql.join(" ").as_str())
+        .bind(&collection)
+        .execute(&req.state().pool)
+        .await?;
+
+    if let Some(limit) = query.limit {
+        sql.push("ORDER BY id".to_string());
+        sql.push(format!("LIMIT {}", limit));
+
+        if query.offset.is_none() {
+            query.offset = Some(0);
+        }
+
+        if let Some(offset) = query.offset {
+            sql.push(format!("OFFSET {}", offset));
+
+            if offset != 0 && offset >= limit {
+                url.set_query(Some(&format!("limit={}&offset={}", limit, offset - limit)));
+                let previous = Link {
+                    href: url.to_string(),
+                    rel: Some("previous".to_string()),
+                    r#type: Some(GEOJSON.to_string()),
+                    ..Default::default()
+                };
+                links.push(previous);
+            }
+
+            if !(offset + limit) as u64 >= number_matched {
+                url.set_query(Some(&format!("limit={}&offset={}", limit, offset + limit)));
+                let next = Link {
+                    href: url.to_string(),
+                    rel: Some("next".to_string()),
+                    r#type: Some(GEOJSON.to_string()),
+                    ..Default::default()
+                };
+                links.push(next);
+            }
+        }
     }
 
-    if !(&query.offset.0 + limit) as u64 >= number_matched {
-        url.set_query(Some(&format!(
-            "limit={}&offset={}",
-            &limit,
-            &offset + &limit
-        )));
-        let next = Link {
-            href: url.to_string(),
-            rel: Some("next".to_string()),
-            r#type: Some(GEOJSON.to_string()),
-            ..Default::default()
-        };
-        links.push(next);
-    }
+    let features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
+        .bind(&collection)
+        .fetch_all(&req.state().pool)
+        .await?;
+
+    let number_returned = features.len();
 
     let feature_collection = FeatureCollection {
         r#type: "FeatureCollection".to_string(),
