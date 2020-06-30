@@ -1,35 +1,75 @@
 use crate::features::handles::*;
 use openapiv3::OpenAPI;
-use serde::{Deserialize, Serialize};
 use serde_yaml;
 use sqlx::postgres::PgPool;
 use std::fs::File;
 use tide::http::{url::Position, Url};
 use tide::After;
 
-use crate::common::Link;
-use crate::features::schema::Conformance;
+use crate::common::{Conformance, ContentType, LandingPage, Link, LinkRelation};
 
 pub struct State {
-    pub api: OpenAPI,
-    pub config: Config,
-    pub pool: PgPool,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Config {
+    pub openapi: OpenAPI,
+    pub root: LandingPage,
     pub conformance: Conformance,
-    pub root_links: Vec<Link>,
+    pub pool: PgPool,
 }
 
 impl State {
     async fn new(api: &str, db_url: &str) -> State {
-        let config = File::open("Config.json").expect("Open config");
-        let config: Config = serde_json::from_reader(config).expect("Deserialize config");
         let api = File::open(api).expect("Open api file");
-        let api: OpenAPI = serde_yaml::from_reader(api).expect("Deserialize api document");
+        let openapi: OpenAPI = serde_yaml::from_reader(api).expect("Deserialize api document");
+
+        let root = LandingPage {
+            title: Some(openapi.info.title.clone()),
+            description: openapi.info.description.clone(),
+            links: vec![
+                Link {
+                    href: "/".to_string(),
+                    r#type: Some(ContentType::Json),
+                    title: Some("this document".to_string()),
+                    ..Default::default()
+                },
+                Link {
+                    href: "/api".to_string(),
+                    rel: LinkRelation::ServiceDesc,
+                    r#type: Some(ContentType::OpenAPI),
+                    title: Some("the API definition".to_string()),
+                    ..Default::default()
+                },
+                Link {
+                    href: "/conformance".to_string(),
+                    rel: LinkRelation::Conformance,
+                    r#type: Some(ContentType::Json),
+                    title: Some("OGC conformance classes implemented by this API".to_string()),
+                    ..Default::default()
+                },
+                Link {
+                    href: "/conformance".to_string(),
+                    rel: LinkRelation::Data,
+                    r#type: Some(ContentType::Json),
+                    title: Some("Metadata about the resource collections".to_string()),
+                    ..Default::default()
+                },
+            ],
+        };
+
+        let conformance = Conformance {
+            conforms_to: vec![
+                "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core".to_string(),
+                "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30".to_string(),
+                "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson".to_string(),
+            ],
+        };
+
         let pool = PgPool::new(db_url).await.expect("Create pg pool");
-        State { api, config, pool }
+
+        State {
+            openapi,
+            root,
+            conformance,
+            pool,
+        }
     }
 }
 
@@ -39,10 +79,10 @@ pub struct Service {
 }
 
 impl Service {
-    pub async fn new(db_url: &str) -> Service {
-        let state = State::new("api/ogcapi-features-1.yaml", db_url).await;
+    pub async fn new(api: &str, db_url: &str) -> Service {
+        let state = State::new(api, db_url).await;
 
-        let url = Url::parse(&state.api.servers[0].url).expect("Parse url from string");
+        let url = Url::parse(&state.openapi.servers[0].url).expect("Parse url from string");
 
         let mut app = tide::with_state(state);
 

@@ -5,13 +5,10 @@ use std::str::FromStr;
 use tide::http::{mime, url::Position, Mime};
 use tide::{Body, Request, Response, Result, StatusCode};
 
-use crate::common::{Link, Relation};
-use crate::features::schema::{
-    Collection, Collections, Exception, Feature, FeatureCollection, LandingPage,
-};
-use crate::features::service::State;
+use crate::common::{LinkRelation, ContentType, Link};
 
-static GEOJSON: &str = "application/geo+json";
+use crate::features::schema::{Collection, Collections, Exception, Feature, FeatureCollection};
+use crate::features::service::State;
 
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -27,17 +24,10 @@ pub struct Query {
 pub async fn handle_root(req: Request<State>) -> Result {
     let url = req.url();
 
-    let info = req.state().api.info.clone();
-    let mut links = req.state().config.root_links.clone();
-    for link in links.iter_mut() {
+    let mut landing_page = req.state().root.clone();
+    for link in landing_page.links.iter_mut() {
         link.href = format!("{}{}", url, link.href.trim_matches('/'));
     }
-
-    let landing_page = LandingPage {
-        title: Some(info.title),
-        description: info.description,
-        links,
-    };
 
     let mut res = Response::new(200);
     res.set_content_type(mime::JSON);
@@ -48,14 +38,14 @@ pub async fn handle_root(req: Request<State>) -> Result {
 pub async fn handle_api(req: Request<State>) -> Result {
     let mut res = Response::new(200);
     res.set_content_type(Mime::from_str("application/vnd.oai.openapi+json;version=3.0").unwrap());
-    res.set_body(Body::from_json(&req.state().api)?);
+    res.set_body(Body::from_json(&req.state().openapi)?);
     Ok(res)
 }
 
 pub async fn handle_conformance(req: Request<State>) -> Result {
     let mut res = Response::new(200);
     res.set_content_type(mime::JSON);
-    res.set_body(Body::from_json(&req.state().config.conformance)?);
+    res.set_body(Body::from_json(&req.state().conformance)?);
     Ok(res)
 }
 
@@ -69,8 +59,8 @@ pub async fn handle_collections(req: Request<State>) -> Result {
     for collection in &mut collections {
         let link = Json(Link {
             href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
-            rel: Some(Relation::Items),
-            r#type: Some(GEOJSON.to_string()),
+            rel: LinkRelation::Items,
+            r#type: Some(ContentType::GeoJson),
             title: collection.title.clone(),
             ..Default::default()
         });
@@ -80,8 +70,7 @@ pub async fn handle_collections(req: Request<State>) -> Result {
     let collections = Collections {
         links: vec![Link {
             href: url.to_string(),
-            rel: Some(Relation::Selfie),
-            r#type: Some(mime::JSON.to_string()),
+            r#type: Some(ContentType::Json),
             title: Some("this document".to_string()),
             ..Default::default()
         }],
@@ -108,8 +97,8 @@ pub async fn handle_collection(req: Request<State>) -> Result {
     if let Some(mut collection) = collection {
         let link = Json(Link {
             href: format!("{}/items", &url[..Position::AfterPath]),
-            rel: Some(Relation::Items),
-            r#type: Some(GEOJSON.to_string()),
+            rel: LinkRelation::Items,
+            r#type: Some(ContentType::GeoJson),
             title: collection.title.clone(),
             ..Default::default()
         });
@@ -133,8 +122,7 @@ pub async fn handle_items(req: Request<State>) -> Result {
 
     let mut links = vec![Link {
         href: url.to_string(),
-        rel: Some(Relation::Selfie),
-        r#type: Some(GEOJSON.to_string()),
+        r#type: Some(ContentType::GeoJson),
         ..Default::default()
     }];
 
@@ -164,8 +152,8 @@ pub async fn handle_items(req: Request<State>) -> Result {
                 url.set_query(Some(&format!("limit={}&offset={}", limit, offset - limit)));
                 let previous = Link {
                     href: url.to_string(),
-                    rel: Some(Relation::Previous),
-                    r#type: Some(GEOJSON.to_string()),
+                    rel: LinkRelation::Previous,
+                    r#type: Some(ContentType::GeoJson),
                     ..Default::default()
                 };
                 links.push(previous);
@@ -175,8 +163,8 @@ pub async fn handle_items(req: Request<State>) -> Result {
                 url.set_query(Some(&format!("limit={}&offset={}", limit, offset + limit)));
                 let next = Link {
                     href: url.to_string(),
-                    rel: Some(Relation::Next),
-                    r#type: Some(GEOJSON.to_string()),
+                    rel: LinkRelation::Next,
+                    r#type: Some(ContentType::GeoJson),
                     ..Default::default()
                 };
                 links.push(next);
@@ -226,14 +214,13 @@ pub async fn handle_item(req: Request<State>) -> Result {
     feature.links = Some(Json(vec![
         Link {
             href: url.to_string(),
-            rel: Some(Relation::Selfie),
-            r#type: Some(GEOJSON.to_string()),
+            r#type: Some(ContentType::GeoJson),
             ..Default::default()
         },
         Link {
             href: url.as_str().replace(&format!("/items/{}", id), ""),
-            rel: Some(Relation::Collection),
-            r#type: Some(GEOJSON.to_string()),
+            rel: LinkRelation::Collection,
+            r#type: Some(ContentType::GeoJson),
             ..Default::default()
         },
     ]));
