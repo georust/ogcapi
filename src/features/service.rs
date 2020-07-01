@@ -45,7 +45,7 @@ impl State {
                     ..Default::default()
                 },
                 Link {
-                    href: "/conformance".to_string(),
+                    href: "/collections".to_string(),
                     rel: LinkRelation::Data,
                     r#type: Some(ContentType::Json),
                     title: Some("Metadata about the resource collections".to_string()),
@@ -73,37 +73,35 @@ impl State {
     }
 }
 
-pub struct Service {
-    app: tide::Server<State>,
-    url: Url,
-}
+// pub struct Service {
+//     app: tide::Server<State>,
+//     url: Url,
+// }
 
-impl Service {
-    pub async fn new(api: &str, db_url: &str) -> Service {
-        let state = State::new(api, db_url).await;
+pub async fn run(api: &str, db_url: &str) -> tide::Result<()> {
+    let state = State::new(api, db_url).await;
 
-        let url = Url::parse(&state.openapi.servers[0].url).expect("Parse url from string");
+    let url = Url::parse(&state.openapi.servers[0].url).expect("Parse url from string");
 
-        let mut app = tide::with_state(state);
+    tide::log::start();
+    let mut app = tide::with_state(state);
 
-        app.middleware(After(exception));
+    app.at("/").get(handle_root);
+    app.at("/api").get(handle_api);
+    app.at("/conformance").get(handle_conformance);
+    app.at("/collections").get(handle_collections);
 
-        app.at("/").get(handle_root);
-        app.at("/api").get(handle_api);
-        app.at("/conformance").get(handle_conformance);
-        app.at("/collections").get(handle_collections);
-        app.at("/collections/:collection").get(handle_collection);
-        app.at("/collections/:collection/items").get(handle_items);
-        app.at("/collections/:collection/items/:id")
-            .get(handle_item);
+    app.at("/collections/:collection").get(handle_collection);
 
-        Service { app, url }
-    }
+    app.at("/collections/:collection/items").get(handle_items);
+    app.at("/collections/:collection/items/:id")
+        .get(handle_item);
+    
+    app.at("/favicon.ico").get(handle_favicon);
 
-    pub async fn run(self) -> tide::Result<()> {
-        self.app
-            .listen(&self.url[Position::BeforeHost..Position::AfterPort])
-            .await?;
-        Ok(())
-    }
+    app.middleware(After(exception));
+
+    app.listen(&url[Position::BeforeHost..Position::AfterPort])
+        .await?;
+    Ok(())
 }

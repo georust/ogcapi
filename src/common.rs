@@ -58,6 +58,16 @@ pub enum ContentType {
     OpenAPI,
 }
 
+impl ContentType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ContentType::Json => "application/json",
+            ContentType::GeoJson => "application/geo+json",
+            ContentType::OpenAPI => "application/vnd.oai.openapi+json;version=3.0",
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct LandingPage {
     #[serde(skip_serializing_if = "Option::is_none")]

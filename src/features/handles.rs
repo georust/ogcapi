@@ -2,10 +2,10 @@ use chrono::{SecondsFormat, Utc};
 use serde::Deserialize;
 use sqlx::types::Json;
 use std::str::FromStr;
-use tide::http::{mime, url::Position, Mime};
-use tide::{Body, Request, Response, Result, StatusCode};
+use tide::http::{url::Position, Mime};
+use tide::{Body, Request, Response, Result};
 
-use crate::common::{LinkRelation, ContentType, Link};
+use crate::common::{ContentType, Link, LinkRelation};
 
 use crate::features::schema::{Collection, Collections, Exception, Feature, FeatureCollection};
 use crate::features::service::State;
@@ -13,9 +13,7 @@ use crate::features::service::State;
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Query {
-    #[serde(default)]
     pub limit: Option<isize>,
-    #[serde(default)]
     pub offset: Option<isize>,
     pub bbox: Option<String>,
     pub datetime: Option<String>,
@@ -30,21 +28,19 @@ pub async fn handle_root(req: Request<State>) -> Result {
     }
 
     let mut res = Response::new(200);
-    res.set_content_type(mime::JSON);
     res.set_body(Body::from_json(&landing_page)?);
     Ok(res)
 }
 
 pub async fn handle_api(req: Request<State>) -> Result {
     let mut res = Response::new(200);
-    res.set_content_type(Mime::from_str("application/vnd.oai.openapi+json;version=3.0").unwrap());
+    res.set_content_type(Mime::from_str(ContentType::OpenAPI.as_str())?);
     res.set_body(Body::from_json(&req.state().openapi)?);
     Ok(res)
 }
 
 pub async fn handle_conformance(req: Request<State>) -> Result {
     let mut res = Response::new(200);
-    res.set_content_type(mime::JSON);
     res.set_body(Body::from_json(&req.state().conformance)?);
     Ok(res)
 }
@@ -61,7 +57,10 @@ pub async fn handle_collections(req: Request<State>) -> Result {
             href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
             rel: LinkRelation::Items,
             r#type: Some(ContentType::GeoJson),
-            title: collection.title.clone(),
+            title: Some(format!(
+                "Items of {}",
+                collection.title.clone().unwrap_or(collection.id.clone())
+            )),
             ..Default::default()
         });
         collection.links.push(link);
@@ -78,7 +77,6 @@ pub async fn handle_collections(req: Request<State>) -> Result {
     };
 
     let mut res = Response::new(200);
-    res.set_content_type(mime::JSON);
     res.set_body(Body::from_json(&collections)?);
     Ok(res)
 }
@@ -88,29 +86,23 @@ pub async fn handle_collection(req: Request<State>) -> Result {
 
     let id: String = req.param("collection")?;
 
-    let collection: Option<Collection> =
-        sqlx::query_as("SELECT * FROM meta.collections WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&req.state().pool)
-            .await?;
+    let mut collection: Collection = sqlx::query_as("SELECT * FROM meta.collections WHERE id = $1")
+        .bind(id)
+        .fetch_one(&req.state().pool)
+        .await?;
 
-    if let Some(mut collection) = collection {
-        let link = Json(Link {
-            href: format!("{}/items", &url[..Position::AfterPath]),
-            rel: LinkRelation::Items,
-            r#type: Some(ContentType::GeoJson),
-            title: collection.title.clone(),
-            ..Default::default()
-        });
-        collection.links.push(link);
+    let link = Json(Link {
+        href: format!("{}/items", &url[..Position::AfterPath]),
+        rel: LinkRelation::Items,
+        r#type: Some(ContentType::GeoJson),
+        title: collection.title.clone(),
+        ..Default::default()
+    });
+    collection.links.push(link);
 
-        let mut res = Response::new(200);
-        res.set_content_type(mime::JSON);
-        res.set_body(Body::from_json(&collection)?);
-        Ok(res)
-    } else {
-        Ok(Response::new(404))
-    }
+    let mut res = Response::new(200);
+    res.set_body(Body::from_json(&collection)?);
+    Ok(res)
 }
 
 pub async fn handle_items(req: Request<State>) -> Result {
@@ -189,7 +181,7 @@ pub async fn handle_items(req: Request<State>) -> Result {
     };
 
     let mut res = Response::new(200);
-    res.set_content_type(mime::JSON);
+    res.set_content_type(Mime::from_str(ContentType::GeoJson.as_str())?);
     res.set_body(Body::from_json(&feature_collection)?);
     Ok(res)
 }
@@ -225,38 +217,19 @@ pub async fn handle_item(req: Request<State>) -> Result {
         },
     ]));
     let mut res = Response::new(200);
-    res.set_content_type(mime::JSON);
+    res.set_content_type(Mime::from_str(ContentType::GeoJson.as_str())?);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
 
 pub async fn exception(result: Result) -> Result {
     match result {
-        Ok(mut res) => {
+        Ok(res) => {
             if res.status().is_success() {
                 Ok(res)
             } else {
-                let exception = match res.status() {
-                    StatusCode::BadRequest => Exception {
-                        code: res.status().to_string(),
-                        description: Some("A query parameter has an invalid value.".to_string()),
-                    },
-                    StatusCode::NotFound => Exception {
-                        code: res.status().to_string(),
-                        description: Some("The requested URI was not found.".to_string()),
-                    },
-                    StatusCode::InternalServerError => Exception {
-                        code: res.status().to_string(),
-                        description: Some("A server error occurred.".to_string()),
-                    },
-                    _ => Exception {
-                        code: res.status().to_string(),
-                        description: Some("Unknown error.".to_string()),
-                    },
-                };
-                res.set_content_type(mime::JSON);
-                res.set_body(Body::from_json(&exception)?);
-                Ok(res)
+                println!("WTF:\n{:#?}", res);
+                panic!()
             }
         }
         Err(err) => {
@@ -266,9 +239,14 @@ pub async fn exception(result: Result) -> Result {
                 code: status.to_string(),
                 description: Some(err.to_string()),
             };
-            res.set_content_type(mime::JSON);
             res.set_body(Body::from_json(&exception)?);
             Ok(res)
         }
     }
+}
+
+pub async fn handle_favicon(_: Request<State>) -> Result {
+    let mut res = Response::new(200);
+    res.set_body(Body::from_file("favicon.ico").await?);
+    Ok(res)
 }
