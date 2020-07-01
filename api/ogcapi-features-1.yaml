@@ -25,8 +25,8 @@ info:
     name: CC-BY 4.0 license
     url: "https://creativecommons.org/licenses/by/4.0/"
 servers:
-  - url: "http://192.168.1.232:8484"
-    description: Localhost server
+  - url: "http://0.0.0.0:8484"
+    description: Dynamically user specified server
 tags:
   - name: Capabilities
     description: |-

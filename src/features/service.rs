@@ -16,7 +16,8 @@ pub struct State {
 }
 
 impl State {
-    async fn new(api: &str, db_url: &str) -> State {
+    async fn new(database_url: &str) -> State {
+        let api = "api/ogcapi-features-1.yaml";
         let api = File::open(api).expect("Open api file");
         let openapi: OpenAPI = serde_yaml::from_reader(api).expect("Deserialize api document");
 
@@ -62,7 +63,7 @@ impl State {
             ],
         };
 
-        let pool = PgPool::new(db_url).await.expect("Create pg pool");
+        let pool = PgPool::new(database_url).await.expect("Create pg pool");
 
         State {
             openapi,
@@ -78,12 +79,15 @@ impl State {
 //     url: Url,
 // }
 
-pub async fn run(api: &str, db_url: &str) -> tide::Result<()> {
-    let state = State::new(api, db_url).await;
+pub async fn run(server_url: &str, database_url: &str) -> tide::Result<()> {
+    let mut state = State::new(database_url).await;
 
-    let url = Url::parse(&state.openapi.servers[0].url).expect("Parse url from string");
+    state.openapi.servers[0].url = server_url.to_string();
+
+    let server_url = Url::parse(&server_url)?;
 
     tide::log::start();
+
     let mut app = tide::with_state(state);
 
     app.at("/").get(handle_root);
@@ -100,15 +104,15 @@ pub async fn run(api: &str, db_url: &str) -> tide::Result<()> {
     app.at("/collections/:collection/items").get(handle_items);
     app.at("/collections/:collection/items/:id")
         .get(handle_item);
-        // .post(handle_item)
-        // .put(handle_item)
-        // .delete(handle_item);
+    // .post(handle_item)
+    // .put(handle_item)
+    // .delete(handle_item);
 
     app.at("/favicon.ico").get(handle_favicon);
 
     app.middleware(After(exception));
 
-    app.listen(&url[Position::BeforeHost..Position::AfterPort])
+    app.listen(&server_url[Position::BeforeHost..Position::AfterPort])
         .await?;
     Ok(())
 }
