@@ -51,10 +51,9 @@ pub struct TemporalExtent {
     pub trs: Option<String>,
 }
 
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", tag = "type")]
 #[derive(Serialize, Deserialize, Default)]
 pub struct FeatureCollection {
-    pub r#type: String,
     pub features: Vec<Feature>,
     pub links: Option<Vec<Link>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -65,9 +64,9 @@ pub struct FeatureCollection {
     pub number_returned: Option<usize>,
 }
 
+#[serde(tag = "type")]
 #[derive(sqlx::FromRow, Serialize, Deserialize)]
 pub struct Feature {
-    pub r#type: String,
     pub id: Option<String>,
     pub properties: Value,
     pub geometry: Json<Geometry>,

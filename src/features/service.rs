@@ -89,14 +89,21 @@ pub async fn run(api: &str, db_url: &str) -> tide::Result<()> {
     app.at("/").get(handle_root);
     app.at("/api").get(handle_api);
     app.at("/conformance").get(handle_conformance);
-    app.at("/collections").get(handle_collections);
 
-    app.at("/collections/:collection").get(handle_collection);
+    app.at("/collections").get(handle_collections);
+    app.at("/collections/:collection")
+        .get(handle_collection)
+        .post(handle_collection)
+        .put(handle_collection)
+        .delete(handle_collection);
 
     app.at("/collections/:collection/items").get(handle_items);
     app.at("/collections/:collection/items/:id")
         .get(handle_item);
-    
+        // .post(handle_item)
+        // .put(handle_item)
+        // .delete(handle_item);
+
     app.at("/favicon.ico").get(handle_favicon);
 
     app.middleware(After(exception));

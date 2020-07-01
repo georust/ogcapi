@@ -2,7 +2,7 @@ use chrono::{SecondsFormat, Utc};
 use serde::Deserialize;
 use sqlx::types::Json;
 use std::str::FromStr;
-use tide::http::{url::Position, Mime};
+use tide::http::{url::Position, Method, Mime};
 use tide::{Body, Request, Response, Result};
 
 use crate::common::{ContentType, Link, LinkRelation};
@@ -81,26 +81,77 @@ pub async fn handle_collections(req: Request<State>) -> Result {
     Ok(res)
 }
 
-pub async fn handle_collection(req: Request<State>) -> Result {
+pub async fn handle_collection(mut req: Request<State>) -> Result {
     let url = req.url();
-
     let id: String = req.param("collection")?;
 
-    let mut collection: Collection = sqlx::query_as("SELECT * FROM meta.collections WHERE id = $1")
-        .bind(id)
-        .fetch_one(&req.state().pool)
-        .await?;
-
-    let link = Json(Link {
-        href: format!("{}/items", &url[..Position::AfterPath]),
-        rel: LinkRelation::Items,
-        r#type: Some(ContentType::GeoJson),
-        title: collection.title.clone(),
-        ..Default::default()
-    });
-    collection.links.push(link);
-
     let mut res = Response::new(200);
+    let mut collection: Collection;
+
+    match req.method() {
+        Method::Get => {
+            collection = sqlx::query_as("SELECT * FROM meta.collections WHERE id = $1")
+                .bind(id)
+                .fetch_one(&req.state().pool)
+                .await?;
+
+            let link = Json(Link {
+                href: format!("{}/items", &url[..Position::AfterPath]),
+                rel: LinkRelation::Items,
+                r#type: Some(ContentType::GeoJson),
+                title: collection.title.clone(),
+                ..Default::default()
+            });
+            collection.links.push(link);
+        }
+        Method::Post | Method::Put => {
+            collection = req.body_json().await?;
+
+            let sql = if req.method() == Method::Post {
+                vec![
+                    "INSERT INTO meta.collections",
+                    "(id, title, description, links, extent, item_type, crs)",
+                    "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                    "RETURNING id, title, description, links, extent, item_type, crs",
+                ]
+            } else {
+                vec![
+                    "UPDATE meta.collections",
+                    "SET title = $2, description = $3, links = $3, extent = $4, item_type = $5, crs = $6)",
+                    "WHERE id = $1",
+                    "RETURNING id, title, description, links, extent, item_type, crs",
+                ]
+            };
+
+            let mut tx = req.state().pool.begin().await?;
+
+            collection = sqlx::query_as(&sql.join(" ").as_str())
+                .bind(&collection.id)
+                .bind(&collection.title)
+                .bind(&collection.description)
+                .bind(&collection.links)
+                .bind(&collection.extent)
+                .bind(&collection.item_type)
+                .bind(&collection.crs)
+                .fetch_one(&mut tx)
+                .await?;
+
+            tx.commit().await?;
+        }
+        Method::Delete => {
+            let mut tx = req.state().pool.begin().await?;
+
+            let _deleted = sqlx::query("DELETE FROM meta.collections WHERE id = $1")
+                .bind(id)
+                .execute(&mut tx)
+                .await?;
+
+            tx.commit().await?;
+
+            return Ok(res)
+        }
+        _ => unimplemented!()
+    }
     res.set_body(Body::from_json(&collection)?);
     Ok(res)
 }
@@ -129,6 +180,7 @@ pub async fn handle_items(req: Request<State>) -> Result {
         .execute(&req.state().pool)
         .await?;
 
+    // pagination
     if let Some(limit) = query.limit {
         sql.push("ORDER BY id".to_string());
         sql.push(format!("LIMIT {}", limit));
@@ -172,7 +224,6 @@ pub async fn handle_items(req: Request<State>) -> Result {
     let number_returned = features.len();
 
     let feature_collection = FeatureCollection {
-        r#type: "FeatureCollection".to_string(),
         features,
         links: Some(links),
         time_stamp: Some(Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)),
