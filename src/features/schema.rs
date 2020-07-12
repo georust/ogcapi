@@ -1,4 +1,4 @@
-use crate::common::Link;
+use crate::common::link::Link;
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -7,6 +7,7 @@ use sqlx::types::Json;
 #[derive(Serialize, Deserialize)]
 pub struct Collections {
     pub links: Vec<Link>,
+    pub crs: Vec<String>,
     pub collections: Vec<Collection>,
 }
 
@@ -25,6 +26,10 @@ pub struct Collection {
     pub item_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub crs: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage_crs: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage_crs_coordinate_epoch: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -51,9 +56,10 @@ pub struct TemporalExtent {
     pub trs: Option<String>,
 }
 
-#[serde(rename_all = "camelCase", tag = "type")]
+#[serde(rename_all = "camelCase")]
 #[derive(Serialize, Deserialize, Default)]
 pub struct FeatureCollection {
+    pub r#type: String,
     pub features: Vec<Feature>,
     pub links: Option<Vec<Link>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -64,17 +70,11 @@ pub struct FeatureCollection {
     pub number_returned: Option<usize>,
 }
 
-#[serde(tag = "type")]
 #[derive(sqlx::FromRow, Serialize, Deserialize)]
 pub struct Feature {
+    pub r#type: String,
     pub id: Option<String>,
     pub properties: Value,
     pub geometry: Json<Geometry>,
     pub links: Option<Json<Vec<Link>>>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Exception {
-    pub code: String,
-    pub description: Option<String>,
 }

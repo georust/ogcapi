@@ -6,8 +6,8 @@ use std::fs::File;
 use tide::http::{url::Position, Url};
 use tide::After;
 
-use crate::common::{Conformance, ContentType, LandingPage, Link, LinkRelation};
-
+use crate::common::link::{ContentType, Link, LinkRelation};
+use crate::common::{Conformance, LandingPage};
 pub struct State {
     pub openapi: OpenAPI,
     pub root: LandingPage,
@@ -27,28 +27,28 @@ impl State {
             links: vec![
                 Link {
                     href: "/".to_string(),
-                    r#type: Some(ContentType::Json),
+                    r#type: Some(ContentType::JSON),
                     title: Some("this document".to_string()),
                     ..Default::default()
                 },
                 Link {
                     href: "/api".to_string(),
                     rel: LinkRelation::ServiceDesc,
-                    r#type: Some(ContentType::OpenAPI),
+                    r#type: Some(ContentType::OPENAPI),
                     title: Some("the API definition".to_string()),
                     ..Default::default()
                 },
                 Link {
                     href: "/conformance".to_string(),
                     rel: LinkRelation::Conformance,
-                    r#type: Some(ContentType::Json),
+                    r#type: Some(ContentType::JSON),
                     title: Some("OGC conformance classes implemented by this API".to_string()),
                     ..Default::default()
                 },
                 Link {
                     href: "/collections".to_string(),
                     rel: LinkRelation::Data,
-                    r#type: Some(ContentType::Json),
+                    r#type: Some(ContentType::JSON),
                     title: Some("Metadata about the resource collections".to_string()),
                     ..Default::default()
                 },
@@ -94,19 +94,21 @@ pub async fn run(server_url: &str, database_url: &str) -> tide::Result<()> {
     app.at("/api").get(handle_api);
     app.at("/conformance").get(handle_conformance);
 
-    app.at("/collections").get(handle_collections);
+    app.at("/collections")
+        .get(handle_collections)
+        .post(handle_collection);
     app.at("/collections/:collection")
         .get(handle_collection)
-        .post(handle_collection)
         .put(handle_collection)
         .delete(handle_collection);
 
-    app.at("/collections/:collection/items").get(handle_items);
+    app.at("/collections/:collection/items")
+        .get(handle_items)
+        .post(handle_item);
     app.at("/collections/:collection/items/:id")
-        .get(handle_item);
-    // .post(handle_item)
-    // .put(handle_item)
-    // .delete(handle_item);
+        .get(handle_item)
+        .put(handle_item)
+        .delete(handle_item);
 
     app.at("/favicon.ico").get(handle_favicon);
 

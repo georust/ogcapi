@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+use tide::http::Mime;
 
 /// Hyperlink to enable Hypermedia Access
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
@@ -51,34 +53,25 @@ impl Default for LinkRelation {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ContentType {
     #[serde(rename = "application/json")]
-    Json,
+    JSON,
     #[serde(rename = "application/geo+json")]
-    GeoJson,
+    GEOJSON,
     #[serde(rename = "application/vnd.oai.openapi+json;version=3.0")]
-    OpenAPI,
+    OPENAPI,
 }
 
 impl ContentType {
-    pub fn as_str(self) -> &'static str {
+    fn as_str(&self) -> &'static str {
         match self {
-            ContentType::Json => "application/json",
-            ContentType::GeoJson => "application/geo+json",
-            ContentType::OpenAPI => "application/vnd.oai.openapi+json;version=3.0",
+            ContentType::JSON => "application/json",
+            ContentType::GEOJSON => "application/geo+json",
+            ContentType::OPENAPI => "application/vnd.oai.openapi+json;version=3.0",
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Clone)]
-pub struct LandingPage {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    pub links: Vec<Link>,
-}
-
-#[serde(rename_all = "camelCase")]
-#[derive(Serialize, Deserialize)]
-pub struct Conformance {
-    pub conforms_to: Vec<String>,
+impl Into<Mime> for ContentType {
+    fn into(self) -> Mime {
+        Mime::from_str(&self.as_str()).unwrap()
+    }
 }
