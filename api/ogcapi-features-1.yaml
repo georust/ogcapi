@@ -13,9 +13,6 @@ info:
     collections or the feature content. This information is only available
     from accessing the feature collection resources.
 
-    There is [another example](ogcapi-features-1-example2.yaml)
-    that specifies each collection explicitly.
-
     Common components used in the
     [OGC standard "OGC API - Features - Part 1: Core"](http://docs.opengeospatial.org/is/17-069r3/17-069r3.html).
   contact:

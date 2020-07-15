@@ -1,13 +1,14 @@
+use crate::common::link::{ContentType, Link, LinkRelation};
+use crate::common::{Conformance, LandingPage};
 use crate::features::handles::*;
+use crate::routes::{collections, items};
 use openapiv3::OpenAPI;
 use serde_yaml;
-use sqlx::postgres::PgPool;
+use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::fs::File;
 use tide::http::{url::Position, Url};
 use tide::After;
 
-use crate::common::link::{ContentType, Link, LinkRelation};
-use crate::common::{Conformance, LandingPage};
 pub struct State {
     pub openapi: OpenAPI,
     pub root: LandingPage,
@@ -63,7 +64,11 @@ impl State {
             ],
         };
 
-        let pool = PgPool::new(database_url).await.expect("Create pg pool");
+        let pool = PgPoolOptions::new()
+            .max_connections(5)
+            .connect(database_url)
+            .await
+            .expect("Create database pool");
 
         State {
             openapi,
@@ -73,11 +78,6 @@ impl State {
         }
     }
 }
-
-// pub struct Service {
-//     app: tide::Server<State>,
-//     url: Url,
-// }
 
 pub async fn run(server_url: &str, database_url: &str) -> tide::Result<()> {
     let mut state = State::new(database_url).await;
@@ -93,24 +93,24 @@ pub async fn run(server_url: &str, database_url: &str) -> tide::Result<()> {
     app.at("/").get(handle_root);
     app.at("/api").get(handle_api);
     app.at("/conformance").get(handle_conformance);
+    app.at("/favicon.ico").get(handle_favicon);
+    app.at("/redoc").get(show_redoc);
 
     app.at("/collections")
-        .get(handle_collections)
-        .post(handle_collection);
+        .get(collections::handle_collections)
+        .post(collections::handle_collection);
     app.at("/collections/:collection")
-        .get(handle_collection)
-        .put(handle_collection)
-        .delete(handle_collection);
+        .get(collections::handle_collection)
+        .put(collections::handle_collection)
+        .delete(collections::handle_collection);
 
     app.at("/collections/:collection/items")
-        .get(handle_items)
-        .post(handle_item);
+        .get(items::handle_items)
+        .post(items::handle_item);
     app.at("/collections/:collection/items/:id")
-        .get(handle_item)
-        .put(handle_item)
-        .delete(handle_item);
-
-    app.at("/favicon.ico").get(handle_favicon);
+        .get(items::handle_item)
+        .put(items::handle_item)
+        .delete(items::handle_item);
 
     app.middleware(After(exception));
 

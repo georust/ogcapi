@@ -10,9 +10,9 @@ pub static EPSG_4979: &str = "http://www.opengis.net/def/crs/EPSG/0/4979"; // fo
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, sqlx::Type)]
 pub struct CRS {
-    authority: String,
-    version: String,
-    code: String,
+    pub authority: String,
+    pub version: String,
+    pub code: String,
 }
 
 impl CRS {
