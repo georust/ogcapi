@@ -68,27 +68,16 @@ pub async fn handle_conformance(req: Request<State>) -> Result {
     Ok(res)
 }
 
-pub async fn exception(result: Result) -> Result {
-    match result {
-        Ok(res) => {
-            if res.status().is_success() {
-                Ok(res)
-            } else {
-                println!("WTF:\n{:#?}", res);
-                panic!()
-            }
-        }
-        Err(err) => {
-            let status = err.status();
-            let mut res = Response::new(status);
-            let exception = Exception {
-                code: status.to_string(),
-                description: Some(err.to_string()),
-            };
-            res.set_body(Body::from_json(&exception)?);
-            Ok(res)
-        }
+pub async fn exception(mut res: Response) -> Result {
+    if let Some(err) = res.error() {
+        let exception = Exception {
+            code: res.status().to_string(),
+            // NOTE: You may want to avoid sending error messages in a production server.
+            description: Some(err.to_string()),
+        };
+        res.set_body(Body::from_json(&exception)?);
     }
+    Ok(res)
 }
 
 pub async fn handle_favicon(_: Request<State>) -> Result {

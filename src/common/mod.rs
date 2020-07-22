@@ -15,7 +15,7 @@ pub struct LandingPage {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Conformance {
     pub conforms_to: Vec<String>,
 }

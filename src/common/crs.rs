@@ -24,14 +24,14 @@ impl CRS {
         }
     }
 
-    fn as_ogc_urn(&self) -> String {
-        format!(
-            "urn:ogc:def:crs:{authority}:{version}:{code}",
-            authority = self.authority,
-            version = self.version,
-            code = self.code
-        )
-    }
+    // fn as_ogc_urn(&self) -> String {
+    //     format!(
+    //         "urn:ogc:def:crs:{authority}:{version}:{code}",
+    //         authority = self.authority,
+    //         version = self.version,
+    //         code = self.code
+    //     )
+    // }
 }
 
 impl fmt::Display for CRS {

@@ -5,6 +5,7 @@ use crate::features::service::State;
 use chrono::{SecondsFormat, Utc};
 use serde::Deserialize;
 use sqlx::types::Json;
+use sqlx::Done;
 use tide::http::Method;
 use tide::{Body, Request, Response, Result};
 
@@ -38,7 +39,7 @@ impl Query {
             ));
         }
         if let Some(bbox_crs) = &self.bbox_crs {
-            query_str.push(format!("bbox_crs={}", bbox_crs.to_string()));
+            query_str.push(format!("bboxCrs={}", bbox_crs.to_string()));
         }
         if let Some(datetime) = &self.datetime {
             query_str.push(format!("datetime={}", datetime));
@@ -55,41 +56,35 @@ impl Query {
         new_query.to_string()
     }
 
-    // pub fn get_bbox(&self) -> Option<String> {
-    //     let Some(bbox) = &self.bbox;
+    pub fn make_envelope(&self) -> Option<String> {
+        if let Some(mut bbox) = self.bbox.to_owned() {
+            let srid = match &self.bbox_crs {
+                Some(crs) => crs.code.parse::<i32>().expect("Parse bbox crs EPSG code"),
+                None => 4326,
+            };
 
-    //     let bbox_query: String;
-    //     let srid = match &self.bbox_crs {
-    //         Some(crs) => {
-    //             if crs.authority.to_uppercase() == "EPSG" {
-    //                 crs.code.parse::<i32>().unwrap()
-    //             } else {
-    //                 panic!("Unhandled crs!");
-    //             }
-    //         }
-    //         None => 4326,
-    //     };
-    //     match bbox.len() {
-    //         4 => {
-    //             bbox_query = format!(
-    //                     "WHERE geometry && ST_MakeEnvelope ( {xmin}, {ymin}, {xmax}, {ymax}, {my_srid} )",
-    //                     xmin = bbox[0],
-    //                     ymin = bbox[1],
-    //                     xmax = bbox[2],
-    //                     ymax = bbox[3],
-    //                     my_srid = srid
-    //                 );
-    //         }
-    //         6 => unimplemented!("3d bbox"),
-    //         _ => unimplemented!("return invalid query"),
-    //     }
-    //     return bbox_query;
-    // }
+            // downgrade 3d bbox to 2d
+            if bbox.len() == 6 {
+                bbox.remove(5);
+                bbox.remove(2);
+            }
 
-    // pub fn get_epsg_code(&self) -> i32 {
-    //     let Some(crs) = &self.crs;
-    //     crs.code.parse::<i32>().unwrap()
-    // }
+            if bbox.len() == 4 {
+                Some(format!(
+                    "ST_MakeEnvelope ( {xmin}, {ymin}, {xmax}, {ymax}, {my_srid} )",
+                    xmin = bbox[0],
+                    ymin = bbox[1],
+                    xmax = bbox[2],
+                    ymax = bbox[3],
+                    my_srid = srid
+                ))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 pub async fn handle_item(mut req: Request<State>) -> tide::Result {
@@ -127,12 +122,12 @@ pub async fn handle_item(mut req: Request<State>) -> tide::Result {
                 vec![
                     "INSERT INTO data.features",
                     "(id, type, properties, geometry, links)",
-                    "VALUES ($1, $2, $3, $4, $5)",
+                    "VALUES ($1, $2, $3, ST_GeomFromGeoJSON($4), $5)",
                 ]
             } else {
                 vec![
                     "UPDATE data.features",
-                    "SET type = $2, properties = $3, geometry = $4, links = $5)",
+                    "SET type = $2, properties = $3, geometry = ST_GeomFromGeoJSON($4), links = $5)",
                     "WHERE id = $1",
                 ]
             };
@@ -192,24 +187,28 @@ pub async fn handle_items(req: Request<State>) -> Result {
 
     let mut query: Query = req.query()?;
 
-    // let epsg_code = query.get_epsg_code();
+    let srid = match &query.crs {
+        Some(crs) => crs.code.parse::<i32>().unwrap_or(4326),
+        None => 4326,
+    };
 
     let mut sql = vec![
-        "SELECT id, type, ST_AsGeoJSON(geometry)::jsonb as geometry, properties, links".to_string(),
-        "FROM data.features".to_string(),
-        "WHERE collection = $1".to_string(),
+        format!("SELECT id, type, ST_AsGeoJSON( ST_Transform (geometry, {}))::jsonb as geometry, properties, links
+        FROM data.features
+        WHERE collection = $1", srid)
     ];
 
-    // if query.bbox.is_some() {
-    //     let bbox_query = query.get_bbox();
-    //     sql.push(bbox_query);
-    // }
-    
-    let number_matched = 0; // TODO: fixme 
-    // let number_matched = sqlx::query(sql.join(" ").as_str())
-    //     .bind(&collection)
-    //     .execute(&req.state().pool)
-    //     .await?;
+    if query.bbox.is_some() {
+        if let Some(envelop) = query.make_envelope() {
+            sql.push(format!("WHERE geometry && {}", envelop));
+        }
+    }
+
+    let number_matched = sqlx::query(sql.join(" ").as_str())
+        .bind(&collection)
+        .execute(&req.state().pool)
+        .await?
+        .rows_affected();
 
     let mut links = vec![Link {
         href: url.to_string(),

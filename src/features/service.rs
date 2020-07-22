@@ -7,8 +7,9 @@ use serde_yaml;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::fs::File;
 use tide::http::{url::Position, Url};
-use tide::After;
+use tide::utils::After;
 
+#[derive(Clone)]
 pub struct State {
     pub openapi: OpenAPI,
     pub root: LandingPage,
