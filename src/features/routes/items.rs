@@ -1,7 +1,6 @@
-use crate::common::crs::CRS;
-use crate::common::link::{ContentType, Link, LinkRelation};
+use crate::common::{ContentType, Link, LinkRelation, CRS, Datetime};
 use crate::features::schema::{Feature, FeatureCollection};
-use crate::features::service::State;
+use crate::Features;
 use chrono::{SecondsFormat, Utc};
 use serde::Deserialize;
 use sqlx::types::Json;
@@ -16,7 +15,7 @@ struct Query {
     offset: Option<isize>,
     bbox: Option<Vec<f64>>,
     bbox_crs: Option<CRS>,
-    datetime: Option<String>,
+    datetime: Option<Datetime>,
     crs: Option<CRS>,
 }
 
@@ -42,7 +41,7 @@ impl Query {
             query_str.push(format!("bboxCrs={}", bbox_crs.to_string()));
         }
         if let Some(datetime) = &self.datetime {
-            query_str.push(format!("datetime={}", datetime));
+            query_str.push(format!("datetime={}", datetime.to_string()));
         }
         if let Some(crs) = &self.crs {
             query_str.push(format!("crs={}", crs.to_string()));
@@ -58,10 +57,14 @@ impl Query {
 
     pub fn make_envelope(&self) -> Option<String> {
         if let Some(mut bbox) = self.bbox.to_owned() {
-            let srid = match &self.bbox_crs {
-                Some(crs) => crs.code.parse::<i32>().expect("Parse bbox crs EPSG code"),
-                None => 4326,
-            };
+            let srid = self
+                .bbox_crs
+                .clone()
+                .unwrap_or_else(|| CRS::default())
+                .code
+                .clone()
+                .parse::<i32>()
+                .expect("Parse bbox crs EPSG code");
 
             // downgrade 3d bbox to 2d
             if bbox.len() == 6 {
@@ -87,7 +90,7 @@ impl Query {
     }
 }
 
-pub async fn handle_item(mut req: Request<State>) -> tide::Result {
+pub async fn handle_item(mut req: Request<Features>) -> tide::Result {
     let url = req.url().clone();
     let method = req.method();
 
@@ -180,7 +183,7 @@ pub async fn handle_item(mut req: Request<State>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn handle_items(req: Request<State>) -> Result {
+pub async fn handle_items(req: Request<Features>) -> Result {
     let mut url = req.url().to_owned();
 
     let collection: String = req.param("collection")?;

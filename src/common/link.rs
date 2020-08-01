@@ -3,7 +3,7 @@ use std::str::FromStr;
 use tide::http::Mime;
 
 /// Hyperlink to enable Hypermedia Access
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Link {
     pub href: String,
     pub rel: LinkRelation,
@@ -29,6 +29,8 @@ pub enum LinkRelation {
     Conformance,
     Data,
     Decribedby,
+    Exceptions,
+    Execute,
     First,
     Item,
     Items,
@@ -36,11 +38,17 @@ pub enum LinkRelation {
     License,
     Next,
     Previous,
+    ProcessDesc,
+    Processes,
+    Results,
     #[serde(rename = "self")]
     Selfie,
     ServiceDesc,
     ServiceDoc,
     Start,
+    Status,
+    Tiles,
+    Up,
 }
 
 impl Default for LinkRelation {

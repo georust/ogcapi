@@ -1,121 +1,87 @@
-use crate::common::link::{ContentType, Link, LinkRelation};
-use crate::common::{Conformance, LandingPage};
-use crate::features::handles::*;
-use crate::routes::{collections, items};
+use super::routes;
+use crate::common::{self, Conformance};
 use openapiv3::OpenAPI;
-use serde_yaml;
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use routes::{collections, items};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::fs::File;
-use tide::http::{url::Position, Url};
-use tide::utils::After;
+use tide::{
+    http::{url::Position, Url},
+    utils::After,
+    Body, Request, Response,
+};
+
+static API: &str = "api/ogcapi-features-1.yaml";
 
 #[derive(Clone)]
-pub struct State {
-    pub openapi: OpenAPI,
-    pub root: LandingPage,
+pub struct Features {
     pub conformance: Conformance,
+    pub api: OpenAPI,
     pub pool: PgPool,
 }
 
-impl State {
-    async fn new(database_url: &str) -> State {
-        let api = "api/ogcapi-features-1.yaml";
-        let api = File::open(api).expect("Open api file");
-        let openapi: OpenAPI = serde_yaml::from_reader(api).expect("Deserialize api document");
-
-        let root = LandingPage {
-            title: Some(openapi.info.title.clone()),
-            description: openapi.info.description.clone(),
-            links: vec![
-                Link {
-                    href: "/".to_string(),
-                    r#type: Some(ContentType::JSON),
-                    title: Some("this document".to_string()),
-                    ..Default::default()
-                },
-                Link {
-                    href: "/api".to_string(),
-                    rel: LinkRelation::ServiceDesc,
-                    r#type: Some(ContentType::OPENAPI),
-                    title: Some("the API definition".to_string()),
-                    ..Default::default()
-                },
-                Link {
-                    href: "/conformance".to_string(),
-                    rel: LinkRelation::Conformance,
-                    r#type: Some(ContentType::JSON),
-                    title: Some("OGC conformance classes implemented by this API".to_string()),
-                    ..Default::default()
-                },
-                Link {
-                    href: "/collections".to_string(),
-                    rel: LinkRelation::Data,
-                    r#type: Some(ContentType::JSON),
-                    title: Some("Metadata about the resource collections".to_string()),
-                    ..Default::default()
-                },
-            ],
-        };
-
-        let conformance = Conformance {
-            conforms_to: vec![
-                "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core".to_string(),
-                "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30".to_string(),
-                "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson".to_string(),
-            ],
-        };
-
-        let pool = PgPoolOptions::new()
-            .max_connections(5)
-            .connect(database_url)
-            .await
-            .expect("Create database pool");
-
-        State {
-            openapi,
-            root,
-            conformance,
-            pool,
+impl Features {
+    pub async fn new(db: &str) -> Features {
+        Features {
+            api: serde_yaml::from_reader(File::open(API).expect("Open api file"))
+                .expect("Deserialize api document"),
+            conformance: Conformance {
+                conforms_to: vec![
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core".to_string(),
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30".to_string(),
+                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson".to_string(),
+                ],
+            },
+            pool: PgPoolOptions::new()
+                .max_connections(5)
+                .connect(db)
+                .await
+                .expect("Create database pool"),
         }
     }
-}
+    pub async fn run(mut self, url: &str) -> tide::Result<()> {
+        let url = Url::parse(&url)?;
+        self.api.servers[0].url = url.to_string();
 
-pub async fn run(server_url: &str, database_url: &str) -> tide::Result<()> {
-    let mut state = State::new(database_url).await;
+        tide::log::start();
+        let mut app = tide::with_state(self);
 
-    state.openapi.servers[0].url = server_url.to_string();
+        // core
+        app.at("/").get(routes::root);
+        app.at("/api").get(routes::api);
+        app.at("/conformance").get(routes::conformance);
 
-    let server_url = Url::parse(&server_url)?;
+        // favicon
+        app.at("/favicon.ico").get(|_: Request<Features>| async {
+            let mut res = Response::new(200);
+            res.set_body(Body::from_file("favicon.ico").await?);
+            Ok(res)
+        });
 
-    tide::log::start();
+        // redoc
+        app.at("/redoc").get(routes::redoc);
 
-    let mut app = tide::with_state(state);
+        // collections
+        app.at("/collections")
+            .get(collections::handle_collections)
+            .post(collections::create_collection);
+        app.at("/collections/:collection")
+            .get(collections::read_collection)
+            .put(collections::update_collection)
+            .delete(collections::delete_collection);
 
-    app.at("/").get(handle_root);
-    app.at("/api").get(handle_api);
-    app.at("/conformance").get(handle_conformance);
-    app.at("/favicon.ico").get(handle_favicon);
-    app.at("/redoc").get(show_redoc);
+        // items
+        app.at("/collections/:collection/items")
+            .get(items::handle_items)
+            .post(items::handle_item);
+        app.at("/collections/:collection/items/:id")
+            .get(items::handle_item)
+            .put(items::handle_item)
+            .delete(items::handle_item);
 
-    app.at("/collections")
-        .get(collections::handle_collections)
-        .post(collections::handle_collection);
-    app.at("/collections/:collection")
-        .get(collections::handle_collection)
-        .put(collections::handle_collection)
-        .delete(collections::handle_collection);
+        app.with(After(common::exception));
 
-    app.at("/collections/:collection/items")
-        .get(items::handle_items)
-        .post(items::handle_item);
-    app.at("/collections/:collection/items/:id")
-        .get(items::handle_item)
-        .put(items::handle_item)
-        .delete(items::handle_item);
-
-    app.middleware(After(exception));
-
-    app.listen(&server_url[Position::BeforeHost..Position::AfterPort])
-        .await?;
-    Ok(())
+        app.listen(&url[Position::BeforeHost..Position::AfterPort])
+            .await?;
+        Ok(())
+    }
 }

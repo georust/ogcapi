@@ -1,7 +1,13 @@
-pub mod crs;
-pub mod link;
+pub mod collection;
+mod crs;
+mod datetime;
+mod exception;
+mod link;
 
-use crate::common::link::Link;
+pub use self::crs::CRS;
+pub use self::datetime::Datetime;
+pub use self::exception::exception;
+pub use self::link::*;
 
 use serde::{Deserialize, Serialize};
 
@@ -18,10 +24,4 @@ pub struct LandingPage {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Conformance {
     pub conforms_to: Vec<String>,
-}
-
-#[derive(Serialize)]
-pub struct Exception {
-    pub code: String,
-    pub description: Option<String>,
 }

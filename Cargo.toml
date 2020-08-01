@@ -11,8 +11,8 @@ keywords = ["ogc", "geo", "api"]
 name = "ogcapi"
 path = "src/lib.rs"
 
-[dependencies]
-tide = "0.12"
+[dependencies] 
+tide = "0.13"
 async-std = {version = "1.6", features = ["attributes"]}
 serde = "1.0"
 serde_json = "1.0"
@@ -21,5 +21,3 @@ openapiv3 = "0.3"
 geojson = "0.19"
 chrono = {version = "0.4", features = ["serde"]}
 sqlx = {git = "https://github.com/launchbadge/sqlx", features = ["postgres", "json"]}
-#proj = { version = "0.19.0", features = ["bundled_proj"] }
-

@@ -1,0 +1,196 @@
+use crate::common::collection::{Collection, Collections};
+use crate::common::{ContentType, Datetime, Link, LinkRelation, CRS};
+use crate::Features;
+use serde::Deserialize;
+use sqlx::types::Json;
+use tide::http::url::Position;
+use tide::{Body, Request, Response, Result};
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+struct Query {
+    limit: Option<isize>,
+    offset: Option<isize>,
+    bbox: Option<Vec<f64>>,
+    bbox_crs: Option<CRS>,
+    datetime: Option<Datetime>,
+}
+
+impl Query {
+    fn to_string(&self) -> String {
+        let mut query_str = vec![];
+        if let Some(limit) = self.limit {
+            query_str.push(format!("limit={}", limit));
+        }
+        if let Some(offset) = self.offset {
+            query_str.push(format!("offset={}", offset));
+        }
+        if let Some(bbox) = &self.bbox {
+            query_str.push(format!(
+                "bbox={}",
+                bbox.iter()
+                    .map(|coord| coord.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ));
+        }
+        if let Some(bbox_crs) = &self.bbox_crs {
+            query_str.push(format!("bboxCrs={}", bbox_crs.to_string()));
+        }
+        if let Some(datetime) = &self.datetime {
+            query_str.push(format!("datetime={}", datetime.to_string()));
+        }
+        query_str.join("&")
+    }
+}
+
+pub async fn handle_collections(req: Request<Features>) -> Result {
+    let url = req.url();
+
+    //let mut query: Query = req.query()?;
+
+    let sql = "SELECT * FROM meta.collections";
+
+    let mut collections: Vec<Collection> = sqlx::query_as(sql).fetch_all(&req.state().pool).await?;
+
+    for collection in &mut collections {
+        let link = Json(Link {
+            href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
+            rel: LinkRelation::Items,
+            r#type: Some(ContentType::GEOJSON),
+            title: Some(format!(
+                "Items of {}",
+                collection.title.clone().unwrap_or(collection.id.clone())
+            )),
+            ..Default::default()
+        });
+        collection.links.push(link);
+
+        // set default item type
+        if collection.item_type.is_none() {
+            collection.item_type = Some("feature".to_string());
+        }
+    }
+
+    let collections = Collections {
+        links: vec![Link {
+            href: url.to_string(),
+            r#type: Some(ContentType::JSON),
+            title: Some("this document".to_string()),
+            ..Default::default()
+        }],
+        crs: vec![CRS::default().to_string()],
+        collections,
+        ..Default::default()
+    };
+
+    let mut res = Response::new(200);
+    res.set_body(Body::from_json(&collections)?);
+    Ok(res)
+}
+
+/// Return collection metadata
+pub async fn read_collection(req: Request<Features>) -> Result {
+    let url = req.url();
+
+    let id: String = req.param("collection")?;
+
+    let mut res = Response::new(200);
+    let mut collection: Collection;
+
+    collection = sqlx::query_as("SELECT * FROM meta.collections WHERE id = $1")
+        .bind(id)
+        .fetch_one(&req.state().pool)
+        .await?;
+
+    let link = Json(Link {
+        href: format!("{}/items", &url[..Position::AfterPath]),
+        rel: LinkRelation::Items,
+        r#type: Some(ContentType::GEOJSON),
+        title: collection.title.clone(),
+        ..Default::default()
+    });
+    collection.links.push(link);
+
+    res.set_body(Body::from_json(&collection)?);
+    Ok(res)
+}
+
+/// Create new collection metadata
+pub async fn create_collection(mut req: Request<Features>) -> Result {
+    let mut collection: Collection = req.body_json().await?;
+
+    let sql = r#"
+    INSERT INTO meta.collections
+    (id, title, description, links, extent, item_type, crs, storage_crs, storage_crs_coordinate_epoche)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING id, title, description, links, extent, item_type, crs, storage_crs, storage_crs_coordinate_epoche
+    "#;
+
+    let mut tx = req.state().pool.begin().await?;
+    collection = sqlx::query_as(sql)
+        .bind(&collection.id)
+        .bind(&collection.title)
+        .bind(&collection.description)
+        .bind(&collection.links)
+        .bind(&collection.extent)
+        .bind(&collection.item_type)
+        .bind(&collection.crs)
+        .bind(&collection.storage_crs)
+        .bind(&collection.storage_crs_coordinate_epoch)
+        .fetch_one(&mut tx)
+        .await?;
+    tx.commit().await?;
+
+    let mut res = Response::new(200);
+    res.set_body(Body::from_json(&collection)?);
+    Ok(res)
+}
+
+/// Update collection metadata
+pub async fn update_collection(mut req: Request<Features>) -> Result {
+    let mut collection: Collection = req.body_json().await?;
+
+    let id: String = req.param("collection")?;
+    assert!(id == collection.id);
+
+    let sql = r#"
+    UPDATE meta.collections
+    SET title = $2, description = $3, links = $4, extent = $5, item_type = $6, crs = $7, storage_crs = $8, storage_crs_coordinate_epoche = $9)
+    WHERE id = $1
+    RETURNING id, title, description, links, extent, item_type, crs, storage_crs, storage_crs_coordinate_epoche
+    "#;
+
+    let mut tx = req.state().pool.begin().await?;
+    collection = sqlx::query_as(sql)
+        .bind(&collection.id)
+        .bind(&collection.title)
+        .bind(&collection.description)
+        .bind(&collection.links)
+        .bind(&collection.extent)
+        .bind(&collection.item_type)
+        .bind(&collection.crs)
+        .bind(&collection.storage_crs)
+        .bind(&collection.storage_crs_coordinate_epoch)
+        .fetch_one(&mut tx)
+        .await?;
+    tx.commit().await?;
+
+    let mut res = Response::new(200);
+    res.set_body(Body::from_json(&collection)?);
+    Ok(res)
+}
+
+/// Delete collection metadata
+pub async fn delete_collection(req: Request<Features>) -> Result {
+    let id: String = req.param("collection")?;
+
+    let mut tx = req.state().pool.begin().await?;
+    let _deleted = sqlx::query("DELETE FROM meta.collections WHERE id = $1")
+        .bind(id)
+        .execute(&mut tx)
+        .await?;
+    tx.commit().await?;
+
+    Ok(Response::new(200))
+}

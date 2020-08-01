@@ -1,3 +1,5 @@
-pub mod handles;
+pub mod routes;
 pub mod schema;
-pub mod service;
+mod service;
+
+pub use self::service::Features;
