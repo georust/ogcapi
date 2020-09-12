@@ -72,11 +72,11 @@ impl Features {
         // items
         app.at("/collections/:collection/items")
             .get(items::handle_items)
-            .post(items::handle_item);
+            .post(items::create_item);
         app.at("/collections/:collection/items/:id")
-            .get(items::handle_item)
-            .put(items::handle_item)
-            .delete(items::handle_item);
+            .get(items::read_item)
+            .put(items::update_item)
+            .delete(items::delete_item);
 
         app.with(After(common::exception));
 

@@ -1,11 +1,9 @@
-use crate::common::{ContentType, Link, LinkRelation, CRS, Datetime};
+use crate::common::{ContentType, Datetime, Link, LinkRelation, CRS};
 use crate::features::schema::{Feature, FeatureCollection};
 use crate::Features;
 use chrono::{SecondsFormat, Utc};
 use serde::Deserialize;
-use sqlx::types::Json;
 use sqlx::Done;
-use tide::http::Method;
 use tide::{Body, Request, Response, Result};
 
 #[derive(Deserialize, Debug, Clone)]
@@ -90,96 +88,156 @@ impl Query {
     }
 }
 
-pub async fn handle_item(mut req: Request<Features>) -> tide::Result {
+pub async fn create_item(mut req: Request<Features>) -> tide::Result {
     let url = req.url().clone();
-    let method = req.method();
 
-    let id: Option<String> = if method != Method::Post {
-        Some(req.param("id")?)
-    } else {
-        None
+    let collection: String = req.param("collection")?;
+    let mut feature: Feature = req.body_json().await?;
+
+    let sql = "#
+            INSERT INTO features
+            (id, type, properties, geometry, links, collection, stac_version, stac_extensions, bbox, assets, collection)
+            VALUES ($1, $2, $3, ST_GeomFromGeoJSON($4), $5, $6, $7, $8, $9, $10)
+            RETURNING id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection#";
+
+    let mut tx = req.state().pool.begin().await?;
+    feature = sqlx::query_as(sql)
+        .bind(&feature.id)
+        .bind(&feature.r#type)
+        .bind(&feature.properties)
+        .bind(&feature.geometry)
+        .bind(&feature.links)
+        .bind(&feature.stac_version)
+        .bind(&feature.stac_extensions)
+        .bind(&feature.bbox)
+        .bind(&feature.assets)
+        .bind(&collection)
+        .fetch_one(&mut tx)
+        .await?;
+    tx.commit().await?;
+
+    if let Some(links) = feature.links.as_mut() {
+        links.push(Link {
+            href: format!("{}/{}", url, feature.id.unwrap()),
+            r#type: Some(ContentType::GEOJSON),
+            ..Default::default()
+        });
+        links.push(Link {
+            href: url.as_str().replace(&format!("/items"), ""),
+            rel: LinkRelation::Collection,
+            r#type: Some(ContentType::GEOJSON),
+            ..Default::default()
+        });
     };
 
+    let mut res = Response::new(200);
+    res.set_content_type(ContentType::GEOJSON);
+    res.set_body(Body::from_json(&feature)?);
+    Ok(res)
+}
+
+pub async fn read_item(req: Request<Features>) -> tide::Result {
+    let url = req.url().clone();
+
+    let id: String = req.param("id")?;
     let collection: String = req.param("collection")?;
 
     let mut res = Response::new(200);
     let mut feature: Feature;
 
-    match method {
-        Method::Get => {
-            let sql = r#"
-            SELECT id, type, ST_AsGeoJSON(geometry)::jsonb as geometry, properties, links
-            FROM data.features
+    let sql = r#"
+            SELECT id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extension, bbox, assets, collection
+            FROM features
             WHERE collection = $1 AND id = $2
             "#;
-            feature = sqlx::query_as(sql)
-                .bind(collection)
-                .bind(&id)
-                .fetch_one(&req.state().pool)
-                .await?;
-        }
-        Method::Post | Method::Put => {
-            feature = req.body_json().await?;
+    feature = sqlx::query_as(sql)
+        .bind(&collection)
+        .bind(&id)
+        .fetch_one(&req.state().pool)
+        .await?;
 
-            let mut sql = if method == Method::Post {
-                vec![
-                    "INSERT INTO data.features",
-                    "(id, type, properties, geometry, links)",
-                    "VALUES ($1, $2, $3, ST_GeomFromGeoJSON($4), $5)",
-                ]
-            } else {
-                vec![
-                    "UPDATE data.features",
-                    "SET type = $2, properties = $3, geometry = ST_GeomFromGeoJSON($4), links = $5)",
-                    "WHERE id = $1",
-                ]
-            };
-            sql.push(
-                "RETURNING id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links",
-            );
-
-            let mut tx = req.state().pool.begin().await?;
-            feature = sqlx::query_as(&sql.join(" ").as_str())
-                .bind(&feature.id)
-                .bind(&feature.r#type)
-                .bind(&feature.properties)
-                .bind(&feature.geometry)
-                .bind(&feature.links)
-                .fetch_one(&mut tx)
-                .await?;
-            tx.commit().await?;
-        }
-        Method::Delete => {
-            let mut tx = req.state().pool.begin().await?;
-
-            let _deleted = sqlx::query("DELETE FROM data.features WHERE id = $1")
-                .bind(id)
-                .execute(&mut tx)
-                .await?;
-
-            tx.commit().await?;
-
-            return Ok(res);
-        }
-        _ => unimplemented!(),
-    }
-
-    feature.links = Some(Json(vec![
-        Link {
+    if let Some(links) = feature.links.as_mut() {
+        links.push(Link {
             href: url.to_string(),
             r#type: Some(ContentType::GEOJSON),
             ..Default::default()
-        },
-        Link {
-            href: url.as_str().replace(&format!("/items/{}", id.unwrap()), ""),
+        });
+        links.push(Link {
+            href: url.as_str().replace(&format!("/items/{}", id), ""),
             rel: LinkRelation::Collection,
             r#type: Some(ContentType::GEOJSON),
             ..Default::default()
-        },
-    ]));
+        });
+    };
 
     res.set_content_type(ContentType::GEOJSON);
     res.set_body(Body::from_json(&feature)?);
+    Ok(res)
+}
+
+pub async fn update_item(mut req: Request<Features>) -> tide::Result {
+    let url = req.url().clone();
+
+    let id: String = req.param("id")?;
+    let collection: String = req.param("collection")?;
+
+    let mut feature: Feature = req.body_json().await?;
+
+    let sql = "#
+    UPDATE features
+    SET type = $2, properties = $3, geometry = ST_GeomFromGeoJSON($4), links = $5, stac_version = $6, stac_extension = $7, assets = $8, collection = $9)
+    WHERE id = $1
+    RETURNING id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection#";
+
+    let mut tx = req.state().pool.begin().await?;
+    feature = sqlx::query_as(sql)
+        .bind(&feature.id)
+        .bind(&feature.r#type)
+        .bind(&feature.properties)
+        .bind(&feature.geometry)
+        .bind(&feature.links)
+        .bind(&feature.stac_version)
+        .bind(&feature.stac_extensions)
+        .bind(&feature.bbox)
+        .bind(&feature.assets)
+        .bind(&collection)
+        .fetch_one(&mut tx)
+        .await?;
+    tx.commit().await?;
+
+    if let Some(links) = feature.links.as_mut() {
+        links.push(Link {
+            href: url.to_string(),
+            r#type: Some(ContentType::GEOJSON),
+            ..Default::default()
+        });
+        links.push(Link {
+            href: url.as_str().replace(&format!("/items/{}", id), ""),
+            rel: LinkRelation::Collection,
+            r#type: Some(ContentType::GEOJSON),
+            ..Default::default()
+        });
+    };
+
+    let mut res = Response::new(200);
+    res.set_content_type(ContentType::GEOJSON);
+    res.set_body(Body::from_json(&feature)?);
+    Ok(res)
+}
+
+pub async fn delete_item(req: Request<Features>) -> tide::Result {
+    let id: String = req.param("id")?;
+
+    let mut tx = req.state().pool.begin().await?;
+
+    let _deleted = sqlx::query("DELETE FROM data.features WHERE id = $1")
+        .bind(id)
+        .execute(&mut tx)
+        .await?;
+
+    tx.commit().await?;
+
+    let res = Response::new(200);
     Ok(res)
 }
 
@@ -196,8 +254,8 @@ pub async fn handle_items(req: Request<Features>) -> Result {
     };
 
     let mut sql = vec![
-        format!("SELECT id, type, ST_AsGeoJSON( ST_Transform (geometry, {}))::jsonb as geometry, properties, links
-        FROM data.features
+        format!("SELECT id, type, properties, ST_AsGeoJSON( ST_Transform (geometry, {}))::jsonb as geometry, links, stac_version, stac_extension, bbox, assets, collection
+        FROM features
         WHERE collection = $1", srid)
     ];
 

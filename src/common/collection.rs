@@ -1,8 +1,7 @@
+use super::CRS;
 use crate::common::link::Link;
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
-use super::CRS;
-
 
 #[derive(Serialize, Default)]
 pub struct Collections {
@@ -34,6 +33,10 @@ pub struct Collection {
     pub storage_crs: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage_crs_coordinate_epoch: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stac_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stac_extensions: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
