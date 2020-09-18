@@ -49,7 +49,7 @@ pub async fn handle_collections(req: Request<Features>) -> Result {
 
     //let mut query: Query = req.query()?;
 
-    let sql = "SELECT * FROM meta.collections";
+    let sql = "SELECT * FROM collections";
 
     let mut collections: Vec<Collection> = sqlx::query_as(sql).fetch_all(&req.state().pool).await?;
 
@@ -91,26 +91,24 @@ pub async fn handle_collections(req: Request<Features>) -> Result {
 
 /// Return collection metadata
 pub async fn read_collection(req: Request<Features>) -> Result {
-    let url = req.url();
+    // let url = req.url();
 
     let id: String = req.param("collection")?;
 
     let mut res = Response::new(200);
-    let mut collection: Collection;
-
-    collection = sqlx::query_as("SELECT * FROM meta.collections WHERE id = $1")
+    let collection: Collection = sqlx::query_as("SELECT * FROM collections WHERE id = $1")
         .bind(id)
         .fetch_one(&req.state().pool)
         .await?;
 
-    let link = Json(Link {
-        href: format!("{}/items", &url[..Position::AfterPath]),
-        rel: LinkRelation::Items,
-        r#type: Some(ContentType::GEOJSON),
-        title: collection.title.clone(),
-        ..Default::default()
-    });
-    collection.links.push(link);
+    // let link = Json(Link {
+    //     href: format!("{}/items", &url[..Position::AfterPath]),
+    //     rel: LinkRelation::Items,
+    //     r#type: Some(ContentType::GEOJSON),
+    //     title: collection.title.clone(),
+    //     ..Default::default()
+    // });
+    // collection.links.push(link);
 
     res.set_body(Body::from_json(&collection)?);
     Ok(res)
@@ -121,10 +119,24 @@ pub async fn create_collection(mut req: Request<Features>) -> Result {
     let mut collection: Collection = req.body_json().await?;
 
     let sql = r#"
-    INSERT INTO meta.collections
-    (id, title, description, links, extent, item_type, crs, storage_crs, storage_crs_coordinate_epoche)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, title, description, links, extent, item_type, crs, storage_crs, storage_crs_coordinate_epoche
+    INSERT INTO collections (
+        id,
+        title,
+        description,
+        links,
+        extent,
+        item_type,
+        crs,
+        storage_crs,
+        storage_crs_coordinate_epoche,
+        stac_version,
+        stac_extension,
+        keywords,
+        licence,
+        providers
+    ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+    ) RETURNING *
     "#;
 
     let mut tx = req.state().pool.begin().await?;
@@ -138,6 +150,11 @@ pub async fn create_collection(mut req: Request<Features>) -> Result {
         .bind(&collection.crs)
         .bind(&collection.storage_crs)
         .bind(&collection.storage_crs_coordinate_epoch)
+        .bind(&collection.stac_version)
+        .bind(&collection.stac_extensions)
+        .bind(&collection.keywords)
+        .bind(&collection.licence)
+        .bind(&collection.providers)
         .fetch_one(&mut tx)
         .await?;
     tx.commit().await?;
@@ -155,10 +172,26 @@ pub async fn update_collection(mut req: Request<Features>) -> Result {
     assert!(id == collection.id);
 
     let sql = r#"
-    UPDATE meta.collections
-    SET title = $2, description = $3, links = $4, extent = $5, item_type = $6, crs = $7, storage_crs = $8, storage_crs_coordinate_epoche = $9)
+    UPDATE collections
+    SET (
+        title,
+        description,
+        links,
+        extent,
+        item_type,
+        crs,
+        storage_crs,
+        storage_crs_coordinate_epoche,
+        stac_version,
+        stac_extension,
+        keywords,
+        licence,
+        providers
+    ) = (
+        $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+    )
     WHERE id = $1
-    RETURNING id, title, description, links, extent, item_type, crs, storage_crs, storage_crs_coordinate_epoche
+    RETURNING *
     "#;
 
     let mut tx = req.state().pool.begin().await?;
@@ -172,6 +205,11 @@ pub async fn update_collection(mut req: Request<Features>) -> Result {
         .bind(&collection.crs)
         .bind(&collection.storage_crs)
         .bind(&collection.storage_crs_coordinate_epoch)
+        .bind(&collection.stac_version)
+        .bind(&collection.stac_extensions)
+        .bind(&collection.keywords)
+        .bind(&collection.licence)
+        .bind(&collection.providers)
         .fetch_one(&mut tx)
         .await?;
     tx.commit().await?;
@@ -186,7 +224,7 @@ pub async fn delete_collection(req: Request<Features>) -> Result {
     let id: String = req.param("collection")?;
 
     let mut tx = req.state().pool.begin().await?;
-    let _deleted = sqlx::query("DELETE FROM meta.collections WHERE id = $1")
+    let _deleted = sqlx::query("DELETE FROM collections WHERE id = $1")
         .bind(id)
         .execute(&mut tx)
         .await?;

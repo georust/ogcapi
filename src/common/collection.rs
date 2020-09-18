@@ -37,6 +37,12 @@ pub struct Collection {
     pub stac_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stac_extensions: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub keywords: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub licence: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub providers: Option<Vec<Json<Provider>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -61,4 +67,23 @@ pub struct TemporalExtent {
     pub interval: Option<Vec<Vec<String>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trs: Option<String>,
+}
+
+/// A provider is any of the organizations that captures or processes the content
+/// of the collection and therefore influences the data offered by this collection.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Provider {
+    name: String,
+    description: Option<String>,
+    roles: Option<ProviderRole>,
+    url: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum ProviderRole {
+    Licensor,
+    Producer,
+    Processor,
+    Host,
 }

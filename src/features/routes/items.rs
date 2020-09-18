@@ -94,11 +94,26 @@ pub async fn create_item(mut req: Request<Features>) -> tide::Result {
     let collection: String = req.param("collection")?;
     let mut feature: Feature = req.body_json().await?;
 
-    let sql = "#
-            INSERT INTO features
-            (id, type, properties, geometry, links, collection, stac_version, stac_extensions, bbox, assets, collection)
-            VALUES ($1, $2, $3, ST_GeomFromGeoJSON($4), $5, $6, $7, $8, $9, $10)
-            RETURNING id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection#";
+    if let Some(feature_collection) = &feature.collection {
+        assert_eq!(feature_collection, &collection);
+    }
+
+    let sql = r#"
+    INSERT INTO features (
+        id,
+        type,
+        properties,
+        geometry,
+        links,
+        stac_version,
+        stac_extensions,
+        bbox,
+        assets,
+        collection
+    ) VALUES (
+        $1, $2, $3, ST_GeomFromGeoJSON($4), $5, $6, $7, $8, $9, $10
+    ) RETURNING id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
+    "#;
 
     let mut tx = req.state().pool.begin().await?;
     feature = sqlx::query_as(sql)
@@ -146,10 +161,10 @@ pub async fn read_item(req: Request<Features>) -> tide::Result {
     let mut feature: Feature;
 
     let sql = r#"
-            SELECT id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extension, bbox, assets, collection
-            FROM features
-            WHERE collection = $1 AND id = $2
-            "#;
+    SELECT id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extension, bbox, assets, collection
+    FROM features
+    WHERE collection = $1 AND id = $2
+    "#;
     feature = sqlx::query_as(sql)
         .bind(&collection)
         .bind(&id)
@@ -183,11 +198,24 @@ pub async fn update_item(mut req: Request<Features>) -> tide::Result {
 
     let mut feature: Feature = req.body_json().await?;
 
-    let sql = "#
+    let sql = r#"
     UPDATE features
-    SET type = $2, properties = $3, geometry = ST_GeomFromGeoJSON($4), links = $5, stac_version = $6, stac_extension = $7, assets = $8, collection = $9)
+    SET (
+        type,
+        properties,
+        geometry,
+        links,
+        stac_version,
+        stac_extensions,
+        bbox,
+        assets,
+        collection
+    ) = (
+        $2, $3, ST_GeomFromGeoJSON($4), $5, $6, $7, $8, $9, $10
+    )
     WHERE id = $1
-    RETURNING id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection#";
+    RETURNING id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
+    "#;
 
     let mut tx = req.state().pool.begin().await?;
     feature = sqlx::query_as(sql)
@@ -229,12 +257,10 @@ pub async fn delete_item(req: Request<Features>) -> tide::Result {
     let id: String = req.param("id")?;
 
     let mut tx = req.state().pool.begin().await?;
-
-    let _deleted = sqlx::query("DELETE FROM data.features WHERE id = $1")
+    sqlx::query("DELETE FROM features WHERE id = $1")
         .bind(id)
         .execute(&mut tx)
         .await?;
-
     tx.commit().await?;
 
     let res = Response::new(200);
