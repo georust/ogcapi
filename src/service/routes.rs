@@ -1,11 +1,8 @@
-pub mod collections;
-pub mod items;
-
+use super::Service;
 use crate::common::{ContentType, LandingPage, Link, LinkRelation};
-use crate::Features;
 use tide::{Body, Request, Response, Result};
 
-pub async fn root(req: Request<Features>) -> Result {
+pub async fn root(req: Request<Service>) -> Result {
     let url = req.url();
 
     let openapi = &req.state().api;
@@ -53,14 +50,14 @@ pub async fn root(req: Request<Features>) -> Result {
     Ok(res)
 }
 
-pub async fn api(req: Request<Features>) -> Result {
+pub async fn api(req: Request<Service>) -> Result {
     let mut res = Response::new(200);
     res.set_content_type(ContentType::OPENAPI);
     res.set_body(Body::from_json(&req.state().api)?);
     Ok(res)
 }
 
-pub async fn redoc(req: Request<Features>) -> Result {
+pub async fn redoc(req: Request<Service>) -> Result {
     let mut url = req.url().to_owned();
 
     url.set_query(None);
@@ -99,7 +96,7 @@ pub async fn redoc(req: Request<Features>) -> Result {
     Ok(res)
 }
 
-pub async fn conformance(req: Request<Features>) -> Result {
+pub async fn conformance(req: Request<Service>) -> Result {
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&req.state().conformance)?);
     Ok(res)

@@ -1,6 +1,6 @@
-use crate::common::collection::{Collection, Collections};
+use super::{Collection, Collections};
 use crate::common::{ContentType, Datetime, Link, LinkRelation, CRS};
-use crate::Features;
+use crate::service::Service;
 use serde::Deserialize;
 use sqlx::types::Json;
 use tide::http::url::Position;
@@ -44,7 +44,7 @@ impl Query {
     }
 }
 
-pub async fn handle_collections(req: Request<Features>) -> Result {
+pub async fn handle_collections(req: Request<Service>) -> Result {
     let url = req.url();
 
     //let mut query: Query = req.query()?;
@@ -90,7 +90,7 @@ pub async fn handle_collections(req: Request<Features>) -> Result {
 }
 
 /// Return collection metadata
-pub async fn read_collection(req: Request<Features>) -> Result {
+pub async fn read_collection(req: Request<Service>) -> Result {
     // let url = req.url();
 
     let id: String = req.param("collection")?;
@@ -115,7 +115,7 @@ pub async fn read_collection(req: Request<Features>) -> Result {
 }
 
 /// Create new collection metadata
-pub async fn create_collection(mut req: Request<Features>) -> Result {
+pub async fn create_collection(mut req: Request<Service>) -> Result {
     let mut collection: Collection = req.body_json().await?;
 
     let sql = r#"
@@ -165,7 +165,7 @@ pub async fn create_collection(mut req: Request<Features>) -> Result {
 }
 
 /// Update collection metadata
-pub async fn update_collection(mut req: Request<Features>) -> Result {
+pub async fn update_collection(mut req: Request<Service>) -> Result {
     let mut collection: Collection = req.body_json().await?;
 
     let id: String = req.param("collection")?;
@@ -220,7 +220,7 @@ pub async fn update_collection(mut req: Request<Features>) -> Result {
 }
 
 /// Delete collection metadata
-pub async fn delete_collection(req: Request<Features>) -> Result {
+pub async fn delete_collection(req: Request<Service>) -> Result {
     let id: String = req.param("collection")?;
 
     let mut tx = req.state().pool.begin().await?;

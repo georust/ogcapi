@@ -1,4 +1,6 @@
+pub mod collections;
 pub mod common;
-mod features;
+pub mod features;
+mod service;
 
-pub use features::Features;
+pub use service::Service;

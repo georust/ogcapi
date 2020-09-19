@@ -1,7 +1,8 @@
-use super::routes;
+mod routes;
+
 use crate::common::{self, Conformance};
+use crate::{collections, features};
 use openapiv3::OpenAPI;
-use routes::{collections, items};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::fs::File;
 use tide::{
@@ -10,18 +11,18 @@ use tide::{
     Body, Request, Response,
 };
 
-static API: &str = "api/ogcapi-features-1.yaml";
+static API: &str = "api/ogcapi.yaml";
 
 #[derive(Clone)]
-pub struct Features {
+pub struct Service {
     pub conformance: Conformance,
     pub api: OpenAPI,
     pub pool: PgPool,
 }
 
-impl Features {
-    pub async fn new(db: &str) -> Features {
-        Features {
+impl Service {
+    pub async fn new(db: &str) -> Service {
+        Service {
             api: serde_yaml::from_reader(File::open(API).expect("Open api file"))
                 .expect("Deserialize api document"),
             conformance: Conformance {
@@ -51,7 +52,7 @@ impl Features {
         app.at("/conformance").get(routes::conformance);
 
         // favicon
-        app.at("/favicon.ico").get(|_: Request<Features>| async {
+        app.at("/favicon.ico").get(|_: Request<Service>| async {
             let mut res = Response::new(200);
             res.set_body(Body::from_file("favicon.ico").await?);
             Ok(res)
@@ -71,12 +72,12 @@ impl Features {
 
         // items
         app.at("/collections/:collection/items")
-            .get(items::handle_items)
-            .post(items::create_item);
+            .get(features::handle_items)
+            .post(features::create_item);
         app.at("/collections/:collection/items/:id")
-            .get(items::read_item)
-            .put(items::update_item)
-            .delete(items::delete_item);
+            .get(features::read_item)
+            .put(features::update_item)
+            .delete(features::delete_item);
 
         app.with(After(common::exception));
 

@@ -1,4 +1,3 @@
-pub mod collection;
 mod crs;
 mod datetime;
 mod exception;

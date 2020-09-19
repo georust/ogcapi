@@ -1,6 +1,6 @@
 use crate::common::{ContentType, Datetime, Link, LinkRelation, CRS};
-use crate::features::schema::{Feature, FeatureCollection};
-use crate::Features;
+use crate::features::{Feature, FeatureCollection};
+use crate::service::Service;
 use chrono::{SecondsFormat, Utc};
 use serde::Deserialize;
 use sqlx::Done;
@@ -88,7 +88,7 @@ impl Query {
     }
 }
 
-pub async fn create_item(mut req: Request<Features>) -> tide::Result {
+pub async fn create_item(mut req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
 
     let collection: String = req.param("collection")?;
@@ -151,7 +151,7 @@ pub async fn create_item(mut req: Request<Features>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn read_item(req: Request<Features>) -> tide::Result {
+pub async fn read_item(req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
 
     let id: String = req.param("id")?;
@@ -190,7 +190,7 @@ pub async fn read_item(req: Request<Features>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn update_item(mut req: Request<Features>) -> tide::Result {
+pub async fn update_item(mut req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
 
     let id: String = req.param("id")?;
@@ -253,7 +253,7 @@ pub async fn update_item(mut req: Request<Features>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn delete_item(req: Request<Features>) -> tide::Result {
+pub async fn delete_item(req: Request<Service>) -> tide::Result {
     let id: String = req.param("id")?;
 
     let mut tx = req.state().pool.begin().await?;
@@ -267,7 +267,7 @@ pub async fn delete_item(req: Request<Features>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn handle_items(req: Request<Features>) -> Result {
+pub async fn handle_items(req: Request<Service>) -> Result {
     let mut url = req.url().to_owned();
 
     let collection: String = req.param("collection")?;

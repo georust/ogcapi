@@ -1,5 +1,8 @@
-use super::CRS;
-use crate::common::link::Link;
+mod routes;
+
+pub use routes::*;
+
+use crate::common::{Link, CRS};
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 
