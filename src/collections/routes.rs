@@ -16,27 +16,27 @@ struct Query {
     datetime: Option<Datetime>,
 }
 
-impl Query {
-    fn to_string(&self) -> String {
-        let mut query_str = vec![];
-        if let Some(limit) = self.limit {
-            query_str.push(format!("limit={}", limit));
-        }
-        if let Some(offset) = self.offset {
-            query_str.push(format!("offset={}", offset));
-        }
-        if let Some(bbox) = &self.bbox {
-            query_str.push(format!("bbox={}", bbox));
-        }
-        if let Some(bbox_crs) = &self.bbox_crs {
-            query_str.push(format!("bboxCrs={}", bbox_crs.to_string()));
-        }
-        if let Some(datetime) = &self.datetime {
-            query_str.push(format!("datetime={}", datetime.to_string()));
-        }
-        query_str.join("&")
-    }
-}
+// impl Query {
+//     fn to_string(&self) -> String {
+//         let mut query_str = vec![];
+//         if let Some(limit) = self.limit {
+//             query_str.push(format!("limit={}", limit));
+//         }
+//         if let Some(offset) = self.offset {
+//             query_str.push(format!("offset={}", offset));
+//         }
+//         if let Some(bbox) = &self.bbox {
+//             query_str.push(format!("bbox={}", bbox));
+//         }
+//         if let Some(bbox_crs) = &self.bbox_crs {
+//             query_str.push(format!("bboxCrs={}", bbox_crs.to_string()));
+//         }
+//         if let Some(datetime) = &self.datetime {
+//             query_str.push(format!("datetime={}", datetime.to_string()));
+//         }
+//         query_str.join("&")
+//     }
+// }
 
 pub async fn handle_collections(req: Request<Service>) -> Result {
     let url = req.url();
@@ -209,7 +209,7 @@ pub async fn delete_collection(req: Request<Service>) -> Result {
     let id: String = req.param("collection")?;
 
     let mut tx = req.state().pool.begin().await?;
-    let _deleted = sqlx::query("DELETE FROM collections WHERE id = $1")
+    sqlx::query("DELETE FROM collections WHERE id = $1")
         .bind(id)
         .execute(&mut tx)
         .await?;
