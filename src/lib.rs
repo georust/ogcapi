@@ -3,4 +3,4 @@ pub mod common;
 pub mod features;
 mod service;
 
-pub use service::Service;
+pub use self::service::Service;

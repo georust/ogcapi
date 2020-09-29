@@ -1,92 +1,9 @@
-use crate::common::{ContentType, Datetime, Link, LinkRelation, CRS};
-use crate::features::{Feature, FeatureCollection};
+use super::{Feature, FeatureCollection, Query};
+use crate::common::{ContentType, Link, LinkRelation};
 use crate::service::Service;
 use chrono::{SecondsFormat, Utc};
-use serde::Deserialize;
 use sqlx::Done;
 use tide::{Body, Request, Response, Result};
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-struct Query {
-    limit: Option<isize>,
-    offset: Option<isize>,
-    bbox: Option<Vec<f64>>,
-    bbox_crs: Option<CRS>,
-    datetime: Option<Datetime>,
-    crs: Option<CRS>,
-}
-
-impl Query {
-    fn to_string(&self) -> String {
-        let mut query_str = vec![];
-        if let Some(limit) = self.limit {
-            query_str.push(format!("limit={}", limit));
-        }
-        if let Some(offset) = self.offset {
-            query_str.push(format!("offset={}", offset));
-        }
-        if let Some(bbox) = &self.bbox {
-            query_str.push(format!(
-                "bbox={}",
-                bbox.iter()
-                    .map(|coord| coord.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",")
-            ));
-        }
-        if let Some(bbox_crs) = &self.bbox_crs {
-            query_str.push(format!("bboxCrs={}", bbox_crs.to_string()));
-        }
-        if let Some(datetime) = &self.datetime {
-            query_str.push(format!("datetime={}", datetime.to_string()));
-        }
-        if let Some(crs) = &self.crs {
-            query_str.push(format!("crs={}", crs.to_string()));
-        }
-        query_str.join("&")
-    }
-
-    fn to_string_with_offset(&self, offset: isize) -> String {
-        let mut new_query = self.clone();
-        new_query.offset = Some(offset);
-        new_query.to_string()
-    }
-
-    pub fn make_envelope(&self) -> Option<String> {
-        if let Some(mut bbox) = self.bbox.to_owned() {
-            let srid = self
-                .bbox_crs
-                .clone()
-                .unwrap_or_else(|| CRS::default())
-                .code
-                .clone()
-                .parse::<i32>()
-                .expect("Parse bbox crs EPSG code");
-
-            // downgrade 3d bbox to 2d
-            if bbox.len() == 6 {
-                bbox.remove(5);
-                bbox.remove(2);
-            }
-
-            if bbox.len() == 4 {
-                Some(format!(
-                    "ST_MakeEnvelope ( {xmin}, {ymin}, {xmax}, {ymax}, {my_srid} )",
-                    xmin = bbox[0],
-                    ymin = bbox[1],
-                    xmax = bbox[2],
-                    ymax = bbox[3],
-                    my_srid = srid
-                ))
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-}
 
 pub async fn create_item(mut req: Request<Service>) -> tide::Result {
     let url = req.url().clone();

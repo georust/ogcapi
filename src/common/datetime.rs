@@ -1,21 +1,21 @@
 use chrono::{DateTime, FixedOffset, SecondsFormat};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Datetime {
     Datetime(DateTime<FixedOffset>),
     Interval(Interval),
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Interval {
     from: IntervalDatetime,
     to: IntervalDatetime,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 enum IntervalDatetime {
     DateTime(DateTime<FixedOffset>),
     Open,

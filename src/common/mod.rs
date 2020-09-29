@@ -1,8 +1,10 @@
+mod bbox;
 mod crs;
 mod datetime;
 mod exception;
 mod link;
 
+pub use self::bbox::BBOX;
 pub use self::crs::CRS;
 pub use self::datetime::Datetime;
 pub use self::exception::exception;

@@ -61,6 +61,9 @@ impl Service {
         // redoc
         app.at("/redoc").get(routes::redoc);
 
+        // queryables
+        //app.at("/queryables").get(handle_queryables);
+
         // collections
         app.at("/collections")
             .get(collections::handle_collections)
@@ -69,6 +72,7 @@ impl Service {
             .get(collections::read_collection)
             .put(collections::update_collection)
             .delete(collections::delete_collection);
+        //app.at("/collections/:collection/queryables").get(handle_queryables);
 
         // items
         app.at("/collections/:collection/items")

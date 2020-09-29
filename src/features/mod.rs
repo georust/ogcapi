@@ -1,14 +1,16 @@
+mod query;
 mod routes;
 
-pub use routes::*;
+pub use self::query::Query;
+pub use self::routes::*;
 
 use crate::common::Link;
 use geojson::Geometry;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
 use uuid::Uuid;
-
 /// A set of Features from a dataset
 #[serde(rename_all = "camelCase")]
 #[derive(Serialize, Deserialize, Default)]

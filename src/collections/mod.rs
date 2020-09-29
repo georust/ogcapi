@@ -1,8 +1,8 @@
 mod routes;
 
-pub use routes::*;
+pub use self::routes::*;
 
-use crate::common::{Link, CRS};
+use crate::common::{Datetime, Link, BBOX, CRS};
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 
@@ -12,7 +12,7 @@ pub struct Collections {
     pub time_stamp: Option<String>,
     pub number_matched: Option<usize>,
     pub number_returned: Option<usize>,
-    pub crs: Vec<String>,
+    pub crs: Vec<CRS>,
     pub collections: Vec<Collection>,
 }
 
@@ -59,7 +59,7 @@ pub struct Extent {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SpatialExtent {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bbox: Option<Vec<Vec<f64>>>,
+    pub bbox: Option<Vec<BBOX>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub crs: Option<CRS>,
 }
@@ -67,7 +67,7 @@ pub struct SpatialExtent {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TemporalExtent {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub interval: Option<Vec<Vec<String>>>,
+    pub interval: Option<Vec<Datetime>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trs: Option<String>,
 }

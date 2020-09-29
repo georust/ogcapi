@@ -1,5 +1,5 @@
 use super::{Collection, Collections};
-use crate::common::{ContentType, Datetime, Link, LinkRelation, CRS};
+use crate::common::{BBOX, CRS, ContentType, Datetime, Link, LinkRelation};
 use crate::service::Service;
 use serde::Deserialize;
 use sqlx::types::Json;
@@ -11,7 +11,7 @@ use tide::{Body, Request, Response, Result};
 struct Query {
     limit: Option<isize>,
     offset: Option<isize>,
-    bbox: Option<Vec<f64>>,
+    bbox: Option<BBOX>,
     bbox_crs: Option<CRS>,
     datetime: Option<Datetime>,
 }
@@ -26,13 +26,7 @@ impl Query {
             query_str.push(format!("offset={}", offset));
         }
         if let Some(bbox) = &self.bbox {
-            query_str.push(format!(
-                "bbox={}",
-                bbox.iter()
-                    .map(|coord| coord.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",")
-            ));
+            query_str.push(format!("bbox={}", bbox));
         }
         if let Some(bbox_crs) = &self.bbox_crs {
             query_str.push(format!("bboxCrs={}", bbox_crs.to_string()));
@@ -79,7 +73,7 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
             title: Some("this document".to_string()),
             ..Default::default()
         }],
-        crs: vec![CRS::default().to_string()],
+        crs: vec![CRS::default()],
         collections,
         ..Default::default()
     };
@@ -100,15 +94,6 @@ pub async fn read_collection(req: Request<Service>) -> Result {
         .bind(id)
         .fetch_one(&req.state().pool)
         .await?;
-
-    // let link = Json(Link {
-    //     href: format!("{}/items", &url[..Position::AfterPath]),
-    //     rel: LinkRelation::Items,
-    //     r#type: Some(ContentType::GEOJSON),
-    //     title: collection.title.clone(),
-    //     ..Default::default()
-    // });
-    // collection.links.push(link);
 
     res.set_body(Body::from_json(&collection)?);
     Ok(res)
