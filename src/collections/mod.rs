@@ -12,7 +12,7 @@ pub struct Collections {
     pub time_stamp: Option<String>,
     pub number_matched: Option<usize>,
     pub number_returned: Option<usize>,
-    pub crs: Vec<CRS>,
+    pub crs: Vec<String>,
     pub collections: Vec<Collection>,
 }
 
