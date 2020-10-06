@@ -3,8 +3,8 @@ use std::fmt;
 use std::str::FromStr;
 
 // Default CRS EPSG:4979
-static DEFAULT_CRS: &str = "http://www.opengis.net/def/crs/EPSG/0/4979";
-//static EPSG_WGS84: &str = "http://www.opengis.net/def/crs/EPSG/0/4326";
+//static DEFAULT_CRS: &str = "http://www.opengis.net/def/crs/EPSG/0/4979";
+static DEFAULT_CRS: &str = "http://www.opengis.net/def/crs/EPSG/0/4326";
 //static OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"; // for coordinates without height
 //static OGC_CRS84h: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h"; // for coordinates with height
 

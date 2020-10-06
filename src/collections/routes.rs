@@ -73,7 +73,7 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
             title: Some("this document".to_string()),
             ..Default::default()
         }],
-        crs: vec![CRS::default()],
+        crs: vec![CRS::default().to_string()],
         collections,
         ..Default::default()
     };

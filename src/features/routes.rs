@@ -29,7 +29,7 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
         collection
     ) VALUES (
         $1, $2, $3, ST_GeomFromGeoJSON($4), $5, $6, $7, $8, $9, $10
-    ) RETURNING id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
+    ) RETURNING type, id, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
     "#;
 
     let mut tx = req.state().pool.begin().await?;
@@ -71,14 +71,24 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
 pub async fn read_item(req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
 
-    let id: String = req.param("id")?;
+    let id: uuid::Uuid = req.param("id")?;
     let collection: String = req.param("collection")?;
 
     let mut res = Response::new(200);
     let mut feature: Feature;
 
     let sql = r#"
-    SELECT id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extension, bbox, assets, collection
+    SELECT
+        type,
+        id,
+        properties,
+        ST_AsGeoJSON(geometry)::jsonb as geometry,
+        links,
+        stac_version,
+        stac_extensions,
+        bbox,
+        assets,
+        collection
     FROM features
     WHERE collection = $1 AND id = $2
     "#;
@@ -197,7 +207,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
     };
 
     let mut sql = vec![
-        format!("SELECT id, type, properties, ST_AsGeoJSON( ST_Transform (geometry, {}))::jsonb as geometry, links, stac_version, stac_extension, bbox, assets, collection
+        format!("SELECT id, type, properties, ST_AsGeoJSON( ST_Transform (geometry, {}))::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
         FROM features
         WHERE collection = $1", srid)
     ];

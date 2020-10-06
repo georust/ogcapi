@@ -11,7 +11,7 @@ use tide::{
     Body, Request, Response,
 };
 
-static API: &str = "api/ogcapi.yaml";
+static API: &str = "api/ogcapi-features_sprint.yaml";
 
 #[derive(Clone)]
 pub struct Service {
