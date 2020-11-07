@@ -87,7 +87,7 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
 pub async fn read_collection(req: Request<Service>) -> Result {
     // let url = req.url();
 
-    let id: String = req.param("collection")?;
+    let id: &str = req.param("collection")?;
 
     let mut res = Response::new(200);
     let collection: Collection = sqlx::query_as("SELECT * FROM collections WHERE id = $1")
@@ -153,7 +153,7 @@ pub async fn create_collection(mut req: Request<Service>) -> Result {
 pub async fn update_collection(mut req: Request<Service>) -> Result {
     let mut collection: Collection = req.body_json().await?;
 
-    let id: String = req.param("collection")?;
+    let id: &str = req.param("collection")?;
     assert!(id == collection.id);
 
     let sql = r#"
@@ -206,7 +206,7 @@ pub async fn update_collection(mut req: Request<Service>) -> Result {
 
 /// Delete collection metadata
 pub async fn delete_collection(req: Request<Service>) -> Result {
-    let id: String = req.param("collection")?;
+    let id: &str = req.param("collection")?;
 
     let mut tx = req.state().pool.begin().await?;
     sqlx::query("DELETE FROM collections WHERE id = $1")

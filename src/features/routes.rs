@@ -8,12 +8,10 @@ use tide::{Body, Request, Response, Result};
 pub async fn create_item(mut req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
 
-    let collection: String = req.param("collection")?;
     let mut feature: Feature = req.body_json().await?;
-
-    if let Some(feature_collection) = &feature.collection {
-        assert_eq!(feature_collection, &collection);
-    }
+    
+    let collection: &str = req.param("collection")?;
+    feature.collection = Some(collection.to_string());
 
     let sql = r#"
     INSERT INTO features (
@@ -43,7 +41,7 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
         .bind(&feature.stac_extensions)
         .bind(&feature.bbox)
         .bind(&feature.assets)
-        .bind(&collection)
+        .bind(&feature.collection)
         .fetch_one(&mut tx)
         .await?;
     tx.commit().await?;
@@ -71,8 +69,8 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
 pub async fn read_item(req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
 
-    let id: uuid::Uuid = req.param("id")?;
-    let collection: String = req.param("collection")?;
+    let id: &str = req.param("id")?;
+    let collection: &str = req.param("collection")?;
 
     let mut res = Response::new(200);
     let mut feature: Feature;
@@ -119,11 +117,10 @@ pub async fn read_item(req: Request<Service>) -> tide::Result {
 
 pub async fn update_item(mut req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
-
-    let id: String = req.param("id")?;
-    let collection: String = req.param("collection")?;
-
     let mut feature: Feature = req.body_json().await?;
+
+    let id: &str = req.param("id")?;
+    let collection: &str = req.param("collection")?;
 
     let sql = r#"
     UPDATE features
@@ -181,7 +178,7 @@ pub async fn update_item(mut req: Request<Service>) -> tide::Result {
 }
 
 pub async fn delete_item(req: Request<Service>) -> tide::Result {
-    let id: String = req.param("id")?;
+    let id: &str = req.param("id")?;
 
     let mut tx = req.state().pool.begin().await?;
     sqlx::query("DELETE FROM features WHERE id = $1")
@@ -197,7 +194,7 @@ pub async fn delete_item(req: Request<Service>) -> tide::Result {
 pub async fn handle_items(req: Request<Service>) -> Result {
     let mut url = req.url().to_owned();
 
-    let collection: String = req.param("collection")?;
+    let collection: &str = req.param("collection")?;
 
     let mut query: Query = req.query()?;
 

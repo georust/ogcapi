@@ -1,9 +1,9 @@
 [package]
-name = "ogcapi"
-version = "0.1.0"
 authors = ["Balthasar Teuscher <balthasar.teuscher@gmail.com>"]
 edition = "2018"
 keywords = ["ogc", "geo", "api"]
+name = "ogcapi"
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -11,14 +11,14 @@ keywords = ["ogc", "geo", "api"]
 name = "ogcapi"
 path = "src/lib.rs"
 
-[dependencies] 
+[dependencies]
 async-std = {version = "1.6", features = ["attributes"]}
 chrono = {version = "0.4", features = ["serde"]}
-geojson = "0.19"
+geojson = "0.20"
 openapiv3 = "0.3"
 serde = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
 sqlx = {git = "https://github.com/launchbadge/sqlx", features = ["postgres", "json", "uuid"]}
-tide = "0.13"
+tide = "0.14"
 uuid = {version = "0.8", features = ["serde"]}
