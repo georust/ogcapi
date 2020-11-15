@@ -1,5 +1,5 @@
-use super::{Collection, Collections};
-use crate::common::{BBOX, CRS, ContentType, Datetime, Link, LinkRelation};
+use super::{Collection, CollectionType, Collections, Extent, Provider, Summaries};
+use crate::common::{ContentType, Datetime, Link, LinkRelation, BBOX, CRS};
 use crate::service::Service;
 use serde::Deserialize;
 use sqlx::types::Json;
@@ -48,7 +48,7 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
     let mut collections: Vec<Collection> = sqlx::query_as(sql).fetch_all(&req.state().pool).await?;
 
     for collection in &mut collections {
-        let link = Json(Link {
+        let link = Link {
             href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
             rel: LinkRelation::Items,
             r#type: Some(ContentType::GEOJSON),
@@ -57,13 +57,8 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
                 collection.title.clone().unwrap_or(collection.id.clone())
             )),
             ..Default::default()
-        });
+        };
         collection.links.push(link);
-
-        // set default item type
-        if collection.item_type.is_none() {
-            collection.item_type = Some("feature".to_string());
-        }
     }
 
     let collections = Collections {
@@ -83,66 +78,46 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
     Ok(res)
 }
 
+/// Create new collection metadata
+pub async fn create_collection(mut req: Request<Service>) -> Result {
+    let mut collection: Collection = req.body_json().await?;
+
+    collection = sqlx::query_file_as!(
+        Collection,
+        "sql/collection_insert.sql",
+        collection.id,
+        collection.title,
+        collection.description,
+        collection.links as _,
+        collection.extent as _,
+        collection.collection_type as Option<CollectionType>,
+        collection.crs.as_deref(),
+        collection.storage_crs,
+        collection.storage_crs_coordinate_epoch,
+        collection.stac_version,
+        collection.stac_extensions.as_deref(),
+        collection.keywords.as_deref(),
+        collection.licence,
+        collection.providers as _,
+        collection.summaries as _
+    )
+    .fetch_one(&req.state().pool)
+    .await?;
+
+    let mut res = Response::new(200);
+    res.set_body(Body::from_json(&collection)?);
+    Ok(res)
+}
+
 /// Return collection metadata
 pub async fn read_collection(req: Request<Service>) -> Result {
     // let url = req.url();
 
     let id: &str = req.param("collection")?;
 
-    let mut res = Response::new(200);
-    let collection: Collection = sqlx::query_as("SELECT * FROM collections WHERE id = $1")
-        .bind(id)
+    let collection: Collection = sqlx::query_file_as!(Collection, "sql/collection_select.sql", id)
         .fetch_one(&req.state().pool)
         .await?;
-
-    res.set_body(Body::from_json(&collection)?);
-    Ok(res)
-}
-
-/// Create new collection metadata
-pub async fn create_collection(mut req: Request<Service>) -> Result {
-    let mut collection: Collection = req.body_json().await?;
-
-    let sql = r#"
-    INSERT INTO collections (
-        id,
-        title,
-        description,
-        links,
-        extent,
-        item_type,
-        crs,
-        storage_crs,
-        storage_crs_coordinate_epoche,
-        stac_version,
-        stac_extension,
-        keywords,
-        licence,
-        providers
-    ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
-    ) RETURNING *
-    "#;
-
-    let mut tx = req.state().pool.begin().await?;
-    collection = sqlx::query_as(sql)
-        .bind(&collection.id)
-        .bind(&collection.title)
-        .bind(&collection.description)
-        .bind(&collection.links)
-        .bind(&collection.extent)
-        .bind(&collection.item_type)
-        .bind(&collection.crs)
-        .bind(&collection.storage_crs)
-        .bind(&collection.storage_crs_coordinate_epoch)
-        .bind(&collection.stac_version)
-        .bind(&collection.stac_extensions)
-        .bind(&collection.keywords)
-        .bind(&collection.licence)
-        .bind(&collection.providers)
-        .fetch_one(&mut tx)
-        .await?;
-    tx.commit().await?;
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&collection)?);
@@ -156,48 +131,27 @@ pub async fn update_collection(mut req: Request<Service>) -> Result {
     let id: &str = req.param("collection")?;
     assert!(id == collection.id);
 
-    let sql = r#"
-    UPDATE collections
-    SET (
-        title,
-        description,
-        links,
-        extent,
-        item_type,
-        crs,
-        storage_crs,
-        storage_crs_coordinate_epoche,
-        stac_version,
-        stac_extension,
-        keywords,
-        licence,
-        providers
-    ) = (
-        $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+    collection = sqlx::query_file_as!(
+        Collection,
+        "sql/collection_update.sql",
+        collection.id,
+        collection.title,
+        collection.description,
+        collection.links as _,
+        collection.extent as _,
+        collection.collection_type as Option<CollectionType>,
+        collection.crs.as_deref(),
+        collection.storage_crs,
+        collection.storage_crs_coordinate_epoch,
+        collection.stac_version,
+        collection.stac_extensions.as_deref(),
+        collection.keywords.as_deref(),
+        collection.licence,
+        collection.providers as _,
+        collection.summaries as _
     )
-    WHERE id = $1
-    RETURNING *
-    "#;
-
-    let mut tx = req.state().pool.begin().await?;
-    collection = sqlx::query_as(sql)
-        .bind(&collection.id)
-        .bind(&collection.title)
-        .bind(&collection.description)
-        .bind(&collection.links)
-        .bind(&collection.extent)
-        .bind(&collection.item_type)
-        .bind(&collection.crs)
-        .bind(&collection.storage_crs)
-        .bind(&collection.storage_crs_coordinate_epoch)
-        .bind(&collection.stac_version)
-        .bind(&collection.stac_extensions)
-        .bind(&collection.keywords)
-        .bind(&collection.licence)
-        .bind(&collection.providers)
-        .fetch_one(&mut tx)
-        .await?;
-    tx.commit().await?;
+    .fetch_one(&req.state().pool)
+    .await?;
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&collection)?);
@@ -208,12 +162,9 @@ pub async fn update_collection(mut req: Request<Service>) -> Result {
 pub async fn delete_collection(req: Request<Service>) -> Result {
     let id: &str = req.param("collection")?;
 
-    let mut tx = req.state().pool.begin().await?;
-    sqlx::query("DELETE FROM collections WHERE id = $1")
-        .bind(id)
-        .execute(&mut tx)
+    sqlx::query_file!("sql/collection_delete.sql", id)
+        .execute(&req.state().pool)
         .await?;
-    tx.commit().await?;
 
     Ok(Response::new(200))
 }

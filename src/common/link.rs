@@ -3,7 +3,7 @@ use std::str::FromStr;
 use tide::http::Mime;
 
 /// Hyperlink to enable Hypermedia Access
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
 pub struct Link {
     pub href: String,
     pub rel: LinkRelation,
@@ -20,7 +20,7 @@ pub struct Link {
 /// Link Relations
 ///
 /// [IANA Link Relations Registry](https://www.iana.org/assignments/link-relations/link-relations.xhtml)
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum LinkRelation {
     Alternate,
@@ -61,7 +61,7 @@ impl Default for LinkRelation {
 }
 
 /// Link Content Type
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ContentType {
     #[serde(rename = "application/json")]
     JSON,
@@ -71,18 +71,9 @@ pub enum ContentType {
     OPENAPI,
 }
 
-impl ContentType {
-    fn as_str(&self) -> &'static str {
-        match self {
-            ContentType::JSON => "application/json",
-            ContentType::GEOJSON => "application/geo+json",
-            ContentType::OPENAPI => "application/vnd.oai.openapi+json;version=3.0",
-        }
-    }
-}
-
 impl Into<Mime> for ContentType {
     fn into(self) -> Mime {
-        Mime::from_str(&self.as_str()).unwrap()
+        let content_type = serde_json::to_string_pretty(&self).expect("Serialized content type");
+        Mime::from_str(&content_type.as_str()).expect("Parse into media type")
     }
 }

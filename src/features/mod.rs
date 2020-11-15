@@ -1,16 +1,17 @@
 mod query;
 mod routes;
 
+use std::collections::HashMap;
+
 pub use self::query::Query;
 pub use self::routes::*;
 
 use crate::common::Link;
 use geojson::Geometry;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
-use uuid::Uuid;
+
 /// A set of Features from a dataset
 #[serde(rename_all = "camelCase")]
 #[derive(Serialize, Deserialize, Default)]
@@ -27,12 +28,15 @@ pub struct FeatureCollection {
 }
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
-#[derive(sqlx::FromRow, Serialize, Deserialize)]
+#[derive(sqlx::FromRow, Deserialize, Serialize, Debug, PartialEq)]
 pub struct Feature {
-    pub r#type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<Uuid>,
-    pub properties: Value,
+    pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub collection: Option<String>,
+    #[serde(rename = "type")]
+    pub feature_type: FeatureType,
+    pub properties: Option<Value>,
     pub geometry: Json<Geometry>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub links: Option<Json<Vec<Link>>>,
@@ -41,28 +45,40 @@ pub struct Feature {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stac_extensions: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub assets: Option<Vec<Json<AssetObject>>>,
+    pub assets: Option<Json<Assets>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox: Option<Vec<f64>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub collection: Option<String>,
+}
+
+#[derive(sqlx::Type, Deserialize, Serialize, Debug, PartialEq)]
+#[sqlx(rename = "feature_type")]
+pub enum FeatureType {
+    Feature,
+}
+
+/// Dictionary of asset objects that can be downloaded, each with a unique key.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct Assets {
+    #[serde(flatten)]
+    inner: HashMap<String, Asset>,
 }
 
 /// An asset is an object that contains a link to data associated
 /// with the Item that can be downloaded or streamed. It is allowed
 /// to add additional fields.
-#[derive(Serialize, Deserialize)]
-pub struct AssetObject {
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct Asset {
     href: String,
     title: String,
     description: String,
-    r#type: String,
-    roles: Vec<AssetRoleType>,
+    #[serde(rename = "type")]
+    content_type: String, // TODO: use content type
+    roles: Vec<AssetRole>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
-enum AssetRoleType {
+enum AssetRole {
     Thumbnail,
     Overview,
     Data,

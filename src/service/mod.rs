@@ -4,6 +4,7 @@ use crate::common::{self, Conformance};
 use crate::{collections, features};
 use openapiv3::OpenAPI;
 use sqlx::{postgres::PgPoolOptions, PgPool};
+use std::env;
 use std::fs::File;
 use tide::{
     http::{url::Position, Url},
@@ -21,7 +22,7 @@ pub struct Service {
 }
 
 impl Service {
-    pub async fn new(db: &str) -> Service {
+    pub async fn new() -> Service {
         Service {
             api: serde_yaml::from_reader(File::open(API).expect("Open api file"))
                 .expect("Deserialize api document"),
@@ -34,7 +35,7 @@ impl Service {
             },
             pool: PgPoolOptions::new()
                 .max_connections(5)
-                .connect(db)
+                .connect(&env::var("DATABASE_URL").unwrap())
                 .await
                 .expect("Create database pool"),
         }

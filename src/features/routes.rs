@@ -1,54 +1,38 @@
-use super::{Feature, FeatureCollection, Query};
+use super::{Assets, Feature, FeatureCollection, FeatureType, Query};
 use crate::common::{ContentType, Link, LinkRelation};
 use crate::service::Service;
 use chrono::{SecondsFormat, Utc};
-use sqlx::Done;
+use geojson::Geometry;
+use sqlx::{types::Json, Done};
 use tide::{Body, Request, Response, Result};
 
 pub async fn create_item(mut req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
 
     let mut feature: Feature = req.body_json().await?;
-    
+
     let collection: &str = req.param("collection")?;
     feature.collection = Some(collection.to_string());
 
-    let sql = r#"
-    INSERT INTO features (
-        id,
-        type,
-        properties,
-        geometry,
-        links,
-        stac_version,
-        stac_extensions,
-        bbox,
-        assets,
-        collection
-    ) VALUES (
-        $1, $2, $3, ST_GeomFromGeoJSON($4), $5, $6, $7, $8, $9, $10
-    ) RETURNING type, id, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
-    "#;
-
-    let mut tx = req.state().pool.begin().await?;
-    feature = sqlx::query_as(sql)
-        .bind(&feature.id)
-        .bind(&feature.r#type)
-        .bind(&feature.properties)
-        .bind(&feature.geometry)
-        .bind(&feature.links)
-        .bind(&feature.stac_version)
-        .bind(&feature.stac_extensions)
-        .bind(&feature.bbox)
-        .bind(&feature.assets)
-        .bind(&feature.collection)
-        .fetch_one(&mut tx)
-        .await?;
-    tx.commit().await?;
+    feature = sqlx::query_file_as!(
+        Feature,
+        "sql/feature_insert.sql",
+        collection,
+        feature.feature_type as FeatureType,
+        feature.properties,
+        feature.geometry as _,
+        feature.links as _,
+        feature.stac_version,
+        feature.stac_extensions.as_deref(),
+        feature.bbox.as_deref(),
+        feature.assets as _
+    )
+    .fetch_one(&req.state().pool)
+    .await?;
 
     if let Some(links) = feature.links.as_mut() {
         links.push(Link {
-            href: format!("{}/{}", url, feature.id.unwrap()),
+            href: format!("{}/{}", url, feature.id.clone().unwrap()),
             r#type: Some(ContentType::GEOJSON),
             ..Default::default()
         });
@@ -67,49 +51,33 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
 }
 
 pub async fn read_item(req: Request<Service>) -> tide::Result {
-    let url = req.url().clone();
+    let id = req.param("id")?;
+    let collection = req.param("collection")?;
 
-    let id: &str = req.param("id")?;
-    let collection: &str = req.param("collection")?;
-
-    let mut res = Response::new(200);
-    let mut feature: Feature;
-
-    let sql = r#"
-    SELECT
-        type,
-        id,
-        properties,
-        ST_AsGeoJSON(geometry)::jsonb as geometry,
-        links,
-        stac_version,
-        stac_extensions,
-        bbox,
-        assets,
-        collection
-    FROM features
-    WHERE collection = $1 AND id = $2
-    "#;
-    feature = sqlx::query_as(sql)
-        .bind(&collection)
-        .bind(&id)
+    let mut feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", id, collection)
         .fetch_one(&req.state().pool)
         .await?;
 
-    if let Some(links) = feature.links.as_mut() {
-        links.push(Link {
-            href: url.to_string(),
-            r#type: Some(ContentType::GEOJSON),
-            ..Default::default()
-        });
-        links.push(Link {
-            href: url.as_str().replace(&format!("/items/{}", id), ""),
-            rel: LinkRelation::Collection,
-            r#type: Some(ContentType::GEOJSON),
-            ..Default::default()
-        });
-    };
+    if let Some(links) = feature.links.as_deref_mut() {
+        let relations: Vec<LinkRelation> = links.iter().map(|link| link.rel.clone()).collect();
+        if !relations.contains(&LinkRelation::Selfie) {
+            links.push(Link {
+                href: "".to_string(),
+                r#type: Some(ContentType::GEOJSON),
+                ..Default::default()
+            });
+        };
+        if !relations.contains(&LinkRelation::Collection) {
+            links.push(Link {
+                href: "../..".to_string(),
+                rel: LinkRelation::Collection,
+                r#type: Some(ContentType::GEOJSON),
+                ..Default::default()
+            });
+        };
+    }
 
+    let mut res = Response::new(200);
     res.set_content_type(ContentType::GEOJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
@@ -122,40 +90,22 @@ pub async fn update_item(mut req: Request<Service>) -> tide::Result {
     let id: &str = req.param("id")?;
     let collection: &str = req.param("collection")?;
 
-    let sql = r#"
-    UPDATE features
-    SET (
-        type,
-        properties,
-        geometry,
-        links,
-        stac_version,
-        stac_extensions,
-        bbox,
-        assets,
-        collection
-    ) = (
-        $2, $3, ST_GeomFromGeoJSON($4), $5, $6, $7, $8, $9, $10
+    feature = sqlx::query_file_as!(
+        Feature,
+        "sql/feature_update.sql",
+        id,
+        collection,
+        feature.feature_type as FeatureType,
+        feature.properties,
+        feature.geometry as _,
+        feature.links as _,
+        feature.stac_version,
+        feature.stac_extensions.as_deref(),
+        feature.bbox.as_deref(),
+        feature.assets as _
     )
-    WHERE id = $1
-    RETURNING id, type, properties, ST_AsGeoJSON(geometry)::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
-    "#;
-
-    let mut tx = req.state().pool.begin().await?;
-    feature = sqlx::query_as(sql)
-        .bind(&feature.id)
-        .bind(&feature.r#type)
-        .bind(&feature.properties)
-        .bind(&feature.geometry)
-        .bind(&feature.links)
-        .bind(&feature.stac_version)
-        .bind(&feature.stac_extensions)
-        .bind(&feature.bbox)
-        .bind(&feature.assets)
-        .bind(&collection)
-        .fetch_one(&mut tx)
-        .await?;
-    tx.commit().await?;
+    .fetch_one(&req.state().pool)
+    .await?;
 
     if let Some(links) = feature.links.as_mut() {
         links.push(Link {
@@ -180,15 +130,11 @@ pub async fn update_item(mut req: Request<Service>) -> tide::Result {
 pub async fn delete_item(req: Request<Service>) -> tide::Result {
     let id: &str = req.param("id")?;
 
-    let mut tx = req.state().pool.begin().await?;
-    sqlx::query("DELETE FROM features WHERE id = $1")
-        .bind(id)
-        .execute(&mut tx)
+    sqlx::query_file_as!(Feature, "sql/feature_delete.sql", &id)
+        .execute(&req.state().pool)
         .await?;
-    tx.commit().await?;
 
-    let res = Response::new(200);
-    Ok(res)
+    Ok(Response::new(200))
 }
 
 pub async fn handle_items(req: Request<Service>) -> Result {

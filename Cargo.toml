@@ -12,13 +12,13 @@ name = "ogcapi"
 path = "src/lib.rs"
 
 [dependencies]
-async-std = {version = "1.6", features = ["attributes"]}
+async-std = {version = "1.7", features = ["attributes"]}
 chrono = {version = "0.4", features = ["serde"]}
+dotenv = "0.15"
 geojson = "0.20"
 openapiv3 = "0.3"
 serde = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
-sqlx = {git = "https://github.com/launchbadge/sqlx", features = ["postgres", "json", "uuid"]}
-tide = "0.14"
-uuid = {version = "0.8", features = ["serde"]}
+sqlx = {version = "0.4", features = ["runtime-async-std-native-tls", "macros", "postgres", "json"]}
+tide = "0.15"

@@ -4,7 +4,9 @@ pub use self::routes::*;
 
 use crate::common::{Datetime, Link, BBOX, CRS};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::types::Json;
+use std::collections::HashMap;
 
 #[derive(Serialize, Default)]
 pub struct Collections {
@@ -25,11 +27,11 @@ pub struct Collection {
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    pub links: Vec<Json<Link>>,
+    pub links: Json<Vec<Link>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extent: Option<Json<Extent>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub item_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "type")]
+    pub collection_type: Option<CollectionType>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub crs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -45,7 +47,9 @@ pub struct Collection {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub licence: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub providers: Option<Vec<Json<Provider>>>,
+    pub providers: Option<Json<Vec<Provider>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summaries: Option<Json<Summaries>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -72,6 +76,13 @@ pub struct TemporalExtent {
     pub trs: Option<String>,
 }
 
+#[derive(sqlx::Type, Deserialize, Serialize, Debug, PartialEq)]
+#[sqlx(rename = "collection_type", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+pub enum CollectionType {
+    Feature,
+}
+
 /// A provider is any of the organizations that captures or processes the content
 /// of the collection and therefore influences the data offered by this collection.
 #[derive(Serialize, Deserialize, Debug)]
@@ -89,4 +100,11 @@ pub enum ProviderRole {
     Producer,
     Processor,
     Host,
+}
+
+/// Dictionary of asset objects that can be downloaded, each with a unique key.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct Summaries {
+    #[serde(flatten)]
+    inner: HashMap<String, Value>,
 }
