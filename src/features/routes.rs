@@ -2,7 +2,7 @@ use super::{Assets, Feature, FeatureCollection, FeatureType, Query};
 use crate::common::{ContentType, Link, LinkRelation};
 use crate::service::Service;
 use chrono::{SecondsFormat, Utc};
-use geojson::Geometry;
+use geojson::{Geometry, Bbox};
 use sqlx::{types::Json, Done};
 use tide::{Body, Request, Response, Result};
 
@@ -18,13 +18,12 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
         Feature,
         "sql/feature_insert.sql",
         collection,
-        feature.feature_type as FeatureType,
+        feature.feature_type as _,
         feature.properties,
         feature.geometry as _,
         feature.links as _,
         feature.stac_version,
         feature.stac_extensions.as_deref(),
-        feature.bbox.as_deref(),
         feature.assets as _
     )
     .fetch_one(&req.state().pool)
@@ -95,13 +94,12 @@ pub async fn update_item(mut req: Request<Service>) -> tide::Result {
         "sql/feature_update.sql",
         id,
         collection,
-        feature.feature_type as FeatureType,
+        feature.feature_type as _,
         feature.properties,
         feature.geometry as _,
         feature.links as _,
         feature.stac_version,
         feature.stac_extensions.as_deref(),
-        feature.bbox.as_deref(),
         feature.assets as _
     )
     .fetch_one(&req.state().pool)

@@ -90,7 +90,7 @@ pub async fn create_collection(mut req: Request<Service>) -> Result {
         collection.description,
         collection.links as _,
         collection.extent as _,
-        collection.collection_type as Option<CollectionType>,
+        collection.collection_type as _,
         collection.crs.as_deref(),
         collection.storage_crs,
         collection.storage_crs_coordinate_epoch,
@@ -129,17 +129,16 @@ pub async fn update_collection(mut req: Request<Service>) -> Result {
     let mut collection: Collection = req.body_json().await?;
 
     let id: &str = req.param("collection")?;
-    assert!(id == collection.id);
 
     collection = sqlx::query_file_as!(
         Collection,
         "sql/collection_update.sql",
-        collection.id,
+        id,
         collection.title,
         collection.description,
         collection.links as _,
         collection.extent as _,
-        collection.collection_type as Option<CollectionType>,
+        collection.collection_type as _,
         collection.crs.as_deref(),
         collection.storage_crs,
         collection.storage_crs_coordinate_epoch,

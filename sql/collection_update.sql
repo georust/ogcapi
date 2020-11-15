@@ -23,7 +23,7 @@ RETURNING
     description,
     links AS "links: Json<Vec<Link>>",
     extent AS "extent: Json<Extent>",
-    collection_type AS "collection_type: CollectionType",
+    collection_type AS "collection_type: Json<CollectionType>",
     crs,
     storage_crs,
     storage_crs_coordinate_epoch,

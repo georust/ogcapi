@@ -31,7 +31,7 @@ pub struct Collection {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extent: Option<Json<Extent>>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "type")]
-    pub collection_type: Option<CollectionType>,
+    pub collection_type: Option<Json<CollectionType>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub crs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]

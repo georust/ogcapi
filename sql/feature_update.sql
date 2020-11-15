@@ -8,18 +8,17 @@ SET
     links = $6,
     stac_version = $7,
     stac_extensions = $8,
-    bbox = $9,
-    assets = $10
+    assets = $9
 WHERE
     id = $1
 RETURNING
     id AS "id?",
     collection AS "collection?",
-    feature_type AS "feature_type: FeatureType",
+    feature_type AS "feature_type: Json<FeatureType>",
     properties,
     ST_AsGeoJSON(geometry)::jsonb AS "geometry!: Json<Geometry>",
     links AS "links: Json<Vec<Link>>",
     stac_version,
     stac_extensions,
-    bbox,
+    bbox AS "bbox: Json<Bbox>",
     assets AS "assets: Json<Assets>"

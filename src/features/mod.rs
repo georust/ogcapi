@@ -7,7 +7,7 @@ pub use self::query::Query;
 pub use self::routes::*;
 
 use crate::common::Link;
-use geojson::Geometry;
+use geojson::{Geometry, Bbox};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
@@ -35,7 +35,7 @@ pub struct Feature {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub collection: Option<String>,
     #[serde(rename = "type")]
-    pub feature_type: FeatureType,
+    pub feature_type: Json<FeatureType>,
     pub properties: Option<Value>,
     pub geometry: Json<Geometry>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -47,7 +47,7 @@ pub struct Feature {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assets: Option<Json<Assets>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bbox: Option<Vec<f64>>,
+    pub bbox: Option<Json<Bbox>>,
 }
 
 #[derive(sqlx::Type, Deserialize, Serialize, Debug, PartialEq)]
