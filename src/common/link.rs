@@ -1,6 +1,5 @@
+use super::ContentType;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
-use tide::http::Mime;
 
 /// Hyperlink to enable Hypermedia Access
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
@@ -15,6 +14,10 @@ pub struct Link {
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub length: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub templated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub types: Option<Vec<ContentType>>,
 }
 
 /// Link Relations
@@ -57,23 +60,5 @@ pub enum LinkRelation {
 impl Default for LinkRelation {
     fn default() -> Self {
         LinkRelation::Selfie
-    }
-}
-
-/// Link Content Type
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum ContentType {
-    #[serde(rename = "application/json")]
-    JSON,
-    #[serde(rename = "application/geo+json")]
-    GEOJSON,
-    #[serde(rename = "application/vnd.oai.openapi+json;version=3.0")]
-    OPENAPI,
-}
-
-impl Into<Mime> for ContentType {
-    fn into(self) -> Mime {
-        let content_type = serde_json::to_string_pretty(&self).expect("Serialized content type");
-        Mime::from_str(&content_type.as_str()).expect("Parse into media type")
     }
 }

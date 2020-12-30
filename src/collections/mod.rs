@@ -8,14 +8,18 @@ use serde_json::Value;
 use sqlx::types::Json;
 use std::collections::HashMap;
 
+#[serde(rename_all = "camelCase")]
 #[derive(Serialize, Default)]
 pub struct Collections {
-    pub links: Vec<Link>,
+    pub links: Option<Vec<Link>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub time_stamp: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub number_matched: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub number_returned: Option<usize>,
-    pub crs: Vec<String>,
     pub collections: Vec<Collection>,
+    pub crs: Option<Vec<String>>,
 }
 
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
@@ -27,23 +31,25 @@ pub struct Collection {
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    pub links: Json<Vec<Link>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub keywords: Option<Vec<String>>,
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub attribution: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub extent: Option<Json<Extent>>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "type")]
-    pub collection_type: Option<Json<CollectionType>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub item_type: Option<Json<ItemType>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub crs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage_crs: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage_crs_coordinate_epoch: Option<f32>,
+    pub links: Json<Vec<Link>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stac_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stac_extensions: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub keywords: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub licence: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -77,10 +83,10 @@ pub struct TemporalExtent {
 }
 
 #[derive(sqlx::Type, Deserialize, Serialize, Debug, PartialEq)]
-#[sqlx(rename = "collection_type", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
-pub enum CollectionType {
+pub enum ItemType {
     Feature,
+    Unknown,
 }
 
 /// A provider is any of the organizations that captures or processes the content

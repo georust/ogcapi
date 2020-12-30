@@ -1,4 +1,4 @@
-use super::{Collection, CollectionType, Collections, Extent, Provider, Summaries};
+use super::{Collection, ItemType, Collections, Extent, Provider, Summaries};
 use crate::common::{ContentType, Datetime, Link, LinkRelation, BBOX, CRS};
 use crate::service::Service;
 use serde::Deserialize;
@@ -9,11 +9,11 @@ use tide::{Body, Request, Response, Result};
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 struct Query {
-    limit: Option<isize>,
-    offset: Option<isize>,
     bbox: Option<BBOX>,
     bbox_crs: Option<CRS>,
     datetime: Option<Datetime>,
+    limit: Option<isize>,
+    offset: Option<isize>,
 }
 
 // impl Query {
@@ -62,13 +62,13 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
     }
 
     let collections = Collections {
-        links: vec![Link {
+        links: Some(vec![Link {
             href: url.to_string(),
             r#type: Some(ContentType::JSON),
             title: Some("this document".to_string()),
             ..Default::default()
-        }],
-        crs: vec![CRS::default().to_string()],
+        }]),
+        crs: Some(vec![CRS::default().to_string()]),
         collections,
         ..Default::default()
     };
@@ -90,7 +90,7 @@ pub async fn create_collection(mut req: Request<Service>) -> Result {
         collection.description,
         collection.links as _,
         collection.extent as _,
-        collection.collection_type as _,
+        collection.item_type as _,
         collection.crs.as_deref(),
         collection.storage_crs,
         collection.storage_crs_coordinate_epoch,
@@ -138,7 +138,7 @@ pub async fn update_collection(mut req: Request<Service>) -> Result {
         collection.description,
         collection.links as _,
         collection.extent as _,
-        collection.collection_type as _,
+        collection.item_type as _,
         collection.crs.as_deref(),
         collection.storage_crs,
         collection.storage_crs_coordinate_epoch,

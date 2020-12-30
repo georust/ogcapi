@@ -4,7 +4,7 @@ SELECT
     description,
     links AS "links: Json<Vec<Link>>",
     extent AS "extent: Json<Extent>",
-    collection_type AS "collection_type: Json<CollectionType>",
+    item_type AS "item_type: Json<ItemType>",
     crs,
     storage_crs,
     storage_crs_coordinate_epoch,

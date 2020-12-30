@@ -1,48 +1,32 @@
 mod routes;
 
-use crate::common::{self, Conformance};
+use crate::common;
 use crate::{collections, features};
-use openapiv3::OpenAPI;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::env;
-use std::fs::File;
-use tide::{
+use tide::{self,
     http::{url::Position, Url},
     utils::After,
     Body, Request, Response,
 };
 
-static API: &str = "api/ogcapi-features_sprint.yaml";
-
 #[derive(Clone)]
 pub struct Service {
-    pub conformance: Conformance,
-    pub api: OpenAPI,
     pub pool: PgPool,
 }
 
 impl Service {
     pub async fn new() -> Service {
         Service {
-            api: serde_yaml::from_reader(File::open(API).expect("Open api file"))
-                .expect("Deserialize api document"),
-            conformance: Conformance {
-                conforms_to: vec![
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core".to_string(),
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30".to_string(),
-                    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson".to_string(),
-                ],
-            },
             pool: PgPoolOptions::new()
                 .max_connections(5)
-                .connect(&env::var("DATABASE_URL").unwrap())
+                .connect(&env::var("DATABASE_URL").expect("Read database url from env"))
                 .await
                 .expect("Create database pool"),
         }
     }
-    pub async fn run(mut self, url: &str) -> tide::Result<()> {
+    pub async fn run(self, url: &str) -> tide::Result<()> {
         let url = Url::parse(&url)?;
-        self.api.servers[0].url = url.to_string();
 
         tide::log::start();
         let mut app = tide::with_state(self);

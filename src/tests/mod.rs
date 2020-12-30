@@ -10,7 +10,7 @@ use sqlx::types::Json;
 use std::env;
 
 #[allow(unused_imports)]
-use crate::collections::{Collection, CollectionType, Extent, Provider, Summaries};
+use crate::collections::{Collection, ItemType, Extent, Provider, Summaries};
 #[allow(unused_imports)]
 use crate::common::Link;
 #[allow(unused_imports)]
@@ -44,7 +44,7 @@ async fn minimal_feature_crud() -> std::io::Result<()> {
         collection.description,
         collection.links as _,
         collection.extent as _,
-        collection.collection_type as _,
+        collection.item_type as _,
         collection.crs.as_deref(),
         collection.storage_crs,
         collection.storage_crs_coordinate_epoch,

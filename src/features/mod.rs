@@ -51,7 +51,6 @@ pub struct Feature {
 }
 
 #[derive(sqlx::Type, Deserialize, Serialize, Debug, PartialEq)]
-#[sqlx(rename = "feature_type")]
 pub enum FeatureType {
     Feature,
 }

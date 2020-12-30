@@ -10,7 +10,7 @@ CREATE TABLE collections (
     description text,
     links jsonb NOT NULL,
     extent jsonb,
-    collection_type jsonb DEFAULT '"feature"'::jsonb, -- or 'unknown'
+    item_type jsonb DEFAULT '"unknown"'::jsonb,
     crs text[] DEFAULT '{"http://www.opengis.net/def/crs/OGC/1.3/CRS84"}',
     storage_crs text,
     storage_crs_coordinate_epoch real,

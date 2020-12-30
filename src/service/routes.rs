@@ -1,11 +1,17 @@
 use super::Service;
-use crate::common::{ContentType, LandingPage, Link, LinkRelation};
+use crate::common::{Conformance, ContentType, LandingPage, Link, LinkRelation};
+use openapiv3::OpenAPI;
+use serde_json::json;
+use std::fs::File;
 use tide::{Body, Request, Response, Result};
+
+static API: &str = "api/ogcapi-features-1.yaml";
 
 pub async fn root(req: Request<Service>) -> Result {
     let url = req.url();
 
-    let openapi = &req.state().api;
+    let openapi: OpenAPI = serde_yaml::from_reader(File::open(API).expect("Open api definition"))
+        .expect("Parse api definition");
 
     let mut landing_page = LandingPage {
         title: Some(openapi.info.title.clone()),
@@ -50,10 +56,13 @@ pub async fn root(req: Request<Service>) -> Result {
     Ok(res)
 }
 
-pub async fn api(req: Request<Service>) -> Result {
+pub async fn api(_req: Request<Service>) -> Result {
+    let openapi: OpenAPI = serde_yaml::from_reader(File::open(API).expect("Open api definition"))
+        .expect("Parse api definition");
+
     let mut res = Response::new(200);
-    res.set_content_type(ContentType::OPENAPI);
-    res.set_body(Body::from_json(&req.state().api)?);
+    // res.set_content_type(ContentType::OPENAPI);
+    res.set_body(Body::from_json(&openapi)?);
     Ok(res)
 }
 
@@ -96,8 +105,17 @@ pub async fn redoc(req: Request<Service>) -> Result {
     Ok(res)
 }
 
-pub async fn conformance(req: Request<Service>) -> Result {
+pub async fn conformance(_req: Request<Service>) -> Result {
+    let conformance: Conformance = serde_json::from_value(json!({
+        "conformsTo": [
+            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
+            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+            "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
+        ]
+    }))?;
+
     let mut res = Response::new(200);
-    res.set_body(Body::from_json(&req.state().conformance)?);
+    res.set_body(Body::from_json(&conformance)?);
     Ok(res)
 }

@@ -2,7 +2,7 @@ use super::{Assets, Feature, FeatureCollection, FeatureType, Query};
 use crate::common::{ContentType, Link, LinkRelation};
 use crate::service::Service;
 use chrono::{SecondsFormat, Utc};
-use geojson::{Geometry, Bbox};
+use geojson::{Bbox, Geometry};
 use sqlx::{types::Json, Done};
 use tide::{Body, Request, Response, Result};
 
