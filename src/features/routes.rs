@@ -36,7 +36,7 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
             ..Default::default()
         });
         links.push(Link {
-            href: url.as_str().replace(&format!("/items"), ""),
+            href: url.as_str().replace("/items", ""),
             rel: LinkRelation::Collection,
             r#type: Some(ContentType::GEOJSON),
             ..Default::default()
@@ -184,7 +184,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
             sql.push(format!("OFFSET {}", offset));
 
             if offset != 0 && offset >= limit {
-                url.set_query(Some(&query.to_string_with_offset(offset - limit)));
+                url.set_query(Some(&query.as_string_with_offset(offset - limit)));
                 let previous = Link {
                     href: url.to_string(),
                     rel: LinkRelation::Previous,
@@ -195,7 +195,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
             }
 
             if !(offset + limit) as u64 >= number_matched {
-                url.set_query(Some(&query.to_string_with_offset(offset + limit)));
+                url.set_query(Some(&query.as_string_with_offset(offset + limit)));
                 let next = Link {
                     href: url.to_string(),
                     rel: LinkRelation::Next,

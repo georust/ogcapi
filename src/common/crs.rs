@@ -52,7 +52,7 @@ impl FromStr for CRS {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s
             .trim_start_matches("http://www.opengis.net/def/crs/")
-            .split("/")
+            .split('/')
             .collect();
         match parts.len() {
             3 => Ok(CRS::new(parts[0], parts[1], parts[2])),

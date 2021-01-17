@@ -58,8 +58,8 @@ impl FromStr for Datetime {
     type Err = chrono::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.contains("/") {
-            let datetimes: Vec<&str> = s.split("/").collect();
+        if s.contains('/') {
+            let datetimes: Vec<&str> = s.split('/').collect();
             Ok(Datetime::Interval(Interval {
                 from: IntervalDatetime::from_str(datetimes[0])?,
                 to: IntervalDatetime::from_str(datetimes[1])?,

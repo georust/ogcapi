@@ -4,7 +4,8 @@ use crate::common;
 use crate::{collections, features};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::env;
-use tide::{self,
+use tide::{
+    self,
     http::{url::Position, Url},
     utils::After,
     Body, Request, Response,

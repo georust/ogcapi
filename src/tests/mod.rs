@@ -10,7 +10,7 @@ use sqlx::types::Json;
 use std::env;
 
 #[allow(unused_imports)]
-use crate::collections::{Collection, ItemType, Extent, Provider, Summaries};
+use crate::collections::{Collection, Extent, ItemType, Provider, Summaries};
 #[allow(unused_imports)]
 use crate::common::Link;
 #[allow(unused_imports)]

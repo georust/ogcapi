@@ -7,7 +7,7 @@ pub use self::query::Query;
 pub use self::routes::*;
 
 use crate::common::Link;
-use geojson::{Geometry, Bbox};
+use geojson::{Bbox, Geometry};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;

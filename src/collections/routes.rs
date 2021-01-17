@@ -1,4 +1,4 @@
-use super::{Collection, ItemType, Collections, Extent, Provider, Summaries};
+use super::{Collection, Collections, Extent, ItemType, Provider, Summaries};
 use crate::common::{ContentType, Datetime, Link, LinkRelation, BBOX, CRS};
 use crate::service::Service;
 use serde::Deserialize;
@@ -54,7 +54,10 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
             r#type: Some(ContentType::GEOJSON),
             title: Some(format!(
                 "Items of {}",
-                collection.title.clone().unwrap_or(collection.id.clone())
+                collection
+                    .title
+                    .clone()
+                    .unwrap_or_else(|| collection.id.clone())
             )),
             ..Default::default()
         };

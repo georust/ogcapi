@@ -14,8 +14,8 @@ pub async fn root(req: Request<Service>) -> Result {
         .expect("Parse api definition");
 
     let mut landing_page = LandingPage {
-        title: Some(openapi.info.title.clone()),
-        description: openapi.info.description.clone(),
+        title: Some(openapi.info.title),
+        description: openapi.info.description,
         links: vec![
             Link {
                 href: "/".to_string(),
