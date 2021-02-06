@@ -4,8 +4,6 @@ mod datetime;
 mod exception;
 mod link;
 
-use std::str::FromStr;
-
 pub use self::bbox::BBOX;
 pub use self::crs::CRS;
 pub use self::datetime::Datetime;
@@ -13,51 +11,38 @@ pub use self::exception::exception;
 pub use self::link::*;
 
 use serde::{Deserialize, Serialize};
-use tide::http::Mime;
 
-#[derive(Serialize, Deserialize, Default, Clone)]
+/// The Landing page is the entry point of a OGC API
+///
+/// The Landing page provides links to:
+///
+/// * the API definition (link relations service-desc and service-doc),
+///
+/// * the Conformance declaration (path /conformance, link relation conformance), and
+///
+/// * the Collections (path /collections, link relation data).
+#[derive(Serialize, Deserialize, Default)]
 pub struct LandingPage {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
+    pub title: Option<String>, // OAF Core 1.0
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    pub links: Vec<Link>,
+    pub description: Option<String>, // OAF Core 1.0
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attribution: Option<String>,
+    pub links: Vec<Link>, // OAF Core 1.0
 }
 
+/// The Conformance declaration states the conformance classes from standards or community
+/// specifications, identified by a URI, that the API conforms to. Clients can but are not
+/// required to use this information. Accessing the Conformance declaration using HTTP GET
+/// returns the list of URIs of conformance classes implemented by the server.
 #[serde(rename_all = "camelCase")]
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct Conformance {
     pub conforms_to: Vec<String>,
 }
-
-// pub(crate) mod string {
-//     use std::fmt::Display;
-//     use std::str::FromStr;
-
-//     use serde::{de, Deserialize, Deserializer, Serializer};
-
-//     pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         T: Display,
-//         S: Serializer,
-//     {
-//         serializer.collect_str(value)
-//     }
-
-//     pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-//     where
-//         T: FromStr,
-//         T::Err: Display,
-//         D: Deserializer<'de>,
-//     {
-//         String::deserialize(deserializer)?
-//             .parse()
-//             .map_err(de::Error::custom)
-//     }
-// }
-
 /// Content Type
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum ContentType {
     #[serde(rename = "application/json")]
     JSON,
@@ -65,18 +50,4 @@ pub enum ContentType {
     GEOJSON,
     #[serde(rename = "application/vnd.oai.openapi+json;version=3.0")]
     OPENAPI,
-}
-
-impl Into<Mime> for ContentType {
-    fn into(self) -> Mime {
-        let content_type = serde_json::to_string(&self).expect("Serialized content type");
-        Mime::from_str(&content_type.as_str()).expect("Parse into media type")
-    }
-}
-
-#[test]
-fn parse_into_mime() {
-    let _mime_json: Mime = ContentType::JSON.into();
-    let _mime_geojson: Mime = ContentType::GEOJSON.into();
-    let _mime_openapi: Mime = ContentType::OPENAPI.into();
 }

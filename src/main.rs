@@ -8,7 +8,7 @@ async fn main() -> Result<()> {
     // let key = "DATABASE_URL";
     // env::set_var(key, "postgresql://postgres:postgres@localhost/ogcapi");
 
-    let server_url = "http://192.168.1.218:8484";
+    let server_url = "0.0.0.0:8484";
     let service = Service::new().await;
     service.run(server_url).await?;
     Ok(())

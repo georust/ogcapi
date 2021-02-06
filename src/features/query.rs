@@ -5,11 +5,11 @@ use std::fmt;
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Query {
-    pub limit: Option<isize>,
+    pub limit: Option<isize>, // OAF Core 1.0
     pub offset: Option<isize>,
-    pub bbox: Option<BBOX>,
+    pub bbox: Option<BBOX>, // OAF Core 1.0
     pub bbox_crs: Option<CRS>,
-    pub datetime: Option<Datetime>,
+    pub datetime: Option<Datetime>, // OAF Core 1.0
     pub crs: Option<CRS>,
     pub filter: Option<String>,
     #[serde(rename = "filter-lang")]

@@ -1,6 +1,4 @@
 -- Extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- Tables
@@ -23,23 +21,20 @@ CREATE TABLE collections (
 );
 
 CREATE TABLE features (
-    id text DEFAULT uuid_generate_v4() ::text,
+    id serial PRIMARY KEY,
     collection text NOT NULL,
     feature_type jsonb NOT NULL,
     properties jsonb,
-    geometry geometry NOT NULL,
+    geom geometry NOT NULL,
     links jsonb,
     stac_version text,
     stac_extensions text[],
-    bbox jsonb GENERATED ALWAYS AS (ST_AsGeoJSON(geometry, 9, 1)::jsonb -> 'bbox') STORED,
+    bbox jsonb GENERATED ALWAYS AS (ST_AsGeoJSON(geom, 9, 1)::jsonb -> 'bbox') STORED,
     assets jsonb,
-    CONSTRAINT features_pkey PRIMARY KEY (id, collection),
     CONSTRAINT features_collection_fkey FOREIGN KEY (collection) REFERENCES public.collections (id) ON DELETE CASCADE
 );
 
 -- Indexes
+CREATE INDEX features_collection_idx ON public.features USING btree (collection);
 CREATE INDEX features_properties_idx ON public.features USING gin (properties);
-CREATE INDEX features_bbox_idx ON public.features USING gin (bbox);
-
-CREATE INDEX features_geometry_idx ON public.features USING gist (geometry);
-
+CREATE INDEX features_geom_idx ON public.features USING gist (geom);

@@ -70,8 +70,7 @@ async fn minimal_feature_crud() -> std::io::Result<()> {
         "type": "Feature",
         "geometry": {
             "type": "Point",
-            "coordinates": [7.428959, 1.513394],
-            "crs" : "urn:ogc:def:crs:EPSG::2056"
+            "coordinates": [7.428959, 1.513394]
         },
         "links": [{
             "href": "collections/trials/items/{id}",
@@ -100,11 +99,10 @@ async fn minimal_feature_crud() -> std::io::Result<()> {
     let id = inserted_feature.id.clone().unwrap();
 
     // read feauture
-    let selected_feature =
-        sqlx::query_file_as!(Feature, "sql/feature_select.sql", &id, &collection.id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let selected_feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", &id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
     assert_eq!(inserted_feature, selected_feature);
 
@@ -131,17 +129,17 @@ async fn minimal_feature_crud() -> std::io::Result<()> {
         serde_json::to_string_pretty(&updated_feature).unwrap()
     );
 
-    // // delete feature
-    // sqlx::query_file_as!(Feature, "sql/feature_delete.sql", &id)
-    //     .execute(&pool)
-    //     .await
-    //     .unwrap();
+    // delete feature
+    sqlx::query_file_as!(Feature, "sql/feature_delete.sql", &id)
+        .execute(&pool)
+        .await
+        .unwrap();
 
-    // // delete collection
-    // sqlx::query_file_as!(Collection, "sql/collection_delete.sql", &collection.id)
-    //     .execute(&pool)
-    //     .await
-    //     .unwrap();
+    // delete collection
+    sqlx::query_file_as!(Collection, "sql/collection_delete.sql", &collection.id)
+        .execute(&pool)
+        .await
+        .unwrap();
 
     Ok(())
 }

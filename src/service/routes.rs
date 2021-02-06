@@ -2,16 +2,16 @@ use super::Service;
 use crate::common::{Conformance, ContentType, LandingPage, Link, LinkRelation};
 use openapiv3::OpenAPI;
 use serde_json::json;
+use std::env;
 use std::fs::File;
-use tide::{Body, Request, Response, Result};
-
-static API: &str = "api/ogcapi-features-1.yaml";
+use tide::{http::url::Position, Body, Request, Response, Result};
 
 pub async fn root(req: Request<Service>) -> Result {
     let url = req.url();
 
-    let openapi: OpenAPI = serde_yaml::from_reader(File::open(API).expect("Open api definition"))
-        .expect("Parse api definition");
+    let api_definition = env::var("API_DEFINITION")?;
+    let rdr = File::open(&api_definition)?;
+    let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
 
     let mut landing_page = LandingPage {
         title: Some(openapi.info.title),
@@ -45,6 +45,7 @@ pub async fn root(req: Request<Service>) -> Result {
                 ..Default::default()
             },
         ],
+        attribution: None,
     };
 
     for link in landing_page.links.iter_mut() {
@@ -57,8 +58,9 @@ pub async fn root(req: Request<Service>) -> Result {
 }
 
 pub async fn api(_req: Request<Service>) -> Result {
-    let openapi: OpenAPI = serde_yaml::from_reader(File::open(API).expect("Open api definition"))
-        .expect("Parse api definition");
+    let api_definition = env::var("API_DEFINITION")?;
+    let rdr = File::open(&api_definition)?;
+    let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
 
     let mut res = Response::new(200);
     // res.set_content_type(ContentType::OPENAPI);
@@ -67,10 +69,7 @@ pub async fn api(_req: Request<Service>) -> Result {
 }
 
 pub async fn redoc(req: Request<Service>) -> Result {
-    let mut url = req.url().to_owned();
-
-    url.set_query(None);
-    let api_url = url.to_string().replace("redoc", "api");
+    let api_url = req.url()[..Position::AfterPath].replace("redoc", "api");
 
     let mut res = Response::new(200);
     res.set_content_type(tide::http::mime::HTML);

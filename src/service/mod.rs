@@ -1,15 +1,9 @@
 mod routes;
 
-use crate::common;
-use crate::{collections, features};
+use crate::{collections, common, features, tiles};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::env;
-use tide::{
-    self,
-    http::{url::Position, Url},
-    utils::After,
-    Body, Request, Response,
-};
+use tide::{self, utils::After};
 
 #[derive(Clone)]
 pub struct Service {
@@ -17,18 +11,17 @@ pub struct Service {
 }
 
 impl Service {
-    pub async fn new() -> Service {
+    pub async fn new() -> Self {
         Service {
             pool: PgPoolOptions::new()
                 .max_connections(5)
-                .connect(&env::var("DATABASE_URL").expect("Read database url from env"))
+                .connect(&env::var("DATABASE_URL").expect("Read database url"))
                 .await
-                .expect("Create database pool"),
+                .expect("Create db connection pool"),
         }
     }
-    pub async fn run(self, url: &str) -> tide::Result<()> {
-        let url = Url::parse(&url)?;
 
+    pub async fn run(self, url: &str) -> tide::Result<()> {
         tide::log::start();
         let mut app = tide::with_state(self);
 
@@ -38,11 +31,7 @@ impl Service {
         app.at("/conformance").get(routes::conformance);
 
         // favicon
-        app.at("/favicon.ico").get(|_: Request<Service>| async {
-            let mut res = Response::new(200);
-            res.set_body(Body::from_file("favicon.ico").await?);
-            Ok(res)
-        });
+        app.at("/favicon.ico").serve_file("favicon.ico")?;
 
         // redoc
         app.at("/redoc").get(routes::redoc);
@@ -71,8 +60,7 @@ impl Service {
 
         app.with(After(common::exception));
 
-        app.listen(&url[Position::BeforeHost..Position::AfterPort])
-            .await?;
+        app.listen(url).await?;
         Ok(())
     }
 }

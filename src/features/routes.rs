@@ -3,7 +3,7 @@ use crate::common::{ContentType, Link, LinkRelation};
 use crate::service::Service;
 use chrono::{SecondsFormat, Utc};
 use geojson::{Bbox, Geometry};
-use sqlx::{types::Json, Done};
+use sqlx::types::Json;
 use tide::{Body, Request, Response, Result};
 
 pub async fn create_item(mut req: Request<Service>) -> tide::Result {
@@ -12,7 +12,6 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
     let mut feature: Feature = req.body_json().await?;
 
     let collection: &str = req.param("collection")?;
-    feature.collection = Some(collection.to_string());
 
     feature = sqlx::query_file_as!(
         Feature,
@@ -44,16 +43,15 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
     };
 
     let mut res = Response::new(200);
-    res.set_content_type(ContentType::GEOJSON);
+    // res.set_content_type(ContentType::GEOJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
 
 pub async fn read_item(req: Request<Service>) -> tide::Result {
-    let id = req.param("id")?;
-    let collection = req.param("collection")?;
+    let id: i32 = req.param("id")?.parse()?;
 
-    let mut feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", id, collection)
+    let mut feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", id)
         .fetch_one(&req.state().pool)
         .await?;
 
@@ -77,7 +75,7 @@ pub async fn read_item(req: Request<Service>) -> tide::Result {
     }
 
     let mut res = Response::new(200);
-    res.set_content_type(ContentType::GEOJSON);
+    // res.set_content_type(ContentType::GEOJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
@@ -86,7 +84,7 @@ pub async fn update_item(mut req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
     let mut feature: Feature = req.body_json().await?;
 
-    let id: &str = req.param("id")?;
+    let id: i32 = req.param("id")?.parse()?;
     let collection: &str = req.param("collection")?;
 
     feature = sqlx::query_file_as!(
@@ -120,13 +118,13 @@ pub async fn update_item(mut req: Request<Service>) -> tide::Result {
     };
 
     let mut res = Response::new(200);
-    res.set_content_type(ContentType::GEOJSON);
+    // res.set_content_type(ContentType::GEOJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
 
 pub async fn delete_item(req: Request<Service>) -> tide::Result {
-    let id: &str = req.param("id")?;
+    let id: i32 = req.param("id")?.parse()?;
 
     sqlx::query_file_as!(Feature, "sql/feature_delete.sql", &id)
         .execute(&req.state().pool)
@@ -148,7 +146,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
     };
 
     let mut sql = vec![
-        format!("SELECT id, type, properties, ST_AsGeoJSON( ST_Transform (geometry, {}))::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
+        format!("SELECT id, feature_type, properties, ST_AsGeoJSON( ST_Transform (geom, {}))::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
         FROM features
         WHERE collection = $1", srid)
     ];
@@ -224,7 +222,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
     };
 
     let mut res = Response::new(200);
-    res.set_content_type(ContentType::GEOJSON);
+    // res.set_content_type(ContentType::GEOJSON);
     res.set_body(Body::from_json(&feature_collection)?);
     Ok(res)
 }

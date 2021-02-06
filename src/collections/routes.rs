@@ -47,30 +47,33 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
 
     let mut collections: Vec<Collection> = sqlx::query_as(sql).fetch_all(&req.state().pool).await?;
 
-    for collection in &mut collections {
-        let link = Link {
-            href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
-            rel: LinkRelation::Items,
-            r#type: Some(ContentType::GEOJSON),
-            title: Some(format!(
-                "Items of {}",
-                collection
-                    .title
-                    .clone()
-                    .unwrap_or_else(|| collection.id.clone())
-            )),
-            ..Default::default()
-        };
-        collection.links.push(link);
+    for collection in collections.iter_mut() {
+        let mut links = vec![
+            Link {
+                href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
+                rel: LinkRelation::Items,
+                r#type: Some(ContentType::GEOJSON),
+                title: Some(format!(
+                    "Items of {}",
+                    collection.title.as_ref().unwrap_or(&collection.id)
+                )),
+                ..Default::default()
+            },
+            Link {
+                href: format!("{}/{}", &url[..Position::AfterPath], collection.id),
+                ..Default::default()
+            },
+        ];
+        collection.links.append(&mut links);
     }
 
     let collections = Collections {
-        links: Some(vec![Link {
+        links: vec![Link {
             href: url.to_string(),
             r#type: Some(ContentType::JSON),
             title: Some("this document".to_string()),
             ..Default::default()
-        }]),
+        }],
         crs: Some(vec![CRS::default().to_string()]),
         collections,
         ..Default::default()

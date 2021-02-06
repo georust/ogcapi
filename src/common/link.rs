@@ -14,10 +14,6 @@ pub struct Link {
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub length: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub templated: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub types: Option<Vec<ContentType>>,
 }
 
 /// Link Relations
