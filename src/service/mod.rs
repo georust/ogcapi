@@ -58,6 +58,13 @@ impl Service {
             .put(features::update_item)
             .delete(features::delete_item);
 
+        // tiles
+        // app.at("tileMatrixSets").get(tiles::get_matrixsets);
+        // app.at("tileMatrixSets/:matrix_set").get(tiles::get_matrixset);
+        // app.at("collections/:collection/tiles").get(tiles::handle_tiles);
+        app.at("collections/:collection/tiles/:matrix_set/:matrix/:row/:col")
+            .get(tiles::get_tile);
+
         app.with(After(common::exception));
 
         app.listen(url).await?;
