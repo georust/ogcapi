@@ -1,4 +1,7 @@
 #[allow(unused_imports)]
+use std::env;
+
+#[allow(unused_imports)]
 use geojson::{Bbox, Geometry};
 #[allow(unused_imports)]
 use serde_json::json;
@@ -6,15 +9,13 @@ use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 #[allow(unused_imports)]
 use sqlx::types::Json;
-#[allow(unused_imports)]
-use std::env;
 
 #[allow(unused_imports)]
-use crate::collections::{Collection, Extent, ItemType, Provider, Summaries};
+use crate::collection::{Collection, Extent, ItemType, Provider, Summaries};
 #[allow(unused_imports)]
 use crate::common::Link;
 #[allow(unused_imports)]
-use crate::features::{Assets, Feature, FeatureType};
+use crate::feature::{Assets, Feature, FeatureType};
 
 #[async_std::test]
 async fn minimal_feature_crud() -> std::io::Result<()> {

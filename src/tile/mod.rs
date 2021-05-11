@@ -1,19 +1,16 @@
-mod routes;
-
-pub use self::routes::*;
-
-use crate::common::Link;
 use serde::Serialize;
 use tide::http::Url;
 
-#[serde(rename_all = "camelCase")]
+use crate::common::Link;
+
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TileMatrixSets {
     pub tile_matrix_sets: Vec<IdLink>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IdLink {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -21,14 +18,14 @@ pub struct IdLink {
     pub links: Vec<Link>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TileSet {
     pub tile_set: Vec<TileSetEntry>,
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TileSetEntry {
     pub tile_url: Url,
     pub tile_matrix: String,
@@ -40,6 +37,6 @@ pub struct TileSetEntry {
     pub left: Option<i32>,
 }
 
-struct Tile {
-    st_asmvt: Option<Vec<u8>>,
+pub struct Tile {
+    pub st_asmvt: Option<Vec<u8>>,
 }

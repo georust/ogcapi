@@ -1,5 +1,6 @@
-use super::ContentType;
 use serde::{Deserialize, Serialize};
+
+use super::ContentType;
 
 /// Hyperlink to enable Hypermedia Access
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]

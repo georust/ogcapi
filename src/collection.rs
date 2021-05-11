@@ -1,15 +1,13 @@
-mod routes;
+use std::collections::HashMap;
 
-pub use self::routes::*;
-
-use crate::common::{Datetime, Link, BBOX, CRS};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
-use std::collections::HashMap;
 
-#[serde(rename_all = "camelCase")]
+use crate::common::{Datetime, Link, BBOX, CRS};
+
 #[derive(Serialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct Collections {
     pub links: Vec<Link>, // OAF Core 1.0
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -23,8 +21,8 @@ pub struct Collections {
 }
 
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
-#[serde(rename_all = "camelCase")]
 #[derive(Serialize, Deserialize, Default, Debug, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct Collection {
     pub id: String, // OAF Core 1.0
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,8 +80,8 @@ pub struct TemporalExtent {
     pub trs: Option<String>,
 }
 
-#[serde(rename_all = "lowercase")]
 #[derive(sqlx::Type, Deserialize, Serialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum ItemType {
     Feature,
     Unknown,
@@ -99,8 +97,8 @@ pub struct Provider {
     url: Option<String>,
 }
 
-#[serde(rename_all = "lowercase")]
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
 pub enum ProviderRole {
     Licensor,
     Producer,

@@ -1,10 +1,12 @@
-use super::{Assets, Feature, FeatureCollection, FeatureType, Query};
-use crate::common::{ContentType, Link, LinkRelation};
-use crate::service::Service;
 use chrono::{SecondsFormat, Utc};
 use geojson::{Bbox, Geometry};
 use sqlx::types::Json;
 use tide::{Body, Request, Response, Result};
+
+use crate::common::{ContentType, Link, LinkRelation};
+use crate::feature::{Assets, Feature, FeatureCollection, FeatureType, Query};
+
+use super::Service;
 
 pub async fn create_item(mut req: Request<Service>) -> tide::Result {
     let url = req.url().clone();

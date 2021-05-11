@@ -1,6 +1,8 @@
-use super::Tile;
-use crate::Service;
 use tide::{Request, Response, Result};
+
+use crate::tile::Tile;
+
+use super::Service;
 
 // pub async fn get_tile_matrix_sets(req: Request<Service>) -> Result {
 //     let tile_matrix_sets = TileMatrixSets {

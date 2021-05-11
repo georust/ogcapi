@@ -1,20 +1,19 @@
 mod query;
-mod routes;
+
+pub use query::Query;
 
 use std::collections::HashMap;
 
-pub use self::query::Query;
-pub use self::routes::*;
-
-use crate::common::Link;
 use geojson::{Bbox, Geometry};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
 
+use crate::common::Link;
+
 /// A set of Features from a dataset
-#[serde(rename_all = "camelCase")]
 #[derive(Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct FeatureCollection {
     pub r#type: String,
     pub features: Vec<Feature>,

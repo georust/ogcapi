@@ -1,7 +1,8 @@
-use chrono::{DateTime, FixedOffset, SecondsFormat};
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+
+use chrono::{DateTime, FixedOffset, SecondsFormat};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Datetime {

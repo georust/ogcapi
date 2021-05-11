@@ -1,6 +1,8 @@
-use crate::common::{Datetime, BBOX, CRS};
-use serde::Deserialize;
 use std::fmt;
+
+use serde::Deserialize;
+
+use crate::common::{Datetime, BBOX, CRS};
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]

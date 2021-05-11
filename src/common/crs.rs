@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
 
 // Default CRS EPSG:4979
 //static DEFAULT_CRS: &str = "http://www.opengis.net/def/crs/EPSG/0/4979";
@@ -24,7 +25,11 @@ impl CRS {
         }
     }
 
-    // fn as_ogc_urn(&self) -> String {
+    // pub fn from_epsg(code: i32) -> CRS {
+    //     CRS::new("EPSG", "0", &code.to_string())
+    // }
+
+    // pub fn to_ogc_urn(&self) -> String {
     //     format!(
     //         "urn:ogc:def:crs:{authority}:{version}:{code}",
     //         authority = self.authority,

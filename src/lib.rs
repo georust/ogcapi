@@ -1,8 +1,8 @@
-pub mod collections;
+pub mod collection;
 pub mod common;
-pub mod features;
-mod service;
-mod tests;
-pub mod tiles;
+pub mod feature;
+pub mod import;
+pub mod server;
+pub mod tile;
 
-pub use self::service::Service;
+mod tests;

@@ -8,6 +8,7 @@
 - PostgreSQL
 - Postgis
 - OpenSSL
+- Gdal
 
 ## Quick Start
 ```

@@ -1,10 +1,12 @@
-use super::{Collection, Collections, Extent, ItemType, Provider, Summaries};
-use crate::common::{ContentType, Datetime, Link, LinkRelation, BBOX, CRS};
-use crate::service::Service;
 use serde::Deserialize;
 use sqlx::types::Json;
 use tide::http::url::Position;
 use tide::{Body, Request, Response, Result};
+
+use crate::collection::{Collection, Collections, Extent, ItemType, Provider, Summaries};
+use crate::common::{ContentType, Datetime, Link, LinkRelation, BBOX, CRS};
+
+use super::Service;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]

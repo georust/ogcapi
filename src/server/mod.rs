@@ -1,8 +1,10 @@
-mod routes;
+pub mod routes;
 
-use crate::{collections, common, features, tiles};
+pub use routes::{collections, features, tiles};
+
+mod exception;
+
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use std::env;
 use tide::{self, utils::After};
 
 #[derive(Clone)]
@@ -15,7 +17,7 @@ impl Service {
         Service {
             pool: PgPoolOptions::new()
                 .max_connections(5)
-                .connect(&env::var("DATABASE_URL").expect("Read database url"))
+                .connect(&std::env::var("DATABASE_URL").expect("Read database url"))
                 .await
                 .expect("Create db connection pool"),
         }
@@ -65,7 +67,7 @@ impl Service {
         app.at("collections/:collection/tiles/:matrix_set/:matrix/:row/:col")
             .get(tiles::get_tile);
 
-        app.with(After(common::exception));
+        app.with(After(exception::exception));
 
         app.listen(url).await?;
         Ok(())

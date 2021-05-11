@@ -1,10 +1,17 @@
-use super::Service;
-use crate::common::{Conformance, ContentType, LandingPage, Link, LinkRelation};
-use openapiv3::OpenAPI;
-use serde_json::json;
+pub mod collections;
+pub mod features;
+pub mod tiles;
+
 use std::env;
 use std::fs::File;
+
+use openapiv3::OpenAPI;
+use serde_json::json;
 use tide::{http::url::Position, Body, Request, Response, Result};
+
+use crate::common::{Conformance, ContentType, LandingPage, Link, LinkRelation};
+
+use super::Service;
 
 pub async fn root(req: Request<Service>) -> Result {
     let url = req.url();

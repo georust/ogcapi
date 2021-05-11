@@ -1,24 +1,26 @@
 [package]
-authors = ["Balthasar Teuscher <balthasar.teuscher@gmail.com>"]
-edition = "2018"
-keywords = ["ogc", "geo", "api"]
 name = "ogcapi"
 version = "0.1.0"
+authors = ["Balthasar Teuscher <balthasar.teuscher@gmail.com>"]
+edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-name = "ogcapi"
-path = "src/lib.rs"
-
 [dependencies]
-async-std = {version = "1.9.0", features = ["attributes"]}
+anyhow = "1"
+async-std = {version = "1.9", features = ["attributes"]}
 chrono = {version = "0.4", features = ["serde"]}
-dotenv = "0.15.0"
+dotenv = "0.15"
+gdal = {version = "0.8", features = ["datetime"]}
+geo = "0.18"
 geojson = "0.22.0"
-openapiv3 = "0.4.0"
-serde = "1.0"
-serde_json = "1.0"
+indicatif = "0.16"
+openapiv3 = "0.5.0"
+osmpbfreader = "0.14"
+serde = "1"
+serde_json = "1"
 serde_yaml = "0.8"
-sqlx = {version = "0.5.2", features = ["runtime-async-std-native-tls", "macros", "postgres", "json"]}
-tide = "0.16.0"
+sqlx = {version = "0.5", features = ["runtime-async-std-native-tls", "macros", "postgres", "json"]}
+structopt = "0.3"
+tide = "0.16"
+wkb = "0.7"
