@@ -155,7 +155,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
 
     if query.bbox.is_some() {
         if let Some(envelop) = query.make_envelope() {
-            sql.push(format!("WHERE geometry && {}", envelop));
+            sql.push(format!("AND geom && {}", envelop));
         }
     }
 

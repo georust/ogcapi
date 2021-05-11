@@ -2,14 +2,14 @@ use std::fmt;
 
 use serde::Deserialize;
 
-use crate::common::{Datetime, BBOX, CRS};
+use crate::common::{Datetime, CRS};
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Query {
     pub limit: Option<isize>, // OAF Core 1.0
     pub offset: Option<isize>,
-    pub bbox: Option<BBOX>, // OAF Core 1.0
+    pub bbox: Option<String>, // OAF Core 1.0
     pub bbox_crs: Option<CRS>,
     pub datetime: Option<Datetime>, // OAF Core 1.0
     pub crs: Option<CRS>,
@@ -42,24 +42,22 @@ impl Query {
                 .parse::<i32>()
                 .expect("Parse bbox crs EPSG code");
 
-            match bbox {
-                BBOX::XY { .. } => Some(format!("ST_MakeEnvelope ( {}, {} )", bbox, srid)),
-                BBOX::XYZ(
-                    lower_left_x,
-                    lower_left_y,
-                    _min_z,
-                    upper_right_x,
-                    upper_right_y,
-                    _max_z,
-                ) => Some(format!(
-                    "ST_MakeEnvelope ( {xmin}, {ymin}, {xmax}, {ymax}, {srid} )",
-                    xmin = lower_left_x,
-                    ymin = lower_left_y,
-                    xmax = upper_right_x,
-                    ymax = upper_right_y,
-                    srid = srid
-                )),
+            let mut coords: Vec<&str> = bbox.split(',').collect();
+
+            if coords.len() == 6 {
+                coords.remove(5);
+                coords.remove(2);
             }
+            assert_eq!(coords.len(), 4);
+
+            Some(format!(
+                "ST_MakeEnvelope ( {xmin}, {ymin}, {xmax}, {ymax}, {srid} )",
+                xmin = coords[0],
+                ymin = coords[1],
+                xmax = coords[2],
+                ymax = coords[3],
+                srid = srid
+            ))
         } else {
             None
         }

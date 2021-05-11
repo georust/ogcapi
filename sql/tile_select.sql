@@ -1,7 +1,7 @@
 WITH collection AS (SELECT * from features WHERE collection = $1)
 (
   SELECT ST_AsMVT(mvtgeom, 'collection', 4096, 'geom', 'id') FROM (
-    SELECT ST_AsMVTGeom(ST_Transform(geom, 3857), ST_TileEnvelope($2, $3, $4), 4096, 64, TRUE) AS geom, collection, id, properties
+    SELECT ST_AsMVTGeom(ST_Transform(ST_Force2D(geom), 3857), ST_TileEnvelope($2, $3, $4), 4096, 64, TRUE) AS geom, collection, id, properties
     FROM collection
     WHERE geom && ST_Transform(ST_TileEnvelope($2, $3, $4, margin => (64.0 / 4096)), 4326)
   ) AS mvtgeom
