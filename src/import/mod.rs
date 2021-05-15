@@ -2,30 +2,58 @@ extern crate osmpbfreader;
 
 mod boundaries;
 
-use std::{collections::BTreeMap, convert::TryInto, path::PathBuf};
+use std::{collections::BTreeMap, fs::File, path::PathBuf};
 
-use anyhow;
 use gdal::{
     spatial_ref::{CoordTransform, SpatialRef},
-    vector::{Feature, Layer},
+    vector::{Feature, FieldValue, Layer},
 };
-use geo::{Geometry, LineString, MultiLineString, Point, Polygon};
-use osmpbfreader::{OsmId, OsmObj, OsmPbfReader, Ref, Relation};
+use geo::{Coordinate, Geometry, LineString, MultiLineString, Point, Polygon};
+use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
+
 use serde_json::{json, Map, Value};
-use sqlx::{types::Json, Pool, Postgres, Transaction};
+use sqlx::{postgres::PgPoolOptions, types::Json, Pool, Postgres};
 
 use crate::{
-    collection::{Collection, Extent, ItemType, Provider, Summaries},
+    collections::{Collection, Extent, ItemType, Provider, Summaries},
     common::Link,
 };
 
+pub async fn import(
+    input: PathBuf,
+    filter: &Option<String>,
+    collection: &Option<String>,
+) -> Result<(), anyhow::Error> {
+    // Create a connection pool
+    let db_url = std::env::var("DATABASE_URL")?;
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&db_url)
+        .await?;
+
+    // Import data
+    if input.extension() == Some(std::ffi::OsStr::new("pbf")) {
+        osm_import(input, &filter, &collection, &pool).await
+    } else {
+        gdal_import(input, &filter, &collection, &pool).await
+    }
+}
+
 pub async fn gdal_import(
-    input: &PathBuf,
-    layer_name: &Option<String>,
+    input: PathBuf,
+    filter: &Option<String>,
     collection: &Option<String>,
     pool: &Pool<Postgres>,
 ) -> Result<(), anyhow::Error> {
-    // Enable reading from url, TODO: read ZIP
+    // GDAL Configuration Options http://trac.osgeo.org/gdal/wiki/ConfigOptions
+    gdal::config::set_config_option("PG_USE_COPY", "YES")?;
+
+    // Get target dataset layer
+    let drv = Driver::get("PostgreSQL")?;
+    let ds = drv.create_vector_only(&format!("PG:{}", std::env::var("DATABASE_URL")?))?;
+    let lyr = ds.layer_by_name("features")?;
+
+    // Open input dataset
     let input = if input.to_str().map(|s| s.starts_with("http")).unwrap() {
         PathBuf::from("/vsicurl").join(input.to_owned())
     } else {
@@ -36,7 +64,7 @@ pub async fn gdal_import(
 
     for mut layer in dataset.layers() {
         // only load specified layers
-        if layer_name.is_some() && Some(layer.name()) != *layer_name {
+        if filter.is_some() && Some(layer.name()) != *filter {
             continue;
         }
 
@@ -45,14 +73,14 @@ pub async fn gdal_import(
         delete_collection(&collection.id, &pool).await?;
         insert_collection(&collection, &pool).await?;
 
-        println!("Importing layer: `{}`", &collection.title.unwrap());
+        log::info!("Importing layer: `{}`", &collection.title.unwrap());
 
         let fields: Vec<(String, u32, i32)> = layer
             .defn()
             .fields()
             .map(|field| (field.name(), field.field_type(), field.width()))
             .collect();
-        // println!("fileds_def:\n{:#?}", fields);
+        log::debug!("fileds_def:\n{:#?}", fields);
 
         // Prepare the origin and destination spatial references objects:
         let spatial_ref_src = layer.spatial_ref()?;
@@ -64,15 +92,38 @@ pub async fn gdal_import(
         let transform = CoordTransform::new(&spatial_ref_src, &spatial_ref_dst)?;
 
         // Load features
-        let pb = indicatif::ProgressBar::new(layer.feature_count());
-        let mut tx = pool.begin().await?;
-        for feature in layer.features() {
-            create_feature(&feature, &collection.id, &transform, &fields, &mut tx).await?;
+        let mut pb = pbr::ProgressBar::new(layer.feature_count());
 
-            pb.inc(1)
+        for feature in layer.features() {
+            // Get the original geometry:
+            let geom = feature.geometry();
+            // Get a new transformed geometry:
+            let new_geom = geom.transform(&transform)?;
+            // Create the new feature, set its geometry:
+            let mut ft = Feature::new(lyr.defn())?;
+            ft.set_geometry(new_geom)?;
+
+            // Map fields
+            let id = feature.fid().expect("feature identifier") as i64;
+            ft.set_field("id", &FieldValue::Integer64Value(id))?;
+
+            ft.set_field(
+                "collection",
+                &FieldValue::StringValue(collection.id.to_owned()),
+            )?;
+
+            let properties = extract_properties(&feature, &fields).await?;
+            ft.set_field(
+                "properties",
+                &FieldValue::StringValue(serde_json::to_string(&properties)?),
+            )?;
+
+            // Add the feature to the layer:
+            ft.create(&lyr)?;
+
+            pb.inc();
         }
-        tx.commit().await?;
-        pb.finish_with_message("done");
+        pb.finish();
     }
 
     Ok(())
@@ -147,15 +198,10 @@ async fn delete_collection(id: &str, pool: &Pool<Postgres>) -> Result<(), anyhow
 }
 
 /// Create new feature
-async fn create_feature(
+async fn extract_properties(
     feature: &Feature<'_>,
-    collection: &str,
-    transform: &CoordTransform,
     fields: &Vec<(String, u32, i32)>,
-    tx: &mut Transaction<'_, Postgres>,
-) -> Result<(), anyhow::Error> {
-    let id = feature.fid().expect("feature identifier") as i32;
-    let geometry = feature.geometry().transform(transform)?.wkb()?;
+) -> Result<serde_json::Value, anyhow::Error> {
     let mut properties = Map::new();
 
     for field in fields {
@@ -183,39 +229,24 @@ async fn create_feature(
                     Value::from(i)
                 }
                 _ => {
-                    unimplemented!("Can not parse field type {} `{:#?}` yet!", field.1, value)
+                    unimplemented!("Can not parse field type {} `{:#?}` yet!", field.1, value);
                 }
             };
             properties.insert(field.0.to_owned(), value);
         }
     }
 
-    sqlx::query_file!(
-        "sql/feature_import.sql",
-        id,
-        collection,
-        Value::from(properties) as _,
-        geometry as _,
-    )
-    .execute(tx)
-    .await?;
-
-    Ok(())
+    Ok(Value::from(properties))
 }
 
 /// Import osm data from pbf file
 pub async fn osm_import(
-    input: &PathBuf,
+    input: PathBuf,
     _filter: &Option<String>,
     collection: &Option<String>,
     pool: &Pool<Postgres>,
 ) -> Result<(), anyhow::Error> {
-    let r = std::fs::File::open(input)?;
-    let mut pbf = OsmPbfReader::new(r);
-
-    let objs = pbf.get_objs_and_deps(|_o| true)?;
-    // println!("found {} objects and dependencies", objs.len());
-
+    // Create collection
     let title = collection.to_owned().unwrap_or_else(|| "OSM".to_string());
 
     let collection = Collection {
@@ -230,13 +261,55 @@ pub async fn osm_import(
     delete_collection(&collection.id, pool).await?;
     insert_collection(&collection, pool).await?;
 
+    // Open file
+    let file = File::open(input)?;
+    let mut pbf = OsmPbfReader::new(file);
+
+    let blob_count = pbf.blobs().count();
+    log::info!("Found {} blobs!", blob_count);
     pbf.rewind()?;
 
-    // Load features
-    let pb = indicatif::ProgressBar::new(objs.len().try_into()?);
+    let block_count = pbf.primitive_blocks().count();
+    log::info!("Found {} bloks!", block_count);
+    pbf.rewind()?;
+
+    // let mut pb = pbr::ProgressBar::new((blobs * 1000).try_into()?);
+
+    // Cache
+    let objs = pbf.get_objs_and_deps(|_| true)?;
+    log::info!("Found {} obj and dependencies!", objs.len());
+    pbf.rewind()?;
+
+    // pbf.par_iter().for_each(|obj| {
+    //     let obj = obj.unwrap();
+
+    //     match obj {
+    //         OsmObj::Node(n) => {
+    //             coords_cache.insert(
+    //                 n.id,
+    //                 Coordinate {
+    //                     x: n.lon(),
+    //                     y: n.lat(),
+    //                 },
+    //             );
+    //         }
+    //         OsmObj::Way(w) => {
+    //             way_cache.insert(w.id, w.nodes);
+    //         }
+    //         OsmObj::Relation(r) => {
+    //             ref_cache.insert(r.id, r.refs.iter().map(|r| r.member).collect());
+    //         }
+    //     }
+    // });
+
+    log::info!("Done caching!");
+
     let mut tx = pool.begin().await?;
-    for obj in pbf.par_iter().map(Result::unwrap) {
-        pb.inc(1);
+
+    pbf.rewind()?;
+
+    for obj in pbf.par_iter() {
+        let obj = obj.unwrap();
 
         // skip objects without tags
         if obj.tags().is_empty() {
@@ -247,11 +320,13 @@ pub async fn osm_import(
         let id = obj.id().inner_id();
 
         // extract tags
-        let keys = obj.tags().keys().into_iter().map(|k| k.to_string());
-        let values = obj.tags().values().into_iter().map(|v| v.to_string());
         let mut properties = Map::new();
+
+        let keys = obj.tags().keys().into_iter();
+        let values = obj.tags().values().into_iter();
+
         for (k, v) in keys.zip(values) {
-            properties.insert(k, Value::from(v));
+            properties.insert(k.to_string(), Value::from(v.as_str()));
         }
 
         // build geometry
@@ -265,12 +340,11 @@ pub async fn osm_import(
             )
             .execute(&mut tx)
             .await?;
-        } else {
-            continue;
         }
     }
+
     tx.commit().await?;
-    pb.finish_with_message("done");
+    // pb.inc();
 
     Ok(())
 }
@@ -278,31 +352,18 @@ pub async fn osm_import(
 fn geometry_from_obj(obj: &OsmObj, objs: &BTreeMap<OsmId, OsmObj>) -> Option<Geometry<f64>> {
     match obj {
         OsmObj::Node(node) => Some(Point::new(node.lon(), node.lat()).into()),
-        OsmObj::Way(way) => {
-            let geom = LineString::from(
-                way.nodes
-                    .iter()
-                    .filter_map(|id| {
-                        objs.get(&OsmId::Node(*id))
-                            .and_then(|o| o.node())
-                            .map(|n| (n.lon(), n.lat()))
-                    })
-                    .collect::<Vec<(f64, f64)>>(),
-            );
-
-            assert!(geom.lines().count() > 0);
-
-            if geom.is_closed() {
-                Some(Polygon::new(geom, vec![]).into())
+        OsmObj::Way(way) => to_linestring(&way.nodes, objs).map(|l| {
+            if l.is_closed() {
+                Polygon::new(l, vec![]).into()
             } else {
-                Some(geom.into())
+                l.into()
             }
-        }
+        }),
         OsmObj::Relation(rel) => {
             // match type of relation https://wiki.openstreetmap.org/wiki/Types_of_relation
             if let Some(rel_type) = rel.tags.get("type").map(|s| s.as_str()) {
                 if vec!["multipolygon", "boundary"].contains(&rel_type) {
-                    boundaries::build_boundary(&rel, &objs).map(|p| p.into())
+                    boundaries::build_boundary(&rel, objs).map(|p| p.into())
                 } else if vec![
                     "multilinestring",
                     "route",
@@ -312,25 +373,15 @@ fn geometry_from_obj(obj: &OsmObj, objs: &BTreeMap<OsmId, OsmObj>) -> Option<Geo
                 ]
                 .contains(&rel_type)
                 {
-                    let refs = RefIter::new(rel, &objs);
-                    let geom = MultiLineString(
-                        refs.filter_map(|r| {
-                            objs.get(&r.member).and_then(|o| o.way()).map(|w| {
-                                LineString::from(
-                                    w.nodes
-                                        .iter()
-                                        .filter_map(|n| {
-                                            objs.get(&OsmId::Node(*n))
-                                                .and_then(|n| n.node())
-                                                .map(|n| (n.lon(), n.lat()))
-                                        })
-                                        .collect::<Vec<(f64, f64)>>(),
-                                )
-                            })
+                    RefIter::new(&rel.refs, objs)
+                        .filter_map(|id| id.way())
+                        .map(|id| {
+                            objs.get(&obj.id())
+                                .and_then(|obj| obj.way())
+                                .and_then(|way| to_linestring(&way.nodes, objs))
                         })
-                        .collect::<Vec<LineString<f64>>>(),
-                    );
-                    Some(geom.into())
+                        .collect::<Option<Vec<LineString<f64>>>>()
+                        .map(|l| MultiLineString(l).into())
                 } else if vec![
                     "collection",
                     "public_transport",
@@ -356,32 +407,55 @@ fn geometry_from_obj(obj: &OsmObj, objs: &BTreeMap<OsmId, OsmObj>) -> Option<Geo
     }
 }
 
+fn to_linestring(nodes: &Vec<NodeId>, objs: &BTreeMap<OsmId, OsmObj>) -> Option<LineString<f64>> {
+    if nodes.len() < 2 {
+        return None;
+    }
+
+    nodes
+        .iter()
+        .map(|id| objs.get(&OsmId::Node(*id)).and_then(to_coordinate))
+        .collect::<Option<Vec<Coordinate<f64>>>>()
+        .map(LineString::from)
+}
+
+fn to_coordinate(obj: &OsmObj) -> Option<Coordinate<f64>> {
+    obj.node().map(|n| Coordinate {
+        x: n.lon(),
+        y: n.lat(),
+    })
+}
+
 struct RefIter<'a> {
-    refs: Vec<Ref>,
-    objs: &'a BTreeMap<OsmId, OsmObj>,
+    refs: Vec<osmpbfreader::Ref>,
+    cache: &'a BTreeMap<OsmId, OsmObj>,
 }
 
 impl<'a> RefIter<'a> {
-    fn new(relation: &'a Relation, objs: &'a BTreeMap<OsmId, OsmObj>) -> Self {
+    fn new(refs: &'a Vec<osmpbfreader::Ref>, cache: &'a BTreeMap<OsmId, OsmObj>) -> Self {
         RefIter {
-            refs: relation.refs.to_owned(),
-            objs,
+            refs: refs.to_owned(),
+            cache,
         }
     }
 }
 
 impl<'a> Iterator for RefIter<'a> {
-    type Item = Ref;
+    type Item = OsmId;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(r) = self.refs.pop() {
-            if let Some(mut relation) = self.objs.get(&r.member).and_then(|o| o.relation().cloned())
+        while let Some(r) = self.refs.pop() {
+            if let Some(mut relation) = self
+                .cache
+                .get(&r.member)
+                .and_then(|obj| obj.relation())
+                .cloned()
             {
                 self.refs.append(&mut relation.refs);
+            } else {
+                return Some(r.member);
             }
-            Some(r)
-        } else {
-            None
         }
+        None
     }
 }

@@ -21,9 +21,9 @@ CREATE TABLE collections (
 );
 
 CREATE TABLE features (
-    id serial,
+    id bigserial,
     collection text NOT NULL,
-    feature_type jsonb NOT NULL,
+    feature_type jsonb NOT NULL DEFAULT '"Feature"'::jsonb,
     properties jsonb,
     geom geometry NOT NULL,
     links jsonb,

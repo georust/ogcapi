@@ -41,7 +41,7 @@ impl Service {
         // queryables
         //app.at("/queryables").get(handle_queryables);
 
-        // collections
+        // Collections
         app.at("/collections")
             .get(collections::handle_collections)
             .post(collections::create_collection);
@@ -51,7 +51,7 @@ impl Service {
             .delete(collections::delete_collection);
         //app.at("/collections/:collection/queryables").get(handle_queryables);
 
-        // items
+        // Features
         app.at("/collections/:collection/items")
             .get(features::handle_items)
             .post(features::create_item);
@@ -60,7 +60,7 @@ impl Service {
             .put(features::update_item)
             .delete(features::delete_item);
 
-        // tiles
+        // Tiles
         // app.at("tileMatrixSets").get(tiles::get_matrixsets);
         // app.at("tileMatrixSets/:matrix_set").get(tiles::get_matrixset);
         // app.at("collections/:collection/tiles").get(tiles::handle_tiles);

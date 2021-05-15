@@ -30,7 +30,7 @@ pub struct FeatureCollection {
 #[derive(sqlx::FromRow, Deserialize, Serialize, Debug, PartialEq)]
 pub struct Feature {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<i32>,
+    pub id: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub collection: Option<String>,
     #[serde(rename = "type")]

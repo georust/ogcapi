@@ -11,11 +11,11 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::types::Json;
 
 #[allow(unused_imports)]
-use crate::collection::{Collection, Extent, ItemType, Provider, Summaries};
+use crate::collections::{Collection, Extent, ItemType, Provider, Summaries};
 #[allow(unused_imports)]
 use crate::common::Link;
 #[allow(unused_imports)]
-use crate::feature::{Assets, Feature, FeatureType};
+use crate::features::{Assets, Feature, FeatureType};
 
 #[async_std::test]
 async fn minimal_feature_crud() -> std::io::Result<()> {

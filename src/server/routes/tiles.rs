@@ -1,6 +1,6 @@
 use tide::{Request, Response, Result};
 
-use crate::tile::Tile;
+use crate::tiles::Tile;
 
 use super::Service;
 

@@ -4,7 +4,7 @@ use sqlx::types::Json;
 use tide::{Body, Request, Response, Result};
 
 use crate::common::{ContentType, Link, LinkRelation};
-use crate::feature::{Assets, Feature, FeatureCollection, FeatureType, Query};
+use crate::features::{Assets, Feature, FeatureCollection, FeatureType, Query};
 
 use super::Service;
 
@@ -33,25 +33,25 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
     if let Some(links) = feature.links.as_mut() {
         links.push(Link {
             href: format!("{}/{}", url, feature.id.clone().unwrap()),
-            r#type: Some(ContentType::GEOJSON),
+            r#type: Some(ContentType::GeoJSON),
             ..Default::default()
         });
         links.push(Link {
             href: url.as_str().replace("/items", ""),
             rel: LinkRelation::Collection,
-            r#type: Some(ContentType::GEOJSON),
+            r#type: Some(ContentType::GeoJSON),
             ..Default::default()
         });
     };
 
     let mut res = Response::new(200);
-    // res.set_content_type(ContentType::GEOJSON);
+    // res.set_content_type(ContentType::GeoJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
 
 pub async fn read_item(req: Request<Service>) -> tide::Result {
-    let id: i32 = req.param("id")?.parse()?;
+    let id: i64 = req.param("id")?.parse()?;
 
     let mut feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", id)
         .fetch_one(&req.state().pool)
@@ -62,7 +62,7 @@ pub async fn read_item(req: Request<Service>) -> tide::Result {
         if !relations.contains(&LinkRelation::Selfie) {
             links.push(Link {
                 href: "".to_string(),
-                r#type: Some(ContentType::GEOJSON),
+                r#type: Some(ContentType::GeoJSON),
                 ..Default::default()
             });
         };
@@ -70,14 +70,14 @@ pub async fn read_item(req: Request<Service>) -> tide::Result {
             links.push(Link {
                 href: "../..".to_string(),
                 rel: LinkRelation::Collection,
-                r#type: Some(ContentType::GEOJSON),
+                r#type: Some(ContentType::GeoJSON),
                 ..Default::default()
             });
         };
     }
 
     let mut res = Response::new(200);
-    // res.set_content_type(ContentType::GEOJSON);
+    // res.set_content_type(ContentType::GeoJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
@@ -86,7 +86,7 @@ pub async fn update_item(mut req: Request<Service>) -> tide::Result {
     let url = req.url().clone();
     let mut feature: Feature = req.body_json().await?;
 
-    let id: i32 = req.param("id")?.parse()?;
+    let id: i64 = req.param("id")?.parse()?;
     let collection: &str = req.param("collection")?;
 
     feature = sqlx::query_file_as!(
@@ -108,25 +108,25 @@ pub async fn update_item(mut req: Request<Service>) -> tide::Result {
     if let Some(links) = feature.links.as_mut() {
         links.push(Link {
             href: url.to_string(),
-            r#type: Some(ContentType::GEOJSON),
+            r#type: Some(ContentType::GeoJSON),
             ..Default::default()
         });
         links.push(Link {
             href: url.as_str().replace(&format!("/items/{}", id), ""),
             rel: LinkRelation::Collection,
-            r#type: Some(ContentType::GEOJSON),
+            r#type: Some(ContentType::GeoJSON),
             ..Default::default()
         });
     };
 
     let mut res = Response::new(200);
-    // res.set_content_type(ContentType::GEOJSON);
+    // res.set_content_type(ContentType::GeoJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
 
 pub async fn delete_item(req: Request<Service>) -> tide::Result {
-    let id: i32 = req.param("id")?.parse()?;
+    let id: i64 = req.param("id")?.parse()?;
 
     sqlx::query_file_as!(Feature, "sql/feature_delete.sql", &id)
         .execute(&req.state().pool)
@@ -167,7 +167,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
 
     let mut links = vec![Link {
         href: url.to_string(),
-        r#type: Some(ContentType::GEOJSON),
+        r#type: Some(ContentType::GeoJSON),
         ..Default::default()
     }];
 
@@ -188,7 +188,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
                 let previous = Link {
                     href: url.to_string(),
                     rel: LinkRelation::Previous,
-                    r#type: Some(ContentType::GEOJSON),
+                    r#type: Some(ContentType::GeoJSON),
                     ..Default::default()
                 };
                 links.push(previous);
@@ -199,7 +199,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
                 let next = Link {
                     href: url.to_string(),
                     rel: LinkRelation::Next,
-                    r#type: Some(ContentType::GEOJSON),
+                    r#type: Some(ContentType::GeoJSON),
                     ..Default::default()
                 };
                 links.push(next);
@@ -224,7 +224,7 @@ pub async fn handle_items(req: Request<Service>) -> Result {
     };
 
     let mut res = Response::new(200);
-    // res.set_content_type(ContentType::GEOJSON);
+    // res.set_content_type(ContentType::GeoJSON);
     res.set_body(Body::from_json(&feature_collection)?);
     Ok(res)
 }

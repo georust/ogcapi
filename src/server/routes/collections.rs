@@ -3,7 +3,7 @@ use sqlx::types::Json;
 use tide::http::url::Position;
 use tide::{Body, Request, Response, Result};
 
-use crate::collection::{Collection, Collections, Extent, ItemType, Provider, Summaries};
+use crate::collections::{Collection, Collections, Extent, ItemType, Provider, Summaries};
 use crate::common::{ContentType, Datetime, Link, LinkRelation, BBOX, CRS};
 
 use super::Service;
@@ -54,7 +54,7 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
             Link {
                 href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
                 rel: LinkRelation::Items,
-                r#type: Some(ContentType::GEOJSON),
+                r#type: Some(ContentType::GeoJSON),
                 title: Some(format!(
                     "Items of {}",
                     collection.title.as_ref().unwrap_or(&collection.id)

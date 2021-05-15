@@ -33,7 +33,7 @@ pub async fn root(req: Request<Service>) -> Result {
             Link {
                 href: "/api".to_string(),
                 rel: LinkRelation::ServiceDesc,
-                r#type: Some(ContentType::OPENAPI),
+                r#type: Some(ContentType::OpenAPI),
                 title: Some("the API definition".to_string()),
                 ..Default::default()
             },

@@ -45,7 +45,7 @@ pub enum ContentType {
     #[serde(rename = "application/json")]
     JSON,
     #[serde(rename = "application/geo+json")]
-    GEOJSON,
+    GeoJSON,
     #[serde(rename = "application/vnd.oai.openapi+json;version=3.0")]
-    OPENAPI,
+    OpenAPI,
 }

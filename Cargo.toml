@@ -11,12 +11,14 @@ anyhow = "1"
 async-std = {version = "1.9", features = ["attributes"]}
 chrono = {version = "0.4", features = ["serde"]}
 dotenv = "0.15"
+env_logger = "0.8"
 gdal = {version = "0.8", features = ["datetime"]}
 geo = "0.18"
 geojson = "0.22.0"
-indicatif = "0.16"
+log = "0.4"
 openapiv3 = "0.5.0"
 osmpbfreader = "0.14"
+pbr = "1.0"
 serde = "1"
 serde_json = "1"
 serde_yaml = "0.8"

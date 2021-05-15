@@ -1,11 +1,10 @@
-pub mod collection;
+pub mod collections;
 pub mod common;
-pub mod feature;
+pub mod features;
 pub mod import;
+pub mod tiles;
 
-pub mod tile;
-
-mod tests;
 mod server;
+mod tests;
 
 pub use server::Service;

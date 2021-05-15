@@ -46,13 +46,17 @@ use self::boundary_part::BoundaryPart;
 fn get_nodes<T: Borrow<osmpbfreader::OsmObj>>(
     way: &osmpbfreader::Way,
     objects: &BTreeMap<osmpbfreader::OsmId, T>,
-) -> Vec<osmpbfreader::Node> {
+) -> Option<Vec<osmpbfreader::Node>> {
     way.nodes
         .iter()
-        .filter_map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
-        .filter_map(|node_obj| {
-            if let osmpbfreader::OsmObj::Node(ref node) = *node_obj.borrow() {
-                Some(node.clone())
+        .map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
+        .map(|node_obj| {
+            if let Some(n) = node_obj {
+                if let osmpbfreader::OsmObj::Node(ref node) = *n.borrow() {
+                    Some(node.clone())
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -102,21 +106,43 @@ pub fn build_boundary_parts<T: Borrow<osmpbfreader::OsmObj>>(
     roles_to_extact: Vec<&str>,
 ) -> Option<MultiPolygon<f64>> {
     let roles = roles_to_extact;
-    let mut boundary_parts: Vec<BoundaryPart> = relation
+
+    let parts: Option<Vec<&T>> = relation
         .refs
         .iter()
         .filter(|r| roles.contains(&r.role.as_str()))
-        .filter_map(|r| {
-            objects.get(&r.member)
+        .map(|r| {
+            let obj = objects.get(&r.member);
             // if obj.is_none() {
-            //     debug!(
+            //     println!(
             //         "missing element {:?} for relation {}",
             //         r.member, relation.id.0
             //     );
             // }
+            obj
         })
+        .collect();
+
+    if parts.is_none() {
+        return None;
+    }
+
+    let parts: Option<Vec<Vec<osmpbfreader::Node>>> = parts
+        .unwrap()
+        .iter()
+        .cloned()
         .filter_map(|way_obj| way_obj.borrow().way())
         .map(|way| get_nodes(way, objects))
+        .collect();
+
+    if parts.is_none() {
+        return None;
+    }
+
+    let mut boundary_parts: Vec<BoundaryPart> = parts
+        .unwrap()
+        .iter()
+        .cloned()
         .filter_map(BoundaryPart::new)
         .collect();
     let mut multipoly = MultiPolygon(vec![]);

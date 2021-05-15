@@ -1,7 +1,6 @@
-use std::{ffi::OsStr, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Result;
-use sqlx::postgres::PgPoolOptions;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -13,11 +12,7 @@ enum Args {
         #[structopt(parse(from_os_str))]
         input: PathBuf,
 
-        /// Specify the layer name to import, all if not present
-        #[structopt(long)]
-        layer: Option<String>,
-
-        /// Filter osm input fatures by tags
+        /// Filter input by layer name or osm filter query, imports all if not present
         #[structopt(long)]
         filter: Option<String>,
 
@@ -42,30 +37,20 @@ async fn main() -> Result<()> {
     // setup env
     dotenv::dotenv().ok();
 
+    // initialize logging
+    // env_logger::init();
+
     // read cli args
     let args = Args::from_args();
-    println!("{:#?}", args);
+    log::info!("{:?}", args);
 
     match args {
         Args::Import {
             input,
-            layer,
             filter,
             collection,
         } => {
-            // Create a connection pool
-            let db_url = std::env::var("DATABASE_URL")?;
-            let pool = PgPoolOptions::new()
-                .max_connections(5)
-                .connect(&db_url)
-                .await?;
-
-            // Import data
-            if input.extension() == Some(OsStr::new("pbf")) {
-                ogcapi::import::osm_import(&input, &filter, &collection, &pool).await?
-            } else {
-                ogcapi::import::gdal_import(&input, &layer, &collection, &pool).await?;
-            }
+            ogcapi::import::import(input, &filter, &collection).await?;
         }
         Args::Serve { host, port } => {
             // Retrieve server address
