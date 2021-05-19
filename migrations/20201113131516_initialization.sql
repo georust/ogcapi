@@ -35,6 +35,12 @@ CREATE TABLE features (
     CONSTRAINT features_collection_fkey FOREIGN KEY (collection) REFERENCES public.collections (id) ON DELETE CASCADE
 );
 
+CREATE TABLE styles (
+    id text PRIMARY KEY,
+    title text,
+    links jsonb NOT NULL
+);
+
 -- Indexes
 CREATE INDEX features_properties_idx ON public.features USING gin (properties);
 CREATE INDEX features_geom_idx ON public.features USING gist (geom);

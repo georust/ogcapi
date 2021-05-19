@@ -49,7 +49,7 @@ pub async fn gdal_import(
     gdal::config::set_config_option("PG_USE_COPY", "YES")?;
 
     // Get target dataset layer
-    let drv = Driver::get("PostgreSQL")?;
+    let drv = gdal::Driver::get("PostgreSQL")?;
     let ds = drv.create_vector_only(&format!("PG:{}", std::env::var("DATABASE_URL")?))?;
     let lyr = ds.layer_by_name("features")?;
 

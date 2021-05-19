@@ -48,4 +48,8 @@ pub enum ContentType {
     GeoJSON,
     #[serde(rename = "application/vnd.oai.openapi+json;version=3.0")]
     OpenAPI,
+    #[serde(rename = "application/vnd.mapbox.style+json")]
+    MapboxStyle,
+    #[serde(rename = "application/vnd.ogc.sld+xml;version=1.0")]
+    SLD,
 }

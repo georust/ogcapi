@@ -1,5 +1,6 @@
 pub mod collections;
 pub mod features;
+pub mod styles;
 pub mod tiles;
 
 use std::env;

@@ -1,6 +1,6 @@
 pub mod routes;
 
-pub use routes::{collections, features, tiles};
+pub use routes::{collections, features, styles, tiles};
 
 mod exception;
 
@@ -66,6 +66,14 @@ impl Service {
         // app.at("collections/:collection/tiles").get(tiles::handle_tiles);
         app.at("collections/:collection/tiles/:matrix_set/:matrix/:row/:col")
             .get(tiles::get_tile);
+
+        // Styles
+        app.at("/styles").get(styles::handle_styles);
+        // .post(styles::create_style);
+        app.at("/styles/:id").get(styles::read_style);
+        // .put(styles::update_style)
+        // .delete(styles::delete_style);
+        // app.at("/styles/:id/metadata").get(styles::read_style_matadata);
 
         app.with(After(exception::exception));
 
