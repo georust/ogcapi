@@ -107,44 +107,26 @@ pub fn build_boundary_parts<T: Borrow<osmpbfreader::OsmObj>>(
 ) -> Option<MultiPolygon<f64>> {
     let roles = roles_to_extact;
 
-    let parts: Option<Vec<&T>> = relation
+    let parts = relation
         .refs
         .iter()
         .filter(|r| roles.contains(&r.role.as_str()))
-        .map(|r| {
-            let obj = objects.get(&r.member);
-            // if obj.is_none() {
-            //     println!(
-            //         "missing element {:?} for relation {}",
-            //         r.member, relation.id.0
-            //     );
-            // }
-            obj
-        })
-        .collect();
+        .map(|r| objects.get(&r.member))
+        .collect::<Option<Vec<&T>>>()?;
 
-    if parts.is_none() {
-        return None;
-    }
-
-    let parts: Option<Vec<Vec<osmpbfreader::Node>>> = parts
-        .unwrap()
+    let parts = parts
         .iter()
         .cloned()
         .filter_map(|way_obj| way_obj.borrow().way())
         .map(|way| get_nodes(way, objects))
-        .collect();
-
-    if parts.is_none() {
-        return None;
-    }
+        .collect::<Option<Vec<Vec<osmpbfreader::Node>>>>()?;
 
     let mut boundary_parts: Vec<BoundaryPart> = parts
-        .unwrap()
         .iter()
         .cloned()
         .filter_map(BoundaryPart::new)
         .collect();
+
     let mut multipoly = MultiPolygon(vec![]);
 
     let mut append_ring = |nodes: &[osmpbfreader::Node]| {
