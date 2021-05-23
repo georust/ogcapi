@@ -1,0 +1,660 @@
+{
+  "db": "PostgreSQL",
+  "00e15a1a0a3425b95f53a840875feffbd302e85cd6bc9181a96ce925f988904b": {
+    "query": "UPDATE\n    collections\nSET\n    title = $2,\n    description = $3,\n    links = $4,\n    extent = $5,\n    item_type = $6,\n    crs = $7,\n    storage_crs = $8,\n    storage_crs_coordinate_epoch = $9,\n    stac_version = $10,\n    stac_extensions = $11,\n    keywords = $12,\n    licence = $13,\n    providers = $14,\n    summaries = $15\nWHERE\n    id = $1\nRETURNING\n    id,\n    title,\n    description,\n    links AS \"links: Json<Vec<Link>>\",\n    extent AS \"extent: Json<Extent>\",\n    item_type AS \"item_type: Json<ItemType>\",\n    crs,\n    storage_crs,\n    storage_crs_coordinate_epoch,\n    stac_version,\n    stac_extensions,\n    keywords,\n    licence,\n    providers AS \"providers: Json<Vec<Provider>>\",\n    summaries AS \"summaries: Json<Summaries>\"\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "title",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "links: Json<Vec<Link>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 4,
+          "name": "extent: Json<Extent>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "item_type: Json<ItemType>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 6,
+          "name": "crs",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 7,
+          "name": "storage_crs",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "storage_crs_coordinate_epoch",
+          "type_info": "Float4"
+        },
+        {
+          "ordinal": 9,
+          "name": "stac_version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 10,
+          "name": "stac_extensions",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 11,
+          "name": "keywords",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 12,
+          "name": "licence",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "providers: Json<Vec<Provider>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 14,
+          "name": "summaries: Json<Summaries>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Jsonb",
+          "Jsonb",
+          "Jsonb",
+          "TextArray",
+          "Text",
+          "Float4",
+          "Text",
+          "TextArray",
+          "TextArray",
+          "Text",
+          "Jsonb",
+          "Jsonb"
+        ]
+      },
+      "nullable": [
+        false,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "02011b25ca26e975d713b8d791367905b217e74f826dfe945cb85e95d1ec0c26": {
+    "query": "WITH collection AS (SELECT * from features WHERE collection = $1)\n(\n  SELECT ST_AsMVT(mvtgeom, 'collection', 4096, 'geom', 'id') FROM (\n    SELECT ST_AsMVTGeom(ST_Transform(ST_Force2D(geom), 3857), ST_TileEnvelope($2, $3, $4), 4096, 64, TRUE) AS geom, collection, id, properties\n    FROM collection\n    WHERE geom && ST_Transform(ST_TileEnvelope($2, $3, $4, margin => (64.0 / 4096)), 4326)\n  ) AS mvtgeom\n)\n\n\n--martin https://github.com/urbica/martin/blob/master/src/scripts/get_tile.sql\n--\n-- WITH bounds AS (SELECT {mercator_bounds} as mercator, {original_bounds} as original)\n-- SELECT ST_AsMVT(tile, '{id}', {extent}, 'geom' {id_column}) FROM (\n--   SELECT\n--     ST_AsMVTGeom({geometry_column_mercator}, bounds.mercator, {extent}, {buffer}, {clip_geom}) AS geom {properties}\n--   FROM {id}, bounds\n--   WHERE {geometry_column} && bounds.original\n-- ) AS tile WHERE geom IS NOT NULL\n\n\n--pg_tileserve https://github.com/CrunchyData/pg_tileserv/blob/master/layer_table.go\n--\n-- SELECT ST_AsMVT(mvtgeom, {{ .MvtParams }}) FROM (\n-- \t\tSELECT ST_AsMVTGeom(\n-- \t\t\tST_Transform(ST_Force2D(t.\"{{ .GeometryColumn }}\"), {{ .TileSrid }}),\n-- \t\t\tbounds.geom_clip,\n-- \t\t\t{{ .Resolution }},\n-- \t\t\t{{ .Buffer }}\n-- \t\t  ) AS \"{{ .GeometryColumn }}\"\n-- \t\t  {{ if .Properties }}\n-- \t\t  , {{ .Properties }}\n-- \t\t  {{ end }}\n-- \t\tFROM \"{{ .Schema }}\".\"{{ .Table }}\" t, (\n-- \t\t\tSELECT {{ .TileSql }}  AS geom_clip,\n-- \t\t\t\t\t{{ .QuerySql }} AS geom_query\n-- \t\t\t) bounds\n-- \t\tWHERE ST_Intersects(t.\"{{ .GeometryColumn }}\",\n-- \t\t\t\t\t\t\tST_Transform(bounds.geom_query, {{ .Srid }}))\n-- \t\t{{ .Limit }}\n-- \t) mvtgeom\n\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "st_asmvt",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4",
+          "Int4",
+          "Int4"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "2663fba9f156173aec5e3eb46dfa72337f2795f79dd83fdb053b79c46d2bee60": {
+    "query": "DELETE FROM features\nWHERE id = $1\n",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "44cf51feff86ab365470c75d51b233d978262427612fad91ee1bcfff43cc7379": {
+    "query": "INSERT INTO features (\n    id,\n    collection,\n    feature_type,\n    properties,\n    geom\n    ) VALUES ($1, $2, '\"Feature\"', $3, ST_GeomFromWKB($4, 4326))\n",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text",
+          "Jsonb",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "49b41e2a3ae6c64c9a36f96caca0ff468bfab6759f09ff5d94e9e6944496a7e7": {
+    "query": "SELECT\n    id AS \"id?\",\n    collection AS \"collection?\",\n    feature_type AS \"feature_type: Json<FeatureType>\",\n    properties,\n    ST_AsGeoJSON(geom)::jsonb AS \"geometry!: Json<Geometry>\",\n    links AS \"links: Json<Vec<Link>>\",\n    stac_version,\n    stac_extensions,\n    bbox AS \"bbox: Json<Bbox>\",\n    assets AS \"assets: Json<Assets>\"\nFROM\n    features\nWHERE\n    id = $1\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id?",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "collection?",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "feature_type: Json<FeatureType>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 3,
+          "name": "properties",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 4,
+          "name": "geometry!: Json<Geometry>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "links: Json<Vec<Link>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 6,
+          "name": "stac_version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 7,
+          "name": "stac_extensions",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 8,
+          "name": "bbox: Json<Bbox>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 9,
+          "name": "assets: Json<Assets>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        null,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "74b5e280ac3af7d96dddfeb4037ff484971469bac35b9fd7492befb7517dd87b": {
+    "query": "INSERT INTO features (\n    collection,\n    feature_type,\n    properties,\n    geom,\n    links,\n    stac_version,\n    stac_extensions,\n    assets\n    ) VALUES ($1, $2, $3, ST_SetSRID(ST_GeomFromGeoJSON($4),4326), $5, $6, $7, $8)\nRETURNING\n    id AS \"id?\",\n    collection AS \"collection?\",\n    feature_type AS \"feature_type: Json<FeatureType>\",\n    properties,\n    ST_AsGeoJSON (geom)::jsonb AS \"geometry!: Json<Geometry>\",\n    links AS \"links: Json<Vec<Link>>\",\n    stac_version,\n    stac_extensions,\n    bbox AS \"bbox: Json<Bbox>\",\n    assets AS \"assets: Json<Assets>\"\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id?",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "collection?",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "feature_type: Json<FeatureType>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 3,
+          "name": "properties",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 4,
+          "name": "geometry!: Json<Geometry>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "links: Json<Vec<Link>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 6,
+          "name": "stac_version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 7,
+          "name": "stac_extensions",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 8,
+          "name": "bbox: Json<Bbox>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 9,
+          "name": "assets: Json<Assets>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Jsonb",
+          "Jsonb",
+          "Text",
+          "Jsonb",
+          "Text",
+          "TextArray",
+          "Jsonb"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        null,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "7b9461013fd703ac93f590d5719f03186da4c05650c1ff26391e2182c0d11102": {
+    "query": "UPDATE\n    features\nSET\n    collection = $2,\n    feature_type = $3,\n    properties = $4,\n    geom = ST_GeomFromGeoJSON($5),\n    links = $6,\n    stac_version = $7,\n    stac_extensions = $8,\n    assets = $9\nWHERE\n    id = $1\nRETURNING\n    id AS \"id?\",\n    collection AS \"collection?\",\n    feature_type AS \"feature_type: Json<FeatureType>\",\n    properties,\n    ST_AsGeoJSON(geom)::jsonb AS \"geometry!: Json<Geometry>\",\n    links AS \"links: Json<Vec<Link>>\",\n    stac_version,\n    stac_extensions,\n    bbox AS \"bbox: Json<Bbox>\",\n    assets AS \"assets: Json<Assets>\"\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id?",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "collection?",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "feature_type: Json<FeatureType>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 3,
+          "name": "properties",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 4,
+          "name": "geometry!: Json<Geometry>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "links: Json<Vec<Link>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 6,
+          "name": "stac_version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 7,
+          "name": "stac_extensions",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 8,
+          "name": "bbox: Json<Bbox>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 9,
+          "name": "assets: Json<Assets>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text",
+          "Jsonb",
+          "Jsonb",
+          "Text",
+          "Jsonb",
+          "Text",
+          "TextArray",
+          "Jsonb"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        null,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "969630837fd2bf4c1d741d3d229ec91c73ac26b9f6e1aaea087611228fd866d7": {
+    "query": "DELETE FROM collections\nWHERE id = $1\n",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "c14a69ce232bb212bd5ad8c21540bf05d014a72dc1b142011afad00e93366339": {
+    "query": "SELECT\n    id,\n    title,\n    description,\n    links AS \"links: Json<Vec<Link>>\",\n    extent AS \"extent: Json<Extent>\",\n    item_type AS \"item_type: Json<ItemType>\",\n    crs,\n    storage_crs,\n    storage_crs_coordinate_epoch,\n    stac_version,\n    stac_extensions,\n    keywords,\n    licence,\n    providers AS \"providers: Json<Vec<Provider>>\",\n    summaries AS \"summaries: Json<Summaries>\"\nFROM\n    collections\nWHERE\n    id = $1\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "title",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "links: Json<Vec<Link>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 4,
+          "name": "extent: Json<Extent>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "item_type: Json<ItemType>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 6,
+          "name": "crs",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 7,
+          "name": "storage_crs",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "storage_crs_coordinate_epoch",
+          "type_info": "Float4"
+        },
+        {
+          "ordinal": 9,
+          "name": "stac_version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 10,
+          "name": "stac_extensions",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 11,
+          "name": "keywords",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 12,
+          "name": "licence",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "providers: Json<Vec<Provider>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 14,
+          "name": "summaries: Json<Summaries>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "cd5aa1bb6ad39e32f538d6579eb2acec34b3e6b1e3814e22819c2c803ed7515c": {
+    "query": "SELECT * FROM conformance",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "class",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "ed115ca3517d80b07b6950866fdad81b3beddc639c9e9575101ff6a6e6a2ec05": {
+    "query": "INSERT INTO collections (\n    id,\n    title,\n    description,\n    links,\n    extent,\n    item_type,\n    crs,\n    storage_crs,\n    storage_crs_coordinate_epoch,\n    stac_version,\n    stac_extensions,\n    keywords,\n    licence,\n    providers,\n    summaries\n    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)\nRETURNING\n    id,\n    title,\n    description,\n    links AS \"links: Json<Vec<Link>>\",\n    extent AS \"extent: Json<Extent>\",\n    item_type AS \"item_type: Json<ItemType>\",\n    crs,\n    storage_crs,\n    storage_crs_coordinate_epoch,\n    stac_version,\n    stac_extensions,\n    keywords,\n    licence,\n    providers AS \"providers: Json<Vec<Provider>>\",\n    summaries AS \"summaries: Json<Summaries>\"\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "title",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "description",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "links: Json<Vec<Link>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 4,
+          "name": "extent: Json<Extent>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "item_type: Json<ItemType>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 6,
+          "name": "crs",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 7,
+          "name": "storage_crs",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 8,
+          "name": "storage_crs_coordinate_epoch",
+          "type_info": "Float4"
+        },
+        {
+          "ordinal": 9,
+          "name": "stac_version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 10,
+          "name": "stac_extensions",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 11,
+          "name": "keywords",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 12,
+          "name": "licence",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 13,
+          "name": "providers: Json<Vec<Provider>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 14,
+          "name": "summaries: Json<Summaries>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text",
+          "Text",
+          "Jsonb",
+          "Jsonb",
+          "Jsonb",
+          "TextArray",
+          "Text",
+          "Float4",
+          "Text",
+          "TextArray",
+          "TextArray",
+          "Text",
+          "Jsonb",
+          "Jsonb"
+        ]
+      },
+      "nullable": [
+        false,
+        true,
+        true,
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  }
+}

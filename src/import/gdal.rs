@@ -1,5 +1,3 @@
-extern crate osmpbfreader;
-
 use std::path::PathBuf;
 
 use gdal::{

@@ -1,10 +1,6 @@
-extern crate osmpbfreader;
-
 mod boundaries;
 mod gdal;
 mod osm;
-
-use std::path::PathBuf;
 
 use sqlx::{postgres::PgPoolOptions, types::Json, Pool, Postgres};
 
@@ -14,7 +10,7 @@ use crate::{
 };
 
 pub async fn import(
-    input: PathBuf,
+    input: std::path::PathBuf,
     filter: &Option<String>,
     collection: &Option<String>,
 ) -> Result<(), anyhow::Error> {

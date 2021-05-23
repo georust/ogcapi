@@ -1,4 +1,3 @@
-extern crate osmpbfreader;
 use std::{collections::BTreeMap, fs::File, path::PathBuf};
 
 use geo::{Coordinate, Geometry, LineString, MultiLineString, Point, Polygon};
@@ -72,13 +71,15 @@ pub async fn osm_import(
         }
 
         // build geometry
-        if let Some(geometry) = geometry_from_obj(&obj, &objs) {
+        if let Some(geometry) =
+            geometry_from_obj(&obj, &objs).and_then(|g| wkb::geom_to_wkb(&g).ok())
+        {
             sqlx::query_file!(
                 "sql/feature_import.sql",
                 id as i32,
                 collection.id,
                 Value::from(properties) as _,
-                wkb::geom_to_wkb(&geometry).expect("convert geom to wkb") as _,
+                geometry as _,
             )
             .execute(&mut tx)
             .await?;
