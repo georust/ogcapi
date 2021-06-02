@@ -2,6 +2,7 @@ mod bbox;
 mod crs;
 mod datetime;
 mod link;
+mod exception;
 
 use serde::{Deserialize, Serialize};
 
@@ -9,6 +10,7 @@ pub use self::bbox::BBOX;
 pub use self::crs::CRS;
 pub use self::datetime::Datetime;
 pub use self::link::*;
+pub use self::exception::Exception;
 
 /// The Landing page is the entry point of a OGC API
 ///
