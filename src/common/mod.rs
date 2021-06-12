@@ -1,16 +1,19 @@
 mod bbox;
 mod crs;
 mod datetime;
-mod link;
 mod exception;
+mod link;
+
+use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use tide::http::Mime;
 
 pub use self::bbox::BBOX;
 pub use self::crs::CRS;
 pub use self::datetime::Datetime;
-pub use self::link::*;
 pub use self::exception::Exception;
+pub use self::link::*;
 
 /// The Landing page is the entry point of a OGC API
 ///
@@ -54,4 +57,25 @@ pub enum ContentType {
     MapboxStyle,
     #[serde(rename = "application/vnd.ogc.sld+xml;version=1.0")]
     SLD,
+}
+
+impl Into<Mime> for ContentType {
+    fn into(self) -> Mime {
+        match self {
+            ContentType::JSON => Mime::from_str("application/json").unwrap(),
+            ContentType::GeoJSON => Mime::from_str("application/geo+json").unwrap(),
+            ContentType::OpenAPI => {
+                Mime::from_str("application/vnd.oai.openapi+json;version=3.0").unwrap()
+            }
+            ContentType::MapboxStyle => {
+                Mime::from_str("application/vnd.mapbox.style+json").unwrap()
+            }
+            ContentType::SLD => Mime::from_str("application/vnd.ogc.sld+xml;version=1.0").unwrap(),
+        }
+    }
+}
+
+#[test]
+fn content_type() {
+    let _mime: Mime = ContentType::OpenAPI.into();
 }

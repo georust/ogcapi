@@ -4,16 +4,15 @@ use geo::{Coordinate, Geometry, LineString, MultiLineString, Point, Polygon};
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 
 use serde_json::{Map, Value};
-use sqlx::{Pool, Postgres};
 
-use crate::{collections::Collection, import::boundaries};
+use crate::{collections::Collection, db::Db, import::boundaries};
 
 /// Import osm data from pbf file
 pub async fn osm_import(
     input: PathBuf,
     _filter: &Option<String>,
     collection: &Option<String>,
-    pool: &Pool<Postgres>,
+    db: &Db,
 ) -> Result<(), anyhow::Error> {
     // Create collection
     let title = collection.to_owned().unwrap_or_else(|| "OSM".to_string());
@@ -27,8 +26,8 @@ pub async fn osm_import(
         ]),
         ..Default::default()
     };
-    super::delete_collection(&collection.id, pool).await?;
-    super::insert_collection(&collection, pool).await?;
+    db.delete_collection(&collection.id).await?;
+    db.create_collection(&collection).await?;
 
     // Open file
     let file = File::open(input)?;
@@ -47,7 +46,7 @@ pub async fn osm_import(
 
     log::info!("Done caching!");
 
-    let mut tx = pool.begin().await?;
+    let mut tx = db.pool.begin().await?;
 
     for obj in pbf.par_iter() {
         let obj = obj.unwrap();

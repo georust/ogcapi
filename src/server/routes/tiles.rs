@@ -1,8 +1,6 @@
 use tide::{Request, Response, Result};
 
-use crate::tiles::Tile;
-
-use super::Service;
+use crate::{db::Db, tiles::Tile};
 
 // pub async fn get_tile_matrix_sets(req: Request<Service>) -> Result {
 //     let tile_matrix_sets = TileMatrixSets {
@@ -29,7 +27,7 @@ use super::Service;
 //     Ok(res)
 // }
 
-pub async fn get_tile(req: Request<Service>) -> Result {
+pub async fn get_tile(req: Request<Db>) -> Result {
     let collection = req.param("collection")?;
     let _matrix_set = req.param("matrix_set")?;
     let matrix: i32 = req.param("matrix")?.parse()?; // zoom, z

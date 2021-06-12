@@ -1,12 +1,10 @@
 use serde::Deserialize;
-use sqlx::types::Json;
 use tide::http::url::Position;
 use tide::{Body, Request, Response, Result};
 
-use crate::collections::{Collection, Collections, Extent, ItemType, Provider, Summaries};
+use crate::collections::{Collection, Collections};
 use crate::common::{ContentType, Datetime, Link, LinkRelation, BBOX, CRS};
-
-use super::Service;
+use crate::db::Db;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -40,7 +38,7 @@ struct Query {
 //     }
 // }
 
-pub async fn handle_collections(req: Request<Service>) -> Result {
+pub async fn handle_collections(req: Request<Db>) -> Result {
     let url = req.url();
 
     //let mut query: Query = req.query()?;
@@ -87,30 +85,10 @@ pub async fn handle_collections(req: Request<Service>) -> Result {
 }
 
 /// Create new collection metadata
-pub async fn create_collection(mut req: Request<Service>) -> Result {
+pub async fn create_collection(mut req: Request<Db>) -> Result {
     let mut collection: Collection = req.body_json().await?;
 
-    collection = sqlx::query_file_as!(
-        Collection,
-        "sql/collection_insert.sql",
-        collection.id,
-        collection.title,
-        collection.description,
-        collection.links as _,
-        collection.extent as _,
-        collection.item_type as _,
-        collection.crs.as_deref(),
-        collection.storage_crs,
-        collection.storage_crs_coordinate_epoch,
-        collection.stac_version,
-        collection.stac_extensions.as_deref(),
-        collection.keywords.as_deref(),
-        collection.licence,
-        collection.providers as _,
-        collection.summaries as _
-    )
-    .fetch_one(&req.state().pool)
-    .await?;
+    collection = req.state().create_collection(&collection).await?;
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&collection)?);
@@ -118,14 +96,12 @@ pub async fn create_collection(mut req: Request<Service>) -> Result {
 }
 
 /// Return collection metadata
-pub async fn read_collection(req: Request<Service>) -> Result {
+pub async fn read_collection(req: Request<Db>) -> Result {
     // let url = req.url();
 
     let id: &str = req.param("collection")?;
 
-    let collection: Collection = sqlx::query_file_as!(Collection, "sql/collection_select.sql", id)
-        .fetch_one(&req.state().pool)
-        .await?;
+    let collection = req.state().read_collection(id).await?;
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&collection)?);
@@ -133,32 +109,13 @@ pub async fn read_collection(req: Request<Service>) -> Result {
 }
 
 /// Update collection metadata
-pub async fn update_collection(mut req: Request<Service>) -> Result {
+pub async fn update_collection(mut req: Request<Db>) -> Result {
     let mut collection: Collection = req.body_json().await?;
 
     let id: &str = req.param("collection")?;
+    collection.id = id.to_owned();
 
-    collection = sqlx::query_file_as!(
-        Collection,
-        "sql/collection_update.sql",
-        id,
-        collection.title,
-        collection.description,
-        collection.links as _,
-        collection.extent as _,
-        collection.item_type as _,
-        collection.crs.as_deref(),
-        collection.storage_crs,
-        collection.storage_crs_coordinate_epoch,
-        collection.stac_version,
-        collection.stac_extensions.as_deref(),
-        collection.keywords.as_deref(),
-        collection.licence,
-        collection.providers as _,
-        collection.summaries as _
-    )
-    .fetch_one(&req.state().pool)
-    .await?;
+    collection = req.state().update_collection(&collection).await?;
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&collection)?);
@@ -166,7 +123,7 @@ pub async fn update_collection(mut req: Request<Service>) -> Result {
 }
 
 /// Delete collection metadata
-pub async fn delete_collection(req: Request<Service>) -> Result {
+pub async fn delete_collection(req: Request<Db>) -> Result {
     let id: &str = req.param("collection")?;
 
     sqlx::query_file!("sql/collection_delete.sql", id)

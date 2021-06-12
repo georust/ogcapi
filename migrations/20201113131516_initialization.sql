@@ -2,6 +2,19 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- Tables
+CREATE TABLE root (
+    href text NOT NULL,
+    rel text,
+    type text,
+    hreflang text,
+    title text,
+    length integer
+);
+
+CREATE TABLE conformance (
+    class text PRIMARY KEY
+);
+
 CREATE TABLE collections (
     id text PRIMARY KEY,
     title text,
@@ -44,3 +57,22 @@ CREATE TABLE styles (
 -- Indexes
 CREATE INDEX features_properties_idx ON public.features USING gin (properties);
 CREATE INDEX features_geom_idx ON public.features USING gist (geom);
+
+-- Insertions
+INSERT INTO
+    conformance (class)
+VALUES
+    ('http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core'),
+    ('http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections'),
+    ('http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json'),
+    ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core'),
+    ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30'),
+    ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson');
+
+INSERT INTO
+    root (href, rel, type, title)
+VALUES
+    ('/', 'self', 'application/json','This document'),
+    ('/api', 'service-doc', 'application/vnd.oai.openapi+json;version=3.0','The Open API definition'),
+    ('/conformance', 'conformance', 'application/json','OGC conformance classes implemented by this API'),
+    ('/collections', 'data', 'application/json','Metadata about the resource collections');

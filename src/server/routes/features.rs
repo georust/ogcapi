@@ -4,11 +4,10 @@ use sqlx::types::Json;
 use tide::{Body, Request, Response, Result};
 
 use crate::common::{ContentType, Link, LinkRelation};
+use crate::db::Db;
 use crate::features::{Assets, Feature, FeatureCollection, FeatureType, Query};
 
-use super::Service;
-
-pub async fn create_item(mut req: Request<Service>) -> tide::Result {
+pub async fn create_item(mut req: Request<Db>) -> tide::Result {
     let url = req.url().clone();
 
     let mut feature: Feature = req.body_json().await?;
@@ -50,7 +49,7 @@ pub async fn create_item(mut req: Request<Service>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn read_item(req: Request<Service>) -> tide::Result {
+pub async fn read_item(req: Request<Db>) -> tide::Result {
     let id: i64 = req.param("id")?.parse()?;
 
     let mut feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", id)
@@ -82,7 +81,7 @@ pub async fn read_item(req: Request<Service>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn update_item(mut req: Request<Service>) -> tide::Result {
+pub async fn update_item(mut req: Request<Db>) -> tide::Result {
     let url = req.url().clone();
     let mut feature: Feature = req.body_json().await?;
 
@@ -125,7 +124,7 @@ pub async fn update_item(mut req: Request<Service>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn delete_item(req: Request<Service>) -> tide::Result {
+pub async fn delete_item(req: Request<Db>) -> tide::Result {
     let id: i64 = req.param("id")?.parse()?;
 
     sqlx::query_file_as!(Feature, "sql/feature_delete.sql", &id)
@@ -135,7 +134,7 @@ pub async fn delete_item(req: Request<Service>) -> tide::Result {
     Ok(Response::new(200))
 }
 
-pub async fn handle_items(req: Request<Service>) -> Result {
+pub async fn handle_items(req: Request<Db>) -> Result {
     let mut url = req.url().to_owned();
 
     let collection: &str = req.param("collection")?;

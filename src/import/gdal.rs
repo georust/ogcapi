@@ -6,15 +6,14 @@ use gdal::{
 };
 
 use serde_json::{json, Map, Value};
-use sqlx::{Pool, Postgres};
 
-use crate::collections::Collection;
+use crate::{collections::Collection, db::Db};
 
 pub async fn gdal_import(
     input: PathBuf,
     filter: &Option<String>,
     collection: &Option<String>,
-    pool: &Pool<Postgres>,
+    db: &Db,
 ) -> Result<(), anyhow::Error> {
     // GDAL Configuration Options http://trac.osgeo.org/gdal/wiki/ConfigOptions
     gdal::config::set_config_option("PG_USE_COPY", "YES")?;
@@ -41,8 +40,8 @@ pub async fn gdal_import(
 
         // Create collection
         let collection = collection_from_layer(&layer, collection)?;
-        super::delete_collection(&collection.id, &pool).await?;
-        super::insert_collection(&collection, &pool).await?;
+        db.delete_collection(&collection.id).await?;
+        db.create_collection(&collection).await?;
 
         log::info!("Importing layer: `{}`", &collection.title.unwrap());
 

@@ -61,8 +61,7 @@ async fn main() -> Result<()> {
                 .or(std::env::var("OGCAPI_PORT").ok())
                 .expect("Retrieve `OGCAPI_PORT`");
 
-            let service = ogcapi::Service::new().await;
-            let _s = service.run(&format!("{}:{}", host, port)).await;
+            let _ = ogcapi::server::run(&format!("{}:{}", host, port)).await;
         }
     }
 

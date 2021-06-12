@@ -3,56 +3,28 @@ pub mod features;
 pub mod styles;
 pub mod tiles;
 
-use std::env;
 use std::fs::File;
 
 use openapiv3::OpenAPI;
-use serde_json::json;
 use tide::{http::url::Position, Body, Request, Response, Result};
 
-use crate::common::{Conformance, ContentType, LandingPage, Link, LinkRelation};
+use crate::common::{ContentType, LandingPage};
+use crate::db::Db;
 
-use super::Service;
+static OGCAPI: &'static str = "api/ogcapi.yaml";
 
-pub async fn root(req: Request<Service>) -> Result {
+pub async fn root(req: Request<Db>) -> Result {
     let url = req.url();
 
-    let api_definition = env::var("API_DEFINITION")?;
-    let rdr = File::open(&api_definition)?;
+    let rdr = File::open(OGCAPI)?;
     let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
+
+    let links = req.state().root().await?;
 
     let mut landing_page = LandingPage {
         title: Some(openapi.info.title),
         description: openapi.info.description,
-        links: vec![
-            Link {
-                href: "/".to_string(),
-                r#type: Some(ContentType::JSON),
-                title: Some("this document".to_string()),
-                ..Default::default()
-            },
-            Link {
-                href: "/api".to_string(),
-                rel: LinkRelation::ServiceDesc,
-                r#type: Some(ContentType::OpenAPI),
-                title: Some("the API definition".to_string()),
-                ..Default::default()
-            },
-            Link {
-                href: "/conformance".to_string(),
-                rel: LinkRelation::Conformance,
-                r#type: Some(ContentType::JSON),
-                title: Some("OGC conformance classes implemented by this API".to_string()),
-                ..Default::default()
-            },
-            Link {
-                href: "/collections".to_string(),
-                rel: LinkRelation::Data,
-                r#type: Some(ContentType::JSON),
-                title: Some("Metadata about the resource collections".to_string()),
-                ..Default::default()
-            },
-        ],
+        links,
         attribution: None,
     };
 
@@ -65,18 +37,17 @@ pub async fn root(req: Request<Service>) -> Result {
     Ok(res)
 }
 
-pub async fn api(_req: Request<Service>) -> Result {
-    let api_definition = env::var("API_DEFINITION")?;
-    let rdr = File::open(&api_definition)?;
+pub async fn api(_req: Request<Db>) -> Result {
+    let rdr = File::open(OGCAPI)?;
     let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
 
     let mut res = Response::new(200);
-    // res.set_content_type(ContentType::OPENAPI);
+    res.set_content_type(ContentType::OpenAPI);
     res.set_body(Body::from_json(&openapi)?);
     Ok(res)
 }
 
-pub async fn redoc(req: Request<Service>) -> Result {
+pub async fn redoc(req: Request<Db>) -> Result {
     let api_url = req.url()[..Position::AfterPath].replace("redoc", "api");
 
     let mut res = Response::new(200);
@@ -112,15 +83,8 @@ pub async fn redoc(req: Request<Service>) -> Result {
     Ok(res)
 }
 
-pub async fn conformance(_req: Request<Service>) -> Result {
-    let conformance: Conformance = serde_json::from_value(json!({
-        "conformsTo": [
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
-            "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
-        ]
-    }))?;
+pub async fn conformance(req: Request<Db>) -> Result {
+    let conformance = req.state().conformance().await?;
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&conformance)?);

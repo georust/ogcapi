@@ -52,6 +52,7 @@ pub struct Feature {
 #[derive(sqlx::Type, Deserialize, Serialize, Debug, PartialEq)]
 pub enum FeatureType {
     Feature,
+    Unknown,
 }
 
 /// Dictionary of asset objects that can be downloaded, each with a unique key.
