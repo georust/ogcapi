@@ -20,7 +20,9 @@ pub async fn gdal_import(
 
     // Get target dataset layer
     let drv = gdal::Driver::get("PostgreSQL")?;
-    let ds = drv.create_vector_only(&format!("PG:{}", std::env::var("DATABASE_URL")?))?;
+    let db_url = "PG:host=localhost user=postgres dbname=ogcapi password=postgres"; // workaround gdal issue
+    // let db = format!("PG:{}", std::env::var("DATABASE_URL")?).as_str();
+    let ds = drv.create_vector_only(db_url)?;
     let lyr = ds.layer_by_name("features")?;
 
     // Open input dataset
@@ -93,7 +95,7 @@ pub async fn gdal_import(
 
             pb.inc();
         }
-        pb.finish();
+        pb.finish_println("");
     }
 
     Ok(())

@@ -15,7 +15,7 @@ tags:
   - name: Data
     description: access to data (features)
 servers:
-  - url: "http://0.0.0.0:8484"
+  - url: "http://192.168.1.222:8484"
     description: Local server
 paths:
   /:

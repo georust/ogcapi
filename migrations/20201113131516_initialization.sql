@@ -73,6 +73,6 @@ INSERT INTO
     root (href, rel, type, title)
 VALUES
     ('/', 'self', 'application/json','This document'),
-    ('/api', 'service-doc', 'application/vnd.oai.openapi+json;version=3.0','The Open API definition'),
+    ('/api', 'service-desc', 'application/vnd.oai.openapi+json;version=3.0','The Open API definition'),
     ('/conformance', 'conformance', 'application/json','OGC conformance classes implemented by this API'),
     ('/collections', 'data', 'application/json','Metadata about the resource collections');

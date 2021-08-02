@@ -114,7 +114,7 @@ impl Db {
 
     pub async fn delete_collection(&self, id: &str) -> Result<(), anyhow::Error> {
         sqlx::query_file_as!(Collection, "sql/collection_delete.sql", id)
-            .fetch_one(&self.pool)
+            .fetch_optional(&self.pool)
             .await?;
 
         Ok(())
