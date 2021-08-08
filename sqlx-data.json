@@ -141,6 +141,87 @@
       ]
     }
   },
+  "1c95cdb21535eda547cac6c9f1059e4415753091c78be20014c27269fb4bc770": {
+    "query": "INSERT INTO features (\n    collection,\n    feature_type,\n    properties,\n    geom,\n    links,\n    stac_version,\n    stac_extensions,\n    assets\n    ) VALUES ($1, $2, $3, ST_SetSRID(ST_GeomFromGeoJSON($4),4326), $5, $6, $7, $8)\nRETURNING\n    id AS \"id?\",\n    collection AS \"collection?\",\n    feature_type AS \"feature_type: Json<FeatureType>\",\n    properties,\n    ST_AsGeoJSON (geom)::jsonb AS \"geometry!: Json<Geometry>\",\n    links AS \"links: Json<Vec<Link>>\",\n    stac_version,\n    stac_extensions,\n    ST_AsGeoJSON(geom, 9, 1)::jsonb -> 'bbox' AS \"bbox: Json<Bbox>\",\n    assets AS \"assets: Json<Assets>\"\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id?",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "collection?",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "feature_type: Json<FeatureType>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 3,
+          "name": "properties",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 4,
+          "name": "geometry!: Json<Geometry>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "links: Json<Vec<Link>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 6,
+          "name": "stac_version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 7,
+          "name": "stac_extensions",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 8,
+          "name": "bbox: Json<Bbox>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 9,
+          "name": "assets: Json<Assets>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Jsonb",
+          "Jsonb",
+          "Text",
+          "Jsonb",
+          "Text",
+          "TextArray",
+          "Jsonb"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        null,
+        true,
+        true,
+        true,
+        null,
+        true
+      ]
+    }
+  },
   "2663fba9f156173aec5e3eb46dfa72337f2795f79dd83fdb053b79c46d2bee60": {
     "query": "DELETE FROM features\nWHERE id = $1\n",
     "describe": {
@@ -168,163 +249,8 @@
       "nullable": []
     }
   },
-  "49b41e2a3ae6c64c9a36f96caca0ff468bfab6759f09ff5d94e9e6944496a7e7": {
-    "query": "SELECT\n    id AS \"id?\",\n    collection AS \"collection?\",\n    feature_type AS \"feature_type: Json<FeatureType>\",\n    properties,\n    ST_AsGeoJSON(geom)::jsonb AS \"geometry!: Json<Geometry>\",\n    links AS \"links: Json<Vec<Link>>\",\n    stac_version,\n    stac_extensions,\n    bbox AS \"bbox: Json<Bbox>\",\n    assets AS \"assets: Json<Assets>\"\nFROM\n    features\nWHERE\n    id = $1\n",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id?",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 1,
-          "name": "collection?",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "feature_type: Json<FeatureType>",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 3,
-          "name": "properties",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 4,
-          "name": "geometry!: Json<Geometry>",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 5,
-          "name": "links: Json<Vec<Link>>",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 6,
-          "name": "stac_version",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 7,
-          "name": "stac_extensions",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 8,
-          "name": "bbox: Json<Bbox>",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 9,
-          "name": "assets: Json<Assets>",
-          "type_info": "Jsonb"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Int8"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        null,
-        true,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
-  "74b5e280ac3af7d96dddfeb4037ff484971469bac35b9fd7492befb7517dd87b": {
-    "query": "INSERT INTO features (\n    collection,\n    feature_type,\n    properties,\n    geom,\n    links,\n    stac_version,\n    stac_extensions,\n    assets\n    ) VALUES ($1, $2, $3, ST_SetSRID(ST_GeomFromGeoJSON($4),4326), $5, $6, $7, $8)\nRETURNING\n    id AS \"id?\",\n    collection AS \"collection?\",\n    feature_type AS \"feature_type: Json<FeatureType>\",\n    properties,\n    ST_AsGeoJSON (geom)::jsonb AS \"geometry!: Json<Geometry>\",\n    links AS \"links: Json<Vec<Link>>\",\n    stac_version,\n    stac_extensions,\n    bbox AS \"bbox: Json<Bbox>\",\n    assets AS \"assets: Json<Assets>\"\n",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "id?",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 1,
-          "name": "collection?",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "feature_type: Json<FeatureType>",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 3,
-          "name": "properties",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 4,
-          "name": "geometry!: Json<Geometry>",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 5,
-          "name": "links: Json<Vec<Link>>",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 6,
-          "name": "stac_version",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 7,
-          "name": "stac_extensions",
-          "type_info": "TextArray"
-        },
-        {
-          "ordinal": 8,
-          "name": "bbox: Json<Bbox>",
-          "type_info": "Jsonb"
-        },
-        {
-          "ordinal": 9,
-          "name": "assets: Json<Assets>",
-          "type_info": "Jsonb"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Jsonb",
-          "Jsonb",
-          "Text",
-          "Jsonb",
-          "Text",
-          "TextArray",
-          "Jsonb"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        null,
-        true,
-        true,
-        true,
-        true,
-        true
-      ]
-    }
-  },
-  "7b9461013fd703ac93f590d5719f03186da4c05650c1ff26391e2182c0d11102": {
-    "query": "UPDATE\n    features\nSET\n    collection = $2,\n    feature_type = $3,\n    properties = $4,\n    geom = ST_GeomFromGeoJSON($5),\n    links = $6,\n    stac_version = $7,\n    stac_extensions = $8,\n    assets = $9\nWHERE\n    id = $1\nRETURNING\n    id AS \"id?\",\n    collection AS \"collection?\",\n    feature_type AS \"feature_type: Json<FeatureType>\",\n    properties,\n    ST_AsGeoJSON(geom)::jsonb AS \"geometry!: Json<Geometry>\",\n    links AS \"links: Json<Vec<Link>>\",\n    stac_version,\n    stac_extensions,\n    bbox AS \"bbox: Json<Bbox>\",\n    assets AS \"assets: Json<Assets>\"\n",
+  "60117bf94c62cee37d556402e87af947beeff827384954861df9380844c05bae": {
+    "query": "UPDATE\n    features\nSET\n    collection = $2,\n    feature_type = $3,\n    properties = $4,\n    geom = ST_GeomFromGeoJSON($5),\n    links = $6,\n    stac_version = $7,\n    stac_extensions = $8,\n    assets = $9\nWHERE\n    id = $1\nRETURNING\n    id AS \"id?\",\n    collection AS \"collection?\",\n    feature_type AS \"feature_type: Json<FeatureType>\",\n    properties,\n    ST_AsGeoJSON(geom)::jsonb AS \"geometry!: Json<Geometry>\",\n    links AS \"links: Json<Vec<Link>>\",\n    stac_version,\n    stac_extensions,\n    ST_AsGeoJSON(geom, 9, 1)::jsonb -> 'bbox' AS \"bbox: Json<Bbox>\",\n    assets AS \"assets: Json<Assets>\"\n",
     "describe": {
       "columns": [
         {
@@ -400,7 +326,7 @@
         true,
         true,
         true,
-        true,
+        null,
         true
       ]
     }
@@ -517,6 +443,80 @@
         true,
         true,
         true,
+        true
+      ]
+    }
+  },
+  "c1b1f489c88483c5d4c59121c3909544e27d3d5db48f3fe5e4c3322b19201b5f": {
+    "query": "SELECT\n    id AS \"id?\",\n    collection AS \"collection?\",\n    feature_type AS \"feature_type: Json<FeatureType>\",\n    properties,\n    ST_AsGeoJSON(geom)::jsonb AS \"geometry!: Json<Geometry>\",\n    links AS \"links: Json<Vec<Link>>\",\n    stac_version,\n    stac_extensions,\n    ST_AsGeoJSON(geom, 9, 1)::jsonb -> 'bbox' AS \"bbox: Json<Bbox>\",\n    assets AS \"assets: Json<Assets>\"\nFROM\n    features\nWHERE\n    id = $1\n",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id?",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "collection?",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "feature_type: Json<FeatureType>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 3,
+          "name": "properties",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 4,
+          "name": "geometry!: Json<Geometry>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 5,
+          "name": "links: Json<Vec<Link>>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 6,
+          "name": "stac_version",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 7,
+          "name": "stac_extensions",
+          "type_info": "TextArray"
+        },
+        {
+          "ordinal": 8,
+          "name": "bbox: Json<Bbox>",
+          "type_info": "Jsonb"
+        },
+        {
+          "ordinal": 9,
+          "name": "assets: Json<Assets>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        true,
+        null,
+        true,
+        true,
+        true,
+        null,
         true
       ]
     }
