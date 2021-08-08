@@ -37,9 +37,6 @@ async fn main() -> Result<()> {
     // setup env
     dotenv::dotenv().ok();
 
-    // initialize logging
-    // env_logger::init();
-
     // read cli args
     let args = Args::from_args();
     log::info!("{:?}", args);
@@ -50,6 +47,8 @@ async fn main() -> Result<()> {
             filter,
             collection,
         } => {
+            // initialize logging
+            env_logger::init();
             ogcapi::import::import(input, &filter, &collection).await?;
         }
         Args::Serve { host, port } => {

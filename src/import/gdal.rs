@@ -52,11 +52,13 @@ pub async fn gdal_import(
             .fields()
             .map(|field| (field.name(), field.field_type(), field.width()))
             .collect();
-        log::debug!("fileds_def:\n{:#?}", fields);
+        
+        log::debug!("fields_def: {:?}", fields);
 
         // Prepare the origin and destination spatial references objects:
         let spatial_ref_src = layer.spatial_ref()?;
         let spatial_ref_dst = SpatialRef::from_epsg(4326)?;
+        
         spatial_ref_src.set_axis_mapping_strategy(0);
         spatial_ref_dst.set_axis_mapping_strategy(0);
 
