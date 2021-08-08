@@ -4,10 +4,10 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 // Default CRS EPSG:4979
-//static DEFAULT_CRS: &str = "http://www.opengis.net/def/crs/EPSG/0/4979";
-static DEFAULT_CRS: &str = "http://www.opengis.net/def/crs/EPSG/0/4326";
-//static OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"; // for coordinates without height
-//static OGC_CRS84h: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h"; // for coordinates with height
+static EPSG_4979: &str = "http://www.opengis.net/def/crs/EPSG/0/4979";
+static EPSG_4326: &str = "http://www.opengis.net/def/crs/EPSG/0/4326";
+static OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"; // for coordinates without height
+static OGC_CRS84h: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h"; // for coordinates with height
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CRS {
@@ -68,19 +68,19 @@ impl FromStr for CRS {
 
 impl Default for CRS {
     fn default() -> CRS {
-        CRS::from_str(DEFAULT_CRS).unwrap()
+        CRS::from_str(OGC_CRS84).unwrap()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::CRS;
-    use super::DEFAULT_CRS;
+    use super::OGC_CRS84;
     use std::str::FromStr;
 
     #[test]
     fn parse_crs() {
-        let crs = CRS::from_str(DEFAULT_CRS).unwrap();
-        assert_eq!(format!("{:#}", crs), DEFAULT_CRS)
+        let crs = CRS::from_str(OGC_CRS84).unwrap();
+        assert_eq!(format!("{:#}", crs), OGC_CRS84)
     }
 }

@@ -8,8 +8,6 @@ use crate::db::Db;
 use crate::features::{Assets, Feature, FeatureCollection, FeatureType, Query};
 
 pub async fn create_item(mut req: Request<Db>) -> tide::Result {
-    let url = req.url().clone();
-
     let mut feature: Feature = req.body_json().await?;
 
     let collection: &str = req.param("collection")?;
@@ -31,12 +29,12 @@ pub async fn create_item(mut req: Request<Db>) -> tide::Result {
 
     if let Some(links) = feature.links.as_mut() {
         links.push(Link {
-            href: format!("{}/{}", url, feature.id.clone().unwrap()),
+            href: format!("{}/{}", req.url().as_str(), feature.id.clone().unwrap()),
             r#type: Some(ContentType::GeoJSON),
             ..Default::default()
         });
         links.push(Link {
-            href: url.as_str().replace("/items", ""),
+            href: req.url().as_str().replace("/items", ""),
             rel: LinkRelation::Collection,
             r#type: Some(ContentType::GeoJSON),
             ..Default::default()
@@ -56,24 +54,21 @@ pub async fn read_item(req: Request<Db>) -> tide::Result {
         .fetch_one(&req.state().pool)
         .await?;
 
-    if let Some(links) = feature.links.as_deref_mut() {
-        let relations: Vec<LinkRelation> = links.iter().map(|link| link.rel.clone()).collect();
-        if !relations.contains(&LinkRelation::Selfie) {
-            links.push(Link {
-                href: "".to_string(),
-                r#type: Some(ContentType::GeoJSON),
-                ..Default::default()
-            });
-        };
-        if !relations.contains(&LinkRelation::Collection) {
-            links.push(Link {
-                href: "../..".to_string(),
-                rel: LinkRelation::Collection,
-                r#type: Some(ContentType::GeoJSON),
-                ..Default::default()
-            });
-        };
-    }
+    feature.links = Some(Json(vec![
+        Link {
+            href: req.url().to_string(),
+            r#type: Some(ContentType::GeoJSON),
+            ..Default::default()
+        },
+        Link {
+            href: req.url()
+                .as_str()
+                .replace(&format!("/items/{}", feature.id.unwrap()), ""),
+            rel: LinkRelation::Collection,
+            r#type: Some(ContentType::GeoJSON),
+            ..Default::default()
+        },
+    ]));
 
     let mut res = Response::new(200);
     // res.set_content_type(ContentType::GeoJSON);
@@ -217,10 +212,18 @@ pub async fn handle_items(req: Request<Db>) -> Result {
         }
     }
 
-    let features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
+    let mut features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
         .bind(&collection)
         .fetch_all(&req.state().pool)
         .await?;
+
+    for feature in features.iter_mut() {
+        feature.links = Some(Json(vec![Link {
+            href: format!("{}/{}", url.as_str(), feature.id.clone().unwrap()),
+            r#type: Some(ContentType::GeoJSON),
+            ..Default::default()
+        }]))
+    }
 
     let number_returned = features.len();
 
