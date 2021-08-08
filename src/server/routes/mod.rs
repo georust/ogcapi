@@ -11,7 +11,7 @@ use tide::{http::url::Position, Body, Request, Response, Result};
 use crate::common::{ContentType, LandingPage};
 use crate::db::Db;
 
-static OGCAPI: &'static str = "api/ogcapi.yaml";
+static OGCAPI: &'static str = "openapi/ogcapi.yaml";
 
 pub async fn root(req: Request<Db>) -> Result {
     let url = req.url();
