@@ -20,5 +20,5 @@ RETURNING
     links AS "links: Json<Vec<Link>>",
     stac_version,
     stac_extensions,
-    bbox AS "bbox: Json<Bbox>",
+    ST_AsGeoJSON(geom, 9, 1)::jsonb -> 'bbox' AS "bbox: Json<Bbox>",
     assets AS "assets: Json<Assets>"

@@ -42,11 +42,12 @@ CREATE TABLE features (
     links jsonb,
     stac_version text,
     stac_extensions text[],
-    bbox jsonb GENERATED ALWAYS AS (ST_AsGeoJSON(geom, 9, 1)::jsonb -> 'bbox') STORED,
     assets jsonb,
     CONSTRAINT features_pkey PRIMARY KEY (id, collection),
     CONSTRAINT features_collection_fkey FOREIGN KEY (collection) REFERENCES public.collections (id) ON DELETE CASCADE
 );
+
+SELECT UpdateGeometrySRID('features', 'geom', 4326);
 
 CREATE TABLE styles (
     id text PRIMARY KEY,

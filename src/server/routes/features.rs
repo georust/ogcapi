@@ -146,11 +146,22 @@ pub async fn handle_items(req: Request<Db>) -> Result {
         None => 4326,
     };
 
-    let mut sql = vec![
-        format!("SELECT id, feature_type, properties, ST_AsGeoJSON( ST_Transform (geom, {}))::jsonb as geometry, links, stac_version, stac_extensions, bbox, assets, collection
+    let mut sql = vec![format!(
+        "SELECT 
+            id, 
+            feature_type, 
+            properties, 
+            ST_AsGeoJSON( ST_Transform (geom, {}))::jsonb as geometry, 
+            links, 
+            stac_version, 
+            stac_extensions, 
+            ST_AsGeoJSON(geom, 9, 1)::jsonb -> 'bbox' as bbox, 
+            assets, 
+            collection
         FROM features
-        WHERE collection = $1", srid)
-    ];
+        WHERE collection = $1",
+        srid
+    )];
 
     if query.bbox.is_some() {
         if let Some(envelop) = query.make_envelope() {
