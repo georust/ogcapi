@@ -100,7 +100,7 @@ async fn minimal_feature_crud() -> std::io::Result<()> {
     let id = inserted_feature.id.clone().unwrap();
 
     // read feauture
-    let selected_feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", &id)
+    let selected_feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", &id, 4326 as _)
         .fetch_one(&pool)
         .await
         .unwrap();

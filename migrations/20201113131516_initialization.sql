@@ -22,7 +22,7 @@ CREATE TABLE collections (
     links jsonb NOT NULL,
     extent jsonb,
     item_type jsonb DEFAULT '"unknown"'::jsonb,
-    crs text[] DEFAULT '{"http://www.opengis.net/def/crs/OGC/1.3/CRS84"}',
+    crs text[],
     storage_crs text,
     storage_crs_coordinate_epoch real,
     stac_version text,
@@ -68,7 +68,8 @@ VALUES
     ('http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json'),
     ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core'),
     ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30'),
-    ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson');
+    ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson'),
+    ('http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs');
 
 INSERT INTO
     root (href, rel, type, title)

@@ -2,8 +2,8 @@ use serde::Deserialize;
 use tide::http::url::Position;
 use tide::{Body, Request, Response, Result};
 
-use crate::collections::{Collection, Collections};
-use crate::common::{ContentType, Datetime, Link, LinkRelation, BBOX, CRS};
+use crate::collections::{Collection, Collections, CRS_REF};
+use crate::common::{ContentType, Datetime, Link, LinkRelation, OGC_CRS84h, BBOX, CRS, OGC_CRS84};
 use crate::db::Db;
 
 #[derive(Deserialize, Debug, Clone)]
@@ -65,6 +65,11 @@ pub async fn handle_collections(req: Request<Db>) -> Result {
             },
         ];
         collection.links.append(&mut links);
+        if let Some(crs) = collection.crs.as_mut() {
+            crs.insert(0, CRS_REF.to_string())
+        } else {
+            collection.crs = Some(vec![CRS_REF.to_string()])
+        }
     }
 
     let collections = Collections {
@@ -74,7 +79,7 @@ pub async fn handle_collections(req: Request<Db>) -> Result {
             title: Some("this document".to_string()),
             ..Default::default()
         }],
-        crs: Some(vec![CRS::default().to_string()]),
+        crs: Some(vec![OGC_CRS84.to_string(), CRS::from(4326).to_string()]),
         collections,
         ..Default::default()
     };
@@ -101,7 +106,17 @@ pub async fn read_collection(req: Request<Db>) -> Result {
 
     let id: &str = req.param("collection")?;
 
-    let collection = req.state().read_collection(id).await?;
+    let mut collection = req.state().read_collection(id).await?;
+
+    collection.crs = Some(vec![
+        OGC_CRS84.to_owned(),
+        OGC_CRS84h.to_owned(),
+        collection
+            .storage_crs
+            .clone()
+            .unwrap_or(CRS::from(4326).to_string()),
+        CRS::from(2056).to_string(),
+    ]);
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&collection)?);

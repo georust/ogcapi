@@ -6,6 +6,8 @@ use sqlx::types::Json;
 
 use crate::common::{Datetime, Link, BBOX, CRS};
 
+pub static CRS_REF: &str = "#/crs";
+
 #[derive(Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Collections {

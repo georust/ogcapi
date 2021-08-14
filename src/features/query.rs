@@ -1,23 +1,21 @@
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 use serde::Deserialize;
 
-use crate::common::{Datetime, CRS};
+use crate::common::{CRS, Datetime};
 
 #[derive(Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
     pub limit: Option<isize>, // OAF Core 1.0
     pub offset: Option<isize>,
     pub bbox: Option<String>, // OAF Core 1.0
-    pub bbox_crs: Option<CRS>,
+    pub bbox_crs: Option<String>,
     pub datetime: Option<Datetime>, // OAF Core 1.0
-    pub crs: Option<CRS>,
+    pub crs: Option<String>,
     pub filter: Option<String>,
-    #[serde(rename = "filter-lang")]
     pub filter_lang: Option<String>, // default = 'cql-text'
-    #[serde(rename = "filter-crs")]
-    pub filter_crs: Option<CRS>,
+    pub filter_crs: Option<String>,
 }
 
 // #[derive(Deserialize, Debug, Clone)]
@@ -33,14 +31,14 @@ impl Query {
     }
 
     pub fn make_envelope(&self) -> Option<String> {
-        if let Some(bbox) = self.bbox.to_owned() {
+        if let Some(bbox) = self.bbox.as_ref() {
             let srid = self
-                .bbox_crs
-                .clone()
-                .unwrap_or_else(CRS::default)
-                .code
-                .parse::<i32>()
-                .expect("Parse bbox crs EPSG code");
+                .bbox_crs.as_ref()
+                .and_then(|crs| CRS::from_str(crs).ok())
+                .and_then(|crs| crs.ogc_to_epsg())
+                .map_or("4326".to_string(), |crs| crs.code)
+                .parse::<u32>()
+                .expect("Failed to parse bbox crs EPSG code");
 
             let mut coords: Vec<&str> = bbox.split(',').collect();
 
@@ -51,12 +49,9 @@ impl Query {
             assert_eq!(coords.len(), 4);
 
             Some(format!(
-                "ST_MakeEnvelope ( {xmin}, {ymin}, {xmax}, {ymax}, {srid} )",
-                xmin = coords[0],
-                ymin = coords[1],
-                xmax = coords[2],
-                ymax = coords[3],
-                srid = srid
+                "ST_MakeEnvelope({coords}, {srid})",
+                coords = coords.join(", "),
+                srid = srid,
             ))
         } else {
             None

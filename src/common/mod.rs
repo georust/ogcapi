@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tide::http::Mime;
 
 pub use self::bbox::BBOX;
-pub use self::crs::CRS;
+pub use self::crs::{CRS, OGC_CRS84, OGC_CRS84h};
 pub use self::datetime::Datetime;
 pub use self::exception::Exception;
 pub use self::link::*;

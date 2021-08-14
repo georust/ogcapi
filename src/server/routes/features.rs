@@ -1,9 +1,11 @@
+use std::str::FromStr;
+
 use chrono::{SecondsFormat, Utc};
 use geojson::{Bbox, Geometry};
 use sqlx::types::Json;
 use tide::{Body, Request, Response, Result};
 
-use crate::common::{ContentType, Link, LinkRelation};
+use crate::common::{ContentType, Link, LinkRelation, CRS, OGC_CRS84};
 use crate::db::Db;
 use crate::features::{Assets, Feature, FeatureCollection, FeatureType, Query};
 
@@ -50,7 +52,16 @@ pub async fn create_item(mut req: Request<Db>) -> tide::Result {
 pub async fn read_item(req: Request<Db>) -> tide::Result {
     let id: i64 = req.param("id")?.parse()?;
 
-    let mut feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", id)
+    let mut query: Query = req.query()?;
+
+    let crs = query.crs.take().unwrap_or(OGC_CRS84.to_string());
+    let srid: i32 = CRS::from_str(&crs)
+        .unwrap()
+        .ogc_to_epsg()
+        .map_or("4326".to_string(), |crs| crs.code)
+        .parse()?;
+
+    let mut feature = sqlx::query_file_as!(Feature, "sql/feature_select.sql", id, srid)
         .fetch_one(&req.state().pool)
         .await?;
 
@@ -61,7 +72,8 @@ pub async fn read_item(req: Request<Db>) -> tide::Result {
             ..Default::default()
         },
         Link {
-            href: req.url()
+            href: req
+                .url()
                 .as_str()
                 .replace(&format!("/items/{}", feature.id.unwrap()), ""),
             rel: LinkRelation::Collection,
@@ -71,7 +83,8 @@ pub async fn read_item(req: Request<Db>) -> tide::Result {
     ]));
 
     let mut res = Response::new(200);
-    // res.set_content_type(ContentType::GeoJSON);
+    res.insert_header("Content-Crs", crs.to_string());
+    res.set_content_type(ContentType::GeoJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
@@ -136,27 +149,27 @@ pub async fn handle_items(req: Request<Db>) -> Result {
 
     let mut query: Query = req.query()?;
 
-    let srid = match &query.crs {
-        Some(crs) => crs.code.parse::<i32>().unwrap_or(4326),
-        None => 4326,
-    };
+    let crs = query.crs.take().unwrap_or(OGC_CRS84.to_string());
+    let srid: i32 = CRS::from_str(&crs)
+        .unwrap()
+        .ogc_to_epsg()
+        .map_or("4326".to_string(), |crs| crs.code)
+        .parse()?;
 
-    let mut sql = vec![format!(
-        "SELECT 
+    let mut sql = vec!["SELECT 
             id, 
             feature_type, 
             properties, 
-            ST_AsGeoJSON( ST_Transform (geom, {}))::jsonb as geometry, 
+            ST_AsGeoJSON( ST_Transform( geom, $2::int))::jsonb as geometry, 
             links, 
             stac_version, 
             stac_extensions, 
-            ST_AsGeoJSON(geom, 9, 1)::jsonb -> 'bbox' as bbox, 
+            ST_AsGeoJSON( ST_Transform( geom, $2::int), 9, 1)::jsonb -> 'bbox' as bbox, 
             assets, 
             collection
         FROM features
-        WHERE collection = $1",
-        srid
-    )];
+        WHERE collection = $1"
+        .to_string()];
 
     if query.bbox.is_some() {
         if let Some(envelop) = query.make_envelope() {
@@ -165,7 +178,8 @@ pub async fn handle_items(req: Request<Db>) -> Result {
     }
 
     let number_matched = sqlx::query(sql.join(" ").as_str())
-        .bind(&collection)
+        .bind(collection)
+        .bind(srid)
         .execute(&req.state().pool)
         .await?
         .rows_affected();
@@ -214,6 +228,7 @@ pub async fn handle_items(req: Request<Db>) -> Result {
 
     let mut features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
         .bind(&collection)
+        .bind(&srid)
         .fetch_all(&req.state().pool)
         .await?;
 
@@ -237,7 +252,8 @@ pub async fn handle_items(req: Request<Db>) -> Result {
     };
 
     let mut res = Response::new(200);
-    // res.set_content_type(ContentType::GeoJSON);
+    res.insert_header("Content-Crs", crs.to_string());
+    res.set_content_type(ContentType::GeoJSON);
     res.set_body(Body::from_json(&feature_collection)?);
     Ok(res)
 }
