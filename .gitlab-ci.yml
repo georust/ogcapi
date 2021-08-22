@@ -15,6 +15,10 @@ rust-latest:
 rust-nightly:
   stage: build
   image: rustlang/rust:nightly
+  before_script:
+    - apt-get update -yqq
+    - apt-get install libgdal-dev gdal-bin -yqq --no-install-recommends build-essential
+    - export SQLX_OFFLINE=true
   script:
     - cargo build --verbose
     - cargo test --verbose -- --skip tests::minimal_feature_crud
