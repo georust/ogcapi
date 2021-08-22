@@ -1,5 +1,5 @@
-use std::fmt;
 use std::str::FromStr;
+use std::{convert::TryFrom, fmt};
 
 use serde::{Deserialize, Serialize};
 
@@ -106,15 +106,30 @@ impl Default for CRS {
     }
 }
 
-impl From<u32> for CRS {
-    fn from(epsg_code: u32) -> Self {
+impl From<i32> for CRS {
+    fn from(epsg_code: i32) -> Self {
         CRS::new(Authority::EPSG, "0", &epsg_code.to_string())
+    }
+}
+
+impl TryFrom<CRS> for i32 {
+    type Error = &'static str;
+
+    fn try_from(crs: CRS) -> Result<i32, &'static str> {
+        match crs.authority {
+            Authority::OGC => match crs.code.as_str() {
+                "CRS84" => Ok(4326),
+                "CRS84h" => Ok(4979),
+                _ => Err("Unable to extract epsg code"),
+            },
+            Authority::EPSG => Ok(crs.code.parse().unwrap()),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
+    use std::{convert::TryInto, str::FromStr};
 
     use crate::common::{crs::OGC_CRS84h, crs::OGC_CRS84, CRS};
 
@@ -126,6 +141,22 @@ mod tests {
 
     #[test]
     fn from_epsg() {
+        let code = 4979;
+        let crs: CRS = code.into();
+        assert_eq!(
+            crs.to_string(),
+            "http://www.opengis.net/def/crs/EPSG/0/4979".to_string()
+        );
+
+        let epsg: i32 = crs.try_into().unwrap();
+        assert_eq!(epsg, code);
+
+        let epsg: i32 = CRS::default().try_into().unwrap();
+        assert_eq!(epsg, 4326)
+    }
+
+    #[test]
+    fn into_epsg() {
         let code = 4979;
         let crs: CRS = code.into();
         assert_eq!(

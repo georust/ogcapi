@@ -27,7 +27,7 @@ pub async fn osm_import(
         ..Default::default()
     };
     db.delete_collection(&collection.id).await?;
-    db.create_collection(&collection).await?;
+    db.insert_collection(&collection).await?;
 
     // Open file
     let file = File::open(input)?;
@@ -73,13 +73,18 @@ pub async fn osm_import(
         if let Some(geometry) =
             geometry_from_obj(&obj, &objs).and_then(|g| wkb::geom_to_wkb(&g).ok())
         {
-            sqlx::query_file!(
-                "sql/feature_import.sql",
-                id as i32,
-                collection.id,
-                Value::from(properties) as _,
-                geometry as _,
-            )
+            sqlx::query(&format!(
+                r#"INSERT INTO {} (
+                    id,
+                    feature_type,
+                    properties,
+                    geom
+                ) VALUES ($1, '"Feature"', $2, ST_GeomFromWKB($3, 4326))"#,
+                collection.id
+            ))
+            .bind(id as i32)
+            .bind(Value::from(properties) as Value)
+            .bind(geometry as Vec<u8>)
             .execute(&mut tx)
             .await?;
         }

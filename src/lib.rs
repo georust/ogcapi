@@ -6,5 +6,3 @@ pub mod import;
 pub mod server;
 pub mod styles;
 pub mod tiles;
-
-mod tests;

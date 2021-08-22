@@ -2,7 +2,7 @@ use std::{fmt, str::FromStr};
 
 use serde::Deserialize;
 
-use crate::common::{CRS, Datetime};
+use crate::common::{Datetime, CRS};
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
@@ -33,7 +33,8 @@ impl Query {
     pub fn make_envelope(&self) -> Option<String> {
         if let Some(bbox) = self.bbox.as_ref() {
             let srid = self
-                .bbox_crs.as_ref()
+                .bbox_crs
+                .as_ref()
                 .and_then(|crs| CRS::from_str(crs).ok())
                 .and_then(|crs| crs.ogc_to_epsg())
                 .map_or("4326".to_string(), |crs| crs.code)

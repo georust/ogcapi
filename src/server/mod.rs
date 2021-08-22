@@ -1,5 +1,7 @@
 pub mod routes;
 
+use std::env;
+
 pub use routes::{collections, features, styles, tiles};
 
 mod exception;
@@ -11,7 +13,7 @@ use crate::db::Db;
 pub async fn run(url: &str) -> tide::Result<()> {
     tide::log::start();
 
-    let db = Db::connect().await.unwrap();
+    let db = Db::connect(&env::var("DATABASE_URL")?).await.unwrap();
     let mut app = tide::with_state(db);
 
     // core

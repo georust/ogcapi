@@ -1,8 +1,12 @@
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS postgis;
 
+-- Schemas
+CREATE SCHEMA IF NOT EXISTS meta;
+CREATE SCHEMA IF NOT EXISTS items;
+
 -- Tables
-CREATE TABLE root (
+CREATE TABLE meta.root (
     href text NOT NULL,
     rel text,
     type text,
@@ -11,11 +15,11 @@ CREATE TABLE root (
     length integer
 );
 
-CREATE TABLE conformance (
+CREATE TABLE meta.conformance (
     class text PRIMARY KEY
 );
 
-CREATE TABLE collections (
+CREATE TABLE meta.collections (
     id text PRIMARY KEY,
     title text,
     description text,
@@ -33,35 +37,15 @@ CREATE TABLE collections (
     summaries jsonb
 );
 
-CREATE TABLE features (
-    id bigserial,
-    collection text NOT NULL,
-    feature_type jsonb NOT NULL DEFAULT '"Feature"'::jsonb,
-    properties jsonb,
-    geom geometry NOT NULL,
-    links jsonb,
-    stac_version text,
-    stac_extensions text[],
-    assets jsonb,
-    CONSTRAINT features_pkey PRIMARY KEY (id, collection),
-    CONSTRAINT features_collection_fkey FOREIGN KEY (collection) REFERENCES public.collections (id) ON DELETE CASCADE
-);
-
-SELECT UpdateGeometrySRID('features', 'geom', 4326);
-
-CREATE TABLE styles (
+CREATE TABLE meta.styles (
     id text PRIMARY KEY,
     title text,
     links jsonb NOT NULL
 );
 
--- Indexes
-CREATE INDEX features_properties_idx ON public.features USING gin (properties);
-CREATE INDEX features_geom_idx ON public.features USING gist (geom);
-
 -- Insertions
 INSERT INTO
-    conformance (class)
+    meta.conformance (class)
 VALUES
     ('http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core'),
     ('http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections'),
@@ -72,7 +56,7 @@ VALUES
     ('http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs');
 
 INSERT INTO
-    root (href, rel, type, title)
+    meta.root (href, rel, type, title)
 VALUES
     ('/', 'self', 'application/json','This document'),
     ('/api', 'service-desc', 'application/vnd.oai.openapi+json;version=3.0','The Open API definition'),

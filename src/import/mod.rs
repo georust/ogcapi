@@ -2,6 +2,8 @@ mod boundaries;
 mod gdal;
 mod osm;
 
+use std::env;
+
 use crate::db::Db;
 
 pub async fn import(
@@ -10,7 +12,7 @@ pub async fn import(
     collection: &Option<String>,
 ) -> Result<(), anyhow::Error> {
     // Setup a db connection pool
-    let db = Db::connect().await?;
+    let db = Db::connect(&env::var("DATABASE_URL")?).await?;
 
     // Import data
     if input.extension() == Some(std::ffi::OsStr::new("pbf")) {

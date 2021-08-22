@@ -53,7 +53,8 @@ pub async fn redoc(req: Request<Db>) -> Result {
     let mut res = Response::new(200);
     res.set_content_type(tide::http::mime::HTML);
     res.set_body(format!(
-        r#"<!DOCTYPE html>
+        r#"
+        <!DOCTYPE html>
         <html>
         <head>
             <title>ReDoc</title>

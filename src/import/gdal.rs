@@ -17,13 +17,16 @@ pub async fn gdal_import(
 ) -> Result<(), anyhow::Error> {
     // GDAL Configuration Options http://trac.osgeo.org/gdal/wiki/ConfigOptions
     gdal::config::set_config_option("PG_USE_COPY", "YES")?;
+    gdal::config::set_config_option("OGR_PG_RETRIEVE_FID", "FALSE")?;
+    gdal::config::set_config_option("PGSQL_OGR_FID", "id")?;
+    
 
     // Get target dataset layer
     let drv = gdal::Driver::get("PostgreSQL")?;
+    // let db_url = format!("PG:{}", std::env::var("DATABASE_URL")?);
     let db_url = "PG:host=localhost user=postgres dbname=ogcapi password=postgres"; // workaround gdal issue
-    // let db = format!("PG:{}", std::env::var("DATABASE_URL")?).as_str();
-    let ds = drv.create_vector_only(db_url)?;
-    let lyr = ds.layer_by_name("features")?;
+
+    let ds = drv.create_vector_only(&db_url)?;
 
     // Open input dataset
     let input = if input.to_str().map(|s| s.starts_with("http")).unwrap() {
@@ -43,7 +46,7 @@ pub async fn gdal_import(
         // Create collection
         let collection = collection_from_layer(&layer, collection)?;
         db.delete_collection(&collection.id).await?;
-        db.create_collection(&collection).await?;
+        db.insert_collection(&collection).await?;
 
         log::info!("Importing layer: `{}`", &collection.title.unwrap());
 
@@ -52,13 +55,13 @@ pub async fn gdal_import(
             .fields()
             .map(|field| (field.name(), field.field_type(), field.width()))
             .collect();
-        
+
         log::debug!("fields_def: {:?}", fields);
 
         // Prepare the origin and destination spatial references objects:
         let spatial_ref_src = layer.spatial_ref()?;
         let spatial_ref_dst = SpatialRef::from_epsg(4326)?;
-        
+
         spatial_ref_src.set_axis_mapping_strategy(0);
         spatial_ref_dst.set_axis_mapping_strategy(0);
 
@@ -67,6 +70,8 @@ pub async fn gdal_import(
 
         // Load features
         let mut pb = pbr::ProgressBar::new(layer.feature_count());
+
+        let lyr = ds.layer_by_name(&format!("items.{}", collection.id))?;
 
         for feature in layer.features() {
             // Get the original geometry:
@@ -78,13 +83,9 @@ pub async fn gdal_import(
             ft.set_geometry(new_geom)?;
 
             // Map fields
-            let id = feature.fid().expect("feature identifier") as i64;
-            ft.set_field("id", &FieldValue::Integer64Value(id))?;
-
-            ft.set_field(
-                "collection",
-                &FieldValue::StringValue(collection.id.to_owned()),
-            )?;
+            // if let Some(id) = feature.fid() {
+            //     ft.set_field("id", &FieldValue::Integer64Value(id as i64))?;
+            // }
 
             let properties = extract_properties(&feature, &fields).await?;
             ft.set_field(
@@ -134,7 +135,7 @@ fn collection_from_layer(
     Ok(collection)
 }
 
-/// Create new feature
+/// Extract properties from feature
 async fn extract_properties(
     feature: &Feature<'_>,
     fields: &Vec<(String, u32, i32)>,
