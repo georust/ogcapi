@@ -4,7 +4,7 @@ use sqlx::Row;
 use sqlx::{postgres::PgPoolOptions, types::Json, Pool, Postgres};
 
 use crate::collections::{Collection, Extent, ItemType, Provider, Summaries};
-use crate::common::{Conformance, Link};
+use crate::common::{Conformance, Link, Links};
 use crate::features::{Assets, Feature, FeatureType};
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ impl Db {
         Ok(Db { pool })
     }
 
-    pub async fn root(&self) -> Result<Vec<Link>, anyhow::Error> {
+    pub async fn root(&self) -> Result<Links, anyhow::Error> {
         let links = sqlx::query("SELECT row_to_json(root) FROM meta.root")
             .try_map(|row: PgRow| {
                 serde_json::from_value::<Link>(row.get(0))
@@ -112,7 +112,7 @@ impl Db {
         .bind(&collection.id)
         .bind(&collection.title)
         .bind(&collection.description)
-        .bind(&collection.links as &Json<Vec<Link>>)
+        .bind(&collection.links as &Json<Links>)
         .bind(&collection.extent as &Option<Json<Extent>>)
         .bind(&collection.item_type as &Option<Json<ItemType>>)
         .bind(&collection.crs.as_deref())
@@ -187,7 +187,7 @@ impl Db {
         .bind(&collection.id)
         .bind(&collection.title)
         .bind(&collection.description)
-        .bind(&collection.links as &Json<Vec<Link>>)
+        .bind(&collection.links as &Json<Links>)
         .bind(&collection.extent as &Option<Json<Extent>>)
         .bind(&collection.item_type as &Option<Json<ItemType>>)
         .bind(&collection.crs.as_deref())
@@ -243,7 +243,7 @@ impl Db {
         .bind(&feature.feature_type as &Json<FeatureType>)
         .bind(&feature.properties)
         .bind(&feature.geometry as &Json<Geometry>)
-        .bind(&feature.links as &Option<Json<Vec<Link>>>)
+        .bind(&feature.links as &Option<Json<Links>>)
         .bind(&feature.stac_version)
         .bind(&feature.stac_extensions.as_deref())
         .bind(&feature.assets as &Option<Json<Assets>>)
@@ -306,7 +306,7 @@ impl Db {
         .bind(&feature.feature_type as &Json<FeatureType>)
         .bind(&feature.properties)
         .bind(&feature.geometry as &Json<Geometry>)
-        .bind(&feature.links as &Option<Json<Vec<Link>>>)
+        .bind(&feature.links as &Option<Json<Links>>)
         .bind(&feature.stac_version)
         .bind(&feature.stac_extensions.as_deref())
         .bind(&feature.assets as &Option<Json<Assets>>)

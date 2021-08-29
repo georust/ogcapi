@@ -32,7 +32,7 @@ pub struct LandingPage {
     pub description: Option<String>, // OAF Core 1.0
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attribution: Option<String>,
-    pub links: Vec<Link>, // OAF Core 1.0
+    pub links: Links, // OAF Core 1.0
 }
 
 /// The Conformance declaration states the conformance classes from standards or community

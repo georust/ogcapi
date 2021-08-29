@@ -7,8 +7,8 @@ use crate::common::{Datetime, CRS};
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
-    pub limit: Option<isize>, // OAF Core 1.0
-    pub offset: Option<isize>,
+    pub limit: Option<i64>, // OAF Core 1.0
+    pub offset: Option<i64>,
     pub bbox: Option<String>, // OAF Core 1.0
     pub bbox_crs: Option<String>,
     pub datetime: Option<Datetime>, // OAF Core 1.0
@@ -25,7 +25,7 @@ pub struct Query {
 // }
 
 impl Query {
-    pub fn as_string_with_offset(&mut self, offset: isize) -> String {
+    pub fn as_string_with_offset(&mut self, offset: i64) -> String {
         self.offset = Some(offset);
         self.to_string()
     }

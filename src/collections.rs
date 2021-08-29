@@ -4,14 +4,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
 
-use crate::common::{Datetime, Link, BBOX, CRS};
+use crate::common::{Datetime, Links, BBOX, CRS};
 
 pub static CRS_REF: &str = "#/crs";
 
 #[derive(Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Collections {
-    pub links: Vec<Link>, // OAF Core 1.0
+    pub links: Links, // OAF Core 1.0
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_stamp: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -45,7 +45,7 @@ pub struct Collection {
     pub storage_crs: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage_crs_coordinate_epoch: Option<f32>,
-    pub links: Json<Vec<Link>>, // OAF Core 1.0
+    pub links: Json<Links>, // OAF Core 1.0
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stac_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

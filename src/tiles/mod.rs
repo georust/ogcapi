@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tide::http::Url;
 
-use crate::common::Link;
+use crate::common::Links;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,7 +15,7 @@ pub struct IdLink {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
-    pub links: Vec<Link>,
+    pub links: Links,
 }
 
 #[derive(Serialize)]

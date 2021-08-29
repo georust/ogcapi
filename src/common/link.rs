@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use super::ContentType;
 
+pub type Links = Vec<Link>;
+
 /// Hyperlink to enable Hypermedia Access
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
 pub struct Link {
@@ -35,6 +37,7 @@ pub enum LinkRelation {
     First,
     Item,
     Items,
+    JobList,
     Last,
     License,
     Next,

@@ -43,6 +43,37 @@ CREATE TABLE meta.styles (
     links jsonb NOT NULL
 );
 
+CREATE TABLE meta.processes (
+    id text PRIMARY KEY,
+    summary jsonb NOT NULL,
+    -- title text,
+    -- description text,
+    -- version text NOT NULL,
+    -- job_control_options text[],
+    -- output_transmission text[],
+    -- links jsonb,
+    -- keywords text[],
+    -- metadata jsonb,
+    -- parameters jsonb,
+    -- role text,
+    -- href text,
+    inputs jsonb,
+    outputs jsonb
+);
+
+CREATE TABLE meta.jobs (
+    job_id text PRIMARY KEY,
+    processes_id text REFERENCES meta.processes (id),
+    status json NOT NULL,
+    message text,
+    created timestamptz,
+    finished timestamptz,
+    updated timestamptz,
+    progress smallint,
+    links jsonb,
+    results jsonb
+);
+
 -- Insertions
 INSERT INTO
     meta.conformance (class)
@@ -53,7 +84,10 @@ VALUES
     ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core'),
     ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30'),
     ('http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson'),
-    ('http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs');
+    ('http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs'),
+    ('http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core'),
+	('http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/json'),
+	('http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/oas30');
 
 INSERT INTO
     meta.root (href, rel, type, title)
@@ -61,4 +95,6 @@ VALUES
     ('/', 'self', 'application/json','This document'),
     ('/api', 'service-desc', 'application/vnd.oai.openapi+json;version=3.0','The Open API definition'),
     ('/conformance', 'conformance', 'application/json','OGC conformance classes implemented by this API'),
-    ('/collections', 'data', 'application/json','Metadata about the resource collections');
+    ('/collections', 'data', 'application/json','Metadata about the resource collections'),
+    ('/processes', 'processes', 'application/json', 'Metadata about the processes'),
+    ('/jobs', 'job-list', 'application/json', 'The endpoint for job monitoring');

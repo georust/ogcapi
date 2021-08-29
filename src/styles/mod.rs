@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
 
-use crate::common::Link;
+use crate::common::Links;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Styles {
@@ -16,7 +16,7 @@ pub struct Styles {
 pub struct Style {
     id: String,
     title: Option<String>,
-    links: Json<Vec<Link>>,
+    links: Json<Links>,
 }
 
 #[derive(Serialize, Deserialize, Debug, sqlx::FromRow)]

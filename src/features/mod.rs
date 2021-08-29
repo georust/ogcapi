@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
 
-use crate::common::Link;
+use crate::common::Links;
 
 /// A set of Features from a dataset
 #[derive(Serialize, Deserialize, Default)]
@@ -17,7 +17,7 @@ use crate::common::Link;
 pub struct FeatureCollection {
     pub r#type: String,
     pub features: Vec<Feature>,
-    pub links: Option<Vec<Link>>,
+    pub links: Option<Links>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time_stamp: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -38,7 +38,7 @@ pub struct Feature {
     pub properties: Option<Value>,
     pub geometry: Json<Geometry>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub links: Option<Json<Vec<Link>>>,
+    pub links: Option<Json<Links>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stac_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

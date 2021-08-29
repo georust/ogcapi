@@ -2,7 +2,7 @@ pub mod routes;
 
 use std::env;
 
-pub use routes::{collections, features, styles, tiles};
+pub use routes::{collections, features, processes, styles, tiles};
 
 mod exception;
 
@@ -63,6 +63,16 @@ pub async fn run(url: &str) -> tide::Result<()> {
     // .put(styles::update_style)
     // .delete(styles::delete_style);
     // app.at("/styles/:id/metadata").get(styles::read_style_matadata);
+
+    // Processes
+    app.at("/processes").get(processes::list_processes);
+    app.at("/processes/:id").get(processes::retrieve_process);
+    app.at("/processes/:id/execution")
+        .post(processes::execution);
+    app.at("/jobs/:id")
+        .get(processes::job_status)
+        .delete(processes::delete_job);
+    app.at("/jobs/:id/result").get(processes::job_result);
 
     app.with(After(exception::exception));
 

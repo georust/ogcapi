@@ -19,7 +19,6 @@ pub async fn gdal_import(
     gdal::config::set_config_option("PG_USE_COPY", "YES")?;
     gdal::config::set_config_option("OGR_PG_RETRIEVE_FID", "FALSE")?;
     gdal::config::set_config_option("PGSQL_OGR_FID", "id")?;
-    
 
     // Get target dataset layer
     let drv = gdal::Driver::get("PostgreSQL")?;
