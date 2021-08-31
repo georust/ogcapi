@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tide::http::Url;
 
 use crate::common::Links;
@@ -37,6 +37,7 @@ pub struct TileSetEntry {
     pub left: Option<i32>,
 }
 
-pub struct Tile {
-    pub st_asmvt: Option<Vec<u8>>,
+#[derive(Deserialize)]
+pub struct Query {
+    pub collections: Option<String>,
 }
