@@ -2,14 +2,15 @@ use serde::Deserialize;
 use tide::http::url::Position;
 use tide::{Body, Request, Response, Result};
 
-use crate::collections::{Collection, Collections, CRS_REF};
-use crate::common::{ContentType, Datetime, Link, LinkRelation, OGC_CRS84h, BBOX, CRS, OGC_CRS84};
+use crate::common::collections::{Collection, Collections, CRS_REF};
+use crate::common::core::{Link, LinkRelation};
+use crate::common::{Bbox, ContentType, Datetime, OGC_CRS84h, CRS, OGC_CRS84};
 use crate::db::Db;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 struct Query {
-    bbox: Option<BBOX>,
+    bbox: Option<Bbox>,
     bbox_crs: Option<CRS>,
     datetime: Option<Datetime>,
     limit: Option<isize>,

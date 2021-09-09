@@ -3,7 +3,8 @@ use sqlx::types::Json;
 use tide::{http::url::Position, Body, Request, Response};
 use uuid::Uuid;
 
-use crate::common::{ContentType, Link, LinkRelation};
+use crate::common::core::{Link, LinkRelation};
+use crate::common::ContentType;
 use crate::db::Db;
 use crate::processes::{Execute, Process, ProcessList, ProcessSummary, Query, Results, StatusInfo};
 
@@ -175,6 +176,6 @@ pub async fn job_result(req: Request<Db>) -> tide::Result {
             .await?;
 
     let mut res = Response::new(200);
-    res.set_body(Body::from_json(&results.0.0)?);
+    res.set_body(Body::from_json(&results.0 .0)?);
     Ok(res)
 }

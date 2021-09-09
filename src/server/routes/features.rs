@@ -5,7 +5,8 @@ use chrono::{SecondsFormat, Utc};
 use sqlx::types::Json;
 use tide::{Body, Request, Response, Result};
 
-use crate::common::{ContentType, Link, LinkRelation, CRS, OGC_CRS84};
+use crate::common::core::{Link, LinkRelation};
+use crate::common::{ContentType, CRS, OGC_CRS84};
 use crate::db::Db;
 use crate::features::{Feature, FeatureCollection, Query};
 

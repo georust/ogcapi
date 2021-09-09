@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
 
-use crate::common::Links;
+use crate::common::core::Links;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Styles {

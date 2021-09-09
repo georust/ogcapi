@@ -10,7 +10,7 @@ pub use process::{Process, ProcessSummary};
 
 use serde::{Deserialize, Serialize};
 
-use crate::common::Links;
+use crate::common::core::Links;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct ProcessList {

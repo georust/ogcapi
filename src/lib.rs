@@ -1,4 +1,3 @@
-pub mod collections;
 pub mod common;
 pub mod db;
 pub mod features;

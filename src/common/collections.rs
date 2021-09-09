@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
 
-use crate::common::{Datetime, Links, BBOX, CRS};
+use crate::common::core::Links;
+use crate::common::{Bbox, Datetime, CRS};
 
 pub static CRS_REF: &str = "#/crs";
 
@@ -69,7 +70,7 @@ pub struct Extent {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SpatialExtent {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bbox: Option<Vec<BBOX>>,
+    pub bbox: Option<Vec<Bbox>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub crs: Option<CRS>,
 }

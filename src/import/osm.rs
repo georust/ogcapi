@@ -5,7 +5,7 @@ use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 
 use serde_json::{Map, Value};
 
-use crate::{collections::Collection, db::Db, import::boundaries};
+use crate::{common::collections::Collection, db::Db, import::boundaries};
 
 /// Import osm data from pbf file
 pub async fn osm_import(

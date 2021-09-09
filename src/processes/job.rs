@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 
-use crate::common::Links;
+use crate::common::core::Links;
 
 use super::execute::InlineOrRefData;
 

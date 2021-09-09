@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use crate::common::{ContentType, Link, BBOX};
+use crate::common::{core::Link, Bbox, ContentType};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Execute {
@@ -35,12 +35,12 @@ pub enum InputValueNoObject {
     Boolean(bool),
     Array(Vec<Value>),
     BinaryInputValue(String),
-    Bbox(Bbox),
+    Bbox(BoundingBox),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Bbox {
-    bbox: BBOX,
+pub struct BoundingBox {
+    bbox: Bbox,
     crs: Option<String>,
 }
 

@@ -3,8 +3,8 @@ use sqlx::postgres::PgRow;
 use sqlx::Row;
 use sqlx::{postgres::PgPoolOptions, types::Json, Pool, Postgres};
 
-use crate::collections::{Collection, Extent, ItemType, Provider, Summaries};
-use crate::common::{Conformance, Link, Links};
+use crate::common::collections::{Collection, Extent, ItemType, Provider, Summaries};
+use crate::common::core::{Conformance, Link, Links};
 use crate::features::{Assets, Feature, FeatureType};
 
 #[derive(Debug, Clone)]
@@ -332,7 +332,7 @@ mod tests {
 
     use serde_json::json;
 
-    use crate::collections::Collection;
+    use crate::common::collections::Collection;
     use crate::db::Db;
     use crate::features::Feature;
 

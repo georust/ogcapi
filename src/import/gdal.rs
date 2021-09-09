@@ -7,7 +7,7 @@ use gdal::{
 
 use serde_json::{json, Map, Value};
 
-use crate::{collections::Collection, db::Db};
+use crate::{common::collections::Collection, db::Db};
 
 pub async fn gdal_import(
     input: PathBuf,

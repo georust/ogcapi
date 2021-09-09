@@ -9,7 +9,7 @@ use std::fs::File;
 use openapiv3::OpenAPI;
 use tide::{http::url::Position, Body, Request, Response, Result};
 
-use crate::common::{ContentType, LandingPage};
+use crate::common::{core::LandingPage, ContentType};
 use crate::db::Db;
 
 static OGCAPI: &'static str = "openapi/ogcapi.yaml";
