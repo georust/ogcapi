@@ -1,6 +1,7 @@
 use tide::{Request, Response, Result};
 
-use crate::{db::Db, tiles::Query};
+use crate::db::Db;
+use crate::tiles::Query;
 
 /*
 pub async fn get_tile_matrix_sets(req: Request<Service>) -> Result {

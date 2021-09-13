@@ -1,11 +1,10 @@
-use geojson::Geometry;
 use sqlx::postgres::PgRow;
 use sqlx::Row;
 use sqlx::{postgres::PgPoolOptions, types::Json, Pool, Postgres};
 
-use crate::common::collections::{Collection, Extent, ItemType, Provider, Summaries};
+use crate::common::collections::Collection;
 use crate::common::core::{Conformance, Link, Links};
-use crate::features::{Assets, Feature, FeatureType};
+use crate::features::{Assets, Feature, FeatureType, Geometry};
 
 #[derive(Debug, Clone)]
 pub struct Db {
@@ -86,46 +85,11 @@ impl Db {
         .execute(&mut tx)
         .await?;
 
-        sqlx::query(
-            r#"
-            INSERT INTO meta.collections (
-                id,
-                title,
-                description,
-                links,
-                extent,
-                item_type,
-                crs,
-                storage_crs,
-                storage_crs_coordinate_epoch,
-                stac_version,
-                stac_extensions,
-                keywords,
-                licence,
-                providers,
-                summaries
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
-                )
-            "#,
-        )
-        .bind(&collection.id)
-        .bind(&collection.title)
-        .bind(&collection.description)
-        .bind(&collection.links as &Json<Links>)
-        .bind(&collection.extent as &Option<Json<Extent>>)
-        .bind(&collection.item_type as &Option<Json<ItemType>>)
-        .bind(&collection.crs.as_deref())
-        .bind(&collection.storage_crs)
-        .bind(&collection.storage_crs_coordinate_epoch)
-        .bind(&collection.stac_version)
-        .bind(&collection.stac_extensions.as_deref())
-        .bind(&collection.keywords.as_deref())
-        .bind(&collection.licence)
-        .bind(&collection.providers as &Option<Json<Vec<Provider>>>)
-        .bind(&collection.summaries as &Option<Json<Summaries>>)
-        .execute(&mut tx)
-        .await?;
+        sqlx::query("INSERT INTO meta.collections ( id, collection ) VALUES ( $1, $2 )")
+            .bind(&collection.id)
+            .bind(Json(collection) as Json<&Collection>)
+            .execute(&mut tx)
+            .await?;
 
         tx.commit().await?;
 
@@ -133,74 +97,21 @@ impl Db {
     }
 
     pub async fn select_collection(&self, id: &str) -> Result<Collection, anyhow::Error> {
-        let collection: Collection = sqlx::query_as(
-            r#"
-            SELECT
-                id,
-                title,
-                description,
-                links,
-                extent,
-                item_type,
-                crs,
-                storage_crs,
-                storage_crs_coordinate_epoch,
-                stac_version,
-                stac_extensions,
-                keywords,
-                licence,
-                providers,
-                summaries
-            FROM meta.collections
-            WHERE id = $1
-            "#,
-        )
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await?;
+        let collection: (Json<Collection>,) =
+            sqlx::query_as("SELECT collection FROM meta.collections WHERE id = $1")
+                .bind(id)
+                .fetch_one(&self.pool)
+                .await?;
 
-        Ok(collection)
+        Ok(collection.0 .0)
     }
 
     pub async fn update_collection(&self, collection: &Collection) -> Result<(), anyhow::Error> {
-        sqlx::query(
-            r#"
-            UPDATE meta.collections
-            SET
-                title = $2,
-                description = $3,
-                links = $4,
-                extent = $5,
-                item_type = $6,
-                crs = $7,
-                storage_crs = $8,
-                storage_crs_coordinate_epoch = $9,
-                stac_version = $10,
-                stac_extensions = $11,
-                keywords = $12,
-                licence = $13,
-                providers = $14,
-                summaries = $15
-            WHERE id = $1
-            "#,
-        )
-        .bind(&collection.id)
-        .bind(&collection.title)
-        .bind(&collection.description)
-        .bind(&collection.links as &Json<Links>)
-        .bind(&collection.extent as &Option<Json<Extent>>)
-        .bind(&collection.item_type as &Option<Json<ItemType>>)
-        .bind(&collection.crs.as_deref())
-        .bind(&collection.storage_crs)
-        .bind(&collection.storage_crs_coordinate_epoch)
-        .bind(&collection.stac_version)
-        .bind(&collection.stac_extensions.as_deref())
-        .bind(&collection.keywords.as_deref())
-        .bind(&collection.licence)
-        .bind(&collection.providers as &Option<Json<Vec<Provider>>>)
-        .bind(&collection.summaries as &Option<Json<Summaries>>)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE meta.collections SET collection = $2 WHERE id = $1")
+            .bind(&collection.id)
+            .bind(Json(collection) as Json<&Collection>)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
@@ -333,6 +244,7 @@ mod tests {
     use serde_json::json;
 
     use crate::common::collections::Collection;
+    use crate::common::core::Link;
     use crate::db::Db;
     use crate::features::Feature;
 
@@ -343,14 +255,14 @@ mod tests {
 
         let db = Db::connect(&env::var("DATABASE_URL")?).await?;
 
-        let collection: Collection = serde_json::from_value(json!({
-            "id": "test",
-            "links": [{
-                "href": "collections/test",
-                "rel": "self"
-            }]
-        }))
-        .unwrap();
+        let collection = Collection {
+            id: "test".to_string(),
+            links: vec![Link {
+                href: "collections/test".to_string(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
 
         // create collection
         let location = db.insert_collection(&collection).await?;

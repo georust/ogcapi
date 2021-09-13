@@ -12,12 +12,12 @@ use tide::{http::url::Position, Body, Request, Response, Result};
 use crate::common::{core::LandingPage, ContentType};
 use crate::db::Db;
 
-static OGCAPI: &'static str = "openapi/ogcapi.yaml";
+static OPENAPI: &'static str = "openapi.yaml";
 
 pub async fn root(req: Request<Db>) -> Result {
     let url = req.url();
 
-    let rdr = File::open(OGCAPI)?;
+    let rdr = File::open(OPENAPI)?;
     let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
 
     let links = req.state().root().await?;
@@ -39,7 +39,7 @@ pub async fn root(req: Request<Db>) -> Result {
 }
 
 pub async fn api(_req: Request<Db>) -> Result {
-    let rdr = File::open(OGCAPI)?;
+    let rdr = File::open(OPENAPI)?;
     let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
 
     let mut res = Response::new(200);
@@ -52,10 +52,9 @@ pub async fn redoc(req: Request<Db>) -> Result {
     let api_url = req.url()[..Position::AfterPath].replace("redoc", "api");
 
     let mut res = Response::new(200);
-    res.set_content_type(tide::http::mime::HTML);
+    res.set_content_type(ContentType::HTML);
     res.set_body(format!(
-        r#"
-        <!DOCTYPE html>
+        r#"<!DOCTYPE html>
         <html>
         <head>
             <title>ReDoc</title>
@@ -78,8 +77,7 @@ pub async fn redoc(req: Request<Db>) -> Result {
             <redoc spec-url="{}"></redoc>
             <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"> </script>
         </body>
-        </html>
-        "#,
+        </html>"#,
         api_url
     ));
     Ok(res)

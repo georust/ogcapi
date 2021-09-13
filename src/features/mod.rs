@@ -4,7 +4,7 @@ pub use query::Query;
 
 use std::collections::HashMap;
 
-use geojson::{Bbox, Geometry};
+pub use geojson::{Bbox, Geometry};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::types::Json;
@@ -12,40 +12,34 @@ use sqlx::types::Json;
 use crate::common::core::Links;
 
 /// A set of Features from a dataset
+#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCollection {
     pub r#type: String,
     pub features: Vec<Feature>,
+    #[serialize_always]
     pub links: Option<Links>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub time_stamp: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub number_matched: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub number_returned: Option<usize>,
 }
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
+#[serde_with::skip_serializing_none]
 #[derive(sqlx::FromRow, Deserialize, Serialize, Debug, PartialEq)]
 pub struct Feature {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub collection: Option<String>,
     #[serde(rename = "type")]
     pub feature_type: Json<FeatureType>,
+    #[serialize_always]
     pub properties: Option<Value>,
     pub geometry: Json<Geometry>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub links: Option<Json<Links>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub stac_version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub stac_extensions: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub assets: Option<Json<Assets>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox: Option<Json<Bbox>>,
 }
 

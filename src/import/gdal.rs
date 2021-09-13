@@ -5,9 +5,16 @@ use gdal::{
     vector::{Feature, FieldValue, Layer},
 };
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value};
 
-use crate::{common::collections::Collection, db::Db};
+use crate::{
+    common::{
+        collections::{Collection, Extent, SpatialExtent},
+        core::Bbox,
+        Crs,
+    },
+    db::Db,
+};
 
 pub async fn gdal_import(
     input: PathBuf,
@@ -110,24 +117,19 @@ fn collection_from_layer(
 ) -> Result<Collection, anyhow::Error> {
     let title = collection.to_owned().unwrap_or_else(|| layer.name());
 
-    let extent = layer.try_get_extent()?.and_then(|e| {
-        serde_json::from_value(json!({
-            "spatial": {
-                "bbox": [e.MinX, e.MinY, e.MaxX, e.MinY],
-                "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-            }
-        }))
-        .ok()
-    });
-
     let collection = Collection {
         id: title.to_lowercase().replace(" ", "_"),
         title: Some(title),
         links: serde_json::from_str("[]")?,
-        crs: Some(vec![
-            "http://www.opengis.net/def/crs/OGC/1.3/CRS84".to_string()
-        ]),
-        extent,
+        crs: Some(vec![Crs::default()]),
+        extent: layer.try_get_extent()?.map(|e| Extent {
+            spatial: Some(SpatialExtent {
+                bbox: Some(vec![Bbox::Bbox2D(e.MinX, e.MinY, e.MaxX, e.MaxY)]),
+                crs: Some(Crs::default())
+            }),
+            temporal: None,
+        }),
+        storage_crs: Some(Crs::default()),
         ..Default::default()
     };
 

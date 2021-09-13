@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use crate::common::{core::Link, Bbox, ContentType};
+use crate::common::core::{Bbox, Link};
+use crate::common::ContentType;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Execute {

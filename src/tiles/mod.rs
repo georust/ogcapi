@@ -6,7 +6,6 @@ use tms::TileMatrixSet;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use tide::http::Url;
 
 use crate::common::core::Links;
 
@@ -34,7 +33,7 @@ pub struct TileSet {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TileSetEntry {
-    pub tile_url: Url,
+    pub tile_url: String,
     pub tile_matrix: String,
     pub tile_row: Option<i32>,
     pub tile_col: Option<i32>,

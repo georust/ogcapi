@@ -1,14 +1,14 @@
 pub mod routes;
 
-use std::env;
+use std::{env, str::FromStr};
 
 pub use routes::{collections, features, processes, styles, tiles};
 
 mod exception;
 
-use tide::{self, utils::After};
+use tide::{self, http::Mime, utils::After};
 
-use crate::db::Db;
+use crate::{common::ContentType, db::Db};
 
 pub async fn run(url: &str) -> tide::Result<()> {
     tide::log::start();
@@ -78,4 +78,10 @@ pub async fn run(url: &str) -> tide::Result<()> {
 
     app.listen(url).await?;
     Ok(())
+}
+
+impl Into<Mime> for ContentType {
+    fn into(self) -> Mime {
+        Mime::from_str(&serde_json::to_string::<ContentType>(&self).unwrap()).unwrap()
+    }
 }

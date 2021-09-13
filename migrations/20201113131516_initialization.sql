@@ -21,20 +21,21 @@ CREATE TABLE meta.conformance (
 
 CREATE TABLE meta.collections (
     id text PRIMARY KEY,
-    title text,
-    description text,
-    links jsonb NOT NULL,
-    extent jsonb,
-    item_type jsonb DEFAULT '"unknown"'::jsonb,
-    crs text[],
-    storage_crs text,
-    storage_crs_coordinate_epoch real,
-    stac_version text,
-    stac_extensions text[],
-    keywords text[],
-    licence text,
-    providers jsonb,
-    summaries jsonb
+    -- title text,
+    -- description text,
+    -- links jsonb NOT NULL,
+    -- extent jsonb,
+    -- item_type jsonb DEFAULT '"unknown"'::jsonb,
+    -- crs text[],
+    -- storage_crs text,
+    -- storage_crs_coordinate_epoch real,
+    -- stac_version text,
+    -- stac_extensions text[],
+    -- keywords text[],
+    -- licence text,
+    -- providers jsonb,
+    -- summaries jsonb
+    collection jsonb NOT NULL
 );
 
 CREATE TABLE meta.styles (

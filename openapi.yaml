@@ -1,17 +1,18 @@
-openapi: 3.0.3
+openapi: 3.0.2
 info:
   title: OGC API
   version: 0.1.0
-  license:
-    name: CC-BY 4.0 license
-    url: "https://creativecommons.org/licenses/by/4.0/"
   description: |-
     This is an OpenAPI definition of various OGC API specifications as well as
     the SpatioTemporal Asset Catalog (STAC) API specification.
   contact:
     name: Balthasar Teuscher
     email: balthasar.teuscher@gmail.com
+  license:
+    name: CC-BY 4.0 license
+    url: https://creativecommons.org/licenses/by/4.0/
 tags:
+  - name: server
   - name: Capabilities
     description: essential characteristics of this API
   - name: Data
@@ -19,37 +20,51 @@ tags:
 paths:
   /:
     get:
-      tags:
-        - Capabilities
-      summary: landing page
-      description: |-
-        Returns the root STAC Catalog or STAC Collection that is the entry point
-        for users to browse with STAC Browser or for search engines to crawl.
-        This can either return a single STAC Collection or more commonly a STAC
-        catalog.
-
-        The landing page provides links to the API definition, the conformance
-        statements, the collections and sub-catalogs.
+      description: >-
+        The landing page provides links to the API definition and the
+        conformance statements for this API.
       operationId: getLandingPage
       responses:
         "200":
-          $ref: "#/components/schemas/landingPage"
+          $ref: "#/components/responses/LandingPage"
+        "400":
+          $ref: "#/components/responses/400"
         "500":
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/500"
+      summary: Landing page
+      tags:
+        - server
+  /api:
+    get:
+      description: This document
+      responses:
+        "200":
+          $ref: "#/components/responses/200"
+        "400":
+          $ref: "#/components/responses/400"
+        default:
+          $ref: "#/components/responses/500"
+      summary: This document
+      tags:
+        - server
   /conformance:
     get:
-      tags:
-        - Capabilities
-      summary: information about specifications that this API conforms to
-      description: |-
+      description: >-
         A list of all conformance classes specified in a standard that the
         server conforms to.
+      parameters:
+        - $ref: "#/components/parameters/f"
       operationId: getConformanceDeclaration
       responses:
         "200":
-          $ref: "#/components/schemas/confClasses"
+          $ref: "#/components/responses/ConformanceDeclaration"
+        "400":
+          $ref: "#/components/responses/400"
         "500":
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/500"
+      summary: API conformance definition
+      tags:
+        - server
   /collections:
     get:
       tags:
@@ -71,7 +86,7 @@ paths:
         - $ref: "#/components/parameters/collectionId"
       responses:
         "200":
-          $ref: "#/components/schemas/collection"
+          $ref: "#/components/schemas/collectionDesc"
         "404":
           $ref: "#/components/schemas/exception"
         "500":
@@ -142,23 +157,33 @@ components:
         * Upper right corner, coordinate axis 2
         * Upper right corner, coordinate axis 3 (optional)
 
-        The coordinate reference system of the values is WGS84 longitude/latitude
-        (http://www.opengis.net/def/crs/OGC/1.3/CRS84) unless a different coordinate
-        reference system is specified in the parameter `bbox-crs`.
+        If the value consists of four numbers, the coordinate reference system is
+        WGS84 longitude/latitude (http://www.opengis.net/def/crs/OGC/1.3/CRS84) 
+        unless a different coordinate reference system is specified in the parameter `bbox-crs`.
+
+        If the value consists of six numbers, the coordinate reference system is WGS 84 
+        longitude/latitude/ellipsoidal height (http://www.opengis.net/def/crs/OGC/0/CRS84h)
+        unless a different coordinate reference system is specified in a parameter `bbox-crs`.
 
         For WGS84 longitude/latitude the values are in most cases the sequence of
         minimum longitude, minimum latitude, maximum longitude and maximum latitude.
         However, in cases where the box spans the antimeridian the first value
         (west-most box edge) is larger than the third value (east-most box edge).
-        
+
+        If the vertical axis is included, the third and the sixth number are the
+        bottom and the top of the 3-dimensional bounding box.
+
         If a resource has multiple spatial geometry properties, it is the decision of the server 
         whether only a single spatial geometry property is used to determine
         the extent or all relevant geometries.
       required: false
       schema:
         type: array
-        minItems: 4
-        maxItems: 6
+        oneOf:
+          - minItems: 4
+            maxItems: 4
+          - minItems: 6
+            maxItems: 6
         items:
           type: number
       style: form
@@ -173,7 +198,7 @@ components:
     datetime:
       name: datetime
       in: query
-      description: |-
+      description: >-
         Either a date-time or an interval, open or closed. Date and time expressions
         adhere to RFC 3339. Open intervals are expressed using double-dots.
 
@@ -219,8 +244,75 @@ components:
         default: 10
       style: form
       explode: false
+  responses:
+    ConformanceDeclaration:
+      description: |-
+        The URIs of all conformance classes supported by the server.
+        To support "generic" clients that want to access multiple
+        OGC API Features implementations - and not "just" a specific
+        API / server, the server declares the conformance
+        classes it implements and conforms to.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/confClasses"
+          example:
+            conformsTo:
+              - "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core"
+              - "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage"
+              - "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30"
+              - "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html"
+              - "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/json"
+        text/html:
+          schema:
+            type: string
+    LandingPage:
+      description: |-
+        The landing page provides links to the API definition
+        (link relations `service-desc` and `service-doc`),
+        and the Conformance declaration (path `/conformance`,
+        link relation `conformance`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/landingPage"
+        text/html:
+          schema:
+            type: string
+    exception:
+      description: An error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/exception"
+        text/html:
+          schema:
+            type: string
+    200:
+      description: |-
+        General Success response.
+    400:
+      description: |-
+        General HTTP error response.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/exception"
+        text/html:
+          schema:
+            type: string
+    500:
+      description: |-
+        A server error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/exception"
+        text/html:
+          schema:
+            type: string
   schemas:
-    collection:
+    collectionDesc:
       type: object
       required:
         - id
@@ -237,25 +329,21 @@ components:
         description:
           description: a description of the features in the collection
           type: string
-          example: An address.
+          example: An address
+        attribution:
+          type: string
+          title: attribution for the collection
         links:
           type: array
           items:
             $ref: "#/components/schemas/link"
-          example:
-            - href: http://data.example.com/buildings
-              rel: item
-            - href: http://example.com/concepts/buildings.html
-              rel: describedby
-              type: text/html
         extent:
           $ref: "#/components/schemas/extent"
         itemType:
-          description: indicator about the type of the items in the collection (the default value is 'feature').
+          description: An indicator about the type of the items in the collection
           type: string
-          default: feature
         crs:
-          description: the list of CRS identifiers supported by the service
+          description: the list of coordinate reference systems supported by the API; the first item is the default coordinate reference system
           type: array
           items:
             type: string
@@ -279,7 +367,7 @@ components:
             a collection without the need to apply a change of coordinate 
             epoch. It is expressed as a decimal year in the Gregorian calendar
           type: number
-          example: '2017-03-25 in the Gregorian calendar is epoch 2017.23'
+          example: "2017-03-25 in the Gregorian calendar is epoch 2017.23"
     collections:
       type: object
       required:
@@ -290,10 +378,19 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/link"
+        timeStamp:
+          type: string
+          format: date-time
+        numberMatched:
+          type: integer
+          minimum: 0
+        numberReturned:
+          type: integer
+          minimum: 0
         collections:
           type: array
           items:
-            $ref: "#/components/schemas/collection"
+            $ref: "#/components/schemas/collectionDesc"
     confClasses:
       type: object
       required:
@@ -303,7 +400,7 @@ components:
           type: array
           items:
             type: string
-            example: "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core"
+            example: http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core
     exception:
       title: Exception Schema
       description: JSON schema for exceptions based on RFC 7807
@@ -538,7 +635,7 @@ components:
         title:
           type: string
           title: The title of the API.
-          description: While a title is not required, implementors are strongly advised to include one.
+          description: While a title is not required, implementers are strongly advised to include one.
           example: Buildings in Bonn
         description:
           type: string
@@ -577,7 +674,7 @@ components:
       properties:
         href:
           type: string
-          description: Supplies the URI to a remote resource(or resource fragment).
+          description: Supplies the URI to a remote resource (or resource fragment).
           example: http://data.example.com/buildings/123
         rel:
           type: string

@@ -5,7 +5,11 @@ use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 
 use serde_json::{Map, Value};
 
-use crate::{common::collections::Collection, db::Db, import::boundaries};
+use crate::{
+    common::{collections::Collection, Crs},
+    db::Db,
+    import::boundaries,
+};
 
 /// Import osm data from pbf file
 pub async fn osm_import(
@@ -21,9 +25,7 @@ pub async fn osm_import(
         id: title.to_lowercase().replace(" ", "_"),
         title: Some(title),
         links: serde_json::from_str("[]")?,
-        crs: Some(vec![
-            "http://www.opengis.net/def/crs/OGC/1.3/CRS84".to_string()
-        ]),
+        crs: Some(vec![Crs::default()]),
         ..Default::default()
     };
     db.delete_collection(&collection.id).await?;

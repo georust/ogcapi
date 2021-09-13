@@ -8,7 +8,7 @@ pub static OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"; // 
 pub static OGC_CRS84h: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h"; // for coordinates with height
 
 /// CRS Authorities
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Authority {
     OGC,
     EPSG,
@@ -37,22 +37,22 @@ impl FromStr for Authority {
 
 /// Coordinate Reference System (CRS)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct CRS {
+pub struct Crs {
     pub authority: Authority,
     pub version: String,
     pub code: String,
 }
 
-impl CRS {
-    pub fn new(authority: Authority, version: &str, code: &str) -> CRS {
-        CRS {
+impl Crs {
+    pub fn new(authority: Authority, version: &str, code: &str) -> Crs {
+        Crs {
             authority,
             version: version.to_owned(),
             code: code.to_owned(),
         }
     }
 
-    pub fn ogc_to_epsg(&self) -> Option<CRS> {
+    pub fn ogc_to_epsg(&self) -> Option<Crs> {
         match self.authority {
             Authority::OGC => match self.code.as_str() {
                 "CRS84" => Some(4326.into()),
@@ -73,7 +73,7 @@ impl CRS {
     }
 }
 
-impl fmt::Display for CRS {
+impl fmt::Display for Crs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -85,7 +85,7 @@ impl fmt::Display for CRS {
     }
 }
 
-impl FromStr for CRS {
+impl FromStr for Crs {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -94,28 +94,28 @@ impl FromStr for CRS {
             .split('/')
             .collect();
         match parts.len() {
-            3 => Ok(CRS::new(Authority::from_str(parts[0])?, parts[1], parts[2])),
+            3 => Ok(Crs::new(Authority::from_str(parts[0])?, parts[1], parts[2])),
             _ => Err("Unable to parse CRS from string!"),
         }
     }
 }
 
-impl Default for CRS {
-    fn default() -> CRS {
-        CRS::from_str(OGC_CRS84).unwrap()
+impl Default for Crs {
+    fn default() -> Crs {
+        Crs::from_str(OGC_CRS84).unwrap()
     }
 }
 
-impl From<i32> for CRS {
+impl From<i32> for Crs {
     fn from(epsg_code: i32) -> Self {
-        CRS::new(Authority::EPSG, "0", &epsg_code.to_string())
+        Crs::new(Authority::EPSG, "0", &epsg_code.to_string())
     }
 }
 
-impl TryFrom<CRS> for i32 {
+impl TryFrom<Crs> for i32 {
     type Error = &'static str;
 
-    fn try_from(crs: CRS) -> Result<i32, &'static str> {
+    fn try_from(crs: Crs) -> Result<i32, &'static str> {
         match crs.authority {
             Authority::OGC => match crs.code.as_str() {
                 "CRS84" => Ok(4326),
@@ -131,18 +131,18 @@ impl TryFrom<CRS> for i32 {
 mod tests {
     use std::{convert::TryInto, str::FromStr};
 
-    use crate::common::{crs::OGC_CRS84h, crs::OGC_CRS84, CRS};
+    use crate::common::{crs::OGC_CRS84h, crs::OGC_CRS84, Crs};
 
     #[test]
     fn parse_crs() {
-        let crs = CRS::from_str(OGC_CRS84).unwrap();
+        let crs = Crs::from_str(OGC_CRS84).unwrap();
         assert_eq!(format!("{:#}", crs), OGC_CRS84)
     }
 
     #[test]
     fn from_epsg() {
         let code = 4979;
-        let crs: CRS = code.into();
+        let crs: Crs = code.into();
         assert_eq!(
             crs.to_string(),
             "http://www.opengis.net/def/crs/EPSG/0/4979".to_string()
@@ -151,14 +151,14 @@ mod tests {
         let epsg: i32 = crs.try_into().unwrap();
         assert_eq!(epsg, code);
 
-        let epsg: i32 = CRS::default().try_into().unwrap();
+        let epsg: i32 = Crs::default().try_into().unwrap();
         assert_eq!(epsg, 4326)
     }
 
     #[test]
     fn into_epsg() {
         let code = 4979;
-        let crs: CRS = code.into();
+        let crs: Crs = code.into();
         assert_eq!(
             crs.to_string(),
             "http://www.opengis.net/def/crs/EPSG/0/4979".to_string()
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn ogc_to_epsg() {
-        let crs = CRS::from_str(OGC_CRS84h).unwrap();
+        let crs = Crs::from_str(OGC_CRS84h).unwrap();
         assert_eq!(crs.ogc_to_epsg(), Some(4979.into()))
     }
 }

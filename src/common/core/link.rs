@@ -5,7 +5,8 @@ use crate::common::ContentType;
 pub type Links = Vec<Link>;
 
 /// Hyperlink to enable Hypermedia Access
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
+#[serde_with::skip_serializing_none]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 pub struct Link {
     /// Supplies the URI to a remote resource (or resource fragment).
     pub href: String,
@@ -13,24 +14,20 @@ pub struct Link {
     pub rel: LinkRelation,
     /// A hint indicating what the media type of the result of dereferencing
     /// the link should be.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub r#type: Option<ContentType>,
     /// A hint indicating what the language of the result of dereferencing the
     /// link should be.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hreflang: Option<String>,
     /// Used to label the destination of a link such that it can be used as a
     /// human-readable identifier.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub length: Option<usize>,
 }
 
 /// Link Relations
 ///
 /// [IANA Link Relations Registry](https://www.iana.org/assignments/link-relations/link-relations.xhtml)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub enum LinkRelation {
     Alternate,

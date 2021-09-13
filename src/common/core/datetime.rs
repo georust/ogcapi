@@ -1,24 +1,21 @@
 use std::fmt;
 use std::str::FromStr;
 
-use chrono::{DateTime, FixedOffset, SecondsFormat};
+use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum Datetime {
-    Datetime(DateTime<FixedOffset>),
-    Interval(Interval),
+    Datetime(DateTime<Utc>),
+    Interval {
+        from: IntervalDatetime,
+        to: IntervalDatetime,
+    },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Interval {
-    from: IntervalDatetime,
-    to: IntervalDatetime,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-enum IntervalDatetime {
-    DateTime(DateTime<FixedOffset>),
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum IntervalDatetime {
+    Datetime(DateTime<Utc>),
     Open,
 }
 
@@ -28,7 +25,7 @@ impl FromStr for IntervalDatetime {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             ".." => IntervalDatetime::Open,
-            _ => IntervalDatetime::DateTime(DateTime::parse_from_rfc3339(s)?),
+            _ => IntervalDatetime::Datetime(DateTime::parse_from_rfc3339(s)?.into()),
         })
     }
 }
@@ -39,15 +36,15 @@ impl fmt::Display for Datetime {
             Datetime::Datetime(datetime) => {
                 write!(f, "{}", datetime.to_rfc3339_opts(SecondsFormat::Secs, true))
             }
-            Datetime::Interval(interval) => write!(
+            Datetime::Interval { from, to } => write!(
                 f,
                 "{from}/{to}",
-                from = match interval.from {
-                    IntervalDatetime::DateTime(d) => d.to_rfc3339_opts(SecondsFormat::Secs, true),
+                from = match from {
+                    IntervalDatetime::Datetime(d) => d.to_rfc3339_opts(SecondsFormat::Secs, true),
                     IntervalDatetime::Open => "..".to_owned(),
                 },
-                to = match interval.to {
-                    IntervalDatetime::DateTime(d) => d.to_rfc3339_opts(SecondsFormat::Secs, true),
+                to = match to {
+                    IntervalDatetime::Datetime(d) => d.to_rfc3339_opts(SecondsFormat::Secs, true),
                     IntervalDatetime::Open => "..".to_owned(),
                 }
             ),
@@ -61,12 +58,12 @@ impl FromStr for Datetime {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.contains('/') {
             let datetimes: Vec<&str> = s.split('/').collect();
-            Ok(Datetime::Interval(Interval {
+            Ok(Datetime::Interval {
                 from: IntervalDatetime::from_str(datetimes[0])?,
                 to: IntervalDatetime::from_str(datetimes[1])?,
-            }))
+            })
         } else {
-            Ok(Datetime::Datetime(DateTime::parse_from_rfc3339(s)?))
+            Ok(Datetime::Datetime(DateTime::parse_from_rfc3339(s)?.into()))
         }
     }
 }

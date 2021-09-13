@@ -1,17 +1,22 @@
 use serde::Deserialize;
+use serde_with::{serde_as, DisplayFromStr};
+use sqlx::types::Json;
 use tide::http::url::Position;
 use tide::{Body, Request, Response, Result};
 
-use crate::common::collections::{Collection, Collections, CRS_REF};
-use crate::common::core::{Link, LinkRelation};
-use crate::common::{Bbox, ContentType, Datetime, OGC_CRS84h, CRS, OGC_CRS84};
+use crate::common::collections::{Collection, Collections};
+use crate::common::core::{Bbox, Datetime, Link, LinkRelation};
+use crate::common::{ContentType, Crs};
 use crate::db::Db;
 
+#[serde_as]
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 struct Query {
     bbox: Option<Bbox>,
-    bbox_crs: Option<CRS>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    bbox_crs: Option<Crs>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
     datetime: Option<Datetime>,
     limit: Option<isize>,
     offset: Option<isize>,
@@ -44,34 +49,30 @@ pub async fn handle_collections(req: Request<Db>) -> Result {
 
     //let mut query: Query = req.query()?;
 
-    let mut collections: Vec<Collection> = sqlx::query_as("SELECT * FROM meta.collections")
-        .fetch_all(&req.state().pool)
-        .await?;
+    let mut collections: Vec<Json<Collection>> =
+        sqlx::query_scalar("SELECT collection FROM meta.collections")
+            .fetch_all(&req.state().pool)
+            .await?;
 
-    for collection in collections.iter_mut() {
-        let mut links = vec![
-            Link {
-                href: format!("{}/{}/items", &url[..Position::AfterPath], collection.id),
-                rel: LinkRelation::Items,
-                r#type: Some(ContentType::GeoJSON),
-                title: Some(format!(
-                    "Items of {}",
-                    collection.title.as_ref().unwrap_or(&collection.id)
-                )),
-                ..Default::default()
-            },
-            Link {
-                href: format!("{}/{}", &url[..Position::AfterPath], collection.id),
-                ..Default::default()
-            },
-        ];
-        collection.links.append(&mut links);
-        if let Some(crs) = collection.crs.as_mut() {
-            crs.insert(0, CRS_REF.to_string())
-        } else {
-            collection.crs = Some(vec![CRS_REF.to_string()])
-        }
-    }
+    let collections = collections
+        .iter_mut()
+        .map(|c| {
+            c.0.links.append(&mut vec![
+                Link {
+                    href: format!("{}/{}/items", &url[..Position::AfterPath], c.id),
+                    rel: LinkRelation::Items,
+                    r#type: Some(ContentType::GeoJSON),
+                    title: Some(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id))),
+                    ..Default::default()
+                },
+                Link {
+                    href: format!("{}/{}", &url[..Position::AfterPath], c.id),
+                    ..Default::default()
+                },
+            ]);
+            c.0.to_owned()
+        })
+        .collect();
 
     let collections = Collections {
         links: vec![Link {
@@ -80,7 +81,7 @@ pub async fn handle_collections(req: Request<Db>) -> Result {
             title: Some("this document".to_string()),
             ..Default::default()
         }],
-        crs: Some(vec![OGC_CRS84.to_string(), CRS::from(4326).to_string()]),
+        crs: Some(vec![Crs::default(), Crs::from(4326)]),
         collections,
         ..Default::default()
     };
@@ -107,17 +108,7 @@ pub async fn read_collection(req: Request<Db>) -> Result {
 
     let id: &str = req.param("collection")?;
 
-    let mut collection = req.state().select_collection(id).await?;
-
-    collection.crs = Some(vec![
-        OGC_CRS84.to_owned(),
-        OGC_CRS84h.to_owned(),
-        collection
-            .storage_crs
-            .clone()
-            .unwrap_or(CRS::from(4326).to_string()),
-        CRS::from(2056).to_string(),
-    ]);
+    let collection = req.state().select_collection(id).await?;
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&collection)?);

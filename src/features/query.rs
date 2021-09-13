@@ -1,62 +1,43 @@
-use std::{fmt, str::FromStr};
+use std::fmt;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 
-use crate::common::{Datetime, CRS};
+use crate::common::{
+    core::{Bbox, Datetime},
+    Crs,
+};
 
-#[derive(Deserialize, Debug, Clone)]
+#[serde_as]
+#[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
-    pub limit: Option<i64>, // OAF Core 1.0
+    pub limit: Option<i64>,
     pub offset: Option<i64>,
-    pub bbox: Option<String>, // OAF Core 1.0
-    pub bbox_crs: Option<String>,
-    pub datetime: Option<Datetime>, // OAF Core 1.0
-    pub crs: Option<String>,
+    pub bbox: Option<Bbox>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub bbox_crs: Option<Crs>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub datetime: Option<Datetime>,
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub crs: Option<Crs>,
     pub filter: Option<String>,
-    pub filter_lang: Option<String>, // default = 'cql-text'
-    pub filter_crs: Option<String>,
+    pub filter_lang: Option<FilterLang>, // default = 'cql-text'
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub filter_crs: Option<Crs>,
 }
 
-// #[derive(Deserialize, Debug, Clone)]
-// pub enum FilterLang {
-//     CqlText,
-//     CqlJson,
-// }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub enum FilterLang {
+    CqlText,
+    CqlJson,
+}
 
 impl Query {
     pub fn as_string_with_offset(&mut self, offset: i64) -> String {
         self.offset = Some(offset);
         self.to_string()
-    }
-
-    pub fn make_envelope(&self) -> Option<String> {
-        if let Some(bbox) = self.bbox.as_ref() {
-            let srid = self
-                .bbox_crs
-                .as_ref()
-                .and_then(|crs| CRS::from_str(crs).ok())
-                .and_then(|crs| crs.ogc_to_epsg())
-                .map_or("4326".to_string(), |crs| crs.code)
-                .parse::<u32>()
-                .expect("Failed to parse bbox crs EPSG code");
-
-            let mut coords: Vec<&str> = bbox.split(',').collect();
-
-            if coords.len() == 6 {
-                coords.remove(5);
-                coords.remove(2);
-            }
-            assert_eq!(coords.len(), 4);
-
-            Some(format!(
-                "ST_MakeEnvelope({coords}, {srid})",
-                coords = coords.join(", "),
-                srid = srid,
-            ))
-        } else {
-            None
-        }
     }
 }
 
@@ -85,7 +66,10 @@ impl fmt::Display for Query {
             query_str.push(format!("filter={}", filter));
         }
         if let Some(filter_lang) = &self.filter_lang {
-            query_str.push(format!("filter-lang={}", filter_lang));
+            query_str.push(format!(
+                "filter-lang={}",
+                serde_json::to_string(filter_lang).expect("Serialize filter lang")
+            ));
         }
         if let Some(filter_crs) = &self.filter_crs {
             query_str.push(format!("filter-crs={}", filter_crs));
