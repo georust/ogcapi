@@ -19,6 +19,12 @@ enum Args {
         /// Set the collection name, defaults to layer name or "osm"
         #[structopt(long)]
         collection: Option<String>,
+
+        /// Source srs, defaults to the srs found in the input layer
+        s_srs: Option<u32>,
+
+        /// Target storage crs of the collection
+        t_srs: Option<u32>,
     },
     /// Starts the ogcapi service
     Serve {
@@ -46,10 +52,12 @@ async fn main() -> Result<()> {
             input,
             filter,
             collection,
+            s_srs,
+            t_srs,
         } => {
             // initialize logging
             env_logger::init();
-            ogcapi::import::import(input, &filter, &collection).await?;
+            ogcapi::import::import(input, &filter, &collection, &s_srs, &t_srs).await?;
         }
         Args::Serve { host, port } => {
             // Retrieve server address

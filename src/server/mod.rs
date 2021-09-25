@@ -85,3 +85,19 @@ impl Into<Mime> for ContentType {
         Mime::from_str(&serde_json::to_string::<ContentType>(&self).unwrap()).unwrap()
     }
 }
+
+// #[cfg(test)]
+// mod test {
+//     use std::str::FromStr;
+
+//     use tide::http::Mime;
+
+//     use crate::common::ContentType;
+
+//     #[test]
+//     fn mime() {
+//         let mime = serde_json::to_string::<ContentType>(&ContentType::OpenAPI).unwrap();
+//         println!("{}", mime);
+//         Mime::from_str(&mime).unwrap();
+//     }
+// }

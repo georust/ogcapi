@@ -7,10 +7,12 @@ pub mod tiles;
 use std::fs::File;
 
 use openapiv3::OpenAPI;
-use tide::{http::url::Position, Body, Request, Response, Result};
+use tide::{
+    http::{url::Position, Mime},
+    Body, Request, Response, Result,
+};
 
-use crate::common::{core::LandingPage, ContentType};
-use crate::db::Db;
+use crate::{common::core::LandingPage, db::Db};
 
 static OPENAPI: &'static str = "openapi.yaml";
 
@@ -43,7 +45,7 @@ pub async fn api(_req: Request<Db>) -> Result {
     let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
 
     let mut res = Response::new(200);
-    res.set_content_type(ContentType::OpenAPI);
+    // res.set_content_type(ContentType::OpenAPI);
     res.set_body(Body::from_json(&openapi)?);
     Ok(res)
 }
@@ -52,7 +54,7 @@ pub async fn redoc(req: Request<Db>) -> Result {
     let api_url = req.url()[..Position::AfterPath].replace("redoc", "api");
 
     let mut res = Response::new(200);
-    res.set_content_type(ContentType::HTML);
+    res.set_content_type(Mime::from("text/html"));
     res.set_body(format!(
         r#"<!DOCTYPE html>
         <html>

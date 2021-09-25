@@ -120,6 +120,7 @@ pub async fn update_collection(mut req: Request<Db>) -> Result {
     let mut collection: Collection = req.body_json().await?;
 
     let id: &str = req.param("collection")?;
+
     collection.id = id.to_owned();
 
     req.state().update_collection(&collection).await?;

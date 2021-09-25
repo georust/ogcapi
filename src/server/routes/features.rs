@@ -2,10 +2,12 @@ use std::convert::TryInto;
 
 use chrono::{SecondsFormat, Utc};
 use sqlx::types::Json;
+use sqlx::PgPool;
 use tide::{Body, Request, Response, Result};
 
+use crate::common::Crs;
 use crate::common::{
-    core::{Bbox, Link, LinkRelation},
+    core::{Bbox, Exception, Link, LinkRelation},
     ContentType,
 };
 use crate::db::Db;
@@ -30,8 +32,11 @@ pub async fn read_item(req: Request<Db>) -> tide::Result {
     let query: Query = req.query()?;
 
     let crs = query.crs.clone().unwrap_or_default();
-    let srid = crs.clone().try_into().ok();
+    if let Some(res) = validate_crs(collection, &crs, &req.state().pool).await {
+        return Ok(res);
+    }
 
+    let srid = crs.clone().try_into().ok();
     let mut feature = req.state().select_feature(collection, &id, srid).await?;
 
     feature.links = Some(Json(vec![
@@ -50,7 +55,7 @@ pub async fn read_item(req: Request<Db>) -> tide::Result {
 
     let mut res = Response::new(200);
     res.insert_header("Content-Crs", crs.to_string());
-    res.set_content_type(ContentType::GeoJSON);
+    // res.set_content_type(ContentType::GeoJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
@@ -86,18 +91,22 @@ pub async fn handle_items(req: Request<Db>) -> Result {
     let mut query: Query = req.query()?;
 
     let crs = query.crs.clone().unwrap_or_default();
+    if let Some(res) = validate_crs(collection, &crs, &req.state().pool).await {
+        return Ok(res);
+    }
+
     let srid: Option<i32> = crs.clone().try_into().ok();
 
     let mut sql = vec![format!(
-        "SELECT 
-            id, 
-            feature_type, 
-            properties, 
-            ST_AsGeoJSON( ST_Transform( geom, $1::int))::jsonb as geometry, 
-            links, 
-            stac_version, 
-            stac_extensions, 
-            ST_AsGeoJSON( ST_Transform( geom, $1::int), 9, 1)::jsonb -> 'bbox' as bbox, 
+        "SELECT
+            id,
+            feature_type,
+            properties,
+            ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
+            links,
+            stac_version,
+            stac_extensions,
+            ST_AsGeoJSON(ST_Transform(geom, $1), 9, 1)::jsonb -> 'bbox' as bbox,
             assets,
             '{0}' as collection
         FROM items.{0}",
@@ -105,25 +114,25 @@ pub async fn handle_items(req: Request<Db>) -> Result {
     )];
 
     if let Some(bbox) = query.bbox.as_ref() {
-        let srid: i32 = query
-            .bbox_crs
-            .clone()
-            .unwrap_or_default()
-            .try_into()
-            .ok()
-            .unwrap();
-
+        let crs = query.bbox_crs.clone().unwrap_or_default();
+        if let Some(res) = validate_crs(collection, &crs, &req.state().pool).await {
+            return Ok(res);
+        }
+        let bbox_srid: i32 = crs.try_into().ok().unwrap();
         let envelope = match bbox {
             Bbox::Bbox2D(x_min, y_min, x_max, y_max) => format!(
                 "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                x_min, y_min, x_max, y_max, srid
+                x_min, y_min, x_max, y_max, bbox_srid
             ),
             Bbox::Bbox3D(x_min, y_min, _, x_max, y_max, _) => format!(
                 "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                x_min, y_min, x_max, y_max, srid
+                x_min, y_min, x_max, y_max, bbox_srid
             ),
         };
-        sql.push(format!("WHERE geom && {}", envelope));
+        sql.push(format!(
+            "WHERE ST_Transform(geom, {}) && {}",
+            bbox_srid, envelope
+        ));
     }
 
     let number_matched = sqlx::query(sql.join(" ").as_str())
@@ -200,7 +209,34 @@ pub async fn handle_items(req: Request<Db>) -> Result {
 
     let mut res = Response::new(200);
     res.insert_header("Content-Crs", crs.to_string());
-    res.set_content_type(ContentType::GeoJSON);
+    // res.set_content_type(ContentType::GeoJSON);
     res.set_body(Body::from_json(&feature_collection)?);
     Ok(res)
+}
+
+async fn validate_crs(collection: &str, crs: &Crs, pool: &PgPool) -> Option<Response> {
+    if sqlx::query("SELECT id FROM meta.collections WHERE id = $1 AND collection->'crs' ? $2")
+        .bind(&collection)
+        .bind(crs.to_string())
+        .execute(pool)
+        .await
+        .unwrap()
+        .rows_affected()
+        == 0
+    {
+        let mut res = Response::new(400);
+        res.set_body(
+            Body::from_json(&Exception {
+                r#type: "https://httpwg.org/specs/rfc7231.html#status.400".to_string(),
+                status: Some(400),
+                detail: Some("Unsupported crs".to_string()),
+                ..Default::default()
+            })
+            .unwrap(),
+        );
+
+        Some(res)
+    } else {
+        None
+    }
 }

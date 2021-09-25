@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, str};
 
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +31,25 @@ impl std::fmt::Display for Bbox {
                     lower_left_x, lower_left_y, min_z, upper_right_x, upper_right_y, max_z
                 )
             }
+        }
+    }
+}
+
+impl str::FromStr for Bbox {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let numbers: Vec<f64> = s
+            .split(",")
+            .into_iter()
+            .map(|d| d.parse().expect("Parse float from str"))
+            .collect();
+        match numbers.len() {
+            4 => Ok(Bbox::Bbox2D(numbers[0], numbers[1], numbers[2], numbers[3])),
+            6 => Ok(Bbox::Bbox3D(
+                numbers[0], numbers[1], numbers[2], numbers[3], numbers[4], numbers[5],
+            )),
+            _ => Err("Expected 4 or 6 numbers"),
         }
     }
 }

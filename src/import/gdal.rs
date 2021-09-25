@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use gdal::{
     spatial_ref::{CoordTransform, SpatialRef},
-    vector::{Feature, FieldValue, Layer},
+    vector::{Feature, FieldValue},
 };
 
 use serde_json::{Map, Value};
@@ -20,6 +20,8 @@ pub async fn gdal_import(
     input: PathBuf,
     filter: &Option<String>,
     collection: &Option<String>,
+    s_srs: &Option<u32>,
+    t_srs: &Option<u32>,
     db: &Db,
 ) -> Result<(), anyhow::Error> {
     // GDAL Configuration Options http://trac.osgeo.org/gdal/wiki/ConfigOptions
@@ -49,11 +51,54 @@ pub async fn gdal_import(
             continue;
         }
 
+        // Prepare the origin and destination spatial references objects and coordinate transformation
+        let spatial_ref_src = match s_srs {
+            Some(epsg) => SpatialRef::from_epsg(*epsg)?,
+            None => layer.spatial_ref()?,
+        };
+
+        let spatial_ref_dst = match t_srs {
+            Some(epsg) => SpatialRef::from_epsg(*epsg)?,
+            None => layer.spatial_ref()?,
+        };
+
+        spatial_ref_src.set_axis_mapping_strategy(0);
+        spatial_ref_dst.set_axis_mapping_strategy(0);
+
+        let transform = CoordTransform::new(&spatial_ref_src, &spatial_ref_dst)?;
+
         // Create collection
-        let collection = collection_from_layer(&layer, collection)?;
-        db.delete_collection(&collection.id).await?;
+        let title = collection.to_owned().unwrap_or_else(|| layer.name());
+        let storage_crs = Crs::from(spatial_ref_dst.auth_code()?);
+
+        let collection = Collection {
+            id: title.to_lowercase().replace(" ", "_"),
+            title: Some(title),
+            links: serde_json::from_str("[]")?,
+            crs: Some(vec![Crs::default(), storage_crs.clone()]),
+            extent: layer.try_get_extent()?.map(|e| {
+                let mut x = [e.MinX, e.MaxX];
+                let mut y = [e.MinY, e.MaxY];
+                // let mut z = [e.MinZ, e.MaxZ];
+                transform
+                    .transform_coords(&mut x, &mut y, &mut [])
+                    .expect("Transform extent coords");
+                Extent {
+                    spatial: Some(SpatialExtent {
+                        bbox: Some(vec![Bbox::Bbox2D(x[0], y[0], x[1], y[1])]),
+                        crs: spatial_ref_dst.auth_code().map(|c| c.into()).ok(),
+                    }),
+                    temporal: None,
+                }
+            }),
+            storage_crs: Some(storage_crs),
+            ..Default::default()
+        };
+
+        // db.delete_collection(&collection.id).await?;
         db.insert_collection(&collection).await?;
 
+        // Load features
         log::info!("Importing layer: `{}`", &collection.title.unwrap());
 
         let fields: Vec<(String, u32, i32)> = layer
@@ -64,17 +109,6 @@ pub async fn gdal_import(
 
         log::debug!("fields_def: {:?}", fields);
 
-        // Prepare the origin and destination spatial references objects:
-        let spatial_ref_src = layer.spatial_ref()?;
-        let spatial_ref_dst = SpatialRef::from_epsg(4326)?;
-
-        spatial_ref_src.set_axis_mapping_strategy(0);
-        spatial_ref_dst.set_axis_mapping_strategy(0);
-
-        // And the feature used to actually transform the geometries:
-        let transform = CoordTransform::new(&spatial_ref_src, &spatial_ref_dst)?;
-
-        // Load features
         let mut pb = pbr::ProgressBar::new(layer.feature_count());
 
         let lyr = ds.layer_by_name(&format!("items.{}", collection.id))?;
@@ -87,6 +121,8 @@ pub async fn gdal_import(
             // Create the new feature, set its geometry:
             let mut ft = Feature::new(lyr.defn())?;
             ft.set_geometry(new_geom)?;
+
+            feature.geometry().geometry_type();
 
             // Map fields
             // if let Some(id) = feature.fid() {
@@ -108,32 +144,6 @@ pub async fn gdal_import(
     }
 
     Ok(())
-}
-
-/// Create new collection metadata from gdal layer
-fn collection_from_layer(
-    layer: &Layer,
-    collection: &Option<String>,
-) -> Result<Collection, anyhow::Error> {
-    let title = collection.to_owned().unwrap_or_else(|| layer.name());
-
-    let collection = Collection {
-        id: title.to_lowercase().replace(" ", "_"),
-        title: Some(title),
-        links: serde_json::from_str("[]")?,
-        crs: Some(vec![Crs::default()]),
-        extent: layer.try_get_extent()?.map(|e| Extent {
-            spatial: Some(SpatialExtent {
-                bbox: Some(vec![Bbox::Bbox2D(e.MinX, e.MinY, e.MaxX, e.MaxY)]),
-                crs: Some(Crs::default())
-            }),
-            temporal: None,
-        }),
-        storage_crs: Some(Crs::default()),
-        ..Default::default()
-    };
-
-    Ok(collection)
 }
 
 /// Extract properties from feature

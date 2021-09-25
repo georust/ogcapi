@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{default, fmt};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
@@ -14,15 +14,22 @@ use crate::common::{
 pub struct Query {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    #[serde(default)]
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub bbox: Option<Bbox>,
+    #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub bbox_crs: Option<Crs>,
+    #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub datetime: Option<Datetime>,
+    #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub crs: Option<Crs>,
     pub filter: Option<String>,
-    pub filter_lang: Option<FilterLang>, // default = 'cql-text'
+    #[serde(default)]
+    pub filter_lang: Option<FilterLang>,
+    #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub filter_crs: Option<Crs>,
 }
@@ -32,6 +39,12 @@ pub struct Query {
 pub enum FilterLang {
     CqlText,
     CqlJson,
+}
+
+impl default::Default for FilterLang {
+    fn default() -> Self {
+        FilterLang::CqlText
+    }
 }
 
 impl Query {

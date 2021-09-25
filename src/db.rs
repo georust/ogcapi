@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use sqlx::postgres::PgRow;
 use sqlx::Row;
 use sqlx::{postgres::PgPoolOptions, types::Json, Pool, Postgres};
@@ -48,7 +50,7 @@ impl Db {
 
         sqlx::query(&format!(
             r#"
-            CREATE TABLE IF NOT EXISTS items.{0} (
+            CREATE TABLE IF NOT EXISTS items.{} (
                 id bigserial PRIMARY KEY,
                 feature_type jsonb NOT NULL DEFAULT '"Feature"'::jsonb,
                 properties jsonb,
@@ -65,25 +67,30 @@ impl Db {
         .await?;
 
         sqlx::query(&format!(
-            "CREATE INDEX ON items.{0} USING gin (properties)",
+            "CREATE INDEX ON items.{} USING gin (properties)",
             collection.id
         ))
         .execute(&mut tx)
         .await?;
 
         sqlx::query(&format!(
-            "CREATE INDEX ON items.{0} USING gist (geom)",
+            "CREATE INDEX ON items.{} USING gist (geom)",
             collection.id
         ))
         .execute(&mut tx)
         .await?;
 
-        sqlx::query(&format!(
-            "SELECT UpdateGeometrySRID('items', '{0}', 'geom', 4326)",
-            collection.id
-        ))
-        .execute(&mut tx)
-        .await?;
+        sqlx::query("SELECT UpdateGeometrySRID('items', $1, 'geom', $2)")
+            .bind(&collection.id)
+            .bind(
+                &collection
+                    .storage_crs
+                    .clone()
+                    .and_then(|c| c.try_into().ok())
+                    .unwrap_or_else(|| 4326),
+            )
+            .execute(&mut tx)
+            .await?;
 
         sqlx::query("INSERT INTO meta.collections ( id, collection ) VALUES ( $1, $2 )")
             .bind(&collection.id)
@@ -146,7 +153,7 @@ impl Db {
                 stac_version,
                 stac_extensions,
                 assets
-            ) VALUES ($1, $2, ST_SetSRID(ST_GeomFromGeoJSON($3),4326), $4, $5, $6, $7)
+            ) VALUES ($1, $2, ST_GeomFromGeoJSON($3), $4, $5, $6, $7)
             RETURNING id
             "#,
             &collection
@@ -170,7 +177,6 @@ impl Db {
         id: &i64,
         crs: Option<i32>,
     ) -> Result<Feature, anyhow::Error> {
-        // '{0}' AS "collection?",
         let feature: Feature = sqlx::query_as(&format!(
             r#"
             SELECT
