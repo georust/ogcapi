@@ -1,10 +1,10 @@
 use chrono::Utc;
 use sqlx::types::Json;
 use tide::{http::url::Position, Body, Request, Response};
+use url::Url;
 use uuid::Uuid;
 
-use crate::common::core::{Link, LinkRelation};
-use crate::common::ContentType;
+use crate::common::core::{Link, MediaType, Relation};
 use crate::db::Db;
 use crate::processes::{Execute, Process, ProcessList, ProcessSummary, Query, Results, StatusInfo};
 
@@ -15,11 +15,7 @@ pub async fn list_processes(req: Request<Db>) -> tide::Result {
 
     let mut sql = vec!["SELECT summary FROM meta.processes".to_string()];
 
-    let mut links = vec![Link {
-        href: url.to_string(),
-        r#type: Some(ContentType::JSON),
-        ..Default::default()
-    }];
+    let mut links = vec![Link::new(url.to_owned()).mime(MediaType::JSON)];
 
     // pagination
     if let Some(limit) = query.limit {
@@ -36,23 +32,17 @@ pub async fn list_processes(req: Request<Db>) -> tide::Result {
 
             if offset != 0 && offset >= limit {
                 url.set_query(Some(&query.as_string_with_offset(offset - limit)));
-                let previous = Link {
-                    href: url.to_string(),
-                    rel: LinkRelation::Previous,
-                    r#type: Some(ContentType::JSON),
-                    ..Default::default()
-                };
+                let previous = Link::new(url.to_owned())
+                    .relation(Relation::Previous)
+                    .mime(MediaType::JSON);
                 links.push(previous);
             }
 
             if !(offset + limit) as u64 >= count {
                 url.set_query(Some(&query.as_string_with_offset(offset + limit)));
-                let next = Link {
-                    href: url.to_string(),
-                    rel: LinkRelation::Next,
-                    r#type: Some(ContentType::JSON),
-                    ..Default::default()
-                };
+                let next = Link::new(url.to_owned())
+                    .relation(Relation::Next)
+                    .mime(MediaType::JSON);
                 links.push(next);
             }
         }
@@ -66,12 +56,11 @@ pub async fn list_processes(req: Request<Db>) -> tide::Result {
         processes: summaries
             .into_iter()
             .map(|mut p| {
-                p.0.links = Some(vec![Link {
-                    href: format!("{}/{}", &url[..Position::AfterPath], p.0.id),
-                    r#type: Some(ContentType::JSON),
-                    title: Some("process description".to_string()),
-                    ..Default::default()
-                }]);
+                p.0.links = Some(vec![Link::new(
+                    Url::parse(&format!("{}/{}", &url[..Position::AfterPath], p.0.id)).unwrap(),
+                )
+                .mime(MediaType::JSON)
+                .title("process description".to_string())]);
                 p.0
             })
             .collect(),
@@ -92,11 +81,7 @@ pub async fn retrieve_process(req: Request<Db>) -> tide::Result {
             .fetch_one(&req.state().pool)
             .await?;
 
-    process.summary.links = Some(vec![Link {
-        href: req.url().to_string(),
-        r#type: Some(ContentType::JSON),
-        ..Default::default()
-    }]);
+    process.summary.links = Some(vec![Link::new(req.url().to_owned()).mime(MediaType::JSON)]);
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&process)?);
@@ -143,11 +128,9 @@ pub async fn job_status(req: Request<Db>) -> tide::Result {
         .fetch_one(&req.state().pool)
         .await?;
 
-    status.links = Some(Json(vec![Link {
-        href: req.url().to_string(),
-        r#type: Some(ContentType::JSON),
-        ..Default::default()
-    }]));
+    status.links = Some(Json(vec![
+        Link::new(req.url().to_owned()).mime(MediaType::JSON)
+    ]));
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&status)?);

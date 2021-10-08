@@ -27,5 +27,6 @@ serde_yaml = "0.8"
 sqlx = { version = "0.5", features = ["runtime-async-std-native-tls", "macros", "postgres", "json", "offline", "chrono"] }
 structopt = "0.3"
 tide = "0.16"
+url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 wkb = "0.7"

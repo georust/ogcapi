@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use crate::common::core::{Bbox, Link};
-use crate::common::ContentType;
+use crate::common::core::{Bbox, Link, MediaType};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Execute {
@@ -69,7 +68,7 @@ struct Output {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct Format {
-    media_type: Option<ContentType>,
+    media_type: Option<MediaType>,
     encoding: Option<String>,
     schema: Option<Schema>,
 }

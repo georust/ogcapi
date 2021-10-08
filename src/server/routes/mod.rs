@@ -12,7 +12,10 @@ use tide::{
     Body, Request, Response, Result,
 };
 
-use crate::{common::core::LandingPage, db::Db};
+use crate::{
+    common::core::{LandingPage, MediaType},
+    db::Db,
+};
 
 static OPENAPI: &'static str = "openapi.yaml";
 
@@ -32,7 +35,9 @@ pub async fn root(req: Request<Db>) -> Result {
     };
 
     for link in landing_page.links.iter_mut() {
-        link.href = format!("{}{}", url, link.href.trim_matches('/'));
+        link.url.set_scheme(url.scheme()).unwrap();
+        link.url.set_host(url.host_str()).unwrap();
+        link.url.set_port(url.port()).unwrap();
     }
 
     let mut res = Response::new(200);
@@ -45,7 +50,7 @@ pub async fn api(_req: Request<Db>) -> Result {
     let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
 
     let mut res = Response::new(200);
-    // res.set_content_type(ContentType::OpenAPI);
+    res.set_content_type(MediaType::OpenAPI);
     res.set_body(Body::from_json(&openapi)?);
     Ok(res)
 }

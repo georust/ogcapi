@@ -93,9 +93,9 @@ VALUES
 INSERT INTO
     meta.root (href, rel, type, title)
 VALUES
-    ('/', 'self', 'application/json','This document'),
-    ('/api', 'service-desc', 'application/vnd.oai.openapi+json;version=3.0','The Open API definition'),
-    ('/conformance', 'conformance', 'application/json','OGC conformance classes implemented by this API'),
-    ('/collections', 'data', 'application/json','Metadata about the resource collections'),
-    ('/processes', 'processes', 'application/json', 'Metadata about the processes'),
-    ('/jobs', 'job-list', 'application/json', 'The endpoint for job monitoring');
+    ('http://localhost:8484/', 'self', 'application/json','This document'),
+    ('http://localhost:8484/api', 'service-desc', 'application/vnd.oai.openapi+json;version=3.0','The Open API definition'),
+    ('http://localhost:8484/conformance', 'conformance', 'application/json','OGC conformance classes implemented by this API'),
+    ('http://localhost:8484/collections', 'data', 'application/json','Metadata about the resource collections'),
+    ('http://localhost:8484/processes', 'processes', 'application/json', 'Metadata about the processes'),
+    ('http://localhost:8484/jobs', 'job-list', 'application/json', 'The endpoint for job monitoring');

@@ -1,4 +1,4 @@
-use crate::common::core::Exception;
+use crate::common::core::{Exception, MediaType};
 use tide::{Body, Response, Result};
 
 pub async fn exception(mut res: Response) -> Result {
@@ -14,6 +14,7 @@ pub async fn exception(mut res: Response) -> Result {
             ..Default::default()
         };
         res.set_body(Body::from_json(&exception)?);
+        res.set_content_type(MediaType::ProblemJSON);
     }
     Ok(res)
 }

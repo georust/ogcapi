@@ -17,7 +17,7 @@ pub struct Collection {
     pub title: Option<String>,
     pub description: Option<String>,
     pub keywords: Option<Vec<String>>,
-    // pub attribution: Option<String>,
+    pub attribution: Option<String>,
     pub extent: Option<Extent>,
     pub item_type: Option<ItemType>,
     #[serde_as(as = "Option<Vec<DisplayFromStr>>")]

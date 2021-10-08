@@ -4,8 +4,8 @@ use std::{convert::TryFrom, fmt};
 use serde::{Deserialize, Serialize};
 
 // Default CRS
-pub static OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"; // for coordinates without height
-pub static OGC_CRS84h: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h"; // for coordinates with height
+static OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"; // for coordinates without height
+static OGC_CRS84h: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h"; // for coordinates with height
 
 /// CRS Authorities
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

@@ -3,10 +3,11 @@ use serde_with::{serde_as, DisplayFromStr};
 use sqlx::types::Json;
 use tide::http::url::Position;
 use tide::{Body, Request, Response, Result};
+use url::Url;
 
 use crate::common::collections::{Collection, Collections};
-use crate::common::core::{Bbox, Datetime, Link, LinkRelation};
-use crate::common::{ContentType, Crs};
+use crate::common::core::{Bbox, Datetime, Link, MediaType};
+use crate::common::Crs;
 use crate::db::Db;
 
 #[serde_as]
@@ -57,30 +58,21 @@ pub async fn handle_collections(req: Request<Db>) -> Result {
     let collections = collections
         .iter_mut()
         .map(|c| {
+            let base = &url[..Position::AfterPath];
             c.0.links.append(&mut vec![
-                Link {
-                    href: format!("{}/{}/items", &url[..Position::AfterPath], c.id),
-                    rel: LinkRelation::Items,
-                    r#type: Some(ContentType::GeoJSON),
-                    title: Some(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id))),
-                    ..Default::default()
-                },
-                Link {
-                    href: format!("{}/{}", &url[..Position::AfterPath], c.id),
-                    ..Default::default()
-                },
+                Link::new(Url::parse(&format!("{}/{}", base, c.id)).unwrap()),
+                Link::new(Url::parse(&format!("{}/{}/items", base, c.id)).unwrap())
+                    .mime(MediaType::GeoJSON)
+                    .title(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id))),
             ]);
             c.0.to_owned()
         })
         .collect();
 
     let collections = Collections {
-        links: vec![Link {
-            href: url.to_string(),
-            r#type: Some(ContentType::JSON),
-            title: Some("this document".to_string()),
-            ..Default::default()
-        }],
+        links: vec![Link::new(url.to_owned())
+            .mime(MediaType::JSON)
+            .title("this document".to_string())],
         crs: Some(vec![Crs::default(), Crs::from(4326)]),
         collections,
         ..Default::default()

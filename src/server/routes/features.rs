@@ -4,12 +4,10 @@ use chrono::{SecondsFormat, Utc};
 use sqlx::types::Json;
 use sqlx::PgPool;
 use tide::{Body, Request, Response, Result};
+use url::{Position, Url};
 
+use crate::common::core::{Bbox, Exception, Link, MediaType, Relation};
 use crate::common::Crs;
-use crate::common::{
-    core::{Bbox, Exception, Link, LinkRelation},
-    ContentType,
-};
 use crate::db::Db;
 use crate::features::{Feature, FeatureCollection, Query};
 
@@ -39,23 +37,23 @@ pub async fn read_item(req: Request<Db>) -> tide::Result {
     let srid = crs.clone().try_into().ok();
     let mut feature = req.state().select_feature(collection, &id, srid).await?;
 
+    let url = req.url();
     feature.links = Some(Json(vec![
-        Link {
-            href: req.url().to_string(),
-            r#type: Some(ContentType::GeoJSON),
-            ..Default::default()
-        },
-        Link {
-            href: req.url().as_str().replace(&format!("/items/{}", id), ""),
-            rel: LinkRelation::Collection,
-            r#type: Some(ContentType::GeoJSON),
-            ..Default::default()
-        },
+        Link::new(url.to_owned()).mime(MediaType::GeoJSON),
+        Link::new(
+            Url::parse(&format!(
+                "{}/collections/{}",
+                &url[..Position::BeforePath],
+                collection
+            ))
+            .unwrap(),
+        )
+        .mime(MediaType::GeoJSON),
     ]));
 
     let mut res = Response::new(200);
     res.insert_header("Content-Crs", crs.to_string());
-    // res.set_content_type(ContentType::GeoJSON);
+    res.set_content_type(MediaType::GeoJSON);
     res.set_body(Body::from_json(&feature)?);
     Ok(res)
 }
@@ -141,11 +139,7 @@ pub async fn handle_items(req: Request<Db>) -> Result {
         .await?
         .rows_affected();
 
-    let mut links = vec![Link {
-        href: url.to_string(),
-        r#type: Some(ContentType::GeoJSON),
-        ..Default::default()
-    }];
+    let mut links = vec![Link::new(url.to_owned()).mime(MediaType::GeoJSON)];
 
     // pagination
     if let Some(limit) = query.limit {
@@ -161,23 +155,17 @@ pub async fn handle_items(req: Request<Db>) -> Result {
 
             if offset != 0 && offset >= limit {
                 url.set_query(Some(&query.as_string_with_offset(offset - limit)));
-                let previous = Link {
-                    href: url.to_string(),
-                    rel: LinkRelation::Previous,
-                    r#type: Some(ContentType::GeoJSON),
-                    ..Default::default()
-                };
+                let previous = Link::new(url.to_owned())
+                    .relation(Relation::Previous)
+                    .mime(MediaType::GeoJSON);
                 links.push(previous);
             }
 
             if !(offset + limit) as u64 >= number_matched {
                 url.set_query(Some(&query.as_string_with_offset(offset + limit)));
-                let next = Link {
-                    href: url.to_string(),
-                    rel: LinkRelation::Next,
-                    r#type: Some(ContentType::GeoJSON),
-                    ..Default::default()
-                };
+                let next = Link::new(url.to_owned())
+                    .relation(Relation::Next)
+                    .mime(MediaType::GeoJSON);
                 links.push(next);
             }
         }
@@ -189,11 +177,15 @@ pub async fn handle_items(req: Request<Db>) -> Result {
         .await?;
 
     for feature in features.iter_mut() {
-        feature.links = Some(Json(vec![Link {
-            href: format!("{}/{}", url.as_str(), feature.id.clone().unwrap()),
-            r#type: Some(ContentType::GeoJSON),
-            ..Default::default()
-        }]))
+        feature.links = Some(Json(vec![Link::new(
+            Url::parse(&format!(
+                "{}/{}",
+                &url[..Position::AfterPath],
+                feature.id.as_ref().unwrap()
+            ))
+            .unwrap(),
+        )
+        .mime(MediaType::GeoJSON)]))
     }
 
     let number_returned = features.len();
@@ -209,7 +201,7 @@ pub async fn handle_items(req: Request<Db>) -> Result {
 
     let mut res = Response::new(200);
     res.insert_header("Content-Crs", crs.to_string());
-    // res.set_content_type(ContentType::GeoJSON);
+    res.set_content_type(MediaType::GeoJSON);
     res.set_body(Body::from_json(&feature_collection)?);
     Ok(res)
 }

@@ -8,7 +8,7 @@ mod exception;
 
 use tide::{self, http::Mime, utils::After};
 
-use crate::{common::ContentType, db::Db};
+use crate::{common::core::MediaType, db::Db};
 
 pub async fn run(url: &str) -> tide::Result<()> {
     tide::log::start();
@@ -80,24 +80,8 @@ pub async fn run(url: &str) -> tide::Result<()> {
     Ok(())
 }
 
-impl Into<Mime> for ContentType {
+impl Into<Mime> for MediaType {
     fn into(self) -> Mime {
-        Mime::from_str(&serde_json::to_string::<ContentType>(&self).unwrap()).unwrap()
+        Mime::from_str(serde_json::to_value(self).unwrap().as_str().unwrap()).unwrap()
     }
 }
-
-// #[cfg(test)]
-// mod test {
-//     use std::str::FromStr;
-
-//     use tide::http::Mime;
-
-//     use crate::common::ContentType;
-
-//     #[test]
-//     fn mime() {
-//         let mime = serde_json::to_string::<ContentType>(&ContentType::OpenAPI).unwrap();
-//         println!("{}", mime);
-//         Mime::from_str(&mime).unwrap();
-//     }
-// }

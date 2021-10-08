@@ -248,6 +248,7 @@ mod tests {
     use std::env;
 
     use serde_json::json;
+    use url::Url;
 
     use crate::common::collections::Collection;
     use crate::common::core::Link;
@@ -263,10 +264,7 @@ mod tests {
 
         let collection = Collection {
             id: "test".to_string(),
-            links: vec![Link {
-                href: "collections/test".to_string(),
-                ..Default::default()
-            }],
+            links: vec![Link::new(Url::parse("collections/test").unwrap())],
             ..Default::default()
         };
 

@@ -2,11 +2,13 @@ mod bbox;
 mod datetime;
 mod exception;
 mod link;
+mod mediatype;
 
 pub use bbox::Bbox;
 pub use datetime::Datetime;
 pub use exception::Exception;
-pub use link::{Link, LinkRelation, Links};
+pub use link::{Link, Links, Relation};
+pub use mediatype::MediaType;
 
 use serde::{Deserialize, Serialize};
 
@@ -14,11 +16,11 @@ use serde::{Deserialize, Serialize};
 ///
 /// The Landing page provides links to:
 ///
-/// * the API definition (link relations service-desc and service-doc),
+/// * the API definition (link relations `service-desc` and `service-doc`),
 ///
-/// * the Conformance declaration (path /conformance, link relation conformance), and
+/// * the Conformance declaration (path `/conformance`, link relation `conformance`), and
 ///
-/// * the Collections (path /collections, link relation data).
+/// * the Collections (path `/collections`, link relation `data`).
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 pub struct LandingPage {
