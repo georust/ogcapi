@@ -1,9 +1,10 @@
-use std::{collections::BTreeMap, fs::File, path::PathBuf};
+use std::{collections::BTreeMap, fs::File};
 
 use geo::{Coordinate, Geometry, LineString, MultiLineString, Point, Polygon};
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 
 use serde_json::{Map, Value};
+use url::Url;
 
 use crate::{
     common::{collections::Collection, Crs},
@@ -11,19 +12,18 @@ use crate::{
     import::boundaries,
 };
 
-/// Import osm data from pbf file
-pub async fn osm_import(
-    input: PathBuf,
-    _filter: &Option<String>,
-    collection: &Option<String>,
-    db: &Db,
-) -> Result<(), anyhow::Error> {
-    // Create collection
-    let title = collection.to_owned().unwrap_or_else(|| "OSM".to_string());
+use super::Import;
 
+/// Import osm data from pbf file
+pub async fn import(args: Import, database_url: &Url) -> Result<(), anyhow::Error> {
+    // Setup a db connection pool
+    let db = Db::connect(database_url.as_str()).await?;
+
+    // Create collection
+    let title = args.collection.unwrap_or_else(|| "OSM".to_string());
     let collection = Collection {
         id: title.to_lowercase().replace(" ", "_"),
-        title: Some(title),
+        title: Some(title.to_string()),
         links: serde_json::from_str("[]")?,
         crs: Some(vec![Crs::default()]),
         ..Default::default()
@@ -32,7 +32,7 @@ pub async fn osm_import(
     db.insert_collection(&collection).await?;
 
     // Open file
-    let file = File::open(input)?;
+    let file = File::open(args.input.as_path())?;
     let mut pbf = OsmPbfReader::new(file);
 
     let blob_count = pbf.blobs().count();

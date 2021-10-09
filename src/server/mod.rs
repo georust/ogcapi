@@ -1,19 +1,20 @@
 pub mod routes;
 
-use std::{env, str::FromStr};
 
 pub use routes::{collections, features, processes, styles, tiles};
+use std::str::FromStr;
 
 mod exception;
 
 use tide::{self, http::Mime, utils::After};
+use url::Url;
 
 use crate::{common::core::MediaType, db::Db};
 
-pub async fn run(url: &str) -> tide::Result<()> {
+pub async fn run(host: &str, port: &str, database_url: &Url) -> tide::Result<()> {
     tide::log::start();
 
-    let db = Db::connect(&env::var("DATABASE_URL")?).await.unwrap();
+    let db = Db::connect(database_url.as_str()).await.unwrap();
     let mut app = tide::with_state(db);
 
     // core
@@ -76,7 +77,7 @@ pub async fn run(url: &str) -> tide::Result<()> {
 
     app.with(After(exception::exception));
 
-    app.listen(url).await?;
+    app.listen(&format!("{}:{}", host, port)).await?;
     Ok(())
 }
 

@@ -1,25 +1,30 @@
 mod boundaries;
-mod gdal;
-mod osm;
+pub mod ogr;
+pub mod osm;
 
-use std::env;
+use std::path::PathBuf;
 
-use crate::db::Db;
+use structopt::StructOpt;
 
-pub async fn import(
-    input: std::path::PathBuf,
-    filter: &Option<String>,
-    collection: &Option<String>,
-    s_srs: &Option<u32>,
-    t_srs: &Option<u32>,
-) -> Result<(), anyhow::Error> {
-    // Setup a db connection pool
-    let db = Db::connect(&env::var("DATABASE_URL")?).await?;
+#[derive(StructOpt, Debug)]
+pub struct Import {
+    /// Input file
+    #[structopt(parse(from_os_str))]
+    pub input: PathBuf,
 
-    // Import data
-    if input.extension() == Some(std::ffi::OsStr::new("pbf")) {
-        osm::osm_import(input, &filter, &collection, &db).await
-    } else {
-        gdal::gdal_import(input, &filter, &collection, &s_srs, &t_srs, &db).await
-    }
+    /// Filter input by layer name or osm filter query, imports all if not present
+    #[structopt(long)]
+    pub filter: Option<String>,
+
+    /// Set the collection name, defaults to layer name or `osm`
+    #[structopt(long)]
+    pub collection: Option<String>,
+
+    /// Source srs, defaults to the srs found in the input layer
+    #[structopt(long)]
+    pub s_srs: Option<u32>,
+
+    /// Target storage crs of the collection
+    #[structopt(long)]
+    pub t_srs: Option<u32>,
 }

@@ -6,6 +6,7 @@ use gdal::{
 };
 
 use serde_json::{Map, Value};
+use url::Url;
 
 use crate::{
     common::{
@@ -16,49 +17,63 @@ use crate::{
     db::Db,
 };
 
-pub async fn gdal_import(
-    input: PathBuf,
-    filter: &Option<String>,
-    collection: &Option<String>,
-    s_srs: &Option<u32>,
-    t_srs: &Option<u32>,
-    db: &Db,
-) -> Result<(), anyhow::Error> {
+use super::Import;
+
+pub async fn import(mut args: Import, database_url: &Url) -> Result<(), anyhow::Error> {
     // GDAL Configuration Options http://trac.osgeo.org/gdal/wiki/ConfigOptions
     gdal::config::set_config_option("PG_USE_COPY", "YES")?;
     gdal::config::set_config_option("OGR_PG_RETRIEVE_FID", "FALSE")?;
     gdal::config::set_config_option("PGSQL_OGR_FID", "id")?;
 
     // Get target dataset layer
-    let drv = gdal::Driver::get("PostgreSQL")?;
-    // let db_url = format!("PG:{}", std::env::var("DATABASE_URL")?);
-    let db_url = "PG:host=localhost user=postgres dbname=ogcapi password=postgres"; // workaround gdal issue
+    // TODO: pass database url directly once GDAL 8.4 is out
+    let mut db_params = Vec::new();
+    if let Some(host) = database_url.host_str() {
+        db_params.push(format!("host={}", host));
+    }
+    if let Some(port) = database_url.port() {
+        db_params.push(format!("port={}", port));
+    }
+    if !database_url.username().is_empty() {
+        db_params.push(format!("user={}", database_url.username()));
+    }
+    if let Some(password) = database_url.password() {
+        db_params.push(format!("password={}", password));
+    }
+    if let Some(mut path_segments) = database_url.path_segments() {
+        db_params.push(format!(
+            "dbname={}",
+            path_segments.next().expect("Some path segment")
+        ));
+    }
+    let db_url = format!("PG:{}", db_params.join(" "));
 
+    let drv = gdal::Driver::get("PostgreSQL")?;
     let ds = drv.create_vector_only(&db_url)?;
 
-    // Open input dataset
-    let input = if input.to_str().map(|s| s.starts_with("http")).unwrap() {
-        PathBuf::from("/vsicurl").join(input.to_owned())
-    } else {
-        input.to_owned()
-    };
+    // Setup a db connection pool
+    let db = Db::connect(database_url.as_str()).await?;
 
-    let dataset = gdal::Dataset::open(&input)?;
+    // Open input dataset
+    if args.input.starts_with("http") {
+        args.input = PathBuf::from("/vsicurl").join(args.input.as_path())
+    };
+    let dataset = gdal::Dataset::open(&args.input)?;
 
     for mut layer in dataset.layers() {
         // only load specified layers
-        if filter.is_some() && Some(layer.name()) != *filter {
+        if args.filter.is_some() && Some(layer.name()) != args.filter {
             continue;
         }
 
         // Prepare the origin and destination spatial references objects and coordinate transformation
-        let spatial_ref_src = match s_srs {
-            Some(epsg) => SpatialRef::from_epsg(*epsg)?,
+        let spatial_ref_src = match args.s_srs {
+            Some(epsg) => SpatialRef::from_epsg(epsg)?,
             None => layer.spatial_ref()?,
         };
 
-        let spatial_ref_dst = match t_srs {
-            Some(epsg) => SpatialRef::from_epsg(*epsg)?,
+        let spatial_ref_dst = match args.t_srs {
+            Some(epsg) => SpatialRef::from_epsg(epsg)?,
             None => layer.spatial_ref()?,
         };
 
@@ -68,7 +83,7 @@ pub async fn gdal_import(
         let transform = CoordTransform::new(&spatial_ref_src, &spatial_ref_dst)?;
 
         // Create collection
-        let title = collection.to_owned().unwrap_or_else(|| layer.name());
+        let title = args.collection.to_owned().unwrap_or_else(|| layer.name());
         let storage_crs = Crs::from(spatial_ref_dst.auth_code()?);
 
         let collection = Collection {
