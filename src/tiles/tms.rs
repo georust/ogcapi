@@ -6,7 +6,7 @@ use super::{BoundingBox2D, Crs, Point2D};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct TileMatrixSet {
+pub struct TileMatrixSet {
     /// Title of this tile matrix set, normally used for display to a human
     title: Option<String>,
     /// Brief narrative description of this tile matrix set, normally available for display to a human

@@ -3,39 +3,39 @@ use std::convert::TryInto;
 use chrono::{SecondsFormat, Utc};
 use sqlx::types::Json;
 use sqlx::PgPool;
-use tide::{Body, Request, Response, Result};
+use tide::{Body, Request, Response, Result, Server};
 use url::{Position, Url};
 
 use crate::common::core::{Bbox, Exception, Link, MediaType, Relation};
 use crate::common::Crs;
-use crate::db::Db;
 use crate::features::{Feature, FeatureCollection, Query};
+use crate::server::State;
 
-pub async fn create_item(mut req: Request<Db>) -> tide::Result {
+async fn insert(mut req: Request<State>) -> tide::Result {
     let mut feature: Feature = req.body_json().await?;
 
-    feature.collection = Some(req.param("collection")?.to_owned());
+    feature.collection = Some(req.param("collectionId")?.to_owned());
 
-    let location = req.state().insert_feature(&feature).await?;
+    let location = req.state().db.insert_feature(&feature).await?;
 
     let mut res = Response::new(201);
     res.insert_header("Location", location);
     Ok(res)
 }
 
-pub async fn read_item(req: Request<Db>) -> tide::Result {
+async fn get(req: Request<State>) -> tide::Result {
     let id: i64 = req.param("id")?.parse()?;
-    let collection = req.param("collection")?;
+    let collection = req.param("collectionId")?;
 
     let query: Query = req.query()?;
 
     let crs = query.crs.clone().unwrap_or_default();
-    if let Some(res) = validate_crs(collection, &crs, &req.state().pool).await {
+    if let Some(res) = validate_crs(collection, &crs, &req.state().db.pool).await {
         return Ok(res);
     }
 
     let srid = crs.clone().try_into().ok();
-    let mut feature = req.state().select_feature(collection, &id, srid).await?;
+    let mut feature = req.state().db.select_feature(collection, &id, srid).await?;
 
     let url = req.url();
     feature.links = Some(Json(vec![
@@ -58,38 +58,38 @@ pub async fn read_item(req: Request<Db>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn update_item(mut req: Request<Db>) -> tide::Result {
+async fn update(mut req: Request<State>) -> tide::Result {
     let id: i64 = req.param("id")?.parse()?;
-    let collection = req.param("collection")?.to_owned();
+    let collection = req.param("collectionId")?.to_owned();
 
     let mut feature: Feature = req.body_json().await?;
 
     feature.id = Some(id);
     feature.collection = Some(collection.to_string());
 
-    req.state().update_feature(&feature).await?;
+    req.state().db.update_feature(&feature).await?;
 
     Ok(Response::new(204))
 }
 
-pub async fn delete_item(req: Request<Db>) -> tide::Result {
+async fn delete(req: Request<State>) -> tide::Result {
     let id: i64 = req.param("id")?.parse()?;
-    let collection = req.param("collection")?;
+    let collection = req.param("collectionId")?;
 
-    req.state().delete_feature(collection, &id).await?;
+    req.state().db.delete_feature(collection, &id).await?;
 
     Ok(Response::new(204))
 }
 
-pub async fn handle_items(req: Request<Db>) -> Result {
+async fn items(req: Request<State>) -> Result {
     let mut url = req.url().to_owned();
 
-    let collection: &str = req.param("collection")?;
+    let collection: &str = req.param("collectionId")?;
 
     let mut query: Query = req.query()?;
 
     let crs = query.crs.clone().unwrap_or_default();
-    if let Some(res) = validate_crs(collection, &crs, &req.state().pool).await {
+    if let Some(res) = validate_crs(collection, &crs, &req.state().db.pool).await {
         return Ok(res);
     }
 
@@ -113,7 +113,7 @@ pub async fn handle_items(req: Request<Db>) -> Result {
 
     if let Some(bbox) = query.bbox.as_ref() {
         let crs = query.bbox_crs.clone().unwrap_or_default();
-        if let Some(res) = validate_crs(collection, &crs, &req.state().pool).await {
+        if let Some(res) = validate_crs(collection, &crs, &req.state().db.pool).await {
             return Ok(res);
         }
         let bbox_srid: i32 = crs.try_into().ok().unwrap();
@@ -135,7 +135,7 @@ pub async fn handle_items(req: Request<Db>) -> Result {
 
     let number_matched = sqlx::query(sql.join(" ").as_str())
         .bind(srid)
-        .execute(&req.state().pool)
+        .execute(&req.state().db.pool)
         .await?
         .rows_affected();
 
@@ -173,7 +173,7 @@ pub async fn handle_items(req: Request<Db>) -> Result {
 
     let mut features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
         .bind(&srid)
-        .fetch_all(&req.state().pool)
+        .fetch_all(&req.state().db.pool)
         .await?;
 
     for feature in features.iter_mut() {
@@ -231,4 +231,14 @@ async fn validate_crs(collection: &str, crs: &Crs, pool: &PgPool) -> Option<Resp
     } else {
         None
     }
+}
+
+pub(crate) fn register(app: &mut Server<State>) {
+    app.at("/collections/:collectionId/items")
+        .get(items)
+        .post(insert);
+    app.at("/collections/:collectionId/items/:id")
+        .get(get)
+        .put(update)
+        .delete(delete);
 }

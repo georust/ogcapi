@@ -1,10 +1,9 @@
-use tide::{Request, Response, Result};
+use tide::{Body, Request, Response, Result, Server};
 
-use crate::db::Db;
-use crate::tiles::Query;
+use crate::server::State;
+use crate::tiles::{Query, TileMatrixSets};
 
-/*
-pub async fn get_tile_matrix_sets(req: Request<Service>) -> Result {
+async fn tile_matrix_sets(_req: Request<State>) -> Result {
     let tile_matrix_sets = TileMatrixSets {
         tile_matrix_sets: vec![],
     };
@@ -13,37 +12,31 @@ pub async fn get_tile_matrix_sets(req: Request<Service>) -> Result {
     Ok(res)
 }
 
-
-pub async fn get_tile_matrix_set(req: Request<Service>) -> Result {
-    let tile_matrix_set = TileMatrixSet {};
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&tile_matrix_set)?);
+async fn tile_matrix_set(req: Request<State>) -> Result {
+    let _id = req.param("tileMatrixSetId")?;
+    let res = Response::new(200);
+    // res.set_body(Body::from_json(&matrix_set)?);
     Ok(res)
 }
 
-
-pub async fn hadle_tiles(req: Request<Service>) -> Result {
-    let tile_set = TileSet {
-    };
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&tile_set)?);
+async fn tiles(_req: Request<State>) -> Result {
+    // let tile_set = TileSet {};
+    let res = Response::new(200);
+    // res.set_body(Body::from_json(&tile_set)?);
     Ok(res)
 }
-*/
 
-pub async fn get_tile(req: Request<Db>) -> Result {
-    let _matrix_set = req.param("matrix_set")?;
-    let matrix: i32 = req.param("matrix")?.parse()?; // zoom, z
-    let row: i32 = req.param("row")?.parse()?; // x
-    let col: i32 = req.param("col")?.parse()?; // y
+async fn tile(req: Request<State>) -> Result {
+    let _matrix_set_id = req.param("tileMatrixSetId")?;
+    let matrix: i32 = req.param("tileMatrix")?.parse()?; // zoom, z
+    let row: i32 = req.param("tileRow")?.parse()?; // x
+    let col: i32 = req.param("tileCol")?.parse()?; // y
 
     let query: Query = req.query()?;
 
     let collections: Vec<String> = req
         .param("collection")
-        .ok()
-        .map(|c| c.to_owned())
-        .unwrap_or_else(|| query.collections.unwrap())
+        .unwrap_or(&query.collections.unwrap())
         .split(",")
         .map(|c| c.to_owned())
         .collect();
@@ -61,10 +54,19 @@ pub async fn get_tile(req: Request<Db>) -> Result {
         .bind(matrix)
         .bind(row)
         .bind(col)
-        .fetch_all(&req.state().pool)
+        .fetch_all(&req.state().db.pool)
         .await?;
 
     let mut res = Response::new(200);
     res.set_body(tiles.concat());
     Ok(res)
+}
+
+pub(crate) fn register(app: &mut Server<State>) {
+    app.at("tileMatrixSets").get(tile_matrix_sets);
+    app.at("tileMatrixSets/:tileMatrixSetId")
+        .get(tile_matrix_set);
+    app.at("collections/:collectionId/tiles").get(tiles);
+    app.at("collections/:collectionId/tiles/:tileMatrixSetId/:tileMatrix/:tileRow/:tileCol")
+        .get(tile);
 }

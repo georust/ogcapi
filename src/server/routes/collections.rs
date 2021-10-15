@@ -2,13 +2,13 @@ use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use sqlx::types::Json;
 use tide::http::url::Position;
-use tide::{Body, Request, Response, Result};
+use tide::{Body, Request, Response, Result, Server};
 use url::Url;
 
 use crate::common::collections::{Collection, Collections};
 use crate::common::core::{Bbox, Datetime, Link, MediaType};
 use crate::common::Crs;
-use crate::db::Db;
+use crate::server::State;
 
 #[serde_as]
 #[derive(Deserialize, Debug, Clone)]
@@ -45,14 +45,14 @@ struct Query {
 //     }
 // }
 
-pub async fn handle_collections(req: Request<Db>) -> Result {
+async fn collections(req: Request<State>) -> Result {
     let url = req.url();
 
     //let mut query: Query = req.query()?;
 
     let mut collections: Vec<Json<Collection>> =
         sqlx::query_scalar("SELECT collection FROM meta.collections")
-            .fetch_all(&req.state().pool)
+            .fetch_all(&req.state().db.pool)
             .await?;
 
     let collections = collections
@@ -84,23 +84,29 @@ pub async fn handle_collections(req: Request<Db>) -> Result {
 }
 
 /// Create new collection metadata
-pub async fn create_collection(mut req: Request<Db>) -> Result {
+async fn insert(mut req: Request<State>) -> Result {
     let collection: Collection = req.body_json().await?;
 
-    let location = req.state().insert_collection(&collection).await?;
+    let location = req.state().db.insert_collection(&collection).await?;
 
     let mut res = Response::new(201);
     res.insert_header("Location", location);
     Ok(res)
 }
 
-/// Return collection metadata
-pub async fn read_collection(req: Request<Db>) -> Result {
-    // let url = req.url();
+/// Get collection metadata
+async fn get(req: Request<State>) -> Result {
+    let id = req.param("collectionId")?;
 
-    let id: &str = req.param("collection")?;
-
-    let collection = req.state().select_collection(id).await?;
+    let mut collection = req.state().db.select_collection(id).await?;
+    collection.links.push(
+        Link::new(Url::parse(&format!("{}/items", &req.url()[..Position::AfterPath])).unwrap())
+            .mime(MediaType::GeoJSON)
+            .title(format!(
+                "Items of {}",
+                collection.title.as_ref().unwrap_or(&collection.id)
+            )),
+    );
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&collection)?);
@@ -108,23 +114,31 @@ pub async fn read_collection(req: Request<Db>) -> Result {
 }
 
 /// Update collection metadata
-pub async fn update_collection(mut req: Request<Db>) -> Result {
+async fn update(mut req: Request<State>) -> Result {
     let mut collection: Collection = req.body_json().await?;
 
-    let id: &str = req.param("collection")?;
+    let id = req.param("collectionId")?;
 
     collection.id = id.to_owned();
 
-    req.state().update_collection(&collection).await?;
+    req.state().db.update_collection(&collection).await?;
 
     Ok(Response::new(204))
 }
 
 /// Delete collection metadata
-pub async fn delete_collection(req: Request<Db>) -> Result {
-    let id: &str = req.param("collection")?;
+async fn delete(req: Request<State>) -> Result {
+    let id = req.param("collectionId")?;
 
-    req.state().delete_collection(id).await?;
+    req.state().db.delete_collection(id).await?;
 
     Ok(Response::new(204))
+}
+
+pub(crate) fn register(app: &mut Server<State>) {
+    app.at("/collections").get(collections).post(insert);
+    app.at("/collections/:collectionId")
+        .get(get)
+        .put(update)
+        .delete(delete);
 }

@@ -10,7 +10,7 @@ use super::{BoundingBox2D, Crs, Point2D, TileMatrixSet};
 /// At least one of the 'TileMatrixSet',  or a link with 'rel' tiling-scheme"
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct TileSet {
+pub struct TileSet {
     /// A title for this tileset
     title: Option<String>,
     /// Brief narrative description of this tile set

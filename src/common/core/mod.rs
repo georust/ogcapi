@@ -12,6 +12,8 @@ pub use mediatype::MediaType;
 
 use serde::{Deserialize, Serialize};
 
+use crate::edr::{Contact, Provider};
+
 /// The Landing page is the entry point of a OGC API
 ///
 /// The Landing page provides links to:
@@ -33,6 +35,9 @@ pub struct LandingPage {
     /// include HTML markup.
     pub attribution: Option<String>,
     pub links: Links,
+    pub keywords: Option<Vec<String>>,
+    pub provider: Option<Provider>,
+    pub contact: Option<Contact>,
 }
 
 /// The Conformance declaration states the conformance classes from standards or community

@@ -1,4 +1,5 @@
 pub mod collections;
+pub mod edr;
 pub mod features;
 pub mod processes;
 pub mod styles;
@@ -12,26 +13,24 @@ use tide::{
     Body, Request, Response, Result,
 };
 
-use crate::{
-    common::core::{LandingPage, MediaType},
-    db::Db,
-};
+use crate::common::core::{LandingPage, MediaType};
+use crate::server::State;
 
 static OPENAPI: &'static str = "openapi.yaml";
 
-pub async fn root(req: Request<Db>) -> Result {
+pub(crate) async fn root(req: Request<State>) -> Result {
     let url = req.url();
 
     let rdr = File::open(OPENAPI)?;
     let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
 
-    let links = req.state().root().await?;
+    let links = req.state().db.root().await?;
 
     let mut landing_page = LandingPage {
         title: Some(openapi.info.title),
         description: openapi.info.description,
         links,
-        attribution: None,
+        ..Default::default()
     };
 
     for link in landing_page.links.iter_mut() {
@@ -45,7 +44,7 @@ pub async fn root(req: Request<Db>) -> Result {
     Ok(res)
 }
 
-pub async fn api(_req: Request<Db>) -> Result {
+pub(crate) async fn api(_req: Request<State>) -> Result {
     let rdr = File::open(OPENAPI)?;
     let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
 
@@ -55,7 +54,7 @@ pub async fn api(_req: Request<Db>) -> Result {
     Ok(res)
 }
 
-pub async fn redoc(req: Request<Db>) -> Result {
+pub(crate) async fn redoc(req: Request<State>) -> Result {
     let api_url = req.url()[..Position::AfterPath].replace("redoc", "api");
 
     let mut res = Response::new(200);
@@ -90,8 +89,8 @@ pub async fn redoc(req: Request<Db>) -> Result {
     Ok(res)
 }
 
-pub async fn conformance(req: Request<Db>) -> Result {
-    let conformance = req.state().conformance().await?;
+pub(crate) async fn conformance(req: Request<State>) -> Result {
+    let conformance = req.state().db.conformance().await?;
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&conformance)?);

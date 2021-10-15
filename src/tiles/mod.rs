@@ -2,7 +2,7 @@ mod meta;
 mod tileset;
 mod tms;
 
-use tms::TileMatrixSet;
+pub use tms::TileMatrixSet;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};

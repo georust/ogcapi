@@ -1,14 +1,15 @@
 use chrono::Utc;
 use sqlx::types::Json;
+use tide::Server;
 use tide::{http::url::Position, Body, Request, Response};
 use url::Url;
 use uuid::Uuid;
 
 use crate::common::core::{Link, MediaType, Relation};
-use crate::db::Db;
 use crate::processes::{Execute, Process, ProcessList, ProcessSummary, Query, Results, StatusInfo};
+use crate::server::State;
 
-pub async fn list_processes(req: Request<Db>) -> tide::Result {
+async fn processes(req: Request<State>) -> tide::Result {
     let mut url = req.url().to_owned();
 
     let mut query: Query = req.query()?;
@@ -23,7 +24,7 @@ pub async fn list_processes(req: Request<Db>) -> tide::Result {
         sql.push(format!("LIMIT {}", limit));
 
         let count = sqlx::query("SELECT id FROM meta.processes")
-            .execute(&req.state().pool)
+            .execute(&req.state().db.pool)
             .await?
             .rows_affected();
 
@@ -49,7 +50,7 @@ pub async fn list_processes(req: Request<Db>) -> tide::Result {
     }
 
     let summaries: Vec<Json<ProcessSummary>> = sqlx::query_scalar(&sql.join(" "))
-        .fetch_all(&req.state().pool)
+        .fetch_all(&req.state().db.pool)
         .await?;
 
     let process_list = ProcessList {
@@ -72,13 +73,13 @@ pub async fn list_processes(req: Request<Db>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn retrieve_process(req: Request<Db>) -> tide::Result {
+async fn process(req: Request<State>) -> tide::Result {
     let id: &str = req.param("id")?;
 
     let mut process: Process =
         sqlx::query_as("SELECT summary, inputs, outputs FROM meta.processes WHERE id = $id")
             .bind(id)
-            .fetch_one(&req.state().pool)
+            .fetch_one(&req.state().db.pool)
             .await?;
 
     process.summary.links = Some(vec![Link::new(req.url().to_owned()).mime(MediaType::JSON)]);
@@ -88,7 +89,7 @@ pub async fn retrieve_process(req: Request<Db>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn execution(mut req: Request<Db>) -> tide::Result {
+async fn execution(mut req: Request<State>) -> tide::Result {
     let id = req.param("id")?.to_owned();
 
     let _prefer = req.header("Prefer");
@@ -109,7 +110,7 @@ pub async fn execution(mut req: Request<Db>) -> tide::Result {
     .bind(&job.process_id)
     .bind(Json(&job.status))
     .bind(&job.created)
-    .execute(&req.state().pool)
+    .execute(&req.state().db.pool)
     .await?;
 
     // TODO: validation & execution
@@ -120,12 +121,12 @@ pub async fn execution(mut req: Request<Db>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn job_status(req: Request<Db>) -> tide::Result {
+async fn status(req: Request<State>) -> tide::Result {
     let id: &str = req.param("id")?;
 
     let mut status: StatusInfo = sqlx::query_as("SELECT * FROM meta.jobs WHERE job_id = $id")
         .bind(id)
-        .fetch_one(&req.state().pool)
+        .fetch_one(&req.state().db.pool)
         .await?;
 
     status.links = Some(Json(vec![
@@ -137,11 +138,11 @@ pub async fn job_status(req: Request<Db>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn delete_job(req: Request<Db>) -> tide::Result {
+async fn delete(req: Request<State>) -> tide::Result {
     let id: &str = req.param("id")?;
 
     sqlx::query!("DELETE FROM meta.jobs WHERE job_id = $1", id)
-        .execute(&req.state().pool)
+        .execute(&req.state().db.pool)
         .await?;
 
     // TODO: cancel execution
@@ -149,16 +150,24 @@ pub async fn delete_job(req: Request<Db>) -> tide::Result {
     Ok(Response::new(204))
 }
 
-pub async fn job_result(req: Request<Db>) -> tide::Result {
+async fn result(req: Request<State>) -> tide::Result {
     let id: &str = req.param("id")?;
 
     let results: (Json<Results>,) =
         sqlx::query_as("SELECT results FROM meta.jobs WHERE job_id = $id")
             .bind(id)
-            .fetch_one(&req.state().pool)
+            .fetch_one(&req.state().db.pool)
             .await?;
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&results.0 .0)?);
     Ok(res)
+}
+
+pub(crate) fn register(app: &mut Server<State>) {
+    app.at("/processes").get(processes);
+    app.at("/processes/:id").get(process);
+    app.at("/processes/:id/execution").post(execution);
+    app.at("/jobs/:id").get(status).delete(delete);
+    app.at("/jobs/:id/result").get(result);
 }

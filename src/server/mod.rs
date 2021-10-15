@@ -1,83 +1,66 @@
 pub mod routes;
 
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
-pub use routes::{collections, features, processes, styles, tiles};
-use std::str::FromStr;
-
-mod exception;
-
-use tide::{self, http::Mime, utils::After};
+use async_std::sync::RwLock;
+use tide::{self, http::Mime, utils::After, Body, Response, Result};
 use url::Url;
 
-use crate::{common::core::MediaType, db::Db};
+use crate::common::collections::Collection;
+use crate::common::core::{Exception, MediaType};
+use crate::db::Db;
 
-pub async fn run(host: &str, port: &str, database_url: &Url) -> tide::Result<()> {
-    tide::log::start();
+#[derive(Clone)]
+pub(crate) struct State {
+    db: Db,
+    collections: Arc<RwLock<HashMap<String, Collection>>>,
+}
 
-    let db = Db::connect(database_url.as_str()).await.unwrap();
-    let mut app = tide::with_state(db);
+pub async fn run(host: &str, port: &str, database_url: &Url) -> Result<()> {
+    tide::log::with_level(tide::log::LevelFilter::from_str(
+        dotenv::var("RUST_LOG")?.as_str(),
+    )?);
 
-    // core
+    let state = State {
+        db: Db::connect(database_url.as_str()).await.unwrap(),
+        collections: Default::default(),
+    };
+
+    let mut app = tide::with_state(state.clone());
+
     app.at("/").get(routes::root);
     app.at("/api").get(routes::api);
+    app.at("/redoc").get(routes::redoc);
     app.at("/conformance").get(routes::conformance);
-
-    // favicon
     app.at("/favicon.ico").serve_file("favicon.ico")?;
 
-    // redoc
-    app.at("/redoc").get(routes::redoc);
+    routes::collections::register(&mut app);
+    routes::features::register(&mut app);
+    routes::edr::register(&mut app);
+    routes::tiles::register(&mut app);
+    routes::styles::register(&mut app);
+    routes::processes::register(&mut app);
 
-    // queryables
-    //app.at("/queryables").get(handle_queryables);
-
-    // Collections
-    app.at("/collections")
-        .get(collections::handle_collections)
-        .post(collections::create_collection);
-    app.at("/collections/:collection")
-        .get(collections::read_collection)
-        .put(collections::update_collection)
-        .delete(collections::delete_collection);
-    //app.at("/collections/:collection/queryables").get(handle_queryables);
-
-    // Features
-    app.at("/collections/:collection/items")
-        .get(features::handle_items)
-        .post(features::create_item);
-    app.at("/collections/:collection/items/:id")
-        .get(features::read_item)
-        .put(features::update_item)
-        .delete(features::delete_item);
-
-    // Tiles
-    // app.at("tileMatrixSets").get(tiles::get_matrixsets);
-    // app.at("tileMatrixSets/:matrix_set").get(tiles::get_matrixset);
-    // app.at("collections/:collection/tiles").get(tiles::handle_tiles);
-    app.at("collections/:collection/tiles/:matrix_set/:matrix/:row/:col")
-        .get(tiles::get_tile);
-
-    // Styles
-    app.at("/styles").get(styles::handle_styles);
-    // .post(styles::create_style);
-    app.at("/styles/:id").get(styles::read_style);
-    // .put(styles::update_style)
-    // .delete(styles::delete_style);
-    // app.at("/styles/:id/metadata").get(styles::read_style_matadata);
-
-    // Processes
-    app.at("/processes").get(processes::list_processes);
-    app.at("/processes/:id").get(processes::retrieve_process);
-    app.at("/processes/:id/execution")
-        .post(processes::execution);
-    app.at("/jobs/:id")
-        .get(processes::job_status)
-        .delete(processes::delete_job);
-    app.at("/jobs/:id/result").get(processes::job_result);
-
-    app.with(After(exception::exception));
+    app.with(After(|mut res: Response| async move {
+        if let Some(err) = res.error() {
+            let exception = Exception {
+                r#type: format!(
+                    "https://httpwg.org/specs/rfc7231.html#status.{}",
+                    res.status().to_string()
+                ),
+                status: Some(res.status() as isize),
+                // NOTE: You may want to avoid sending error messages in a production server.
+                detail: Some(err.to_string()),
+                ..Default::default()
+            };
+            res.set_body(Body::from_json(&exception)?);
+            res.set_content_type(MediaType::ProblemJSON);
+        }
+        Ok(res)
+    }));
 
     app.listen(&format!("{}:{}", host, port)).await?;
+
     Ok(())
 }
 

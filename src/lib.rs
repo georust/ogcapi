@@ -1,5 +1,6 @@
 pub mod common;
 pub mod db;
+pub mod edr;
 pub mod features;
 pub mod import;
 pub mod processes;

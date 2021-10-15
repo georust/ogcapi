@@ -88,7 +88,10 @@ VALUES
     ('http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs'),
     ('http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core'),
 	('http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/json'),
-	('http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/oas30');
+	('http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/oas30'),
+    ('http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/core'),
+    ('http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/oas30'),
+    ('http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/geojson');
 
 INSERT INTO
     meta.root (href, rel, type, title)
