@@ -3,7 +3,8 @@ pub mod routes;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use async_std::sync::RwLock;
-use tide::{self, http::Mime, utils::After, Body, Response, Result};
+use tide::Server;
+use tide::{self, http::Mime, utils::After, Body, Response};
 use url::Url;
 
 use crate::common::collections::Collection;
@@ -11,15 +12,18 @@ use crate::common::core::{Exception, MediaType};
 use crate::db::Db;
 
 #[derive(Clone)]
-pub(crate) struct State {
+pub struct State {
     db: Db,
     collections: Arc<RwLock<HashMap<String, Collection>>>,
 }
 
-pub async fn run(host: &str, port: &str, database_url: &Url) -> Result<()> {
-    tide::log::with_level(tide::log::LevelFilter::from_str(
-        dotenv::var("RUST_LOG")?.as_str(),
-    )?);
+pub async fn server(database_url: &Url) -> Server<State> {
+    tide::log::with_level(
+        tide::log::LevelFilter::from_str(
+            dotenv::var("RUST_LOG").expect("Read RUST_LOG env").as_str(),
+        )
+        .expect("Setup rust log level"),
+    );
 
     let state = State {
         db: Db::connect(database_url.as_str()).await.unwrap(),
@@ -32,7 +36,12 @@ pub async fn run(host: &str, port: &str, database_url: &Url) -> Result<()> {
     app.at("/api").get(routes::api);
     app.at("/redoc").get(routes::redoc);
     app.at("/conformance").get(routes::conformance);
-    app.at("/favicon.ico").serve_file("favicon.ico")?;
+
+    app.at("/favicon.ico").get(|_| async move {
+        Ok(Response::from(Body::from_bytes(
+            include_bytes!("../../favicon.ico").to_vec(),
+        )))
+    });
 
     routes::collections::register(&mut app);
     routes::features::register(&mut app);
@@ -53,15 +62,13 @@ pub async fn run(host: &str, port: &str, database_url: &Url) -> Result<()> {
                 detail: Some(err.to_string()),
                 ..Default::default()
             };
-            res.set_body(Body::from_json(&exception)?);
+            res.set_body(Body::from_json(&exception).expect("Serialize exception"));
             res.set_content_type(MediaType::ProblemJSON);
         }
         Ok(res)
     }));
 
-    app.listen(&format!("{}:{}", host, port)).await?;
-
-    Ok(())
+    app
 }
 
 impl Into<Mime> for MediaType {

@@ -7,6 +7,9 @@ use url::Url;
 #[structopt(name = "ogcapi", about = "A cli for the ogcapi project.")]
 #[structopt(rename_all = "kebab-case")]
 struct App {
+    /// Log level
+    #[structopt(long, env, default_value = "INFO")]
+    rust_log: String,
     /// Database url
     #[structopt(parse(try_from_str), env, hide_env_values = true)]
     database_url: Url,
@@ -37,7 +40,9 @@ async fn main() -> Result<()> {
 
     // read cli args
     let app = App::from_args();
-    log::info!("{:?}", app);
+    if log::log_enabled!(log::Level::Info) {
+        log::debug!("{:#?}", app);
+    }
 
     match app.command {
         Command::Import(args) => {
@@ -52,7 +57,8 @@ async fn main() -> Result<()> {
             }
         }
         Command::Serve { host, port } => {
-            let _ = ogcapi::server::run(&host, &port, &app.database_url).await;
+            let app = ogcapi::server::server(&app.database_url).await;
+            app.listen(&format!("{}:{}", host, port)).await?;
         }
     }
 

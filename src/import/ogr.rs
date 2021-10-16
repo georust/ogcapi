@@ -58,6 +58,9 @@ pub async fn import(mut args: Import, database_url: &Url) -> Result<(), anyhow::
     if args.input.starts_with("http") {
         args.input = PathBuf::from("/vsicurl").join(args.input.as_path())
     };
+    if args.input.ends_with("zip") {
+        args.input = PathBuf::from("/vsizip").join(args.input.as_path())
+    };
     let dataset = gdal::Dataset::open(&args.input)?;
 
     for mut layer in dataset.layers() {

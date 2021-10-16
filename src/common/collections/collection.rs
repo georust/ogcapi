@@ -20,8 +20,10 @@ pub struct Collection {
     pub attribution: Option<String>,
     pub extent: Option<Extent>,
     pub item_type: Option<ItemType>,
+    #[serde(default)]
     #[serde_as(as = "Option<Vec<DisplayFromStr>>")]
     pub crs: Option<Vec<Crs>>,
+    #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub storage_crs: Option<Crs>,
     pub storage_crs_coordinate_epoch: Option<f32>,

@@ -5,8 +5,6 @@ pub mod processes;
 pub mod styles;
 pub mod tiles;
 
-use std::fs::File;
-
 use openapiv3::OpenAPI;
 use tide::{
     http::{url::Position, Mime},
@@ -16,13 +14,12 @@ use tide::{
 use crate::common::core::{LandingPage, MediaType};
 use crate::server::State;
 
-static OPENAPI: &'static str = "openapi.yaml";
+static OPENAPI: &[u8; 29680] = include_bytes!("../../../openapi.yaml");
 
 pub(crate) async fn root(req: Request<State>) -> Result {
     let url = req.url();
 
-    let rdr = File::open(OPENAPI)?;
-    let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
+    let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI)?;
 
     let links = req.state().db.root().await?;
 
@@ -45,8 +42,7 @@ pub(crate) async fn root(req: Request<State>) -> Result {
 }
 
 pub(crate) async fn api(_req: Request<State>) -> Result {
-    let rdr = File::open(OPENAPI)?;
-    let openapi: OpenAPI = serde_yaml::from_reader(rdr)?;
+    let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI)?;
 
     let mut res = Response::new(200);
     res.set_content_type(MediaType::OpenAPI);
