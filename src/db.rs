@@ -241,4 +241,15 @@ impl Db {
 
         Ok(())
     }
+
+    pub async fn storage_srid(&self, collection: &str) -> Result<String, anyhow::Error> {
+        let row: (String,) = sqlx::query_as(
+            "SELECT collection ->> 'storageCrs' FROM meta.collections WHERE id = $1",
+        )
+        .bind(&collection)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.0.split("/").last().unwrap().to_string())
+    }
 }

@@ -1,5 +1,3 @@
-use ogcapi::common::Crs;
-
 #[async_std::test]
 async fn minimal_feature_crud() -> tide::Result<()> {
     use std::env;
@@ -7,8 +5,7 @@ async fn minimal_feature_crud() -> tide::Result<()> {
     use serde_json::json;
     use tide::http::{Method, Request, Response, Url};
 
-    use ogcapi::common::collections::Collection;
-    use ogcapi::common::core::Link;
+    use ogcapi::common::{collections::Collection, core::Link, crs::Crs};
     use ogcapi::features::Feature;
 
     // setup app

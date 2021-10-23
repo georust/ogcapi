@@ -12,7 +12,7 @@ use crate::{
     common::{
         collections::{Collection, Extent, SpatialExtent},
         core::Bbox,
-        Crs,
+        crs::Crs,
     },
     db::Db,
 };

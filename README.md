@@ -34,7 +34,7 @@ export DATABASE_URL=postgresql://postgres:postgres@localhost/ogcapi
 sqlx database setup
 
 # Import some data
-cargo run -- import https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_110m_admin_1_states_provinces_shp.geojson
+cargo run -- cargo run import data/ne_10m_admin_0_countries.geojson --collection countries
 
 # Run cli serve help
 cargo run -- serve

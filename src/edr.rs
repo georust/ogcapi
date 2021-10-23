@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
-use crate::common::{core::Datetime, Crs};
+use crate::common::{core::Datetime, crs::Crs};
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 pub struct Provider {

@@ -6,8 +6,10 @@ use sqlx::PgPool;
 use tide::{Body, Request, Response, Result, Server};
 use url::{Position, Url};
 
-use crate::common::core::{Bbox, Exception, Link, MediaType, Relation};
-use crate::common::Crs;
+use crate::common::{
+    core::{Bbox, Exception, Link, MediaType, Relation},
+    crs::Crs,
+};
 use crate::features::{Feature, FeatureCollection, Query};
 use crate::server::State;
 
@@ -87,6 +89,7 @@ async fn items(req: Request<State>) -> Result {
     let collection: &str = req.param("collectionId")?;
 
     let mut query: Query = req.query()?;
+    tide::log::debug!("{:#?}", query);
 
     let crs = query.crs.clone().unwrap_or_default();
     if let Some(res) = validate_crs(collection, &crs, &req.state().db.pool).await {
@@ -116,20 +119,23 @@ async fn items(req: Request<State>) -> Result {
         if let Some(res) = validate_crs(collection, &crs, &req.state().db.pool).await {
             return Ok(res);
         }
-        let bbox_srid: i32 = crs.try_into().ok().unwrap();
+
+        let storage_srid = req.state().db.storage_srid(&collection).await?;
+
+        let bbox_srid: i32 = crs.try_into().unwrap();
         let envelope = match bbox {
-            Bbox::Bbox2D(x_min, y_min, x_max, y_max) => format!(
+            Bbox::Bbox2D(ll_1, ll_2, ur_1, ur_2) => format!(
                 "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                x_min, y_min, x_max, y_max, bbox_srid
+                ll_1, ll_2, ur_1, ur_2, bbox_srid
             ),
-            Bbox::Bbox3D(x_min, y_min, _, x_max, y_max, _) => format!(
+            Bbox::Bbox3D(ll_1, ll_2, _, ur_1, ur_2, _) => format!(
                 "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                x_min, y_min, x_max, y_max, bbox_srid
+                ll_1, ll_2, ur_1, ur_2, bbox_srid
             ),
         };
         sql.push(format!(
-            "WHERE ST_Transform(geom, {}) && {}",
-            bbox_srid, envelope
+            "WHERE geom && ST_Transform({}, {})",
+            envelope, storage_srid
         ));
     }
 

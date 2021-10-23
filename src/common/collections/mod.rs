@@ -7,7 +7,7 @@ use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 
 use crate::common::{
     core::{Datetime, Links},
-    Crs,
+    crs::Crs,
 };
 
 pub static CRS_REF: &str = "#/crs";

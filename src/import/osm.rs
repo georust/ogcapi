@@ -7,7 +7,7 @@ use serde_json::{Map, Value};
 use url::Url;
 
 use crate::{
-    common::{collections::Collection, Crs},
+    common::{collections::Collection, crs::Crs},
     db::Db,
     import::boundaries,
 };

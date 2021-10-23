@@ -5,7 +5,7 @@ use serde_json::Value;
 use serde_with::{serde_as, DisplayFromStr};
 
 use crate::common::core::{Bbox, Datetime, Links};
-use crate::common::Crs;
+use crate::common::crs::Crs;
 
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
 #[serde_as]

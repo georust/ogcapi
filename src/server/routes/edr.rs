@@ -17,6 +17,7 @@ async fn query(req: Request<State>) -> Result {
     tide::log::debug!("{:#?}", &query);
 
     let srid: i32 = query.crs.clone().try_into().unwrap();
+    let storage_srid = req.state().db.storage_srid(&collection).await?;
 
     let mut geometry_type = query.coords.split("(").next().unwrap().to_uppercase();
     geometry_type.retain(|c| !c.is_whitespace());
@@ -25,13 +26,13 @@ async fn query(req: Request<State>) -> Result {
         "position" | "area" | "trajectory" => {
             if geometry_type.ends_with("Z") || geometry_type.ends_with("M") {
                 format!(
-                    "ST_3DIntersects(geom, 'SRID={};{}'::geometry)",
-                    srid, query.coords
+                    "ST_3DIntersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
+                    srid, query.coords, storage_srid
                 )
             } else {
                 format!(
-                    "ST_Intersects(geom, 'SRID={};{}'::geometry)",
-                    srid, query.coords
+                    "ST_Intersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
+                    srid, query.coords, storage_srid
                 )
             }
         }
@@ -48,7 +49,10 @@ async fn query(req: Request<State>) -> Result {
                 .expect("Convert & parse distance");
 
             if geometry_type.ends_with("Z") || geometry_type.ends_with("M") {
-                format!("ST_3DDWithin(geom, 'SRID={};{}')", srid, query.coords)
+                format!(
+                    "ST_3DDWithin(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
+                    srid, query.coords, storage_srid
+                )
             } else {
                 format!(
                     "ST_DWithin(geom::geography, 'SRID={};{}'::geography, {}, false)",
@@ -60,13 +64,22 @@ async fn query(req: Request<State>) -> Result {
             let bbox: Vec<&str> = query.coords.split(",").collect();
             if bbox.len() == 4 {
                 format!(
-                    "ST_Intersects(geom, ST_MakeEnvelope({}, {}))",
-                    query.coords, srid
+                    "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}), {})",
+                    query.coords, srid, storage_srid
                 )
             } else {
                 format!(
-                    "ST_3DIntersects(geom, ST_SetSRID(ST_3DMakeBox(ST_MakePoint({}, {}, {}), ST_MakePoint({} , {}, {})), {}))",
-                    bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5], srid
+                    "ST_3DIntersects(
+                        geom,
+                        ST_Transform(
+                            ST_SetSRID(
+                                ST_3DMakeBox(ST_MakePoint({}, {}, {}), ST_MakePoint({} , {}, {})),
+                                {}
+                            ),
+                            {}
+                        )
+                    )",
+                    bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5], srid, storage_srid
                 )
             }
         }

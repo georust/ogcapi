@@ -5,7 +5,7 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use crate::common::{
     core::{Bbox, Datetime},
-    Crs,
+    crs::Crs,
 };
 
 #[serde_as]

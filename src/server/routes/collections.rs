@@ -5,9 +5,11 @@ use tide::http::url::Position;
 use tide::{Body, Request, Response, Result, Server};
 use url::Url;
 
-use crate::common::collections::{Collection, Collections};
-use crate::common::core::{Bbox, Datetime, Link, MediaType};
-use crate::common::Crs;
+use crate::common::{
+    collections::{Collection, Collections},
+    core::{Bbox, Datetime, Link, MediaType},
+    crs::Crs,
+};
 use crate::server::State;
 
 #[serde_as]
@@ -99,6 +101,7 @@ async fn get(req: Request<State>) -> Result {
     let id = req.param("collectionId")?;
 
     let mut collection = req.state().db.select_collection(id).await?;
+
     collection.links.push(
         Link::new(Url::parse(&format!("{}/items", &req.url()[..Position::AfterPath])).unwrap())
             .mime(MediaType::GeoJSON)
