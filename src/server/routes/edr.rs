@@ -43,10 +43,11 @@ async fn query(req: Request<State>) -> Result {
                 &query.within.unwrap_or("0".to_string()),
                 &query.within_units.unwrap_or("m".to_string())
             );
+            tide::log::debug!("Line: {}", line);
             let distance = rink_core::one_line(&mut ctx, &line)
                 .ok()
                 .and_then(|s| s.split(" ").next().and_then(|s| s.parse::<f64>().ok()))
-                .expect("Convert & parse distance");
+                .expect("Failed to parse & convert distance");
 
             if geometry_type.ends_with("Z") || geometry_type.ends_with("M") {
                 format!(
@@ -55,7 +56,7 @@ async fn query(req: Request<State>) -> Result {
                 )
             } else {
                 format!(
-                    "ST_DWithin(geom::geography, 'SRID={};{}'::geography, {}, false)",
+                    "ST_DWithin(ST_Transform(geom, 4326)::geography, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), 4326)::geography, {}, false)",
                     srid, query.coords, distance
                 )
             }

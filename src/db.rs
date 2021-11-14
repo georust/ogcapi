@@ -4,9 +4,11 @@ use sqlx::postgres::PgRow;
 use sqlx::Row;
 use sqlx::{postgres::PgPoolOptions, types::Json, Pool, Postgres};
 
-use crate::common::collections::Collection;
-use crate::common::core::{Conformance, Link, Links};
-use crate::features::{Assets, Feature, FeatureType, Geometry};
+use crate::common::{
+    collections::Collection,
+    core::{Conformance, Link, Links},
+};
+use crate::features::Feature;
 
 #[derive(Debug, Clone)]
 pub struct Db {
@@ -94,7 +96,7 @@ impl Db {
 
         sqlx::query("INSERT INTO meta.collections ( id, collection ) VALUES ( $1, $2 )")
             .bind(&collection.id)
-            .bind(Json(collection) as Json<&Collection>)
+            .bind(Json(collection))
             .execute(&mut tx)
             .await?;
 
@@ -116,7 +118,7 @@ impl Db {
     pub async fn update_collection(&self, collection: &Collection) -> Result<(), anyhow::Error> {
         sqlx::query("UPDATE meta.collections SET collection = $2 WHERE id = $1")
             .bind(&collection.id)
-            .bind(Json(collection) as Json<&Collection>)
+            .bind(Json(collection))
             .execute(&self.pool)
             .await?;
 
@@ -158,13 +160,13 @@ impl Db {
             "#,
             &collection
         ))
-        .bind(&feature.feature_type as &Json<FeatureType>)
+        .bind(&feature.feature_type)
         .bind(&feature.properties)
-        .bind(&feature.geometry as &Json<Geometry>)
-        .bind(&feature.links as &Option<Json<Links>>)
+        .bind(&feature.geometry)
+        .bind(&feature.links)
         .bind(&feature.stac_version)
         .bind(&feature.stac_extensions.as_deref())
-        .bind(&feature.assets as &Option<Json<Assets>>)
+        .bind(&feature.assets)
         .fetch_one(&self.pool)
         .await?;
 
@@ -220,13 +222,13 @@ impl Db {
             &feature.collection.as_ref().unwrap()
         ))
         .bind(&feature.id)
-        .bind(&feature.feature_type as &Json<FeatureType>)
+        .bind(&feature.feature_type)
         .bind(&feature.properties)
-        .bind(&feature.geometry as &Json<Geometry>)
-        .bind(&feature.links as &Option<Json<Links>>)
+        .bind(&feature.geometry)
+        .bind(&feature.links)
         .bind(&feature.stac_version)
         .bind(&feature.stac_extensions.as_deref())
-        .bind(&feature.assets as &Option<Json<Assets>>)
+        .bind(&feature.assets)
         .execute(&self.pool)
         .await?;
 

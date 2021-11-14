@@ -6,16 +6,14 @@ use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 use serde_json::{Map, Value};
 use url::Url;
 
-use crate::{
-    common::{collections::Collection, crs::Crs},
-    db::Db,
-    import::boundaries,
-};
+use crate::common::{collections::Collection, crs::Crs};
+use crate::db::Db;
+use crate::import::boundaries;
 
-use super::Import;
+use super::Args;
 
 /// Import osm data from pbf file
-pub async fn import(args: Import, database_url: &Url) -> Result<(), anyhow::Error> {
+pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
     // Setup a db connection pool
     let db = Db::connect(database_url.as_str()).await?;
 

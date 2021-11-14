@@ -11,10 +11,8 @@ async fn minimal_feature_crud() -> tide::Result<()> {
     // setup app
     dotenv::dotenv().ok();
 
-    let host = env::var("OGCAPI_HOST")?;
-    let port = env::var("OGCAPI_PORT")?;
-
-    let app = ogcapi::server::server(&Url::parse(&env::var("DATABASE_URL")?)?).await;
+    let database_url = env::var("DATABASE_URL")?;
+    let app = ogcapi::server::server(&Url::parse(&database_url)?).await;
 
     let collection = Collection {
         id: "test".to_string(),
@@ -26,10 +24,7 @@ async fn minimal_feature_crud() -> tide::Result<()> {
     };
 
     // create collection
-    let mut req = Request::new(
-        Method::Post,
-        format!("http://{}:{}/collections", &host, &port).as_str(),
-    );
+    let mut req = Request::new(Method::Post, "http://ogcapi.rs/collections");
     req.set_body(serde_json::to_string(&collection)?);
     let res: Response = app.respond(req).await?;
     assert_eq!(201, res.status());
@@ -50,10 +45,7 @@ async fn minimal_feature_crud() -> tide::Result<()> {
     .unwrap();
 
     // create feature
-    let mut req = Request::new(
-        Method::Post,
-        format!("http://{}:{}/collections/test/items", &host, &port).as_str(),
-    );
+    let mut req = Request::new(Method::Post, "http://ogcapi.rs/collections/test/items");
     req.set_body(serde_json::to_string(&feature)?);
     let res: Response = app.respond(req).await?;
     assert_eq!(201, res.status());
@@ -66,7 +58,7 @@ async fn minimal_feature_crud() -> tide::Result<()> {
     // read feauture
     let req = Request::new(
         Method::Get,
-        format!("http://{}:{}/collections/test/items/{}", &host, &port, &id).as_str(),
+        format!("http://ogcapi.rs/collections/test/items/{}", &id).as_str(),
     );
     let mut res: Response = app.respond(req).await?;
     assert_eq!(200, res.status());
@@ -79,7 +71,7 @@ async fn minimal_feature_crud() -> tide::Result<()> {
     // delete feature
     let req = Request::new(
         Method::Delete,
-        format!("http://{}:{}/collections/test/items/{}", &host, &port, &id).as_str(),
+        format!("http://ogcapi.rs/collections/test/items/{}", &id).as_str(),
     );
     let res: Response = app.respond(req).await?;
     assert_eq!(204, res.status());
@@ -87,7 +79,7 @@ async fn minimal_feature_crud() -> tide::Result<()> {
     // delete collection
     let req = Request::new(
         Method::Delete,
-        format!("http://{}:{}/collections/{}", &host, &port, &collection.id).as_str(),
+        format!("http://ogcapi.rs/collections/{}", &collection.id).as_str(),
     );
     let res: Response = app.respond(req).await?;
     assert_eq!(204, res.status());

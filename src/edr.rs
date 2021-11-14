@@ -41,7 +41,7 @@ pub enum QueryType {
 }
 
 #[serde_as]
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct Query {
     /// Well Known Text (WKT) of representation geometry. The representation

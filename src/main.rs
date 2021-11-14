@@ -1,7 +1,4 @@
-use anyhow::Result;
-use ogcapi::import::{ogr, osm, Import};
 use structopt::StructOpt;
-use url::Url;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "ogcapi", about = "A cli for the ogcapi project.")]
@@ -12,7 +9,7 @@ struct App {
     rust_log: String,
     /// Database url
     #[structopt(parse(try_from_str), env, hide_env_values = true)]
-    database_url: Url,
+    database_url: url::Url,
     #[structopt(subcommand)]
     command: Command,
 }
@@ -20,7 +17,7 @@ struct App {
 #[derive(StructOpt, Debug)]
 enum Command {
     /// Imports geodata into the database
-    Import(Import),
+    Import(ogcapi::import::Args),
     /// Starts the ogcapi services
     Serve {
         /// Host address the server listens to, defaults to env OGCAPI_HOST
@@ -34,7 +31,7 @@ enum Command {
 }
 
 #[async_std::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     // setup env
     dotenv::dotenv().ok();
 
@@ -51,9 +48,9 @@ async fn main() -> Result<()> {
 
             // Import data
             if args.input.extension() == Some(std::ffi::OsStr::new("pbf")) {
-                osm::import(args, &app.database_url).await?
+                ogcapi::import::osm::load(args, &app.database_url).await?
             } else {
-                ogr::import(args, &app.database_url).await?
+                ogcapi::import::ogr::load(args, &app.database_url).await?
             }
         }
         Command::Serve { host, port } => {

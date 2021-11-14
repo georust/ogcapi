@@ -13,7 +13,7 @@ use crate::common::core::Links;
 
 /// A set of Features from a dataset
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCollection {
     pub r#type: String,
@@ -34,7 +34,7 @@ pub struct Feature {
     #[serde(rename = "type")]
     pub feature_type: Json<FeatureType>,
     #[serialize_always]
-    pub properties: Option<Value>,
+    pub properties: Option<Json<HashMap<String, Value>>>,
     pub geometry: Json<Geometry>,
     pub links: Option<Json<Links>>,
     pub stac_version: Option<String>,

@@ -4,22 +4,19 @@ use gdal::{
     spatial_ref::{CoordTransform, SpatialRef},
     vector::{Feature, FieldValue},
 };
-
 use serde_json::{Map, Value};
 use url::Url;
 
-use crate::{
-    common::{
-        collections::{Collection, Extent, SpatialExtent},
-        core::Bbox,
-        crs::Crs,
-    },
-    db::Db,
+use crate::common::{
+    collections::{Collection, Extent, SpatialExtent},
+    core::Bbox,
+    crs::Crs,
 };
+use crate::db::Db;
 
-use super::Import;
+use super::Args;
 
-pub async fn import(mut args: Import, database_url: &Url) -> Result<(), anyhow::Error> {
+pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
     // GDAL Configuration Options http://trac.osgeo.org/gdal/wiki/ConfigOptions
     gdal::config::set_config_option("PG_USE_COPY", "YES")?;
     gdal::config::set_config_option("OGR_PG_RETRIEVE_FID", "FALSE")?;
@@ -125,8 +122,6 @@ pub async fn import(mut args: Import, database_url: &Url) -> Result<(), anyhow::
             .map(|field| (field.name(), field.field_type(), field.width()))
             .collect();
 
-        log::debug!("fields_def: {:?}", fields);
-
         let mut pb = pbr::ProgressBar::new(layer.feature_count());
 
         let lyr = ds.layer_by_name(&format!("items.{}", collection.id))?;
@@ -196,7 +191,7 @@ async fn extract_properties(
                     Value::from(i)
                 }
                 _ => {
-                    unimplemented!("Can not parse field type {} `{:#?}` yet!", field.1, value);
+                    unimplemented!("Can not parse field {:?} `{:#?}` yet!", field, value);
                 }
             };
             properties.insert(field.0.to_owned(), value);
