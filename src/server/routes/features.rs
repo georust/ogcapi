@@ -13,6 +13,13 @@ use crate::common::{
 use crate::features::{Feature, FeatureCollection, Query};
 use crate::server::State;
 
+const CONFORMANCE: [&'static str; 4] = [
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+    "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
+];
+
 async fn insert(mut req: Request<State>) -> tide::Result {
     let mut feature: Feature = req.body_json().await?;
 
@@ -239,7 +246,14 @@ async fn validate_crs(collection: &str, crs: &Crs, pool: &PgPool) -> Option<Resp
     }
 }
 
-pub(crate) fn register(app: &mut Server<State>) {
+pub(crate) async fn register(app: &mut Server<State>) {
+    app.state()
+        .conformance
+        .write()
+        .await
+        .conforms_to
+        .append(&mut CONFORMANCE.map(String::from).to_vec());
+
     app.at("/collections/:collectionId/items")
         .get(items)
         .post(insert);

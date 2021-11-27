@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use chrono::Utc;
 use sqlx::types::Json;
 use tide::Server;
@@ -8,6 +10,17 @@ use uuid::Uuid;
 use crate::common::core::{Link, MediaType, Relation};
 use crate::processes::{Execute, Process, ProcessList, ProcessSummary, Query, Results, StatusInfo};
 use crate::server::State;
+
+const CONFORMANCE: [&'static str; 4] = [
+    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/json",
+    // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/html",
+    // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/ogc-process-description",
+    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/job-list",
+    // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/callback",
+    // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/dismiss"
+];
 
 async fn processes(req: Request<State>) -> tide::Result {
     let mut url = req.url().to_owned();
@@ -115,10 +128,14 @@ async fn execution(mut req: Request<State>) -> tide::Result {
 
     // TODO: validation & execution
 
-    let mut res = Response::new(201);
-    res.insert_header("Location", format!("jobs/{}", job.job_id));
-    res.set_body(Body::from_json(&job)?);
-    Ok(res)
+    Ok(Response::builder(201)
+        .header("Location", format!("jobs/{}", job.job_id))
+        .body(Body::from_json(&job)?)
+        .build())
+}
+
+async fn jobs(_req: Request<State>) -> tide::Result {
+    Ok(Response::builder(200).build())
 }
 
 async fn status(req: Request<State>) -> tide::Result {
@@ -133,9 +150,9 @@ async fn status(req: Request<State>) -> tide::Result {
         Link::new(req.url().to_owned()).mime(MediaType::JSON)
     ]));
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&status)?);
-    Ok(res)
+    Ok(Response::builder(200)
+        .body(Body::from_json(&status)?)
+        .build())
 }
 
 async fn delete(req: Request<State>) -> tide::Result {
@@ -159,15 +176,33 @@ async fn result(req: Request<State>) -> tide::Result {
             .fetch_one(&req.state().db.pool)
             .await?;
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&results.0 .0)?);
-    Ok(res)
+    Ok(Response::builder(200)
+        .body(Body::from_json(&results.0 .0)?)
+        .build())
 }
 
-pub(crate) fn register(app: &mut Server<State>) {
+pub(crate) async fn register(app: &mut Server<State>) {
+    app.state().root.write().await.links.append(&mut vec![
+        Link::new(Url::from_str("http://ogcapi.rs/processes").unwrap())
+            .title("Metadata about the processes".to_string())
+            .relation(Relation::Processes)
+            .mime(MediaType::JSON),
+        Link::new(Url::from_str("http://ogcapi.rs/jobs").unwrap())
+            .title("The endpoint for job monitoring".to_string())
+            .relation(Relation::JobList)
+            .mime(MediaType::JSON),
+    ]);
+    app.state()
+        .conformance
+        .write()
+        .await
+        .conforms_to
+        .append(&mut CONFORMANCE.map(String::from).to_vec());
+
     app.at("/processes").get(processes);
     app.at("/processes/:id").get(process);
     app.at("/processes/:id/execution").post(execution);
+    app.at("/jobs").get(jobs);
     app.at("/jobs/:id").get(status).delete(delete);
     app.at("/jobs/:id/result").get(result);
 }

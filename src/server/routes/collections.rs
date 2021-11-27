@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use sqlx::types::Json;
@@ -5,12 +7,19 @@ use tide::http::url::Position;
 use tide::{Body, Request, Response, Result, Server};
 use url::Url;
 
+use crate::common::core::Relation;
 use crate::common::{
     collections::{Collection, Collections},
     core::{Bbox, Datetime, Link, MediaType},
     crs::Crs,
 };
 use crate::server::State;
+
+const CONFORMANCE: [&'static str; 3] = [
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections",
+    "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json",
+];
 
 #[serde_as]
 #[derive(Deserialize, Debug, Clone)]
@@ -138,7 +147,21 @@ async fn delete(req: Request<State>) -> Result {
     Ok(Response::new(204))
 }
 
-pub(crate) fn register(app: &mut Server<State>) {
+pub(crate) async fn register(app: &mut Server<State>) {
+    app.state().root.write().await.links.push(
+        Link::new(Url::from_str("http://ogcapi.rs/collections").unwrap())
+            .title("Metadata about the resource collections".to_string())
+            .relation(Relation::Data)
+            .mime(MediaType::JSON),
+    );
+
+    app.state()
+        .conformance
+        .write()
+        .await
+        .conforms_to
+        .append(&mut CONFORMANCE.map(String::from).to_vec());
+
     app.at("/collections").get(collections).post(insert);
     app.at("/collections/:collectionId")
         .get(get)

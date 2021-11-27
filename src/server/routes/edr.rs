@@ -10,6 +10,12 @@ use crate::edr::Query;
 use crate::features::{Feature, FeatureCollection};
 use crate::server::State;
 
+const CONFORMANCE: [&'static str; 3] = [
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/geojson",
+];
+
 async fn query(req: Request<State>) -> Result {
     let collection = req.param("collectionId")?;
 
@@ -172,7 +178,14 @@ async fn instance(_req: Request<State>) -> Result {
     Ok(res)
 }
 
-pub(crate) fn register(app: &mut Server<State>) {
+pub(crate) async fn register(app: &mut Server<State>) {
+    app.state()
+        .conformance
+        .write()
+        .await
+        .conforms_to
+        .append(&mut CONFORMANCE.map(String::from).to_vec());
+
     app.at("/collections/:collectionId/position").get(query);
     app.at("/collections/:collectionId/radius").get(query);
     app.at("/collections/:collectionId/area").get(query);

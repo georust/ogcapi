@@ -3,21 +3,28 @@ pub mod routes;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use async_std::sync::RwLock;
+use openapiv3::OpenAPI;
 use tide::Server;
 use tide::{self, http::Mime, utils::After, Body, Response};
 use url::Url;
 
 use crate::common::collections::Collection;
-use crate::common::core::{Exception, MediaType};
+use crate::common::core::{Conformance, Exception, LandingPage, Link, MediaType, Relation};
 use crate::db::Db;
+
+static OPENAPI: &[u8; 29680] = include_bytes!("../../openapi.yaml");
 
 #[derive(Clone)]
 pub struct State {
     db: Db,
     collections: Arc<RwLock<HashMap<String, Collection>>>,
+    root: Arc<RwLock<LandingPage>>,
+    conformance: Arc<RwLock<Conformance>>,
+    openapi: OpenAPI,
 }
 
 pub async fn server(database_url: &Url) -> Server<State> {
+    // log
     tide::log::with_level(
         tide::log::LevelFilter::from_str(
             dotenv::var("RUST_LOG").expect("Read RUST_LOG env").as_str(),
@@ -25,11 +32,51 @@ pub async fn server(database_url: &Url) -> Server<State> {
         .expect("Setup rust log level"),
     );
 
+    // state
+    let db = Db::connect(database_url.as_str()).await.unwrap();
+
+    let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI).unwrap();
+
+    let root = Arc::new(RwLock::new(LandingPage {
+        title: Some(openapi.info.title.clone()),
+        description: openapi.info.description.clone(),
+        links: vec![
+            Link::new(Url::from_str("http://ogcapi.rs/").unwrap())
+                .title("This document".to_string())
+                .mime(MediaType::JSON),
+            Link::new(Url::from_str("http://ogcapi.rs/api").unwrap())
+                .title("The Open API definition".to_string())
+                .relation(Relation::ServiceDesc)
+                .mime(MediaType::OpenAPI),
+            Link::new(Url::from_str("http://ogcapi.rs/conformance").unwrap())
+                .title("OGC conformance classes implemented by this API".to_string())
+                .relation(Relation::Conformance)
+                .mime(MediaType::JSON),
+            Link::new(Url::from_str("http://ogcapi.rs/collections").unwrap())
+                .title("Metadata about the resource collections".to_string())
+                .relation(Relation::Data)
+                .mime(MediaType::JSON),
+        ],
+        ..Default::default()
+    }));
+
+    let conformance = Arc::new(RwLock::new(Conformance {
+        conforms_to: vec![
+            "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core".to_string(),
+            "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections".to_string(),
+            "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json".to_string(),
+        ],
+    }));
+
     let state = State {
-        db: Db::connect(database_url.as_str()).await.unwrap(),
+        db,
+        root,
+        conformance,
         collections: Default::default(),
+        openapi,
     };
 
+    // routes
     let mut app = tide::with_state(state.clone());
 
     app.at("/").get(routes::root);
@@ -43,13 +90,14 @@ pub async fn server(database_url: &Url) -> Server<State> {
         )))
     });
 
-    routes::collections::register(&mut app);
-    routes::features::register(&mut app);
-    routes::edr::register(&mut app);
+    routes::collections::register(&mut app).await;
+    routes::features::register(&mut app).await;
+    routes::edr::register(&mut app).await;
     routes::tiles::register(&mut app);
     routes::styles::register(&mut app);
-    routes::processes::register(&mut app);
+    routes::processes::register(&mut app).await;
 
+    // errors
     app.with(After(|mut res: Response| async move {
         if let Some(err) = res.error() {
             let exception = Exception {

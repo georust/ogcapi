@@ -5,30 +5,24 @@ pub mod processes;
 pub mod styles;
 pub mod tiles;
 
-use openapiv3::OpenAPI;
+use std::str::FromStr;
+
 use tide::{
     http::{url::Position, Mime},
-    Body, Request, Response, Result,
+    Body, Request, Response,
 };
+use url::Url;
 
-use crate::common::core::{LandingPage, MediaType};
+use crate::common::core::MediaType;
 use crate::server::State;
 
-static OPENAPI: &[u8; 29680] = include_bytes!("../../../openapi.yaml");
+pub(crate) async fn root(req: Request<State>) -> tide::Result {
+    let url = req
+        .remote()
+        .and_then(|s| Url::from_str(s).ok())
+        .unwrap_or(req.url().to_owned());
 
-pub(crate) async fn root(req: Request<State>) -> Result {
-    let url = req.url();
-
-    let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI)?;
-
-    let links = req.state().db.root().await?;
-
-    let mut landing_page = LandingPage {
-        title: Some(openapi.info.title),
-        description: openapi.info.description,
-        links,
-        ..Default::default()
-    };
+    let mut landing_page = req.state().root.read().await.clone();
 
     for link in landing_page.links.iter_mut() {
         link.url.set_scheme(url.scheme()).unwrap();
@@ -36,21 +30,19 @@ pub(crate) async fn root(req: Request<State>) -> Result {
         link.url.set_port(url.port()).unwrap();
     }
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&landing_page)?);
-    Ok(res)
+    Ok(Response::builder(200)
+        .body(Body::from_json(&landing_page)?)
+        .build())
 }
 
-pub(crate) async fn api(_req: Request<State>) -> Result {
-    let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI)?;
-
-    let mut res = Response::new(200);
-    res.set_content_type(MediaType::OpenAPI);
-    res.set_body(Body::from_json(&openapi)?);
-    Ok(res)
+pub(crate) async fn api(req: Request<State>) -> tide::Result {
+    Ok(Response::builder(200)
+        .body(Body::from_json(&req.state().openapi)?)
+        .content_type(MediaType::OpenAPI)
+        .build())
 }
 
-pub(crate) async fn redoc(req: Request<State>) -> Result {
+pub(crate) async fn redoc(req: Request<State>) -> tide::Result {
     let api_url = req.url()[..Position::AfterPath].replace("redoc", "api");
 
     let mut res = Response::new(200);
@@ -85,10 +77,9 @@ pub(crate) async fn redoc(req: Request<State>) -> Result {
     Ok(res)
 }
 
-pub(crate) async fn conformance(req: Request<State>) -> Result {
-    let conformance = req.state().db.conformance().await?;
-
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&conformance)?);
-    Ok(res)
+pub(crate) async fn conformance(req: Request<State>) -> tide::Result {
+    let conformance = req.state().conformance.read().await;
+    Ok(Response::builder(200)
+        .body(Body::from_json(&conformance.to_owned())?)
+        .build())
 }

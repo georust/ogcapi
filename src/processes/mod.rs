@@ -12,10 +12,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::common::core::Links;
 
+/// Information about the available processes
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct ProcessList {
-    pub(crate) processes: Vec<ProcessSummary>,
-    pub(crate) links: Links,
+pub struct ProcessList {
+    pub processes: Vec<ProcessSummary>,
+    pub links: Links,
 }
 
 #[derive(Deserialize, Debug, Clone)]

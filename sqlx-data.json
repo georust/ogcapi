@@ -1,23 +1,5 @@
 {
   "db": "PostgreSQL",
-  "301f4bd11ff3620b50a526e9e821dce7eeb81797fd26d9283cc261e491db2bdb": {
-    "query": "SELECT * FROM meta.conformance",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "class",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": []
-      },
-      "nullable": [
-        false
-      ]
-    }
-  },
   "e9d6123d969afc7970a56d574fec65b4ef69e5063c3a082b3bb024be30a2455c": {
     "query": "DELETE FROM meta.jobs WHERE job_id = $1",
     "describe": {

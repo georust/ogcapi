@@ -1,13 +1,8 @@
 use std::convert::TryInto;
 
-use sqlx::postgres::PgRow;
-use sqlx::Row;
 use sqlx::{postgres::PgPoolOptions, types::Json, Pool, Postgres};
 
-use crate::common::{
-    collections::Collection,
-    core::{Conformance, Link, Links},
-};
+use crate::common::collections::Collection;
 use crate::features::Feature;
 
 #[derive(Debug, Clone)]
@@ -20,28 +15,6 @@ impl Db {
         let pool = PgPoolOptions::new().max_connections(5).connect(url).await?;
 
         Ok(Db { pool })
-    }
-
-    pub async fn root(&self) -> Result<Links, anyhow::Error> {
-        let links = sqlx::query("SELECT row_to_json(root) FROM meta.root")
-            .try_map(|row: PgRow| {
-                serde_json::from_value::<Link>(row.get(0))
-                    .map_err(|e| sqlx::Error::Decode(Box::new(e)))
-            })
-            .fetch_all(&self.pool)
-            .await?;
-
-        Ok(links)
-    }
-
-    pub async fn conformance(&self) -> Result<Conformance, anyhow::Error> {
-        let classes = sqlx::query_scalar!("SELECT * FROM meta.conformance")
-            .fetch_all(&self.pool)
-            .await?;
-
-        Ok(Conformance {
-            conforms_to: classes,
-        })
     }
 
     pub async fn insert_collection(
