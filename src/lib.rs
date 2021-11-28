@@ -1,7 +1,9 @@
 pub mod common;
 pub mod db;
+#[cfg(feature = "edr")]
 pub mod edr;
 pub mod features;
+#[cfg(feature = "import")]
 pub mod import;
 pub mod processes;
 pub mod server;

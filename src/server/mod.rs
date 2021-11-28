@@ -92,6 +92,7 @@ pub async fn server(database_url: &Url) -> Server<State> {
 
     routes::collections::register(&mut app).await;
     routes::features::register(&mut app).await;
+    #[cfg(feature = "edr")]
     routes::edr::register(&mut app).await;
     routes::tiles::register(&mut app);
     routes::styles::register(&mut app);

@@ -12,6 +12,7 @@ pub use mediatype::MediaType;
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "edr")]
 use crate::edr::{Contact, Provider};
 
 /// The Landing page is the entry point of a OGC API
@@ -36,7 +37,9 @@ pub struct LandingPage {
     pub attribution: Option<String>,
     pub links: Links,
     pub keywords: Option<Vec<String>>,
+    #[cfg(feature = "edr")]
     pub provider: Option<Provider>,
+    #[cfg(feature = "edr")]
     pub contact: Option<Contact>,
 }
 

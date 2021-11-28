@@ -9,8 +9,8 @@ rust-latest:
     - apt-get install libgdal-dev gdal-bin -yqq --no-install-recommends build-essential
     - export SQLX_OFFLINE=true
   script:
-    - cargo build --verbose
-    - cargo test --verbose -- --skip minimal_feature_crud
+    - cargo build --verbose --all-features
+    - cargo test --verbose --all-features -- --skip minimal_feature_crud
 
 rust-nightly:
   stage: build
@@ -20,6 +20,6 @@ rust-nightly:
     - apt-get install libgdal-dev gdal-bin -yqq --no-install-recommends build-essential
     - export SQLX_OFFLINE=true
   script:
-    - cargo build --verbose
-    - cargo test --verbose -- --skip minimal_feature_crud
+    - cargo build --verbose --all-features
+    - cargo test --verbose --all-features -- --skip minimal_feature_crud
   allow_failure: true

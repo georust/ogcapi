@@ -30,7 +30,7 @@ pub struct Link {
 }
 
 impl Link {
-    /// Constructs a new Link with the given url and the [LinkRelation] `Self`
+    /// Constructs a new Link with the given url and the [Relation] `Self`
     pub fn new(url: Url) -> Link {
         Link {
             url: url.to_owned(),
@@ -42,7 +42,7 @@ impl Link {
         }
     }
 
-    /// Sets the [LinkRelation] of the Link and returns the Value
+    /// Sets the [Relation] of the Link and returns the Value
     pub fn relation(mut self, relation: Relation) -> Link {
         self.relation = relation;
         self

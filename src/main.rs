@@ -16,6 +16,7 @@ struct App {
 
 #[derive(StructOpt, Debug)]
 enum Command {
+    #[cfg(feature = "import")]
     /// Imports geodata into the database
     Import(ogcapi::import::Args),
     /// Starts the ogcapi services
@@ -42,6 +43,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     match app.command {
+        #[cfg(feature = "import")]
         Command::Import(args) => {
             // initialize logging
             env_logger::init();

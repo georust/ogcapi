@@ -1,3 +1,4 @@
+#[cfg(all(feature = "edr", feature = "import"))]
 #[async_std::test]
 async fn edr() -> tide::Result<()> {
     use std::env;

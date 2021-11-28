@@ -1,4 +1,5 @@
 pub mod collections;
+#[cfg(feature = "edr")]
 pub mod edr;
 pub mod features;
 pub mod processes;
