@@ -23,30 +23,8 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
     gdal::config::set_config_option("PGSQL_OGR_FID", "id")?;
 
     // Get target dataset layer
-    // TODO: pass database url directly once GDAL 8.4 is out
-    let mut db_params = Vec::new();
-    if let Some(host) = database_url.host_str() {
-        db_params.push(format!("host={}", host));
-    }
-    if let Some(port) = database_url.port() {
-        db_params.push(format!("port={}", port));
-    }
-    if !database_url.username().is_empty() {
-        db_params.push(format!("user={}", database_url.username()));
-    }
-    if let Some(password) = database_url.password() {
-        db_params.push(format!("password={}", password));
-    }
-    if let Some(mut path_segments) = database_url.path_segments() {
-        db_params.push(format!(
-            "dbname={}",
-            path_segments.next().expect("Some path segment")
-        ));
-    }
-    let db_url = format!("PG:{}", db_params.join(" "));
-
     let drv = gdal::Driver::get("PostgreSQL")?;
-    let ds = drv.create_vector_only(&db_url)?;
+    let ds = drv.create_vector_only(&database_url.to_string())?;
 
     // Setup a db connection pool
     let db = Db::connect(database_url.as_str()).await?;
@@ -116,39 +94,49 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
         // Load features
         log::info!("Importing layer: `{}`", &collection.title.unwrap());
 
-        let fields: Vec<(String, u32, i32)> = layer
-            .defn()
-            .fields()
-            .map(|field| (field.name(), field.field_type(), field.width()))
-            .collect();
+        let field_names: Vec<String> = layer.defn().fields().map(|f| f.name()).collect();
 
         let mut pb = pbr::ProgressBar::new(layer.feature_count());
 
         let lyr = ds.layer_by_name(&format!("items.{}", collection.id))?;
 
         for feature in layer.features() {
-            // Get the original geometry:
+            // Extract & transform geometry
             let geom = feature.geometry();
-            // Get a new transformed geometry:
-            let new_geom = geom.transform(&transform)?;
-            // Create the new feature, set its geometry:
+            let geom = geom.transform(&transform)?;
+
+            // Extract properties
+            let mut properties = Map::new();
+
+            for field_name in &field_names {
+                let value = if let Some(value) = feature.field(field_name)? {
+                    match value {
+                        FieldValue::IntegerValue(v) => Value::from(v),
+                        FieldValue::IntegerListValue(v) => Value::from(v),
+                        FieldValue::Integer64Value(v) => Value::from(v),
+                        FieldValue::Integer64ListValue(v) => Value::from(v),
+                        FieldValue::StringValue(v) => Value::from(v),
+                        FieldValue::StringListValue(v) => Value::from(v),
+                        FieldValue::RealValue(v) => Value::from(v),
+                        FieldValue::RealListValue(v) => Value::from(v),
+                        FieldValue::DateValue(v) => Value::from(v.naive_utc().to_string()),
+                        FieldValue::DateTimeValue(v) => Value::from(v.to_rfc3339()),
+                    }
+                } else {
+                    Value::Null;
+                };
+                properties.insert(field_name.to_owned(), value);
+            }
+
+            // Create a new feature
             let mut ft = Feature::new(lyr.defn())?;
-            ft.set_geometry(new_geom)?;
-
-            feature.geometry().geometry_type();
-
-            // Map fields
-            // if let Some(id) = feature.fid() {
-            //     ft.set_field("id", &FieldValue::Integer64Value(id as i64))?;
-            // }
-
-            let properties = extract_properties(&feature, &fields).await?;
+            ft.set_geometry(geom)?;
             ft.set_field(
                 "properties",
-                &FieldValue::StringValue(serde_json::to_string(&properties)?),
+                &FieldValue::StringValue(serde_json::to_string(&Value::from(properties))?),
             )?;
 
-            // Add the feature to the layer:
+            // Add the feature to the layer
             ft.create(&lyr)?;
 
             pb.inc();
@@ -157,46 +145,4 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
     }
 
     Ok(())
-}
-
-/// Extract properties from feature
-async fn extract_properties(
-    feature: &Feature<'_>,
-    fields: &Vec<(String, u32, i32)>,
-) -> Result<serde_json::Value, anyhow::Error> {
-    let mut properties = Map::new();
-
-    for field in fields {
-        if let Some(value) = feature.field(&field.0)? {
-            // Match field types https://gdal.org/doxygen/ogr__core_8h.html#a787194bea637faf12d61643124a7c9fc
-            let value = match field.1 {
-                0 => {
-                    let i = value.into_int().unwrap();
-                    Value::from(i)
-                }
-                2 => {
-                    let f = value.into_real().unwrap();
-                    Value::from(f)
-                }
-                4 => {
-                    let s = value.into_string().unwrap();
-                    Value::from(s)
-                }
-                11 => {
-                    let d = value.into_datetime().unwrap();
-                    Value::from(d.to_rfc3339())
-                }
-                12 => {
-                    let i = value.into_int64().unwrap();
-                    Value::from(i)
-                }
-                _ => {
-                    unimplemented!("Can not parse field {:?} `{:#?}` yet!", field, value);
-                }
-            };
-            properties.insert(field.0.to_owned(), value);
-        }
-    }
-
-    Ok(Value::from(properties))
 }
