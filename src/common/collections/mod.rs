@@ -1,6 +1,6 @@
 mod collection;
 
-pub use collection::{Collection, Extent, ItemType, Provider, SpatialExtent, Summaries};
+pub use collection::{Collection, Extent, ItemType, Provider, SpatialExtent};
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};

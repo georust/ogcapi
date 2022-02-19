@@ -68,16 +68,14 @@ struct AdditionalParameter {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
-
 enum JobControlOptions {
-    SyncEcecute,
-    AsyncEcecute,
+    SyncExecute,
+    AsyncExecute,
     Dismiss,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
-
 enum TransmissionMode {
     Value,
     Reference,

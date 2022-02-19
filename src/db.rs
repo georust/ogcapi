@@ -62,7 +62,7 @@ impl Db {
                     .storage_crs
                     .clone()
                     .and_then(|c| c.try_into().ok())
-                    .unwrap_or_else(|| 4326),
+                    .unwrap_or(4326),
             )
             .execute(&mut tx)
             .await?;
@@ -225,6 +225,6 @@ impl Db {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(row.0.split("/").last().unwrap().to_string())
+        Ok(row.0.split('/').last().unwrap().to_string())
     }
 }

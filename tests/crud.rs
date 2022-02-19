@@ -16,9 +16,7 @@ async fn minimal_feature_crud() -> tide::Result<()> {
 
     let collection = Collection {
         id: "test".to_string(),
-        links: vec![Link::new(
-            Url::parse("http://localhost:8080/collections/test").unwrap(),
-        )],
+        links: vec![Link::new("http://localhost:8080/collections/test")],
         crs: Some(vec![Crs::default()]),
         ..Default::default()
     };

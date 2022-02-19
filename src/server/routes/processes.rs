@@ -1,25 +1,22 @@
-use std::str::FromStr;
-
 use chrono::Utc;
 use sqlx::types::Json;
 use tide::Server;
 use tide::{http::url::Position, Body, Request, Response};
-use url::Url;
 use uuid::Uuid;
 
-use crate::common::core::{Link, MediaType, Relation};
+use crate::common::core::{Link, LinkRel, MediaType};
 use crate::processes::{Execute, Process, ProcessList, ProcessSummary, Query, Results, StatusInfo};
 use crate::server::State;
 
-const CONFORMANCE: [&'static str; 4] = [
+const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/ogc-process-description",
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/json",
     // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/html",
     // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/oas30",
-    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/ogc-process-description",
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/job-list",
     // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/callback",
-    // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/dismiss"
+    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/dismiss",
 ];
 
 async fn processes(req: Request<State>) -> tide::Result {
@@ -29,7 +26,7 @@ async fn processes(req: Request<State>) -> tide::Result {
 
     let mut sql = vec!["SELECT summary FROM meta.processes".to_string()];
 
-    let mut links = vec![Link::new(url.to_owned()).mime(MediaType::JSON)];
+    let mut links = vec![Link::new(url.as_str()).mime(MediaType::JSON)];
 
     // pagination
     if let Some(limit) = query.limit {
@@ -45,17 +42,19 @@ async fn processes(req: Request<State>) -> tide::Result {
             sql.push(format!("OFFSET {}", offset));
 
             if offset != 0 && offset >= limit {
-                url.set_query(Some(&query.as_string_with_offset(offset - limit)));
-                let previous = Link::new(url.to_owned())
-                    .relation(Relation::Previous)
+                query.offset = Some(offset - limit);
+                url.set_query(Some(&query.to_string()));
+                let previous = Link::new(url.as_str())
+                    .relation(LinkRel::Prev)
                     .mime(MediaType::JSON);
                 links.push(previous);
             }
 
             if !(offset + limit) as u64 >= count {
-                url.set_query(Some(&query.as_string_with_offset(offset + limit)));
-                let next = Link::new(url.to_owned())
-                    .relation(Relation::Next)
+                query.offset = Some(offset + limit);
+                url.set_query(Some(&query.to_string()));
+                let next = Link::new(url.as_str())
+                    .relation(LinkRel::Next)
                     .mime(MediaType::JSON);
                 links.push(next);
             }
@@ -70,9 +69,10 @@ async fn processes(req: Request<State>) -> tide::Result {
         processes: summaries
             .into_iter()
             .map(|mut p| {
-                p.0.links = Some(vec![Link::new(
-                    Url::parse(&format!("{}/{}", &url[..Position::AfterPath], p.0.id)).unwrap(),
-                )
+                p.0.links = Some(vec![Link::new(&format!(
+                    "{}/{p.0.id}",
+                    &url[..Position::AfterPath]
+                ))
                 .mime(MediaType::JSON)
                 .title("process description".to_string())]);
                 p.0
@@ -95,7 +95,7 @@ async fn process(req: Request<State>) -> tide::Result {
             .fetch_one(&req.state().db.pool)
             .await?;
 
-    process.summary.links = Some(vec![Link::new(req.url().to_owned()).mime(MediaType::JSON)]);
+    process.summary.links = Some(vec![Link::new(req.url().as_str()).mime(MediaType::JSON)]);
 
     let mut res = Response::new(200);
     res.set_body(Body::from_json(&process)?);
@@ -147,7 +147,7 @@ async fn status(req: Request<State>) -> tide::Result {
         .await?;
 
     status.links = Some(Json(vec![
-        Link::new(req.url().to_owned()).mime(MediaType::JSON)
+        Link::new(req.url().as_str()).mime(MediaType::JSON)
     ]));
 
     Ok(Response::builder(200)
@@ -158,7 +158,8 @@ async fn status(req: Request<State>) -> tide::Result {
 async fn delete(req: Request<State>) -> tide::Result {
     let id: &str = req.param("id")?;
 
-    sqlx::query!("DELETE FROM meta.jobs WHERE job_id = $1", id)
+    sqlx::query("DELETE FROM meta.jobs WHERE job_id = $1")
+        .bind(id)
         .execute(&req.state().db.pool)
         .await?;
 
@@ -167,7 +168,7 @@ async fn delete(req: Request<State>) -> tide::Result {
     Ok(Response::new(204))
 }
 
-async fn result(req: Request<State>) -> tide::Result {
+async fn results(req: Request<State>) -> tide::Result {
     let id: &str = req.param("id")?;
 
     let results: (Json<Results>,) =
@@ -183,14 +184,14 @@ async fn result(req: Request<State>) -> tide::Result {
 
 pub(crate) async fn register(app: &mut Server<State>) {
     app.state().root.write().await.links.append(&mut vec![
-        Link::new(Url::from_str("http://ogcapi.rs/processes").unwrap())
-            .title("Metadata about the processes".to_string())
-            .relation(Relation::Processes)
-            .mime(MediaType::JSON),
-        Link::new(Url::from_str("http://ogcapi.rs/jobs").unwrap())
-            .title("The endpoint for job monitoring".to_string())
-            .relation(Relation::JobList)
-            .mime(MediaType::JSON),
+        Link::new("http://ogcapi.rs/processes")
+            .relation(LinkRel::Processes)
+            .mime(MediaType::JSON)
+            .title("Metadata about the processes".to_string()),
+        Link::new("http://ogcapi.rs/jobs")
+            .relation(LinkRel::JobList)
+            .mime(MediaType::JSON)
+            .title("The endpoint for job monitoring".to_string()),
     ]);
     app.state()
         .conformance
@@ -204,5 +205,5 @@ pub(crate) async fn register(app: &mut Server<State>) {
     app.at("/processes/:id/execution").post(execution);
     app.at("/jobs").get(jobs);
     app.at("/jobs/:id").get(status).delete(delete);
-    app.at("/jobs/:id/result").get(result);
+    app.at("/jobs/:id/results").get(results);
 }

@@ -2,8 +2,6 @@ mod execute;
 mod job;
 mod process;
 
-use std::fmt;
-
 pub use execute::Execute;
 pub use job::{Results, StatusCode, StatusInfo};
 pub use process::{Process, ProcessSummary};
@@ -21,18 +19,11 @@ pub struct ProcessList {
 
 #[derive(Deserialize, Debug, Clone)]
 pub(crate) struct Query {
-    pub(crate) limit: Option<i64>,
-    pub(crate) offset: Option<i64>,
+    pub(crate) limit: Option<usize>,
+    pub(crate) offset: Option<usize>,
 }
 
-impl Query {
-    pub fn as_string_with_offset(&mut self, offset: i64) -> String {
-        self.offset = Some(offset);
-        self.to_string()
-    }
-}
-
-impl fmt::Display for Query {
+impl std::fmt::Display for Query {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut query_str = vec![];
         if let Some(limit) = self.limit {

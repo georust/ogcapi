@@ -1,38 +1,35 @@
-use std::str::FromStr;
-
-use serde::Deserialize;
-use serde_with::{serde_as, DisplayFromStr};
+// use serde::Deserialize;
+// use serde_with::{serde_as, DisplayFromStr};
 use sqlx::types::Json;
 use tide::http::url::Position;
 use tide::{Body, Request, Response, Result, Server};
-use url::Url;
 
-use crate::common::core::Relation;
+use crate::common::core::LinkRel;
 use crate::common::{
     collections::{Collection, Collections},
-    core::{Bbox, Datetime, Link, MediaType},
+    core::{Link, MediaType},
     crs::Crs,
 };
 use crate::server::State;
 
-const CONFORMANCE: [&'static str; 3] = [
+const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections",
     "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json",
 ];
 
-#[serde_as]
-#[derive(Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-struct Query {
-    bbox: Option<Bbox>,
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    bbox_crs: Option<Crs>,
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    datetime: Option<Datetime>,
-    limit: Option<isize>,
-    offset: Option<isize>,
-}
+// #[serde_as]
+// #[derive(Deserialize, Debug, Clone)]
+// #[serde(deny_unknown_fields)]
+// struct Query {
+//     bbox: Option<Bbox>,
+//     #[serde_as(as = "Option<DisplayFromStr>")]
+//     bbox_crs: Option<Crs>,
+//     #[serde_as(as = "Option<DisplayFromStr>")]
+//     datetime: Option<Datetime>,
+//     limit: Option<isize>,
+//     offset: Option<isize>,
+// }
 
 // impl Query {
 //     fn to_string(&self) -> String {
@@ -71,8 +68,8 @@ async fn collections(req: Request<State>) -> Result {
         .map(|c| {
             let base = &url[..Position::AfterPath];
             c.0.links.append(&mut vec![
-                Link::new(Url::parse(&format!("{}/{}", base, c.id)).unwrap()),
-                Link::new(Url::parse(&format!("{}/{}/items", base, c.id)).unwrap())
+                Link::new(&format!("{}/{}", base, c.id)),
+                Link::new(&format!("{}/{}/items", base, c.id))
                     .mime(MediaType::GeoJSON)
                     .title(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id))),
             ]);
@@ -81,7 +78,7 @@ async fn collections(req: Request<State>) -> Result {
         .collect();
 
     let collections = Collections {
-        links: vec![Link::new(url.to_owned())
+        links: vec![Link::new(url.as_str())
             .mime(MediaType::JSON)
             .title("this document".to_string())],
         crs: Some(vec![Crs::default(), Crs::from(4326)]),
@@ -112,7 +109,7 @@ async fn get(req: Request<State>) -> Result {
     let mut collection = req.state().db.select_collection(id).await?;
 
     collection.links.push(
-        Link::new(Url::parse(&format!("{}/items", &req.url()[..Position::AfterPath])).unwrap())
+        Link::new(&format!("{}/items", &req.url()[..Position::AfterPath]))
             .mime(MediaType::GeoJSON)
             .title(format!(
                 "Items of {}",
@@ -149,9 +146,9 @@ async fn delete(req: Request<State>) -> Result {
 
 pub(crate) async fn register(app: &mut Server<State>) {
     app.state().root.write().await.links.push(
-        Link::new(Url::from_str("http://ogcapi.rs/collections").unwrap())
+        Link::new("http://ogcapi.rs/collections")
             .title("Metadata about the resource collections".to_string())
-            .relation(Relation::Data)
+            .relation(LinkRel::Data)
             .mime(MediaType::JSON),
     );
 

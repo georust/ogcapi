@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 // Default CRS
 static OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"; // for coordinates without height
-static OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h"; // for coordinates with height
+                                                                         // static OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h"; // for coordinates with height
 
 /// CRS Authorities
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -131,7 +131,7 @@ impl TryFrom<Crs> for i32 {
 mod tests {
     use std::{convert::TryInto, str::FromStr};
 
-    use crate::common::crs::{Crs, OGC_CRS84, OGC_CRS84H};
+    use crate::common::crs::{Crs, OGC_CRS84};
 
     #[test]
     fn parse_crs() {
@@ -157,8 +157,7 @@ mod tests {
 
     #[test]
     fn into_epsg() {
-        let code = 4979;
-        let crs: Crs = code.into();
+        let crs: Crs = 4979.into();
         assert_eq!(
             crs.to_string(),
             "http://www.opengis.net/def/crs/EPSG/0/4979".to_string()
@@ -167,7 +166,7 @@ mod tests {
 
     #[test]
     fn ogc_to_epsg() {
-        let crs = Crs::from_str(OGC_CRS84H).unwrap();
+        let crs = Crs::from_str("http://www.opengis.net/def/crs/EPSG/0/4979").unwrap();
         assert_eq!(crs.ogc_to_epsg(), Some(4979.into()))
     }
 }

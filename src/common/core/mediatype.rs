@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Media Type definitions used in the OGC API standards
+#[non_exhaustive]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum MediaType {
     /// Media Type for `text/html`
@@ -12,9 +13,15 @@ pub enum MediaType {
     /// Media Type for `application/geo+json`
     #[serde(rename = "application/geo+json")]
     GeoJSON,
+    /// Media Type for `application/vnd.oai.openapi;version=3.0`
+    #[serde(rename = "application/vnd.oai.openapi;version=3.0")]
+    OpenAPI,
     /// Media Type for `application/vnd.oai.openapi+json;version=3.0`
     #[serde(rename = "application/vnd.oai.openapi+json;version=3.0")]
-    OpenAPI,
+    OpenAPIJson,
+    /// Media Type for `application/vnd.oai.openapi+yaml;version=3.0`
+    #[serde(rename = "application/vnd.oai.openapi+yaml;version=3.0")]
+    OpenAPIYaml,
     /// Media Type for `application/vnd.mapbox.style+json`
     #[serde(rename = "application/vnd.mapbox.style+json")]
     MapboxStyle,
@@ -24,4 +31,7 @@ pub enum MediaType {
     /// Media Type for `application/problem+json`
     #[serde(rename = "application/problem+json")]
     ProblemJSON,
+    /// Media Type for `image/png`
+    #[serde(rename = "image/png")]
+    PNG,
 }

@@ -36,7 +36,7 @@ async fn tile(req: Request<State>) -> Result {
 
     let collections: Vec<String> = req
         .param("collectionId")?
-        .split(",")
+        .split(',')
         .map(str::to_owned)
         .collect();
 

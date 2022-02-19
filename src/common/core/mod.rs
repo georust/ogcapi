@@ -7,7 +7,7 @@ mod mediatype;
 pub use bbox::Bbox;
 pub use datetime::Datetime;
 pub use exception::Exception;
-pub use link::{Link, Links, Relation};
+pub use link::{Link, LinkRel, Links};
 pub use mediatype::MediaType;
 
 use serde::{Deserialize, Serialize};

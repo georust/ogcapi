@@ -12,8 +12,8 @@ use crate::common::{
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub bbox: Option<Bbox>,
@@ -44,13 +44,6 @@ pub enum FilterLang {
 impl default::Default for FilterLang {
     fn default() -> Self {
         FilterLang::CqlText
-    }
-}
-
-impl Query {
-    pub fn as_string_with_offset(&mut self, offset: i64) -> String {
-        self.offset = Some(offset);
-        self.to_string()
     }
 }
 

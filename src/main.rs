@@ -4,9 +4,9 @@ use structopt::StructOpt;
 #[structopt(name = "ogcapi", about = "A cli for the ogcapi project.")]
 #[structopt(rename_all = "kebab-case")]
 struct App {
-    /// Log level
-    #[structopt(long, env, default_value = "INFO")]
-    rust_log: String,
+    // /// Log level
+    // #[structopt(long, env, default_value = "INFO")]
+    // rust_log: String,
     /// Database url
     #[structopt(parse(try_from_str), env, hide_env_values = true)]
     database_url: url::Url,
@@ -16,10 +16,11 @@ struct App {
 
 #[derive(StructOpt, Debug)]
 enum Command {
-    #[cfg(feature = "import")]
     /// Imports geodata into the database
+    #[cfg(feature = "import")]
     Import(ogcapi::import::Args),
     /// Starts the ogcapi services
+    #[cfg(feature = "server")]
     Serve {
         /// Host address the server listens to, defaults to env OGCAPI_HOST
         #[structopt(long, short, env = "OGCAPI_HOST", default_value = "0.0.0.0")]
@@ -55,6 +56,7 @@ async fn main() -> anyhow::Result<()> {
                 ogcapi::import::ogr::load(args, &app.database_url).await?
             }
         }
+        #[cfg(feature = "server")]
         Command::Serve { host, port } => {
             let app = ogcapi::server::server(&app.database_url).await;
             app.listen(&format!("{}:{}", host, port)).await?;

@@ -2,12 +2,14 @@ pub mod collections;
 #[cfg(feature = "edr")]
 pub mod edr;
 pub mod features;
+#[cfg(feature = "processes")]
 pub mod processes;
 pub mod styles;
 pub mod tiles;
 
 use std::str::FromStr;
 
+use http::Uri;
 use tide::{
     http::{url::Position, Mime},
     Body, Request, Response,
@@ -21,14 +23,30 @@ pub(crate) async fn root(req: Request<State>) -> tide::Result {
     let url = req
         .remote()
         .and_then(|s| Url::from_str(s).ok())
-        .unwrap_or(req.url().to_owned());
+        .unwrap_or_else(|| req.url().to_owned());
 
     let mut landing_page = req.state().root.read().await.clone();
 
     for link in landing_page.links.iter_mut() {
-        link.url.set_scheme(url.scheme()).unwrap();
-        link.url.set_host(url.host_str()).unwrap();
-        link.url.set_port(url.port()).unwrap();
+        let uri = Uri::builder()
+            .scheme(url.scheme())
+            .authority({
+                let mut authority = url.host_str().unwrap().to_owned();
+                if let Some(port) = url.port() {
+                    authority.push_str(&format!(":{}", port));
+                }
+                authority
+            })
+            .path_and_query(
+                link.href
+                    .parse::<Uri>()
+                    .unwrap()
+                    .path_and_query()
+                    .unwrap()
+                    .as_str(),
+            )
+            .build()?;
+        link.href = uri.to_string();
     }
 
     Ok(Response::builder(200)
@@ -39,7 +57,7 @@ pub(crate) async fn root(req: Request<State>) -> tide::Result {
 pub(crate) async fn api(req: Request<State>) -> tide::Result {
     Ok(Response::builder(200)
         .body(Body::from_json(&req.state().openapi)?)
-        .content_type(MediaType::OpenAPI)
+        .content_type(MediaType::OpenAPIJson)
         .build())
 }
 

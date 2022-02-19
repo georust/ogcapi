@@ -4,16 +4,16 @@ use chrono::{SecondsFormat, Utc};
 use sqlx::types::Json;
 use sqlx::PgPool;
 use tide::{Body, Request, Response, Result, Server};
-use url::{Position, Url};
+use url::Position;
 
 use crate::common::{
-    core::{Bbox, Exception, Link, MediaType, Relation},
+    core::{Bbox, Exception, Link, LinkRel, MediaType},
     crs::Crs,
 };
 use crate::features::{Feature, FeatureCollection, Query};
 use crate::server::State;
 
-const CONFORMANCE: [&'static str; 4] = [
+const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
@@ -48,15 +48,12 @@ async fn get(req: Request<State>) -> tide::Result {
 
     let url = req.url();
     feature.links = Some(Json(vec![
-        Link::new(url.to_owned()).mime(MediaType::GeoJSON),
-        Link::new(
-            Url::parse(&format!(
-                "{}/collections/{}",
-                &url[..Position::BeforePath],
-                collection
-            ))
-            .unwrap(),
-        )
+        Link::new(url.as_str()).mime(MediaType::GeoJSON),
+        Link::new(&format!(
+            "{}/collections/{}",
+            &url[..Position::BeforePath],
+            collection
+        ))
         .mime(MediaType::GeoJSON),
     ]));
 
@@ -127,17 +124,17 @@ async fn items(req: Request<State>) -> Result {
             return Ok(res);
         }
 
-        let storage_srid = req.state().db.storage_srid(&collection).await?;
+        let storage_srid = req.state().db.storage_srid(collection).await?;
 
         let bbox_srid: i32 = crs.try_into().unwrap();
         let envelope = match bbox {
-            Bbox::Bbox2D(ll_1, ll_2, ur_1, ur_2) => format!(
+            Bbox::Bbox2D(bbox) => format!(
                 "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                ll_1, ll_2, ur_1, ur_2, bbox_srid
+                bbox[0], bbox[1], bbox[2], bbox[3], bbox_srid
             ),
-            Bbox::Bbox3D(ll_1, ll_2, _, ur_1, ur_2, _) => format!(
+            Bbox::Bbox3D(bbox) => format!(
                 "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                ll_1, ll_2, ur_1, ur_2, bbox_srid
+                bbox[0], bbox[1], bbox[3], bbox[4], bbox_srid
             ),
         };
         sql.push(format!(
@@ -152,7 +149,7 @@ async fn items(req: Request<State>) -> Result {
         .await?
         .rows_affected();
 
-    let mut links = vec![Link::new(url.to_owned()).mime(MediaType::GeoJSON)];
+    let mut links = vec![Link::new(url.as_str()).mime(MediaType::GeoJSON)];
 
     // pagination
     if let Some(limit) = query.limit {
@@ -167,17 +164,19 @@ async fn items(req: Request<State>) -> Result {
             sql.push(format!("OFFSET {}", offset));
 
             if offset != 0 && offset >= limit {
-                url.set_query(Some(&query.as_string_with_offset(offset - limit)));
-                let previous = Link::new(url.to_owned())
-                    .relation(Relation::Previous)
+                query.offset = Some(offset - limit);
+                url.set_query(Some(&query.to_string()));
+                let previous = Link::new(url.as_str())
+                    .relation(LinkRel::Prev)
                     .mime(MediaType::GeoJSON);
                 links.push(previous);
             }
 
             if !(offset + limit) as u64 >= number_matched {
-                url.set_query(Some(&query.as_string_with_offset(offset + limit)));
-                let next = Link::new(url.to_owned())
-                    .relation(Relation::Next)
+                query.offset = Some(offset + limit);
+                url.set_query(Some(&query.to_string()));
+                let next = Link::new(url.as_str())
+                    .relation(LinkRel::Next)
                     .mime(MediaType::GeoJSON);
                 links.push(next);
             }
@@ -190,14 +189,11 @@ async fn items(req: Request<State>) -> Result {
         .await?;
 
     for feature in features.iter_mut() {
-        feature.links = Some(Json(vec![Link::new(
-            Url::parse(&format!(
-                "{}/{}",
-                &url[..Position::AfterPath],
-                feature.id.as_ref().unwrap()
-            ))
-            .unwrap(),
-        )
+        feature.links = Some(Json(vec![Link::new(&format!(
+            "{}/{}",
+            &url[..Position::AfterPath],
+            feature.id.as_ref().unwrap()
+        ))
         .mime(MediaType::GeoJSON)]))
     }
 

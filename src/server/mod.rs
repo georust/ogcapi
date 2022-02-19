@@ -1,6 +1,6 @@
 pub mod routes;
 
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc};
 
 use async_std::sync::RwLock;
 use openapiv3::OpenAPI;
@@ -8,8 +8,7 @@ use tide::Server;
 use tide::{self, http::Mime, utils::After, Body, Response};
 use url::Url;
 
-use crate::common::collections::Collection;
-use crate::common::core::{Conformance, Exception, LandingPage, Link, MediaType, Relation};
+use crate::common::core::{Conformance, Exception, LandingPage, Link, LinkRel, MediaType};
 use crate::db::Db;
 
 static OPENAPI: &[u8; 29680] = include_bytes!("../../openapi.yaml");
@@ -17,7 +16,7 @@ static OPENAPI: &[u8; 29680] = include_bytes!("../../openapi.yaml");
 #[derive(Clone)]
 pub struct State {
     db: Db,
-    collections: Arc<RwLock<HashMap<String, Collection>>>,
+    // collections: Arc<RwLock<HashMap<String, Collection>>>,
     root: Arc<RwLock<LandingPage>>,
     conformance: Arc<RwLock<Conformance>>,
     openapi: OpenAPI,
@@ -41,20 +40,20 @@ pub async fn server(database_url: &Url) -> Server<State> {
         title: Some(openapi.info.title.clone()),
         description: openapi.info.description.clone(),
         links: vec![
-            Link::new(Url::from_str("http://ogcapi.rs/").unwrap())
+            Link::new("http://ogcapi.rs/")
                 .title("This document".to_string())
                 .mime(MediaType::JSON),
-            Link::new(Url::from_str("http://ogcapi.rs/api").unwrap())
+            Link::new("http://ogcapi.rs/api")
                 .title("The Open API definition".to_string())
-                .relation(Relation::ServiceDesc)
-                .mime(MediaType::OpenAPI),
-            Link::new(Url::from_str("http://ogcapi.rs/conformance").unwrap())
+                .relation(LinkRel::ServiceDesc)
+                .mime(MediaType::OpenAPIJson),
+            Link::new("http://ogcapi.rs/conformance")
                 .title("OGC conformance classes implemented by this API".to_string())
-                .relation(Relation::Conformance)
+                .relation(LinkRel::Conformance)
                 .mime(MediaType::JSON),
-            Link::new(Url::from_str("http://ogcapi.rs/collections").unwrap())
+            Link::new("http://ogcapi.rs/collections")
                 .title("Metadata about the resource collections".to_string())
-                .relation(Relation::Data)
+                .relation(LinkRel::Data)
                 .mime(MediaType::JSON),
         ],
         ..Default::default()
@@ -72,7 +71,6 @@ pub async fn server(database_url: &Url) -> Server<State> {
         db,
         root,
         conformance,
-        collections: Default::default(),
         openapi,
     };
 
@@ -96,6 +94,7 @@ pub async fn server(database_url: &Url) -> Server<State> {
     routes::edr::register(&mut app).await;
     routes::tiles::register(&mut app);
     routes::styles::register(&mut app);
+    #[cfg(feature = "processes")]
     routes::processes::register(&mut app).await;
 
     // errors
@@ -104,7 +103,7 @@ pub async fn server(database_url: &Url) -> Server<State> {
             let exception = Exception {
                 r#type: format!(
                     "https://httpwg.org/specs/rfc7231.html#status.{}",
-                    res.status().to_string()
+                    res.status()
                 ),
                 status: Some(res.status() as isize),
                 // NOTE: You may want to avoid sending error messages in a production server.
@@ -120,8 +119,14 @@ pub async fn server(database_url: &Url) -> Server<State> {
     app
 }
 
-impl Into<Mime> for MediaType {
-    fn into(self) -> Mime {
-        Mime::from_str(serde_json::to_value(self).unwrap().as_str().unwrap()).unwrap()
+// impl Into<Mime> for MediaType {
+//     fn into(self) -> Mime {
+//         Mime::from_str(serde_json::to_value(self).unwrap().as_str().unwrap()).unwrap()
+//     }
+// }
+
+impl From<MediaType> for Mime {
+    fn from(m: MediaType) -> Self {
+        Mime::from_str(serde_json::to_value(m).unwrap().as_str().unwrap()).unwrap()
     }
 }
