@@ -35,3 +35,13 @@ pub enum MediaType {
     #[serde(rename = "image/png")]
     PNG,
 }
+
+impl std::fmt::Display for MediaType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_json::to_value(self).unwrap().as_str().unwrap()
+        )
+    }
+}

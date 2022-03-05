@@ -1,14 +1,16 @@
+#[cfg(feature = "default")]
+pub mod cli;
 #[cfg(feature = "common")]
 pub mod common;
 #[cfg(feature = "server")]
 pub mod db;
-#[cfg(feature = "edr")]
+// #[cfg(feature = "edr")]
 pub mod edr;
 #[cfg(feature = "default")]
 pub mod features;
 #[cfg(feature = "import")]
 pub mod import;
-#[cfg(feature = "processes")]
+#[cfg(feature = "default")]
 pub mod processes;
 #[cfg(feature = "server")]
 pub mod server;

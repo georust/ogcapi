@@ -1,36 +1,46 @@
 use std::convert::TryInto;
 
+use axum::{
+    extract::{Extension, Path, Query},
+    response::Headers,
+    routing::get,
+    Json, Router,
+};
 use chrono::{SecondsFormat, Utc};
-use sqlx::types::Json;
-use tide::{Body, Request, Response, Result, Server};
-use url::{Position, Url};
+use url::Position;
 
 use crate::common::core::{Link, MediaType};
-use crate::edr::Query;
+use crate::edr::EdrQuery;
 use crate::features::{Feature, FeatureCollection};
-use crate::server::State;
+use crate::server::extractors::RemoteUrl;
+use crate::server::{Result, State};
 
-const CONFORMANCE: [&'static str; 3] = [
+const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/core",
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/geojson",
 ];
 
-async fn query(req: Request<State>) -> Result {
-    let collection = req.param("collectionId")?;
-
-    let query: Query = req.query()?;
-    tide::log::debug!("{:#?}", &query);
+async fn query(
+    RemoteUrl(url): RemoteUrl,
+    Path(collection_id): Path<String>,
+    Query(query): Query<EdrQuery>,
+    Extension(state): Extension<State>,
+) -> Result<(
+    Headers<Vec<(&'static str, String)>>,
+    Json<FeatureCollection>,
+)> {
+    tracing::debug!("{:#?}", &query);
 
     let srid: i32 = query.crs.clone().try_into().unwrap();
-    let storage_srid = req.state().db.storage_srid(&collection).await?;
+    let storage_srid = state.db.storage_srid(&collection_id).await?;
 
-    let mut geometry_type = query.coords.split("(").next().unwrap().to_uppercase();
+    let mut geometry_type = query.coords.split('(').next().unwrap().to_uppercase();
     geometry_type.retain(|c| !c.is_whitespace());
 
-    let spatial_predicate = match req.url().path_segments().unwrap().last().unwrap() {
+    let spatial_predicate = match url.path_segments().unwrap().into_iter().last().unwrap() {
         "position" | "area" | "trajectory" => {
-            if geometry_type.ends_with("Z") || geometry_type.ends_with("M") {
+            if geometry_type.ends_with('Z') || geometry_type.ends_with('M') {
                 format!(
                     "ST_3DIntersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                     srid, query.coords, storage_srid
@@ -46,16 +56,16 @@ async fn query(req: Request<State>) -> Result {
             let mut ctx = rink_core::simple_context().unwrap();
             let line = format!(
                 "{} {} -> m",
-                &query.within.unwrap_or("0".to_string()),
-                &query.within_units.unwrap_or("m".to_string())
+                &query.within.unwrap_or_else(|| "0".to_string()),
+                &query.within_units.unwrap_or_else(|| "m".to_string())
             );
-            tide::log::debug!("Line: {}", line);
+            tracing::debug!("Line: {}", line);
             let distance = rink_core::one_line(&mut ctx, &line)
                 .ok()
-                .and_then(|s| s.split(" ").next().and_then(|s| s.parse::<f64>().ok()))
+                .and_then(|s| s.split(' ').next().and_then(|s| s.parse::<f64>().ok()))
                 .expect("Failed to parse & convert distance");
 
-            if geometry_type.ends_with("Z") || geometry_type.ends_with("M") {
+            if geometry_type.ends_with('Z') || geometry_type.ends_with('M') {
                 format!(
                     "ST_3DDWithin(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                     srid, query.coords, storage_srid
@@ -68,7 +78,7 @@ async fn query(req: Request<State>) -> Result {
             }
         }
         "cube" => {
-            let bbox: Vec<&str> = query.coords.split(",").collect();
+            let bbox: Vec<&str> = query.coords.split(',').collect();
             if bbox.len() == 4 {
                 format!(
                     "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}), {})",
@@ -98,7 +108,7 @@ async fn query(req: Request<State>) -> Result {
         format!(
             "{0} as properties",
             parameters
-                .split(",")
+                .split(',')
                 .map(|s| format!(
                     "('{{\"{0}\":' || (properties -> '{0}')::text || '}}')::jsonb",
                     s
@@ -124,29 +134,26 @@ async fn query(req: Request<State>) -> Result {
             '{0}' as collection
         FROM items.{0}
         WHERE {2}",
-        collection, properties, spatial_predicate
+        collection_id, properties, spatial_predicate
     )];
 
     let number_matched = sqlx::query(sql.join(" ").as_str())
         .bind(srid)
-        .execute(&req.state().db.pool)
+        .execute(&state.db.pool)
         .await?
         .rows_affected();
 
     let mut features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
         .bind(&srid)
-        .fetch_all(&req.state().db.pool)
+        .fetch_all(&state.db.pool)
         .await?;
 
     for feature in features.iter_mut() {
-        feature.links = Some(Json(vec![Link::new(
-            Url::parse(&format!(
-                "{}/{}",
-                &req.url()[..Position::AfterPath],
-                feature.id.as_ref().unwrap()
-            ))
-            .unwrap(),
-        )
+        feature.links = Some(sqlx::types::Json(vec![Link::new(&format!(
+            "{}/{}",
+            &url[..Position::AfterPath],
+            feature.id.as_ref().unwrap()
+        ))
         .mime(MediaType::GeoJSON)]))
     }
 
@@ -161,40 +168,31 @@ async fn query(req: Request<State>) -> Result {
         number_returned: Some(number_returned),
     };
 
-    let mut res = Response::new(200);
-    res.insert_header("Content-Crs", query.crs.to_string());
-    res.set_content_type(MediaType::GeoJSON);
-    res.set_body(Body::from_json(&feature_collection)?);
-    Ok(res)
+    let headers = Headers(vec![
+        ("Content-Crs", query.crs.to_string()),
+        ("Content-Type", MediaType::GeoJSON.to_string()),
+    ]);
+
+    Ok((headers, Json(feature_collection)))
 }
 
-async fn instances(_req: Request<State>) -> Result {
-    let res = Response::new(200);
-    Ok(res)
-}
+// async fn instances() {}
 
-async fn instance(_req: Request<State>) -> Result {
-    let res = Response::new(200);
-    Ok(res)
-}
+// async fn instance() {}
 
-pub(crate) async fn register(app: &mut Server<State>) {
-    app.state()
-        .conformance
-        .write()
-        .await
+pub(crate) fn router(state: &State) -> Router {
+    let mut conformance = state.conformance.write().unwrap();
+    conformance
         .conforms_to
         .append(&mut CONFORMANCE.map(String::from).to_vec());
 
-    app.at("/collections/:collectionId/position").get(query);
-    app.at("/collections/:collectionId/radius").get(query);
-    app.at("/collections/:collectionId/area").get(query);
-    app.at("/collections/:collectionId/cube").get(query);
-    app.at("/collections/:collectionId/trajectory").get(query);
-    app.at("/collections/:collectionId/corridor").get(query);
-
-    app.at("/collections/:collectionId/instances")
-        .get(instances);
-    app.at("/collections/:collectionId/instances/:id")
-        .get(instance);
+    Router::new()
+        .route("/edr/:collectionId/position", get(query))
+        .route("/edr/:collectionId/radius", get(query))
+        .route("/edr/:collectionId/area", get(query))
+        .route("/edr/:collectionId/cube", get(query))
+        .route("/edr/:collectionId/trajectory", get(query))
+        .route("/edr/:collectionId/corridor", get(query))
+    // .route("/collections/:collectionId/instances", get(instances))
+    // .route("/collections/:collectionId/instances/:id", get(instance))
 }

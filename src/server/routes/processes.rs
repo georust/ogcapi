@@ -1,12 +1,18 @@
+use axum::extract::{Extension, Path, Query};
+use axum::response::Headers;
+use axum::routing::{get, post};
+use axum::{Json, Router};
 use chrono::Utc;
-use sqlx::types::Json;
-use tide::Server;
-use tide::{http::url::Position, Body, Request, Response};
+use http::{HeaderMap, StatusCode};
+use url::Position;
 use uuid::Uuid;
 
 use crate::common::core::{Link, LinkRel, MediaType};
-use crate::processes::{Execute, Process, ProcessList, ProcessSummary, Query, Results, StatusInfo};
-use crate::server::State;
+use crate::processes::{
+    Execute, Process, ProcessList, ProcessQuery, ProcessSummary, Results, StatusInfo,
+};
+use crate::server::extractors::RemoteUrl;
+use crate::server::{Result, State};
 
 const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
@@ -19,11 +25,11 @@ const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/dismiss",
 ];
 
-async fn processes(req: Request<State>) -> tide::Result {
-    let mut url = req.url().to_owned();
-
-    let mut query: Query = req.query()?;
-
+async fn processes(
+    RemoteUrl(mut url): RemoteUrl,
+    Query(mut query): Query<ProcessQuery>,
+    Extension(state): Extension<State>,
+) -> Result<Json<ProcessList>> {
     let mut sql = vec!["SELECT summary FROM meta.processes".to_string()];
 
     let mut links = vec![Link::new(url.as_str()).mime(MediaType::JSON)];
@@ -34,7 +40,7 @@ async fn processes(req: Request<State>) -> tide::Result {
         sql.push(format!("LIMIT {}", limit));
 
         let count = sqlx::query("SELECT id FROM meta.processes")
-            .execute(&req.state().db.pool)
+            .execute(&state.db.pool)
             .await?
             .rows_affected();
 
@@ -61,8 +67,8 @@ async fn processes(req: Request<State>) -> tide::Result {
         }
     }
 
-    let summaries: Vec<Json<ProcessSummary>> = sqlx::query_scalar(&sql.join(" "))
-        .fetch_all(&req.state().db.pool)
+    let summaries: Vec<sqlx::types::Json<ProcessSummary>> = sqlx::query_scalar(&sql.join(" "))
+        .fetch_all(&state.db.pool)
         .await?;
 
     let process_list = ProcessList {
@@ -70,7 +76,8 @@ async fn processes(req: Request<State>) -> tide::Result {
             .into_iter()
             .map(|mut p| {
                 p.0.links = Some(vec![Link::new(&format!(
-                    "{}/{p.0.id}",
+                    "{}/{}",
+                    p.0.id,
                     &url[..Position::AfterPath]
                 ))
                 .mime(MediaType::JSON)
@@ -81,33 +88,36 @@ async fn processes(req: Request<State>) -> tide::Result {
         links,
     };
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&process_list)?);
-    Ok(res)
+    Ok(Json(process_list))
 }
 
-async fn process(req: Request<State>) -> tide::Result {
-    let id: &str = req.param("id")?;
-
+async fn process(
+    RemoteUrl(url): RemoteUrl,
+    Path(id): Path<String>,
+    Extension(state): Extension<State>,
+) -> Result<Json<Process>> {
     let mut process: Process =
         sqlx::query_as("SELECT summary, inputs, outputs FROM meta.processes WHERE id = $id")
             .bind(id)
-            .fetch_one(&req.state().db.pool)
+            .fetch_one(&state.db.pool)
             .await?;
 
-    process.summary.links = Some(vec![Link::new(req.url().as_str()).mime(MediaType::JSON)]);
+    process.summary.links = Some(vec![Link::new(url.as_str()).mime(MediaType::JSON)]);
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&process)?);
-    Ok(res)
+    Ok(Json(process))
 }
 
-async fn execution(mut req: Request<State>) -> tide::Result {
-    let id = req.param("id")?.to_owned();
-
-    let _prefer = req.header("Prefer");
-
-    let _ececute: Execute = req.body_json().await?;
+async fn execution(
+    Path(id): Path<String>,
+    headers: HeaderMap,
+    Json(_payload): Json<Execute>,
+    Extension(state): Extension<State>,
+) -> Result<(
+    StatusCode,
+    Headers<Vec<(&'static str, String)>>,
+    Json<StatusInfo>,
+)> {
+    let _prefer = headers.get("Prefer");
 
     let job = StatusInfo {
         job_id: Uuid::new_v4().to_string(),
@@ -121,69 +131,66 @@ async fn execution(mut req: Request<State>) -> tide::Result {
     )
     .bind(&job.job_id)
     .bind(&job.process_id)
-    .bind(Json(&job.status))
+    .bind(sqlx::types::Json(&job.status))
     .bind(&job.created)
-    .execute(&req.state().db.pool)
+    .execute(&state.db.pool)
     .await?;
 
     // TODO: validation & execution
 
-    Ok(Response::builder(201)
-        .header("Location", format!("jobs/{}", job.job_id))
-        .body(Body::from_json(&job)?)
-        .build())
+    let headers = Headers(vec![("Location", format!("jobs/{}", job.job_id))]);
+
+    Ok((StatusCode::CREATED, headers, Json(job)))
 }
 
-async fn jobs(_req: Request<State>) -> tide::Result {
-    Ok(Response::builder(200).build())
+async fn jobs() {
+    todo!()
 }
 
-async fn status(req: Request<State>) -> tide::Result {
-    let id: &str = req.param("id")?;
-
+async fn status(
+    RemoteUrl(url): RemoteUrl,
+    Path(id): Path<String>,
+    Extension(state): Extension<State>,
+) -> Result<Json<StatusInfo>> {
     let mut status: StatusInfo = sqlx::query_as("SELECT * FROM meta.jobs WHERE job_id = $id")
         .bind(id)
-        .fetch_one(&req.state().db.pool)
+        .fetch_one(&state.db.pool)
         .await?;
 
-    status.links = Some(Json(vec![
-        Link::new(req.url().as_str()).mime(MediaType::JSON)
+    status.links = Some(sqlx::types::Json(vec![
+        Link::new(url.as_str()).mime(MediaType::JSON)
     ]));
 
-    Ok(Response::builder(200)
-        .body(Body::from_json(&status)?)
-        .build())
+    Ok(Json(status))
 }
 
-async fn delete(req: Request<State>) -> tide::Result {
-    let id: &str = req.param("id")?;
-
+async fn delete(Path(id): Path<String>, Extension(state): Extension<State>) -> Result<StatusCode> {
     sqlx::query("DELETE FROM meta.jobs WHERE job_id = $1")
         .bind(id)
-        .execute(&req.state().db.pool)
+        .execute(&state.db.pool)
         .await?;
 
     // TODO: cancel execution
 
-    Ok(Response::new(204))
+    Ok(StatusCode::NO_CONTENT)
 }
 
-async fn results(req: Request<State>) -> tide::Result {
-    let id: &str = req.param("id")?;
-
-    let results: (Json<Results>,) =
+async fn results(
+    Path(id): Path<String>,
+    Extension(state): Extension<State>,
+) -> Result<Json<Results>> {
+    let results: (sqlx::types::Json<Results>,) =
         sqlx::query_as("SELECT results FROM meta.jobs WHERE job_id = $id")
             .bind(id)
-            .fetch_one(&req.state().db.pool)
+            .fetch_one(&state.db.pool)
             .await?;
 
-    Ok(Response::builder(200)
-        .body(Body::from_json(&results.0 .0)?)
-        .build())
+    Ok(Json(results.0 .0))
 }
 
-pub(crate) async fn register(app: &mut Server<State>) {
-    app.state().root.write().await.links.append(&mut vec![
+pub(crate) fn router(state: &State) -> Router {
+    let mut root = state.root.write().unwrap();
+    root.links.append(&mut vec![
         Link::new("http://ogcapi.rs/processes")
             .relation(LinkRel::Processes)
             .mime(MediaType::JSON)
@@ -193,17 +200,17 @@ pub(crate) async fn register(app: &mut Server<State>) {
             .mime(MediaType::JSON)
             .title("The endpoint for job monitoring".to_string()),
     ]);
-    app.state()
-        .conformance
-        .write()
-        .await
+
+    let mut conformance = state.conformance.write().unwrap();
+    conformance
         .conforms_to
         .append(&mut CONFORMANCE.map(String::from).to_vec());
 
-    app.at("/processes").get(processes);
-    app.at("/processes/:id").get(process);
-    app.at("/processes/:id/execution").post(execution);
-    app.at("/jobs").get(jobs);
-    app.at("/jobs/:id").get(status).delete(delete);
-    app.at("/jobs/:id/results").get(results);
+    Router::new()
+        .route("/processes", get(processes))
+        .route("/processes/:id", get(process))
+        .route("/processes/:id/execution", post(execution))
+        .route("/jobs", get(jobs))
+        .route("/jobs/:id", get(status).delete(delete))
+        .route("/jobs/:id/results", get(results))
 }

@@ -1,15 +1,21 @@
-pub mod routes;
+mod error;
+mod extractors;
+mod routes;
 
-use std::{str::FromStr, sync::Arc};
+use std::sync::{Arc, RwLock};
 
-use async_std::sync::RwLock;
+use axum::extract::Extension;
+use axum::{routing::get, Router};
 use openapiv3::OpenAPI;
-use tide::Server;
-use tide::{self, http::Mime, utils::After, Body, Response};
-use url::Url;
+use tower::ServiceBuilder;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
-use crate::common::core::{Conformance, Exception, LandingPage, Link, LinkRel, MediaType};
+use crate::common::core::{Conformance, LandingPage, Link, LinkRel, MediaType};
 use crate::db::Db;
+
+use self::error::Error;
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 static OPENAPI: &[u8; 29680] = include_bytes!("../../openapi.yaml");
 
@@ -19,21 +25,11 @@ pub struct State {
     // collections: Arc<RwLock<HashMap<String, Collection>>>,
     root: Arc<RwLock<LandingPage>>,
     conformance: Arc<RwLock<Conformance>>,
-    openapi: OpenAPI,
+    openapi: Arc<OpenAPI>,
 }
 
-pub async fn server(database_url: &Url) -> Server<State> {
-    // log
-    tide::log::with_level(
-        tide::log::LevelFilter::from_str(
-            dotenv::var("RUST_LOG").expect("Read RUST_LOG env").as_str(),
-        )
-        .expect("Setup rust log level"),
-    );
-
+pub async fn server(db: Db) -> Router {
     // state
-    let db = Db::connect(database_url.as_str()).await.unwrap();
-
     let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI).unwrap();
 
     let root = Arc::new(RwLock::new(LandingPage {
@@ -71,62 +67,36 @@ pub async fn server(database_url: &Url) -> Server<State> {
         db,
         root,
         conformance,
-        openapi,
+        openapi: Arc::new(openapi),
     };
 
     // routes
-    let mut app = tide::with_state(state.clone());
+    let router = Router::new()
+        .route("/", get(routes::root))
+        .route("/api", get(routes::api))
+        .route("/redoc", get(routes::redoc))
+        .route("/conformance", get(routes::conformance))
+        .route(
+            "/favicon.ico",
+            get(|| async move { include_bytes!("../../favicon.ico").to_vec() }),
+        )
+        .merge(routes::collections::router(&state))
+        .merge(routes::features::router(&state))
+        .merge(routes::processes::router(&state))
+        .merge(routes::tiles::router(&state))
+        .merge(routes::styles::router(&state));
 
-    app.at("/").get(routes::root);
-    app.at("/api").get(routes::api);
-    app.at("/redoc").get(routes::redoc);
-    app.at("/conformance").get(routes::conformance);
-
-    app.at("/favicon.ico").get(|_| async move {
-        Ok(Response::from(Body::from_bytes(
-            include_bytes!("../../favicon.ico").to_vec(),
-        )))
-    });
-
-    routes::collections::register(&mut app).await;
-    routes::features::register(&mut app).await;
-    #[cfg(feature = "edr")]
-    routes::edr::register(&mut app).await;
-    routes::tiles::register(&mut app);
-    routes::styles::register(&mut app);
     #[cfg(feature = "processes")]
-    routes::processes::register(&mut app).await;
+    let router = router.merge(routes::processes::router(&state));
 
-    // errors
-    app.with(After(|mut res: Response| async move {
-        if let Some(err) = res.error() {
-            let exception = Exception {
-                r#type: format!(
-                    "https://httpwg.org/specs/rfc7231.html#status.{}",
-                    res.status()
-                ),
-                status: Some(res.status() as isize),
-                // NOTE: You may want to avoid sending error messages in a production server.
-                detail: Some(err.to_string()),
-                ..Default::default()
-            };
-            res.set_body(Body::from_json(&exception).expect("Serialize exception"));
-            res.set_content_type(MediaType::ProblemJSON);
-        }
-        Ok(res)
-    }));
+    // TODO: resolve route conflict
+    #[cfg(feature = "edr")]
+    let router = router.merge(routes::edr::router(&state));
 
-    app
-}
-
-// impl Into<Mime> for MediaType {
-//     fn into(self) -> Mime {
-//         Mime::from_str(serde_json::to_value(self).unwrap().as_str().unwrap()).unwrap()
-//     }
-// }
-
-impl From<MediaType> for Mime {
-    fn from(m: MediaType) -> Self {
-        Mime::from_str(serde_json::to_value(m).unwrap().as_str().unwrap()).unwrap()
-    }
+    router.layer(
+        ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .layer(CorsLayer::permissive())
+            .layer(Extension(state)),
+    )
 }

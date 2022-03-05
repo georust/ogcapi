@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fs::File};
 
-use geo::{Coordinate, Geometry, LineString, MultiLineString, Point, Polygon};
+use geo::{Coordinate, Geometry, GeometryCollection, LineString, MultiLineString, Point, Polygon};
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 
 use serde_json::{Map, Value};
@@ -15,12 +15,12 @@ use super::Args;
 /// Import osm data from pbf file
 pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
     // Setup a db connection pool
-    let db = Db::connect(database_url.as_str()).await?;
+    let db = Db::setup(database_url).await?;
 
     // Create collection
     let title = args.collection.unwrap_or_else(|| "OSM".to_string());
     let collection = Collection {
-        id: title.to_lowercase().replace(" ", "_"),
+        id: title.to_lowercase().replace(' ', "_"),
         title: Some(title.to_string()),
         links: serde_json::from_str("[]")?,
         crs: Some(vec![Crs::default()]),
@@ -110,7 +110,7 @@ fn geometry_from_obj(obj: &OsmObj, objs: &BTreeMap<OsmId, OsmObj>) -> Option<Geo
             // match type of relation https://wiki.openstreetmap.org/wiki/Types_of_relation
             if let Some(rel_type) = rel.tags.get("type").map(|s| s.as_str()) {
                 if vec!["multipolygon", "boundary"].contains(&rel_type) {
-                    boundaries::build_boundary(&rel, objs).map(|p| p.into())
+                    boundaries::build_boundary(rel, objs).map(|p| p.into())
                 } else if vec![
                     "multilinestring",
                     "route",
@@ -141,8 +141,9 @@ fn geometry_from_obj(obj: &OsmObj, objs: &BTreeMap<OsmId, OsmObj>) -> Option<Geo
                 .contains(&rel_type)
                 {
                     // TODO: geometry collection
-                    // Some(GeometryCollection::<f64>(vec![]));
-                    None
+                    Some(geo::Geometry::GeometryCollection(
+                        GeometryCollection::<f64>(vec![]),
+                    ))
                 } else {
                     None
                 }

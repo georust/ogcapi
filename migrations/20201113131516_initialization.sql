@@ -28,7 +28,8 @@ CREATE TABLE meta.collections (
 CREATE TABLE meta.styles (
     id text PRIMARY KEY,
     title text,
-    links jsonb NOT NULL
+    links jsonb NOT NULL,
+    value jsonb NOT NULL
 );
 
 CREATE TABLE meta.processes (

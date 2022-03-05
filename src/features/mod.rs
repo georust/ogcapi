@@ -1,6 +1,6 @@
 mod query;
 
-pub use query::Query;
+pub use query::FeaturesQuery;
 
 use std::collections::HashMap;
 

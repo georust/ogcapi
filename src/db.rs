@@ -1,18 +1,67 @@
 use std::convert::TryInto;
 
-use sqlx::{postgres::PgPoolOptions, types::Json, Pool, Postgres};
+use sqlx::{
+    postgres::{PgConnectOptions, PgConnection, PgPool, PgPoolOptions},
+    types::Json,
+    Connection, Executor,
+};
+use url::Url;
 
 use crate::common::collections::Collection;
 use crate::features::Feature;
 
 #[derive(Debug, Clone)]
 pub struct Db {
-    pub pool: Pool<Postgres>,
+    pub pool: PgPool,
 }
 
 impl Db {
-    pub async fn connect(url: &str) -> Result<Self, anyhow::Error> {
-        let pool = PgPoolOptions::new().max_connections(5).connect(url).await?;
+    /// Create
+    pub async fn setup(url: &Url) -> Result<Self, anyhow::Error> {
+        let name = url.path().strip_prefix('/').unwrap();
+        Db::setup_with(url, name, false).await
+    }
+
+    pub async fn setup_with(url: &Url, name: &str, create: bool) -> Result<Self, anyhow::Error> {
+        // Connection options
+        let mut options = PgConnectOptions::new_without_pgpass();
+        if url.has_host() {
+            options = options.host(url.host_str().unwrap())
+        }
+        if let Some(port) = url.port() {
+            options = options.password(&port.to_string());
+        }
+        if !url.username().is_empty() {
+            options = options.username(url.username())
+        }
+        if let Some(password) = url.password() {
+            options = options.password(password);
+        }
+
+        if create {
+            // Create database
+            let mut connection = PgConnection::connect_with(&options)
+                .await
+                .expect("Failed to connect to Postgres");
+            connection
+                .execute(format!(r#"CREATE DATABASE "{}";"#, name).as_str())
+                .await
+                .expect("Failed to create database.");
+        }
+
+        // Create pool
+        let pool = PgPoolOptions::new()
+            .max_connections(50)
+            .connect_with(options.database(name))
+            .await
+            .expect("Failed to connect to Postgres.");
+
+        // This embeds database migrations in the application binary so we can
+        // ensure the database is migrated correctly on startup
+        sqlx::migrate!()
+            .run(&pool)
+            .await
+            .expect("Failed to migrate the database");
 
         Ok(Db { pool })
     }

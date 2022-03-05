@@ -44,7 +44,7 @@ pub struct TileSetEntry {
 }
 
 #[derive(Deserialize)]
-pub struct Query {
+pub struct TileQuery {
     pub collections: Option<String>,
 }
 

@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
@@ -134,9 +134,13 @@ pub enum LinkRel {
     Up,
 }
 
-impl Display for LinkRel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_json::to_string(self).unwrap())
+impl fmt::Display for LinkRel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_json::to_value(self).unwrap().as_str().unwrap()
+        )
     }
 }
 

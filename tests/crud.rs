@@ -1,18 +1,49 @@
-#[async_std::test]
-async fn minimal_feature_crud() -> tide::Result<()> {
-    use std::env;
+use std::net::{SocketAddr, TcpListener};
 
-    use serde_json::json;
-    use tide::http::{Method, Request, Response, Url};
+use http::Request;
+use hyper::Body;
+use serde_json::json;
+use url::Url;
+use uuid::Uuid;
 
-    use ogcapi::common::{collections::Collection, core::Link, crs::Crs};
-    use ogcapi::features::Feature;
+use ogcapi::common::collections::Collection;
+use ogcapi::common::core::{Link, MediaType};
+use ogcapi::common::crs::Crs;
+use ogcapi::db::Db;
+use ogcapi::features::Feature;
 
-    // setup app
+async fn spawn_app() -> SocketAddr {
     dotenv::dotenv().ok();
 
-    let database_url = env::var("DATABASE_URL")?;
-    let app = ogcapi::server::server(&Url::parse(&database_url)?).await;
+    // tracing_subscriber::fmt::init();
+
+    let database_url = Url::parse(&std::env::var("DATABASE_URL").unwrap()).unwrap();
+
+    let db = Db::setup_with(&database_url, &Uuid::new_v4().to_string(), true)
+        .await
+        .expect("Setup database");
+
+    let app = ogcapi::server::server(db).await;
+
+    let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>().unwrap()).unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    tokio::spawn(async move {
+        axum::Server::from_tcp(listener)
+            .expect("")
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    });
+
+    addr
+}
+
+#[tokio::test]
+async fn minimal_feature_crud() -> anyhow::Result<()> {
+    // setup app
+    let addr = spawn_app().await;
+    let client = hyper::Client::new();
 
     let collection = Collection {
         id: "test".to_string(),
@@ -22,11 +53,22 @@ async fn minimal_feature_crud() -> tide::Result<()> {
     };
 
     // create collection
-    let mut req = Request::new(Method::Post, "http://ogcapi.rs/collections");
-    req.set_body(serde_json::to_string(&collection)?);
-    let res: Response = app.respond(req).await?;
-    assert_eq!(201, res.status());
-    println!("{:#?}", res.header("Location"));
+    let res = client
+        .request(
+            Request::builder()
+                .method(http::Method::POST)
+                .uri(format!("http://{}/collections", addr))
+                .header("Content-Type", MediaType::JSON.to_string())
+                .body(Body::from(serde_json::to_string(&collection)?))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let (parts, _body) = res.into_parts();
+
+    assert_eq!(201, parts.status);
+    println!("{:#?}", parts.headers.get("Location"));
 
     let feature: Feature = serde_json::from_value(json!({
         "collection": "test",
@@ -43,43 +85,71 @@ async fn minimal_feature_crud() -> tide::Result<()> {
     .unwrap();
 
     // create feature
-    let mut req = Request::new(Method::Post, "http://ogcapi.rs/collections/test/items");
-    req.set_body(serde_json::to_string(&feature)?);
-    let res: Response = app.respond(req).await?;
+    let res = client
+        .request(
+            Request::builder()
+                .method(http::Method::POST)
+                .uri(format!("http://{}/collections/test/items", addr))
+                .header("Content-Type", MediaType::JSON.to_string())
+                .body(Body::from(serde_json::to_string(&feature)?))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
     assert_eq!(201, res.status());
 
-    let location = res.header("Location").unwrap()[0].to_string();
+    let location = res.headers().get("Location").unwrap().to_str()?;
     println!("{}", location);
 
-    let id = location.split("/").last().unwrap();
+    let id = location.split('/').last().unwrap();
 
     // read feauture
-    let req = Request::new(
-        Method::Get,
-        format!("http://ogcapi.rs/collections/test/items/{}", &id).as_str(),
-    );
-    let mut res: Response = app.respond(req).await?;
+    let res = client
+        .request(
+            Request::builder()
+                .method(http::Method::GET)
+                .uri(format!("http://{}/collections/test/items/{}", addr, &id).as_str())
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
     assert_eq!(200, res.status());
-    let _feature: Feature = res.body_json().await?;
+    let body = hyper::body::to_bytes(res.into_body()).await.unwrap();
+    let _feature: Feature = serde_json::from_slice(&body)?;
     // println!("{:#?}", feature);
 
     // update
     // db.update_feature(&feature).await?;
 
     // delete feature
-    let req = Request::new(
-        Method::Delete,
-        format!("http://ogcapi.rs/collections/test/items/{}", &id).as_str(),
-    );
-    let res: Response = app.respond(req).await?;
+    let res = client
+        .request(
+            Request::builder()
+                .method(http::Method::DELETE)
+                .uri(format!("http://{}/collections/test/items/{}", addr, &id).as_str())
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
     assert_eq!(204, res.status());
 
     // delete collection
-    let req = Request::new(
-        Method::Delete,
-        format!("http://ogcapi.rs/collections/{}", &collection.id).as_str(),
-    );
-    let res: Response = app.respond(req).await?;
+    let res = client
+        .request(
+            Request::builder()
+                .method(http::Method::DELETE)
+                .uri(format!("http://{}/collections/{}", addr, &collection.id).as_str())
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
     assert_eq!(204, res.status());
 
     Ok(())

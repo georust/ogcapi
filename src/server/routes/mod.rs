@@ -2,30 +2,24 @@ pub mod collections;
 #[cfg(feature = "edr")]
 pub mod edr;
 pub mod features;
-#[cfg(feature = "processes")]
 pub mod processes;
 pub mod styles;
 pub mod tiles;
 
-use std::str::FromStr;
+use std::sync::Arc;
 
-use http::Uri;
-use tide::{
-    http::{url::Position, Mime},
-    Body, Request, Response,
-};
+use axum::{extract::Extension, http::Uri, response::Headers, response::Html, Json};
+use openapiv3::OpenAPI;
 use url::Url;
 
-use crate::common::core::MediaType;
-use crate::server::State;
+use crate::common::core::{Conformance, LandingPage, MediaType};
+use crate::server::{Error, Result, State};
 
-pub(crate) async fn root(req: Request<State>) -> tide::Result {
-    let url = req
-        .remote()
-        .and_then(|s| Url::from_str(s).ok())
-        .unwrap_or_else(|| req.url().to_owned());
+pub(crate) async fn root(Extension(state): Extension<State>) -> Result<Json<LandingPage>> {
+    // TODO: create custom extractor
+    let url = Url::parse(&format!("http://localhost:8484{}", "")).unwrap();
 
-    let mut landing_page = req.state().root.read().await.clone();
+    let mut landing_page = state.root.read().unwrap().clone();
 
     for link in landing_page.links.iter_mut() {
         let uri = Uri::builder()
@@ -45,28 +39,27 @@ pub(crate) async fn root(req: Request<State>) -> tide::Result {
                     .unwrap()
                     .as_str(),
             )
-            .build()?;
+            .build()
+            .map_err(|e| Error::Anyhow(e.into()))?;
         link.href = uri.to_string();
     }
 
-    Ok(Response::builder(200)
-        .body(Body::from_json(&landing_page)?)
-        .build())
+    Ok(Json(landing_page))
 }
 
-pub(crate) async fn api(req: Request<State>) -> tide::Result {
-    Ok(Response::builder(200)
-        .body(Body::from_json(&req.state().openapi)?)
-        .content_type(MediaType::OpenAPIJson)
-        .build())
+pub(crate) async fn api(
+    Extension(state): Extension<State>,
+) -> (Headers<Vec<(&'static str, String)>>, Json<Arc<OpenAPI>>) {
+    let headers = Headers(vec![("Content-Type", MediaType::OpenAPIJson.to_string())]);
+
+    (headers, Json(state.openapi))
 }
 
-pub(crate) async fn redoc(req: Request<State>) -> tide::Result {
-    let api_url = req.url()[..Position::AfterPath].replace("redoc", "api");
+pub(crate) async fn redoc() -> Html<String> {
+    // TODO: create custom extractor
+    let api_url = Url::parse(&format!("http://localhost:8484/{}", "api")).unwrap();
 
-    let mut res = Response::new(200);
-    res.set_content_type(Mime::from("text/html"));
-    res.set_body(format!(
+    Html(format!(
         r#"<!DOCTYPE html>
         <html>
         <head>
@@ -75,30 +68,22 @@ pub(crate) async fn redoc(req: Request<State>) -> tide::Result {
             <meta charset="utf-8"/>
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
-
-            <!--
-            ReDoc doesn't change outer page styles
-            -->
             <style>
-            body {{
-                margin: 0;
-                padding: 0;
-            }}
+                body {{
+                    margin: 0;
+                    padding: 0;
+                }}
             </style>
         </head>
         <body>
             <redoc spec-url="{}"></redoc>
-            <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"> </script>
+            <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
         </body>
         </html>"#,
         api_url
-    ));
-    Ok(res)
+    ))
 }
 
-pub(crate) async fn conformance(req: Request<State>) -> tide::Result {
-    let conformance = req.state().conformance.read().await;
-    Ok(Response::builder(200)
-        .body(Body::from_json(&conformance.to_owned())?)
-        .build())
+pub(crate) async fn conformance(Extension(state): Extension<State>) -> Json<Conformance> {
+    Json(state.conformance.read().unwrap().to_owned())
 }

@@ -2,6 +2,8 @@ mod execute;
 mod job;
 mod process;
 
+use std::fmt;
+
 pub use execute::Execute;
 pub use job::{Results, StatusCode, StatusInfo};
 pub use process::{Process, ProcessSummary};
@@ -18,12 +20,12 @@ pub struct ProcessList {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub(crate) struct Query {
+pub(crate) struct ProcessQuery {
     pub(crate) limit: Option<usize>,
     pub(crate) offset: Option<usize>,
 }
 
-impl std::fmt::Display for Query {
+impl fmt::Display for ProcessQuery {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut query_str = vec![];
         if let Some(limit) = self.limit {

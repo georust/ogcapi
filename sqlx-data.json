@@ -1,15 +1,59 @@
 {
   "db": "PostgreSQL",
-  "e9d6123d969afc7970a56d574fec65b4ef69e5063c3a082b3bb024be30a2455c": {
-    "query": "DELETE FROM meta.jobs WHERE job_id = $1",
+  "d6afdf84985dcf63d37ca2872d71f313a17553f67395f5b56e6a7faadce4db56": {
+    "query": "SELECT id, value as \"value: sqlx::types::Json<Value>\" FROM meta.styles WHERE id = $1",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "value: sqlx::types::Json<Value>",
+          "type_info": "Jsonb"
+        }
+      ],
       "parameters": {
         "Left": [
           "Text"
         ]
       },
-      "nullable": []
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "fec95037af2ae69ccf9e46b0478989150e4c26f9791ca8d2be4ce13a604aa8ce": {
+    "query": "SELECT id, title, links as \"links: sqlx::types::Json<Links>\" FROM meta.styles",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "title",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "links: sqlx::types::Json<Links>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        true,
+        false
+      ]
     }
   }
 }

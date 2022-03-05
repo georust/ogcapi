@@ -11,7 +11,7 @@ use crate::common::{
 #[serde_as]
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct Query {
+pub struct FeaturesQuery {
     pub limit: Option<usize>,
     pub offset: Option<usize>,
     #[serde(default)]
@@ -47,7 +47,7 @@ impl default::Default for FilterLang {
     }
 }
 
-impl fmt::Display for Query {
+impl fmt::Display for FeaturesQuery {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut query_str = vec![];
         if let Some(limit) = self.limit {

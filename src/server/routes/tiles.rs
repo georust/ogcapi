@@ -1,49 +1,38 @@
-use tide::{Body, Request, Response, Result, Server};
+use axum::extract::{Extension, Path};
+use axum::routing::get;
+use axum::Router;
 
-use crate::server::State;
-use crate::tiles::{Query, TileMatrixSets};
+use crate::server::{Result, State};
+// use crate::tiles::{TileMatrixSet, TileMatrixSets, TileSet};
 
-async fn tile_matrix_sets(_req: Request<State>) -> Result {
-    let tile_matrix_sets = TileMatrixSets {
-        tile_matrix_sets: vec![],
-    };
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&tile_matrix_sets)?);
-    Ok(res)
-}
+// async fn tile_matrix_sets() -> Result<Json<TileMatrixSets>> {
+//     let tile_matrix_sets = TileMatrixSets {
+//         tile_matrix_sets: vec![],
+//     };
 
-async fn tile_matrix_set(req: Request<State>) -> Result {
-    let _id = req.param("tileMatrixSetId")?;
-    let res = Response::new(200);
-    // res.set_body(Body::from_json(&matrix_set)?);
-    Ok(res)
-}
+//     Ok(Json(tile_matrix_sets))
+// }
 
-async fn tiles(_req: Request<State>) -> Result {
-    // let tile_set = TileSet {};
-    let res = Response::new(200);
-    // res.set_body(Body::from_json(&tile_set)?);
-    Ok(res)
-}
+// async fn tile_matrix_set(Path(id): Path<String>) -> Result<Json<TileMatrixSet>> {
+//     let tile_matrix_set;
+//     Ok(Json(tile_matrix_set))
+// }
 
-async fn tile(req: Request<State>) -> Result {
-    let _matrix_set_id = req.param("tileMatrixSetId")?;
-    let matrix: i32 = req.param("tileMatrix")?.parse()?; // zoom, z
-    let row: i32 = req.param("tileRow")?.parse()?; // x
-    let col: i32 = req.param("tileCol")?.parse()?; // y
+// async fn tiles() -> Result<Json<TileSet>> {
+//     let tile_set;
+//     Ok(Json(tille_set))
+// }
 
-    let _query: Query = req.query()?;
-
-    let collections: Vec<String> = req
-        .param("collectionId")?
-        .split(',')
-        .map(str::to_owned)
-        .collect();
+async fn tile(
+    Path((collections, _matrix_set_id, matrix, row, col)): Path<(String, String, i32, i32, i32)>,
+    Extension(state): Extension<State>,
+) -> Result<Vec<u8>> {
+    let collections: Vec<&str> = collections.split(',').collect();
 
     let mut sql: Vec<String> = Vec::new();
 
-    for collection in collections.clone() {
-        let srid = req.state().db.storage_srid(&collection).await?;
+    for collection in collections {
+        let srid = state.db.storage_srid(collection).await?;
 
         sql.push(format!(
             r#"
@@ -67,19 +56,19 @@ async fn tile(req: Request<State>) -> Result {
         .bind(matrix)
         .bind(row)
         .bind(col)
-        .fetch_all(&req.state().db.pool)
+        .fetch_all(&state.db.pool)
         .await?;
 
-    let mut res = Response::new(200);
-    res.set_body(tiles.concat());
-    Ok(res)
+    Ok(tiles.concat())
 }
 
-pub(crate) fn register(app: &mut Server<State>) {
-    app.at("tileMatrixSets").get(tile_matrix_sets);
-    app.at("tileMatrixSets/:tileMatrixSetId")
-        .get(tile_matrix_set);
-    app.at("collections/:collectionId/tiles").get(tiles);
-    app.at("collections/:collectionId/tiles/:tileMatrixSetId/:tileMatrix/:tileRow/:tileCol")
-        .get(tile);
+pub(crate) fn router(_state: &State) -> Router {
+    Router::new()
+        // .route("/tileMatrixSets", get(tile_matrix_sets))
+        // .route("/tileMatrixSets/:id", get(tile_matrix_set))
+        // .route("collections/:collectionId/tiles", get(tiles))
+        .route(
+            "collections/:collectionId/tiles/:tileMatrixSetId/:tileMatrix/:tileRow/:tileCol",
+            get(tile),
+        )
 }

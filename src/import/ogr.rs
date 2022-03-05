@@ -23,11 +23,33 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
     gdal::config::set_config_option("PGSQL_OGR_FID", "id")?;
 
     // Get target dataset layer
+    // TODO: pass database url directly once GDAL 8.4 is out
+    let mut db_params = Vec::new();
+    if let Some(host) = database_url.host_str() {
+        db_params.push(format!("host={}", host));
+    }
+    if let Some(port) = database_url.port() {
+        db_params.push(format!("port={}", port));
+    }
+    if !database_url.username().is_empty() {
+        db_params.push(format!("user={}", database_url.username()));
+    }
+    if let Some(password) = database_url.password() {
+        db_params.push(format!("password={}", password));
+    }
+    if let Some(mut path_segments) = database_url.path_segments() {
+        db_params.push(format!(
+            "dbname={}",
+            path_segments.next().expect("Some path segment")
+        ));
+    }
+    let db_url = format!("PG:{}", db_params.join(" "));
+
     let drv = gdal::Driver::get("PostgreSQL")?;
-    let ds = drv.create_vector_only(&database_url.to_string())?;
+    let ds = drv.create_vector_only(&db_url)?;
 
     // Setup a db connection pool
-    let db = Db::connect(database_url.as_str()).await?;
+    let db = Db::setup(database_url).await?;
 
     // Open input dataset
     if args.input.starts_with("http") {
@@ -65,7 +87,7 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
         let storage_crs = Crs::from(spatial_ref_dst.auth_code()?);
 
         let collection = Collection {
-            id: title.to_lowercase().replace(" ", "_"),
+            id: title.to_lowercase().replace(' ', "_"),
             title: Some(title),
             links: serde_json::from_str("[]")?,
             crs: Some(vec![Crs::default(), storage_crs.clone()]),
@@ -78,7 +100,7 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
                     .expect("Transform extent coords");
                 Extent {
                     spatial: Some(SpatialExtent {
-                        bbox: Some(vec![Bbox::Bbox2D(x[0], y[0], x[1], y[1])]),
+                        bbox: Some(vec![Bbox::Bbox2D([x[0], y[0], x[1], y[1]])]),
                         crs: spatial_ref_dst.auth_code().map(|c| c.into()).ok(),
                     }),
                     temporal: None,
@@ -123,7 +145,7 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
                         FieldValue::DateTimeValue(v) => Value::from(v.to_rfc3339()),
                     }
                 } else {
-                    Value::Null;
+                    Value::Null
                 };
                 properties.insert(field_name.to_owned(), value);
             }

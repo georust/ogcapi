@@ -1,44 +1,16 @@
-use structopt::StructOpt;
+use clap::StructOpt;
+use ogcapi::{
+    cli::{App, Command},
+    db::Db,
+};
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "ogcapi", about = "A cli for the ogcapi project.")]
-#[structopt(rename_all = "kebab-case")]
-struct App {
-    // /// Log level
-    // #[structopt(long, env, default_value = "INFO")]
-    // rust_log: String,
-    /// Database url
-    #[structopt(parse(try_from_str), env, hide_env_values = true)]
-    database_url: url::Url,
-    #[structopt(subcommand)]
-    command: Command,
-}
-
-#[derive(StructOpt, Debug)]
-enum Command {
-    /// Imports geodata into the database
-    #[cfg(feature = "import")]
-    Import(ogcapi::import::Args),
-    /// Starts the ogcapi services
-    #[cfg(feature = "server")]
-    Serve {
-        /// Host address the server listens to, defaults to env OGCAPI_HOST
-        #[structopt(long, short, env = "OGCAPI_HOST", default_value = "0.0.0.0")]
-        host: String,
-
-        /// Port the server listens to, defaults to env OGCAPI_PORT
-        #[structopt(long, short, env = "OGCAPI_PORT", default_value = "8485")]
-        port: String,
-    },
-}
-
-#[async_std::main]
+#[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // setup env
     dotenv::dotenv().ok();
 
-    // read cli args
-    let app = App::from_args();
+    // parse cli args
+    let app = App::parse();
     if log::log_enabled!(log::Level::Info) {
         log::debug!("{:#?}", app);
     }
@@ -57,9 +29,27 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         #[cfg(feature = "server")]
-        Command::Serve { host, port } => {
-            let app = ogcapi::server::server(&app.database_url).await;
-            app.listen(&format!("{}:{}", host, port)).await?;
+        Command::Serve { app_host, app_port } => {
+            // Set the RUST_LOG, if it hasn't been explicitly defined
+            if std::env::var_os("RUST_LOG").is_none() {
+                std::env::set_var("RUST_LOG", "api=debug,tower_http=debug")
+            }
+            tracing_subscriber::fmt::init();
+
+            // Setup a database connection pool & run any pending migrations
+            let db = Db::setup(&app.database_url).await?;
+
+            // Build our application
+            let router = ogcapi::server::server(db).await;
+
+            // run our app with hyper
+            let address = format!("{}:{}", app_host, app_port).parse()?;
+            tracing::info!("listening on {}", address);
+
+            axum::Server::bind(&address)
+                .serve(router.into_make_service())
+                .await
+                .unwrap();
         }
     }
 

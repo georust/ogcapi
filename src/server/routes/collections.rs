@@ -1,16 +1,20 @@
+use axum::{
+    extract::{Extension, OriginalUri, Path},
+    http::StatusCode,
+    response::Headers,
+    Json,
+    {routing::get, Router},
+};
 // use serde::Deserialize;
 // use serde_with::{serde_as, DisplayFromStr};
-use sqlx::types::Json;
-use tide::http::url::Position;
-use tide::{Body, Request, Response, Result, Server};
+use url::{Position, Url};
 
-use crate::common::core::LinkRel;
 use crate::common::{
     collections::{Collection, Collections},
-    core::{Link, MediaType},
+    core::{Link, LinkRel, MediaType},
     crs::Crs,
 };
-use crate::server::State;
+use crate::server::{Result, State};
 
 const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",
@@ -53,14 +57,18 @@ const CONFORMANCE: [&str; 3] = [
 //     }
 // }
 
-async fn collections(req: Request<State>) -> Result {
-    let url = req.url();
+async fn collections(
+    OriginalUri(uri): OriginalUri,
+    Extension(state): Extension<State>,
+) -> Result<Json<Collections>> {
+    tracing::debug!("{:#?}", uri);
+    let url = Url::parse("http://localhost:8484/collections").unwrap();
 
     //let mut query: Query = req.query()?;
 
-    let mut collections: Vec<Json<Collection>> =
+    let mut collections: Vec<sqlx::types::Json<Collection>> =
         sqlx::query_scalar("SELECT collection FROM meta.collections")
-            .fetch_all(&req.state().db.pool)
+            .fetch_all(&state.db.pool)
             .await?;
 
     let collections = collections
@@ -86,30 +94,35 @@ async fn collections(req: Request<State>) -> Result {
         ..Default::default()
     };
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&collections)?);
-    Ok(res)
+    Ok(Json(collections))
 }
 
 /// Create new collection metadata
-async fn insert(mut req: Request<State>) -> Result {
-    let collection: Collection = req.body_json().await?;
-
-    let location = req.state().db.insert_collection(&collection).await?;
-
-    let mut res = Response::new(201);
-    res.insert_header("Location", location);
-    Ok(res)
+async fn insert(
+    Json(collection): Json<Collection>,
+    Extension(state): Extension<State>,
+) -> Result<(StatusCode, Headers<Vec<(&'static str, String)>>)> {
+    let location = state.db.insert_collection(&collection).await?;
+    let headers = Headers(vec![("Location", location)]);
+    Ok((StatusCode::CREATED, headers))
 }
 
 /// Get collection metadata
-async fn get(req: Request<State>) -> Result {
-    let id = req.param("collectionId")?;
+async fn read(
+    Path(collection_id): Path<String>,
+    Extension(state): Extension<State>,
+) -> Result<Json<Collection>> {
+    // TOOD: create custom extractor
+    let url = Url::parse(&format!(
+        "http://localhost:8484/collections/{}",
+        collection_id
+    ))
+    .unwrap();
 
-    let mut collection = req.state().db.select_collection(id).await?;
+    let mut collection = state.db.select_collection(&collection_id).await?;
 
     collection.links.push(
-        Link::new(&format!("{}/items", &req.url()[..Position::AfterPath]))
+        Link::new(&format!("{}/items", &url[..Position::AfterPath]))
             .mime(MediaType::GeoJSON)
             .title(format!(
                 "Items of {}",
@@ -117,51 +130,50 @@ async fn get(req: Request<State>) -> Result {
             )),
     );
 
-    let mut res = Response::new(200);
-    res.set_body(Body::from_json(&collection)?);
-    Ok(res)
+    Ok(Json(collection))
 }
 
 /// Update collection metadata
-async fn update(mut req: Request<State>) -> Result {
-    let mut collection: Collection = req.body_json().await?;
+async fn update(
+    Path(collection_id): Path<String>,
+    Json(mut collection): Json<Collection>,
+    Extension(state): Extension<State>,
+) -> Result<StatusCode> {
+    collection.id = collection_id;
 
-    let id = req.param("collectionId")?;
+    state.db.update_collection(&collection).await?;
 
-    collection.id = id.to_owned();
-
-    req.state().db.update_collection(&collection).await?;
-
-    Ok(Response::new(204))
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Delete collection metadata
-async fn delete(req: Request<State>) -> Result {
-    let id = req.param("collectionId")?;
+async fn remove(
+    Path(collection_id): Path<String>,
+    Extension(state): Extension<State>,
+) -> Result<StatusCode> {
+    state.db.delete_collection(&collection_id).await?;
 
-    req.state().db.delete_collection(id).await?;
-
-    Ok(Response::new(204))
+    Ok(StatusCode::NO_CONTENT)
 }
 
-pub(crate) async fn register(app: &mut Server<State>) {
-    app.state().root.write().await.links.push(
+pub(crate) fn router(state: &State) -> Router {
+    let mut root = state.root.write().unwrap();
+    root.links.push(
         Link::new("http://ogcapi.rs/collections")
             .title("Metadata about the resource collections".to_string())
             .relation(LinkRel::Data)
             .mime(MediaType::JSON),
     );
 
-    app.state()
-        .conformance
-        .write()
-        .await
+    let mut conformance = state.conformance.write().unwrap();
+    conformance
         .conforms_to
         .append(&mut CONFORMANCE.map(String::from).to_vec());
 
-    app.at("/collections").get(collections).post(insert);
-    app.at("/collections/:collectionId")
-        .get(get)
-        .put(update)
-        .delete(delete);
+    Router::new()
+        .route("/collections", get(collections).post(insert))
+        .route(
+            "/collections/:collection_id",
+            get(read).put(update).delete(remove),
+        )
 }

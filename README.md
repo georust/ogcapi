@@ -1,6 +1,6 @@
 # OGC API
 
-[OGC API](https://ogcapi.ogc.org/) implementation in Rust based on [Tide](https://github.com/http-rs/tide) and [SQLx](https://github.com/launchbadge/sqlx)
+[OGC API](https://ogcapi.ogc.org/) implementation in Rust based on [axum](https://github.com/tokio-rs/axum) and [SQLx](https://github.com/launchbadge/sqlx)
 
 
 ## Prerequisites
@@ -25,7 +25,7 @@ sudo apt-get install libgdal-dev gdal-bin
 
 ```
 # Install SQLx CLI
-cargo install sqlx-cli --no-default-features --features postgres
+cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 # Set the database URL
 export DATABASE_URL=postgresql://postgres:postgres@localhost/ogcapi

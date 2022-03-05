@@ -1,17 +1,19 @@
 use std::convert::TryInto;
 
+use axum::extract::{Extension, Path, Query};
+use axum::http::{header::HeaderName, HeaderMap, HeaderValue, StatusCode};
+use axum::response::Headers;
+use axum::routing::get;
+use axum::{Json, Router};
 use chrono::{SecondsFormat, Utc};
-use sqlx::types::Json;
 use sqlx::PgPool;
-use tide::{Body, Request, Response, Result, Server};
-use url::Position;
+use url::{Position, Url};
 
-use crate::common::{
-    core::{Bbox, Exception, Link, LinkRel, MediaType},
-    crs::Crs,
-};
-use crate::features::{Feature, FeatureCollection, Query};
-use crate::server::State;
+use crate::common::core::{Bbox, Link, LinkRel, MediaType};
+use crate::common::crs::Crs;
+use crate::features::{Feature, FeatureCollection, FeaturesQuery};
+use crate::server::error::Error;
+use crate::server::{Result, State};
 
 const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
@@ -20,85 +22,98 @@ const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
 ];
 
-async fn insert(mut req: Request<State>) -> tide::Result {
-    let mut feature: Feature = req.body_json().await?;
+async fn insert(
+    Path(collection_id): Path<String>,
+    Json(mut feature): Json<Feature>,
+    Extension(state): Extension<State>,
+) -> Result<(StatusCode, HeaderMap)> {
+    feature.collection = Some(collection_id);
 
-    feature.collection = Some(req.param("collectionId")?.to_owned());
-
-    let location = req.state().db.insert_feature(&feature).await?;
-
-    let mut res = Response::new(201);
-    res.insert_header("Location", location);
-    Ok(res)
+    let location = state.db.insert_feature(&feature).await?;
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        HeaderName::from_static("location"),
+        HeaderValue::from_bytes(location.as_bytes()).unwrap(),
+    );
+    Ok((StatusCode::CREATED, headers))
 }
 
-async fn get(req: Request<State>) -> tide::Result {
-    let id: i64 = req.param("id")?.parse()?;
-    let collection = req.param("collectionId")?;
-
-    let query: Query = req.query()?;
-
+async fn read(
+    Path((collection_id, id)): Path<(String, i64)>,
+    axum::extract::Query(query): axum::extract::Query<FeaturesQuery>,
+    Extension(state): Extension<State>,
+) -> Result<(Headers<Vec<(&'static str, String)>>, Json<Feature>)> {
     let crs = query.crs.clone().unwrap_or_default();
-    if let Some(res) = validate_crs(collection, &crs, &req.state().db.pool).await {
-        return Ok(res);
-    }
+
+    is_supported_crs(&collection_id, &crs, &state.db.pool).await?;
 
     let srid = crs.clone().try_into().ok();
-    let mut feature = req.state().db.select_feature(collection, &id, srid).await?;
+    let mut feature = state.db.select_feature(&collection_id, &id, srid).await?;
 
-    let url = req.url();
-    feature.links = Some(Json(vec![
+    // TOOD: create custom extractor
+    let url = Url::parse(&format!(
+        "http://localhost:8484/collections/{collection_id}/items/{id}"
+    ))
+    .unwrap();
+    feature.links = Some(sqlx::types::Json(vec![
         Link::new(url.as_str()).mime(MediaType::GeoJSON),
         Link::new(&format!(
             "{}/collections/{}",
             &url[..Position::BeforePath],
-            collection
+            collection_id
         ))
         .mime(MediaType::GeoJSON),
     ]));
 
-    let mut res = Response::new(200);
-    res.insert_header("Content-Crs", crs.to_string());
-    res.set_content_type(MediaType::GeoJSON);
-    res.set_body(Body::from_json(&feature)?);
-    Ok(res)
+    let headers = Headers(vec![
+        ("Content-Crs", crs.to_string()),
+        ("Content-Type", MediaType::GeoJSON.to_string()),
+    ]);
+
+    Ok((headers, Json(feature)))
 }
 
-async fn update(mut req: Request<State>) -> tide::Result {
-    let id: i64 = req.param("id")?.parse()?;
-    let collection = req.param("collectionId")?.to_owned();
-
-    let mut feature: Feature = req.body_json().await?;
-
+async fn update(
+    Path((collection_id, id)): Path<(String, i64)>,
+    Json(mut feature): Json<Feature>,
+    Extension(state): Extension<State>,
+) -> Result<StatusCode> {
     feature.id = Some(id);
-    feature.collection = Some(collection.to_string());
+    feature.collection = Some(collection_id);
 
-    req.state().db.update_feature(&feature).await?;
+    state.db.update_feature(&feature).await?;
 
-    Ok(Response::new(204))
+    Ok(StatusCode::NO_CONTENT)
 }
 
-async fn delete(req: Request<State>) -> tide::Result {
-    let id: i64 = req.param("id")?.parse()?;
-    let collection = req.param("collectionId")?;
+async fn remove(
+    Path((collection_id, id)): Path<(String, i64)>,
+    Extension(state): Extension<State>,
+) -> Result<StatusCode> {
+    state.db.delete_feature(&collection_id, &id).await?;
 
-    req.state().db.delete_feature(collection, &id).await?;
-
-    Ok(Response::new(204))
+    Ok(StatusCode::NO_CONTENT)
 }
 
-async fn items(req: Request<State>) -> Result {
-    let mut url = req.url().to_owned();
+async fn items(
+    Path(collection_id): Path<String>,
+    Query(mut query): Query<FeaturesQuery>,
+    Extension(state): Extension<State>,
+) -> Result<(
+    Headers<Vec<(&'static str, String)>>,
+    Json<FeatureCollection>,
+)> {
+    // TOOD: create custom extractor
+    let mut url = Url::parse(&format!(
+        "http://localhost:8484/collections/{collection_id}/items"
+    ))
+    .unwrap();
 
-    let collection: &str = req.param("collectionId")?;
-
-    let mut query: Query = req.query()?;
-    tide::log::debug!("{:#?}", query);
+    tracing::debug!("{:#?}", query);
 
     let crs = query.crs.clone().unwrap_or_default();
-    if let Some(res) = validate_crs(collection, &crs, &req.state().db.pool).await {
-        return Ok(res);
-    }
+
+    is_supported_crs(&collection_id, &crs, &state.db.pool).await?;
 
     let srid: Option<i32> = crs.clone().try_into().ok();
 
@@ -115,16 +130,15 @@ async fn items(req: Request<State>) -> Result {
             assets,
             '{0}' as collection
         FROM items.{0}",
-        collection
+        collection_id
     )];
 
     if let Some(bbox) = query.bbox.as_ref() {
         let crs = query.bbox_crs.clone().unwrap_or_default();
-        if let Some(res) = validate_crs(collection, &crs, &req.state().db.pool).await {
-            return Ok(res);
-        }
 
-        let storage_srid = req.state().db.storage_srid(collection).await?;
+        is_supported_crs(&collection_id, &crs, &state.db.pool).await?;
+
+        let storage_srid = state.db.storage_srid(&collection_id).await?;
 
         let bbox_srid: i32 = crs.try_into().unwrap();
         let envelope = match bbox {
@@ -145,7 +159,7 @@ async fn items(req: Request<State>) -> Result {
 
     let number_matched = sqlx::query(sql.join(" ").as_str())
         .bind(srid)
-        .execute(&req.state().db.pool)
+        .execute(&state.db.pool)
         .await?
         .rows_affected();
 
@@ -185,11 +199,11 @@ async fn items(req: Request<State>) -> Result {
 
     let mut features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
         .bind(&srid)
-        .fetch_all(&req.state().db.pool)
+        .fetch_all(&state.db.pool)
         .await?;
 
     for feature in features.iter_mut() {
-        feature.links = Some(Json(vec![Link::new(&format!(
+        feature.links = Some(sqlx::types::Json(vec![Link::new(&format!(
             "{}/{}",
             &url[..Position::AfterPath],
             feature.id.as_ref().unwrap()
@@ -208,53 +222,41 @@ async fn items(req: Request<State>) -> Result {
         number_returned: Some(number_returned),
     };
 
-    let mut res = Response::new(200);
-    res.insert_header("Content-Crs", crs.to_string());
-    res.set_content_type(MediaType::GeoJSON);
-    res.set_body(Body::from_json(&feature_collection)?);
-    Ok(res)
+    let headers = Headers(vec![
+        ("Content-Crs", crs.to_string()),
+        ("Content-Type", MediaType::GeoJSON.to_string()),
+    ]);
+
+    Ok((headers, Json(feature_collection)))
 }
 
-async fn validate_crs(collection: &str, crs: &Crs, pool: &PgPool) -> Option<Response> {
-    if sqlx::query("SELECT id FROM meta.collections WHERE id = $1 AND collection->'crs' ? $2")
-        .bind(&collection)
-        .bind(crs.to_string())
-        .execute(pool)
-        .await
-        .unwrap()
-        .rows_affected()
-        == 0
-    {
-        let mut res = Response::new(400);
-        res.set_body(
-            Body::from_json(&Exception {
-                r#type: "https://httpwg.org/specs/rfc7231.html#status.400".to_string(),
-                status: Some(400),
-                detail: Some("Unsupported crs".to_string()),
-                ..Default::default()
-            })
-            .unwrap(),
-        );
-
-        Some(res)
+async fn is_supported_crs(collection: &str, crs: &Crs, pool: &PgPool) -> Result<(), Error> {
+    let result =
+        sqlx::query("SELECT id FROM meta.collections WHERE id = $1 AND collection->'crs' ? $2")
+            .bind(&collection)
+            .bind(crs.to_string())
+            .execute(pool)
+            .await?;
+    if result.rows_affected() == 0 {
+        Err(Error::Exception(
+            StatusCode::BAD_REQUEST,
+            format!("Unsuported CRS `{}`", crs),
+        ))
     } else {
-        None
+        Ok(())
     }
 }
 
-pub(crate) async fn register(app: &mut Server<State>) {
-    app.state()
-        .conformance
-        .write()
-        .await
+pub(crate) fn router(state: &State) -> Router {
+    let mut conformance = state.conformance.write().unwrap();
+    conformance
         .conforms_to
         .append(&mut CONFORMANCE.map(String::from).to_vec());
 
-    app.at("/collections/:collectionId/items")
-        .get(items)
-        .post(insert);
-    app.at("/collections/:collectionId/items/:id")
-        .get(get)
-        .put(update)
-        .delete(delete);
+    Router::new()
+        .route("/collections/:collection_id/items", get(items).post(insert))
+        .route(
+            "/collections/:collection_id/items/:id",
+            get(read).put(update).delete(remove),
+        )
 }
