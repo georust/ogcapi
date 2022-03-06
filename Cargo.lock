@@ -1234,29 +1234,70 @@ dependencies = [
 ]
 
 [[package]]
-name = "ogcapi"
+name = "ogcapi_cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "clap 3.1.5",
+ "dotenv",
+ "gdal",
+ "geo",
+ "ogcapi_drivers",
+ "ogcapi_entities",
+ "ogcapi_services",
+ "osmpbfreader",
+ "pbr",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "wkb",
+]
+
+[[package]]
+name = "ogcapi_drivers"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ogcapi_entities",
+ "sqlx",
+ "url",
+]
+
+[[package]]
+name = "ogcapi_entities"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "geojson",
+ "serde",
+ "serde_json",
+ "serde_qs",
+ "serde_with",
+ "sqlx",
+]
+
+[[package]]
+name = "ogcapi_services"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
  "chrono",
- "clap 3.1.5",
  "dotenv",
- "env_logger",
- "gdal",
- "geo",
  "geojson",
- "http",
  "hyper",
- "log",
+ "ogcapi_cli",
+ "ogcapi_drivers",
+ "ogcapi_entities",
  "openapiv3",
- "osmpbfreader",
- "pbr",
  "rink-core",
- "serde",
  "serde_json",
  "serde_qs",
- "serde_with",
  "serde_yaml",
  "sqlx",
  "thiserror",
@@ -1267,7 +1308,6 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
- "wkb",
 ]
 
 [[package]]
@@ -1757,9 +1797,9 @@ dependencies = [
 
 [[package]]
 name = "serde_qs"
-version = "0.8.5"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7715380eec75f029a4ef7de39a9200e0a63823176b759d055b613f5a87df6a6"
+checksum = "9dfafda9a9479d9ac6188b6fc1f84b850cd3f3b5faff6d13e6e45d1296e92ee8"
 dependencies = [
  "percent-encoding",
  "serde",

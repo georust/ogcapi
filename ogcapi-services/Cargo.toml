@@ -1,0 +1,47 @@
+[package]
+name = "ogcapi_services"
+version = "0.1.0"
+license = "GPL-3.0-only"
+authors = ["Balthasar Teuscher <balthasar.teuscher@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.4.8", features = ["headers"] }
+chrono = { version = "0.4.19", features = ["serde"] }
+dotenv = "0.15"
+hyper = { version = "0.14.17", features = ["full"] }
+openapiv3 = "1.0.1"
+rink-core = { version = "0.6.2", optional = true }
+serde_json = "1.0.79"
+serde_yaml = "0.8.23"
+serde_qs = "0.9.1"
+sqlx = { version = "0.5.11", features = ["runtime-tokio-rustls", "postgres", "json", "chrono"] }
+thiserror = "1.0.30"
+tokio = { version = "1.17.0", features = ["full"] }
+tower = "0.4.12"
+tower-http = { version = "0.2.3", features = ["cors", "trace"] }
+tracing = "0.1.31"
+tracing-subscriber = { version="0.3.9", features = ["env-filter"] }
+url = { version = "2.2.2", features = ["serde"] }
+uuid = { version = "0.8.2", features = ["serde", "v4"] }
+
+ogcapi_entities = { path = "../ogcapi-entities" }
+ogcapi_drivers = { path = "../ogcapi-drivers" }
+
+[dev-dependencies]
+geojson = "0.22.2"
+ogcapi_cli = { path = "../ogcapi-cli" }
+
+
+[features]
+default = ["drivers", "common", "features", "processes", "styles", "tiles"]
+drivers = []
+common = []
+features = []
+processes = []
+styles = []
+tiles = []
+edr = ["rink-core"]
