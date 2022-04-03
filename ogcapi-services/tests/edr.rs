@@ -90,18 +90,19 @@ async fn edr() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::GET)
                 .uri(format!(
-                    "http://{}/edr/countries/position?{}",
+                    "http://{}/collections/countries/position?{}",
                     addr,
                     serde_qs::to_string(&query)?
                 ))
-                .body(hyper::Body::empty())
-                .unwrap(),
+                .body(hyper::Body::empty())?,
         )
         .await?;
 
-    assert_eq!(200, res.status());
+    let (parts, body) = res.into_parts();
 
-    let body = hyper::body::to_bytes(res.into_body()).await?;
+    assert_eq!(200, parts.status);
+
+    let body = hyper::body::to_bytes(body).await?;
     let fc: FeatureCollection = serde_json::from_slice(&body)?;
 
     assert_eq!(fc.number_matched, Some(1));
@@ -125,12 +126,11 @@ async fn edr() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::GET)
                 .uri(format!(
-                    "http://{}/edr/places/area?{}",
+                    "http://{}/collections/places/area?{}",
                     addr,
                     serde_qs::to_string(&query)?
                 ))
-                .body(hyper::Body::empty())
-                .unwrap(),
+                .body(hyper::Body::empty())?,
         )
         .await?;
 
@@ -161,12 +161,11 @@ async fn edr() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::GET)
                 .uri(format!(
-                    "http://{}/edr/countries/radius?{}",
+                    "http://{}/collections/countries/radius?{}",
                     addr,
                     serde_qs::to_string(&query)?
                 ))
-                .body(hyper::Body::empty())
-                .unwrap(),
+                .body(hyper::Body::empty())?,
         )
         .await?;
 

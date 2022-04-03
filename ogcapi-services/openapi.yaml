@@ -11,6 +11,9 @@ info:
   license:
     name: CC-BY 4.0 license
     url: https://creativecommons.org/licenses/by/4.0/
+servers:
+  - url: http://192.168.1.216:8484
+    description: "Development server"
 tags:
   - name: server
   - name: Capabilities

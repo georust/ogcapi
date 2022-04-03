@@ -1,15 +1,16 @@
 use std::convert::TryInto;
 
 use axum::{
-    extract::{Extension, Path, Query},
-    response::Headers,
+    body::Body,
+    extract::{Extension, OriginalUri, Path},
+    headers::HeaderMap,
+    http::Request,
     routing::get,
     Json, Router,
 };
 use chrono::Utc;
-use url::Position;
 
-use crate::extractors::RemoteUrl;
+use crate::extractors::{Qs, RemoteUrl};
 use crate::{Result, State};
 use ogcapi_entities::common::{Link, MediaType};
 use ogcapi_entities::edr::EdrQuery;
@@ -22,15 +23,14 @@ const CONFORMANCE: [&str; 3] = [
 ];
 
 async fn query(
-    RemoteUrl(url): RemoteUrl,
+    // RemoteUrl(url): RemoteUrl,
+    OriginalUri(uri): OriginalUri,
     Path(collection_id): Path<String>,
-    Query(query): Query<EdrQuery>,
+    Qs(query): Qs<EdrQuery>,
     Extension(state): Extension<State>,
-) -> Result<(
-    Headers<Vec<(&'static str, String)>>,
-    Json<FeatureCollection>,
-)> {
+) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", &query);
+    tracing::debug!("{:#?}", &uri);
 
     let srid: i32 = query.crs.clone().try_into().unwrap();
     let storage_srid = state.db.storage_srid(&collection_id).await?;
@@ -38,8 +38,8 @@ async fn query(
     let mut geometry_type = query.coords.split('(').next().unwrap().to_uppercase();
     geometry_type.retain(|c| !c.is_whitespace());
 
-    let spatial_predicate = match url.path_segments().unwrap().into_iter().last().unwrap() {
-        "position" | "area" | "trajectory" => {
+    let spatial_predicate = match uri.path().split('/').last() {
+        Some("position") | Some("area") | Some("trajectory") => {
             if geometry_type.ends_with('Z') || geometry_type.ends_with('M') {
                 format!(
                     "ST_3DIntersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
@@ -52,7 +52,7 @@ async fn query(
                 )
             }
         }
-        "radius" => {
+        Some("radius") => {
             let mut ctx = rink_core::simple_context().unwrap();
             let line = format!(
                 "{} {} -> m",
@@ -77,7 +77,7 @@ async fn query(
                 )
             }
         }
-        "cube" => {
+        Some("cube") => {
             let bbox: Vec<&str> = query.coords.split(',').collect();
             if bbox.len() == 4 {
                 format!(
@@ -100,7 +100,7 @@ async fn query(
                 )
             }
         }
-        "corridor" => todo!(),
+        Some("corridor") => todo!(),
         _ => unimplemented!(),
     };
 
@@ -150,8 +150,9 @@ async fn query(
 
     for feature in features.iter_mut() {
         feature.links = Some(sqlx::types::Json(vec![Link::new(&format!(
-            "{}/{}",
-            &url[..Position::AfterPath],
+            "{}/collections/{}/items/{}",
+            &state.remote,
+            &collection_id,
             feature.id.as_ref().unwrap()
         ))
         .mime(MediaType::GeoJSON)]))
@@ -163,15 +164,17 @@ async fn query(
         r#type: "FeatureCollection".to_string(),
         features,
         links: None,
-        time_stamp: Some(Utc::now().to_string()),
+        time_stamp: Some(Utc::now().to_rfc3339()),
         number_matched: Some(number_matched),
         number_returned: Some(number_returned),
     };
 
-    let headers = Headers(vec![
-        ("Content-Crs", query.crs.to_string()),
-        ("Content-Type", MediaType::GeoJSON.to_string()),
-    ]);
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Crs", query.crs.to_string().parse().unwrap());
+    headers.insert(
+        "Content-Type",
+        MediaType::GeoJSON.to_string().parse().unwrap(),
+    );
 
     Ok((headers, Json(feature_collection)))
 }
@@ -186,7 +189,13 @@ pub fn router(state: &State) -> Router {
         .conforms_to
         .append(&mut CONFORMANCE.map(String::from).to_vec());
 
-    Router::new().route("/edr/:collectionId/:query_type", get(query))
-    // .route("/collections/:collectionId/instances", get(instances))
-    // .route("/collections/:collectionId/instances/:id", get(instance))
+    Router::new()
+        .route("/collections/:collection_id/position", get(query))
+        .route("/collections/:collection_id/radius", get(query))
+        .route("/collections/:collection_id/area", get(query))
+        .route("/collections/:collection_id/cube", get(query))
+        .route("/collections/:collection_id/trajectory", get(query))
+        .route("/collections/:collection_id/corridor", get(query))
+    // .route("/collections/:collection_id/instances", get(instances))
+    // .route("/collections/:collection_id/instances/:id", get(instance))
 }

@@ -87,22 +87,22 @@ pub enum LinkRel {
     Child,
     Collection,
     /// Refers to a resource that identifies the specifications that the link’s context conforms to.
-    #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/conformance")]
+    #[serde(rename = "http://www.opengis.net/def/rel/ogc/1.0/conformance")]
     Conformance,
     Data,
     DataMeta,
     Describedby,
     /// The target URI points to exceptions of a failed process.
-    #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/exceptions")]
+    #[serde(rename = "http://www.opengis.net/def/rel/ogc/1.0/exceptions")]
     Exceptions,
     /// The target URI points to the execution endpoint of the server.
-    #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/execute")]
+    #[serde(rename = "http://www.opengis.net/def/rel/ogc/1.0/execute")]
     Execute,
     First,
     Item,
     Items,
     /// The target URI points to the list of jobs.
-    #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/job-list")]
+    #[serde(rename = "http://www.opengis.net/def/rel/ogc/1.0/job-list")]
     JobList,
     Last,
     /// Refers to a license associated with the link’s context.
@@ -112,11 +112,11 @@ pub enum LinkRel {
     #[serde(alias = "previous")]
     Prev,
     /// The target URI points to the list of processes the API offers.
-    #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/processes")]
+    #[serde(rename = "http://www.opengis.net/def/rel/ogc/1.0/processes")]
     Processes,
     Related,
     /// The target URI points to the results of a job.
-    #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/results")]
+    #[serde(rename = "http://www.opengis.net/def/rel/ogc/1.0/results")]
     Results,
     Root,
     /// Conveys an identifier for the link’s context.
@@ -130,6 +130,12 @@ pub enum LinkRel {
     /// Identifies a resource that represents the context’s status.
     Status,
     Tiles,
+    /// The target IRI points to a resource that describes how to provide tile sets of the context resource in vector format.
+    #[serde(rename = "http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector")]
+    TilesetsVector,
+    /// The target IRI points to a resource that describes the TileMatrixSet according to the 2D-TMS standard.
+    #[serde(rename = "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme")]
+    TilingScheme,
     /// Refers to a parent document in a hierarchy of documents.
     Up,
 }

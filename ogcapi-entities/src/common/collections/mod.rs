@@ -5,8 +5,7 @@ pub use collection::*;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 
-use crate::common::Crs;
-use crate::common::{Datetime, Links};
+use crate::common::{Crs, Links};
 
 pub static CRS_REF: &str = "#/crs";
 
@@ -16,8 +15,7 @@ pub static CRS_REF: &str = "#/crs";
 #[serde(rename_all = "camelCase")]
 pub struct Collections {
     pub links: Links,
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub time_stamp: Option<Datetime>,
+    pub time_stamp: Option<String>,
     pub number_matched: Option<usize>,
     pub number_returned: Option<usize>,
     pub collections: Vec<Collection>,

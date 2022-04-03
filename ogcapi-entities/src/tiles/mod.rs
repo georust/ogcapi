@@ -1,45 +1,32 @@
+pub use tileset::*;
+pub use tms::*;
+
 mod tileset;
 mod tms;
 
-pub use tms::TileMatrixSet;
-
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_with::{serde_as, DisplayFromStr};
 
-use crate::common::Links;
+use crate::common::Crs;
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TileMatrixSets {
-    pub tile_matrix_sets: Vec<IdLink>,
-}
+/// A 2DPoint in the CRS indicated elsewere
+type Point2D = [f64; 2];
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IdLink {
-    pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+/// Ordered list of names of the dimensions defined in the CRS
+type OrderedAxes = [String; 2];
+
+#[serde_as]
+#[serde_with::skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TitleDescriptionKeywords {
+    /// Title of this resource entity, normally used for display to a human
     pub title: Option<String>,
-    pub links: Links,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TileSet {
-    pub tile_set: Vec<TileSetEntry>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TileSetEntry {
-    pub tile_url: String,
-    pub tile_matrix: String,
-    pub tile_row: Option<i32>,
-    pub tile_col: Option<i32>,
-    pub width: Option<u32>,
-    pub height: Option<u32>,
-    pub top: Option<i32>,
-    pub left: Option<i32>,
+    /// Brief narrative description of this resoource entity, normally available
+    /// for display to a human
+    pub description: Option<String>,
+    /// Unordered list of one or more commonly used or formalized word(s) or
+    /// phrase(s) used to describe this resource entity
+    pub keywords: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -47,40 +34,30 @@ pub struct TileQuery {
     pub collections: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
-enum Crs {
-    /// Simplification of the object into a url if the other properties are not
-    /// present
-    Url(String),
-    Uri {
-        /// Reference to one coordinate reference system (CRS)
-        uri: String,
-    },
-    Wkt {
-        /// A string defining the CRS using the JSON encodng for Well Known Text
-        wkt: String,
-    },
-    #[serde(rename_all = "camelCase")]
-    ReferenceSystem {
-        /// A reference system data structure as defined in the
-        /// MD_ReferenceSystem of the ISO 19115
-        reference_system: Map<String, Value>,
-    },
-}
-
-/// Minimum bounding rectangle surrounding a 2D resource in the CRS indicated
-/// elsewere
-#[derive(Serialize, Deserialize)]
+/// Minimum bounding rectangle surrounding a 2D resource in the CRS indicated elsewere
+#[serde_as]
+#[serde_with::skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct BoundingBox2D {
-    lower_left: Point2D,
-    upper_right: Point2D,
-    crs: Option<Crs>,
-    orderd_axes: Option<OrderedAxes>,
+pub struct BoundingBox2D {
+    pub lower_left: Point2D,
+    pub upper_right: Point2D,
+    #[serde(default)]
+    #[serde_as(as = "Option<DisplayFromStr>")]
+    pub crs: Option<Crs>,
+    pub orderd_axes: Option<OrderedAxes>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Point2D(f64, f64);
+#[cfg(test)]
+mod test {
+    use serde_json::json;
 
-#[derive(Serialize, Deserialize)]
-struct OrderedAxes(String, String);
+    use super::BoundingBox2D;
+
+    #[test]
+    fn deserialize_bounding_box() {
+        let value = json!({"lowerLeft": [1,2], "upperRight": [3, 4]});
+        let bbox: BoundingBox2D = serde_json::from_value(value).unwrap();
+        dbg!(bbox);
+    }
+}

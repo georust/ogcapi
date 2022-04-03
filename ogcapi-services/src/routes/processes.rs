@@ -1,15 +1,14 @@
 use anyhow::Context;
 use axum::extract::{Extension, Path, Query};
 use axum::http::{HeaderMap, StatusCode};
-use axum::response::Headers;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::Utc;
-use url::Position;
+use url::{Position, Url};
 use uuid::Uuid;
 
 use crate::extractors::RemoteUrl;
-use crate::{Result, State};
+use crate::{Error, Result, State};
 use ogcapi_entities::common::{Link, LinkRel, MediaType};
 use ogcapi_entities::processes::{
     Execute, Process, ProcessList, ProcessQuery, ProcessSummary, Results, StatusInfo,
@@ -27,11 +26,12 @@ const CONFORMANCE: [&str; 5] = [
 ];
 
 async fn processes(
-    RemoteUrl(mut url): RemoteUrl,
     Query(mut query): Query<ProcessQuery>,
     Extension(state): Extension<State>,
 ) -> Result<Json<ProcessList>> {
     let mut sql = vec!["SELECT summary FROM meta.processes".to_string()];
+
+    let mut url: Url = format!("{}/processes", &state.remote).parse().unwrap();
 
     let mut links = vec![Link::new(url.as_str()).mime(MediaType::JSON)];
 
@@ -97,17 +97,20 @@ async fn processes(
 }
 
 async fn process(
-    RemoteUrl(url): RemoteUrl,
     Path(id): Path<String>,
     Extension(state): Extension<State>,
 ) -> Result<Json<Process>> {
     let mut process: Process =
         sqlx::query_as("SELECT summary, inputs, outputs FROM meta.processes WHERE id = $id")
-            .bind(id)
+            .bind(&id)
             .fetch_one(&state.db.pool)
             .await?;
 
-    process.summary.links = Some(vec![Link::new(url.as_str()).mime(MediaType::JSON)]);
+    process.summary.links = Some(vec![Link::new(&format!(
+        "{}/processes/{}",
+        &state.remote, &id
+    ))
+    .mime(MediaType::JSON)]);
 
     Ok(Json(process))
 }
@@ -117,11 +120,7 @@ async fn execution(
     headers: HeaderMap,
     Json(_payload): Json<Execute>,
     Extension(state): Extension<State>,
-) -> Result<(
-    StatusCode,
-    Headers<Vec<(&'static str, String)>>,
-    Json<StatusInfo>,
-)> {
+) -> Result<(StatusCode, HeaderMap, Json<StatusInfo>)> {
     let _prefer = headers.get("Prefer");
 
     let job = StatusInfo {
@@ -143,7 +142,18 @@ async fn execution(
 
     // TODO: validation & execution
 
-    let headers = Headers(vec![("Location", format!("jobs/{}", job.job_id))]);
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "Location",
+        format!("{}/jobs/{}", &state.remote, job.job_id)
+            .parse()
+            .map_err(|_| {
+                Error::Exception(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Unables to set location header".to_string(),
+                )
+            })?,
+    );
 
     Ok((StatusCode::CREATED, headers, Json(job)))
 }
@@ -196,11 +206,11 @@ async fn results(
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
-        Link::new("http://ogcapi.rs/processes")
+        Link::new(&format!("{}/processes", &state.remote))
             .relation(LinkRel::Processes)
             .mime(MediaType::JSON)
             .title("Metadata about the processes".to_string()),
-        Link::new("http://ogcapi.rs/jobs")
+        Link::new(&format!("{}/jobs", &state.remote))
             .relation(LinkRel::JobList)
             .mime(MediaType::JSON)
             .title("The endpoint for job monitoring".to_string()),

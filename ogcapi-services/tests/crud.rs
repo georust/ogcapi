@@ -10,12 +10,12 @@ use ogcapi_drivers::postgres::Db;
 use ogcapi_entities::common::{Collection, Crs, Link, MediaType};
 use ogcapi_entities::features::Feature;
 
-async fn spawn_app() -> SocketAddr {
+async fn spawn_app() -> anyhow::Result<SocketAddr> {
     dotenv::dotenv().ok();
 
     // tracing_subscriber::fmt::init();
 
-    let database_url = Url::parse(&std::env::var("DATABASE_URL").unwrap()).unwrap();
+    let database_url = Url::parse(&std::env::var("DATABASE_URL")?)?;
 
     let db = Db::setup_with(&database_url, &Uuid::new_v4().to_string(), true)
         .await
@@ -23,8 +23,8 @@ async fn spawn_app() -> SocketAddr {
 
     let app = ogcapi_services::server(db).await;
 
-    let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>().unwrap()).unwrap();
-    let addr = listener.local_addr().unwrap();
+    let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>()?)?;
+    let addr = listener.local_addr()?;
 
     tokio::spawn(async move {
         axum::Server::from_tcp(listener)
@@ -34,13 +34,13 @@ async fn spawn_app() -> SocketAddr {
             .unwrap();
     });
 
-    addr
+    Ok(addr)
 }
 
 #[tokio::test]
 async fn minimal_feature_crud() -> anyhow::Result<()> {
     // setup app
-    let addr = spawn_app().await;
+    let addr = spawn_app().await?;
     let client = hyper::Client::new();
 
     let collection = Collection {
@@ -57,11 +57,9 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
                 .method(axum::http::Method::POST)
                 .uri(format!("http://{}/collections", addr))
                 .header("Content-Type", MediaType::JSON.to_string())
-                .body(Body::from(serde_json::to_string(&collection)?))
-                .unwrap(),
+                .body(Body::from(serde_json::to_string(&collection)?))?,
         )
-        .await
-        .unwrap();
+        .await?;
 
     let (parts, _body) = res.into_parts();
 
@@ -79,8 +77,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             "href": "https://localhost:8080/collections/test/items/{id}",
             "rel": "self"
         }]
-    }))
-    .unwrap();
+    }))?;
 
     // create feature
     let res = client
@@ -89,11 +86,9 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
                 .method(axum::http::Method::POST)
                 .uri(format!("http://{}/collections/test/items", addr))
                 .header("Content-Type", MediaType::JSON.to_string())
-                .body(Body::from(serde_json::to_string(&feature)?))
-                .unwrap(),
+                .body(Body::from(serde_json::to_string(&feature)?))?,
         )
-        .await
-        .unwrap();
+        .await?;
 
     assert_eq!(201, res.status());
 
@@ -108,11 +103,9 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::GET)
                 .uri(format!("http://{}/collections/test/items/{}", addr, &id).as_str())
-                .body(Body::empty())
-                .unwrap(),
+                .body(Body::empty())?,
         )
-        .await
-        .unwrap();
+        .await?;
 
     assert_eq!(200, res.status());
     let body = hyper::body::to_bytes(res.into_body()).await.unwrap();
@@ -128,11 +121,9 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::DELETE)
                 .uri(format!("http://{}/collections/test/items/{}", addr, &id).as_str())
-                .body(Body::empty())
-                .unwrap(),
+                .body(Body::empty())?,
         )
-        .await
-        .unwrap();
+        .await?;
 
     assert_eq!(204, res.status());
 
@@ -142,11 +133,9 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::DELETE)
                 .uri(format!("http://{}/collections/{}", addr, &collection.id).as_str())
-                .body(Body::empty())
-                .unwrap(),
+                .body(Body::empty())?,
         )
-        .await
-        .unwrap();
+        .await?;
 
     assert_eq!(204, res.status());
 

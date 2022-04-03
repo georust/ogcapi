@@ -6,8 +6,7 @@ pub use error::Error;
 
 use std::sync::{Arc, RwLock};
 
-use axum::extract::Extension;
-use axum::{routing::get, Router};
+use axum::{extract::Extension, routing::get, Router};
 use openapiv3::OpenAPI;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -17,7 +16,7 @@ use ogcapi_entities::common::{Conformance, LandingPage, Link, LinkRel, MediaType
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-static OPENAPI: &[u8; 29680] = include_bytes!("../openapi.yaml");
+static OPENAPI: &[u8; 29762] = include_bytes!("../openapi.yaml");
 
 #[derive(Clone)]
 pub struct State {
@@ -26,30 +25,28 @@ pub struct State {
     root: Arc<RwLock<LandingPage>>,
     conformance: Arc<RwLock<Conformance>>,
     openapi: Arc<OpenAPI>,
+    remote: Arc<String>,
 }
 
 pub async fn server(db: Db) -> Router {
     // state
     let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI).unwrap();
+    let remote = openapi.servers[0].url.to_owned();
 
     let root = Arc::new(RwLock::new(LandingPage {
         title: Some(openapi.info.title.clone()),
         description: openapi.info.description.clone(),
         links: vec![
-            Link::new("http://ogcapi.rs/")
+            Link::new(&remote)
                 .title("This document".to_string())
                 .mime(MediaType::JSON),
-            Link::new("http://ogcapi.rs/api")
+            Link::new(&format!("{}/api", &remote))
                 .title("The Open API definition".to_string())
                 .relation(LinkRel::ServiceDesc)
                 .mime(MediaType::OpenAPIJson),
-            Link::new("http://ogcapi.rs/conformance")
+            Link::new(&format!("{}/conformance", &remote))
                 .title("OGC conformance classes implemented by this API".to_string())
                 .relation(LinkRel::Conformance)
-                .mime(MediaType::JSON),
-            Link::new("http://ogcapi.rs/collections")
-                .title("Metadata about the resource collections".to_string())
-                .relation(LinkRel::Data)
                 .mime(MediaType::JSON),
         ],
         ..Default::default()
@@ -68,6 +65,7 @@ pub async fn server(db: Db) -> Router {
         root,
         conformance,
         openapi: Arc::new(openapi),
+        remote: Arc::new(remote),
     };
 
     // routes

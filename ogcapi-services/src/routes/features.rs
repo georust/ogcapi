@@ -2,7 +2,6 @@ use std::convert::TryInto;
 
 use axum::extract::{Extension, Path, Query};
 use axum::http::{header::HeaderName, HeaderMap, HeaderValue, StatusCode};
-use axum::response::Headers;
 use axum::routing::get;
 use axum::{Json, Router};
 use chrono::Utc;
@@ -40,7 +39,7 @@ async fn read(
     Path((collection_id, id)): Path<(String, i64)>,
     axum::extract::Query(query): axum::extract::Query<FeaturesQuery>,
     Extension(state): Extension<State>,
-) -> Result<(Headers<Vec<(&'static str, String)>>, Json<Feature>)> {
+) -> Result<(HeaderMap, Json<Feature>)> {
     let crs = query.crs.clone().unwrap_or_default();
 
     is_supported_crs(&collection_id, &crs, &state.db.pool).await?;
@@ -48,9 +47,9 @@ async fn read(
     let srid = crs.clone().try_into().ok();
     let mut feature = state.db.select_feature(&collection_id, &id, srid).await?;
 
-    // TOOD: create custom extractor
     let url = Url::parse(&format!(
-        "http://localhost:8484/collections/{collection_id}/items/{id}"
+        "{}/collections/{}/items/{}",
+        &state.remote, collection_id, id
     ))
     .unwrap();
     feature.links = Some(sqlx::types::Json(vec![
@@ -60,13 +59,16 @@ async fn read(
             &url[..Position::BeforePath],
             collection_id
         ))
-        .mime(MediaType::GeoJSON),
+        .mime(MediaType::GeoJSON)
+        .relation(LinkRel::Collection),
     ]));
 
-    let headers = Headers(vec![
-        ("Content-Crs", crs.to_string()),
-        ("Content-Type", MediaType::GeoJSON.to_string()),
-    ]);
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Crs", crs.to_string().parse().unwrap());
+    headers.insert(
+        "Content-Type",
+        MediaType::GeoJSON.to_string().parse().unwrap(),
+    );
 
     Ok((headers, Json(feature)))
 }
@@ -97,13 +99,11 @@ async fn items(
     Path(collection_id): Path<String>,
     Query(mut query): Query<FeaturesQuery>,
     Extension(state): Extension<State>,
-) -> Result<(
-    Headers<Vec<(&'static str, String)>>,
-    Json<FeatureCollection>,
-)> {
+) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     // TOOD: create custom extractor
     let mut url = Url::parse(&format!(
-        "http://localhost:8484/collections/{collection_id}/items"
+        "{}/collections/{}/items",
+        &state.remote, collection_id
     ))
     .unwrap();
 
@@ -215,15 +215,17 @@ async fn items(
         r#type: "FeatureCollection".to_string(),
         features,
         links: Some(links),
-        time_stamp: Some(Utc::now().to_string()),
+        time_stamp: Some(Utc::now().to_rfc3339()),
         number_matched: Some(number_matched),
         number_returned: Some(number_returned),
     };
 
-    let headers = Headers(vec![
-        ("Content-Crs", crs.to_string()),
-        ("Content-Type", MediaType::GeoJSON.to_string()),
-    ]);
+    let mut headers = HeaderMap::new();
+    headers.insert("Content-Crs", crs.to_string().parse().unwrap());
+    headers.insert(
+        "Content-Type",
+        MediaType::GeoJSON.to_string().parse().unwrap(),
+    );
 
     Ok((headers, Json(feature_collection)))
 }
