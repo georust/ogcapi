@@ -8,7 +8,7 @@ use chrono::Utc;
 use sqlx::PgPool;
 use url::Position;
 
-use crate::extractors::RemoteUrl;
+use crate::extractors::{Qs, RemoteUrl};
 use crate::{Error, Result, State};
 use ogcapi_entities::common::{Bbox, Crs, Link, LinkRel, MediaType};
 use ogcapi_entities::features::{Feature, FeatureCollection, FeaturesQuery};
@@ -90,7 +90,7 @@ async fn remove(
 
 async fn items(
     Path(collection_id): Path<String>,
-    Query(mut query): Query<FeaturesQuery>,
+    Qs(mut query): Qs<FeaturesQuery>,
     RemoteUrl(mut url): RemoteUrl,
     Extension(state): Extension<State>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {

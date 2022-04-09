@@ -2,10 +2,8 @@
 name = "ogcapi_cli"
 version = "0.1.0"
 license = "GPL-3.0-only"
-authors = ["Balthasar Teuscher <balthasar.teuscher@gmail.com>"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1.0.56"
@@ -28,7 +26,6 @@ wkb = { version = "0.7.1", optional = true }
 ogcapi_entities = { path = "../ogcapi-entities" }
 ogcapi_drivers = { path = "../ogcapi-drivers" }
 ogcapi_services = { path = "../ogcapi-services", optional = true }
-
 
 
 [features]

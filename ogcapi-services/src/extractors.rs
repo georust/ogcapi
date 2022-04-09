@@ -9,7 +9,7 @@ use url::Url;
 
 use crate::Error;
 
-/// Extractor for the the remote url
+/// Extractor for the remote URL
 pub(crate) struct RemoteUrl(pub Url);
 
 #[async_trait]

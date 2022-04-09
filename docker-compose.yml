@@ -7,3 +7,8 @@ services:
       POSTGRES_DB: ${DB_NAME}
     ports:
       - ${DB_PORT}:5432
+  teamengine:
+    image: ogccite/ets-ogcapi-features10:latest
+    # image: ogccite/ets-ogcapi-edr10:latest
+    ports:
+      - 8081:8080

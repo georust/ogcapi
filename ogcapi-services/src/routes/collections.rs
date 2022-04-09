@@ -1,19 +1,17 @@
 use axum::{
-    extract::{Extension, Path, Query},
+    extract::{Extension, Path},
     headers::HeaderMap,
     http::StatusCode,
     Json,
     {routing::get, Router},
 };
 use chrono::Utc;
-use serde::Deserialize;
-use serde_with::{serde_as, DisplayFromStr};
+// use serde::Deserialize;
+// use serde_with::{serde_as, DisplayFromStr};
 use url::Position;
 
 use crate::{extractors::RemoteUrl, Result, State};
-use ogcapi_entities::common::{
-    Bbox, Collection, Collections, Crs, Datetime, Link, LinkRel, MediaType,
-};
+use ogcapi_entities::common::{Collection, Collections, Crs, Link, LinkRel, MediaType};
 
 const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",
@@ -21,23 +19,23 @@ const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json",
 ];
 
-#[serde_as]
-#[derive(Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-struct CollectionQuery {
-    bbox: Option<Bbox>,
-    #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    bbox_crs: Option<Crs>,
-    #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    datetime: Option<Datetime>,
-    limit: Option<isize>,
-    offset: Option<isize>,
-}
+// #[serde_as]
+// #[derive(Deserialize, Debug, Clone)]
+// #[serde(deny_unknown_fields)]
+// struct CollectionQuery {
+//     bbox: Option<Bbox>,
+//     #[serde(default)]
+//     #[serde_as(as = "Option<DisplayFromStr>")]
+//     bbox_crs: Option<Crs>,
+//     #[serde(default)]
+//     #[serde_as(as = "Option<DisplayFromStr>")]
+//     datetime: Option<Datetime>,
+//     limit: Option<isize>,
+//     offset: Option<isize>,
+// }
 
 async fn collections(
-    Query(_query): Query<CollectionQuery>,
+    // Query(query): Query<CollectionQuery>,
     RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<State>,
 ) -> Result<Json<Collections>> {

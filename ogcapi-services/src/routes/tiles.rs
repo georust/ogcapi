@@ -96,6 +96,11 @@ async fn tile(
     Path(params): Path<TileParams>,
     Extension(state): Extension<State>,
 ) -> Result<Vec<u8>> {
+    let _tms = TMS
+        .get()
+        .and_then(|tms| tms.get(&params.tms_id))
+        .expect("Get tms from TMS");
+
     let mut sql: Vec<String> = Vec::new();
 
     for collection in params.collection_id.split(',') {

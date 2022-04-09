@@ -5,7 +5,7 @@
 ## Prerequisites
 
 - Rust
-- Docker & Docker Compose or PostgreSQL & PostGIS
+- Docker & Docker Compose
 - GDAL
 
 ## Quick Start
@@ -23,6 +23,6 @@ sqlx database setup --source ogcapi-drivers/migrations
 # Import some data
 cargo run -p ogcapi_cli -- import ogcapi-cli/data/ne_10m_admin_0_countries.geojson --collection countries
 
-# Run cli serve help
+# Serve 
 cargo run -p ogcapi_cli -- serve
 ```
