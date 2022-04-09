@@ -96,11 +96,9 @@ async fn tile(
     Path(params): Path<TileParams>,
     Extension(state): Extension<State>,
 ) -> Result<Vec<u8>> {
-    let collections: Vec<&str> = params.collection_id.split(',').collect();
-
     let mut sql: Vec<String> = Vec::new();
 
-    for collection in collections {
+    for collection in params.collection_id.split(',') {
         let srid = state.db.storage_srid(collection).await?;
 
         sql.push(format!(

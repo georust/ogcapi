@@ -1,3 +1,5 @@
+use anyhow::Context;
+use axum::extract::{Host, OriginalUri};
 use axum::http::StatusCode;
 use axum::{
     async_trait,
@@ -7,6 +9,7 @@ use url::Url;
 
 use crate::Error;
 
+/// Extractor for the the remote url
 pub(crate) struct RemoteUrl(pub Url);
 
 #[async_trait]
@@ -17,35 +20,25 @@ where
     type Rejection = Error;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let headers = req.headers();
-        if let Some(url) = headers
-            .get("Forwarded")
-            .and_then(|header| {
-                header.to_str().ok().and_then(|value| {
-                    value.split(';').find_map(|key_equals_value| {
-                        let parts = key_equals_value.split('=').collect::<Vec<_>>();
-                        if parts.len() == 2 && parts[0].eq_ignore_ascii_case("for") {
-                            Some(parts[1])
-                        } else {
-                            headers.get("X-Forwarded-For").and_then(|header| {
-                                header
-                                    .to_str()
-                                    .ok()
-                                    .and_then(|value| value.split(',').next())
-                            })
-                        }
-                    })
-                })
-            })
-            .and_then(|value| Url::parse(value).ok())
-        {
-            Ok(RemoteUrl(url))
+        let host = Host::from_request(req)
+            .await
+            .context("Unabe to extract host")?;
+
+        let uri = OriginalUri::from_request(req)
+            .await
+            // Infallible
+            .unwrap();
+
+        let scheme = if host.0.contains(':') {
+            "http"
         } else {
-            Err(Error::Exception(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Unable to extract remote URL".to_string(),
-            ))
-        }
+            "https"
+        };
+
+        Ok(RemoteUrl(Url::parse(&format!(
+            "{}://{}{}",
+            scheme, host.0, uri.0
+        ))?))
     }
 }
 

@@ -6,8 +6,9 @@ use axum::routing::get;
 use axum::{Json, Router};
 use chrono::Utc;
 use sqlx::PgPool;
-use url::{Position, Url};
+use url::Position;
 
+use crate::extractors::RemoteUrl;
 use crate::{Error, Result, State};
 use ogcapi_entities::common::{Bbox, Crs, Link, LinkRel, MediaType};
 use ogcapi_entities::features::{Feature, FeatureCollection, FeaturesQuery};
@@ -37,7 +38,8 @@ async fn insert(
 
 async fn read(
     Path((collection_id, id)): Path<(String, i64)>,
-    axum::extract::Query(query): axum::extract::Query<FeaturesQuery>,
+    Query(query): Query<FeaturesQuery>,
+    RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<State>,
 ) -> Result<(HeaderMap, Json<Feature>)> {
     let crs = query.crs.clone().unwrap_or_default();
@@ -47,20 +49,11 @@ async fn read(
     let srid = crs.clone().try_into().ok();
     let mut feature = state.db.select_feature(&collection_id, &id, srid).await?;
 
-    let url = Url::parse(&format!(
-        "{}/collections/{}/items/{}",
-        &state.remote, collection_id, id
-    ))
-    .unwrap();
     feature.links = Some(sqlx::types::Json(vec![
         Link::new(url.as_str()).mime(MediaType::GeoJSON),
-        Link::new(&format!(
-            "{}/collections/{}",
-            &url[..Position::BeforePath],
-            collection_id
-        ))
-        .mime(MediaType::GeoJSON)
-        .relation(LinkRel::Collection),
+        Link::new(url.join(".")?.as_str())
+            .mime(MediaType::GeoJSON)
+            .relation(LinkRel::Collection),
     ]));
 
     let mut headers = HeaderMap::new();
@@ -98,15 +91,9 @@ async fn remove(
 async fn items(
     Path(collection_id): Path<String>,
     Query(mut query): Query<FeaturesQuery>,
+    RemoteUrl(mut url): RemoteUrl,
     Extension(state): Extension<State>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
-    // TOOD: create custom extractor
-    let mut url = Url::parse(&format!(
-        "{}/collections/{}/items",
-        &state.remote, collection_id
-    ))
-    .unwrap();
-
     tracing::debug!("{:#?}", query);
 
     let crs = query.crs.clone().unwrap_or_default();

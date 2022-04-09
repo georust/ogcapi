@@ -11,7 +11,7 @@ use std::sync::Arc;
 use axum::{extract::Extension, headers::HeaderMap, response::Html, Json};
 use openapiv3::OpenAPI;
 
-use crate::{Result, State};
+use crate::{extractors::RemoteUrl, Result, State};
 use ogcapi_entities::common::{Conformance, LandingPage, MediaType};
 
 pub(crate) async fn root(Extension(state): Extension<State>) -> Result<Json<LandingPage>> {
@@ -28,8 +28,10 @@ pub(crate) async fn api(Extension(state): Extension<State>) -> (HeaderMap, Json<
     (headers, Json(state.openapi))
 }
 
-pub(crate) async fn redoc(Extension(state): Extension<State>) -> Html<String> {
-    Html(format!(
+pub(crate) async fn redoc(RemoteUrl(url): RemoteUrl) -> Result<Html<String>> {
+    let api = url.join("../api")?;
+
+    Ok(Html(format!(
         r#"<!DOCTYPE html>
         <html>
         <head>
@@ -46,12 +48,12 @@ pub(crate) async fn redoc(Extension(state): Extension<State>) -> Html<String> {
             </style>
         </head>
         <body>
-            <redoc spec-url="{}/api"></redoc>
+            <redoc spec-url="{}"></redoc>
             <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
         </body>
         </html>"#,
-        &state.remote
-    ))
+        &api
+    )))
 }
 
 pub(crate) async fn conformance(Extension(state): Extension<State>) -> Json<Conformance> {

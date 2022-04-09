@@ -4,11 +4,8 @@ pub mod import;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
-#[clap(name = "ogcapi", version, about = "CLI for the ogcapi project.")]
+#[clap(name = "ogcapi_cli", version, about = "CLI for the ogcapi project.")]
 pub struct App {
-    /// Log level
-    #[clap(env, default_value = "INFO")]
-    pub rust_log: String,
     /// Database url
     #[clap(long, parse(try_from_str), env, hide_env_values = true)]
     pub database_url: url::Url,

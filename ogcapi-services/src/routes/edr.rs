@@ -1,20 +1,21 @@
 use std::convert::TryInto;
 
 use axum::{
-    body::Body,
-    extract::{Extension, OriginalUri, Path},
+    extract::{Extension, Path},
     headers::HeaderMap,
-    http::Request,
     routing::get,
     Json, Router,
 };
 use chrono::Utc;
 
-use crate::extractors::{Qs, RemoteUrl};
+use ogcapi_entities::{
+    common::{Link, MediaType},
+    edr::{EdrQuery, QueryType},
+    features::{Feature, FeatureCollection},
+};
+
+use crate::extractors::Qs;
 use crate::{Result, State};
-use ogcapi_entities::common::{Link, MediaType};
-use ogcapi_entities::edr::EdrQuery;
-use ogcapi_entities::features::{Feature, FeatureCollection};
 
 const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/core",
@@ -23,23 +24,18 @@ const CONFORMANCE: [&str; 3] = [
 ];
 
 async fn query(
-    // RemoteUrl(url): RemoteUrl,
-    OriginalUri(uri): OriginalUri,
-    Path(collection_id): Path<String>,
+    Path((collection_id, query_type)): Path<(String, QueryType)>,
     Qs(query): Qs<EdrQuery>,
     Extension(state): Extension<State>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
-    tracing::debug!("{:#?}", &query);
-    tracing::debug!("{:#?}", &uri);
-
     let srid: i32 = query.crs.clone().try_into().unwrap();
     let storage_srid = state.db.storage_srid(&collection_id).await?;
 
     let mut geometry_type = query.coords.split('(').next().unwrap().to_uppercase();
     geometry_type.retain(|c| !c.is_whitespace());
 
-    let spatial_predicate = match uri.path().split('/').last() {
-        Some("position") | Some("area") | Some("trajectory") => {
+    let spatial_predicate = match query_type {
+        QueryType::Position | QueryType::Area | QueryType::Trajectory => {
             if geometry_type.ends_with('Z') || geometry_type.ends_with('M') {
                 format!(
                     "ST_3DIntersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
@@ -52,7 +48,7 @@ async fn query(
                 )
             }
         }
-        Some("radius") => {
+        QueryType::Radius => {
             let mut ctx = rink_core::simple_context().unwrap();
             let line = format!(
                 "{} {} -> m",
@@ -77,7 +73,7 @@ async fn query(
                 )
             }
         }
-        Some("cube") => {
+        QueryType::Cube => {
             let bbox: Vec<&str> = query.coords.split(',').collect();
             if bbox.len() == 4 {
                 format!(
@@ -100,8 +96,7 @@ async fn query(
                 )
             }
         }
-        Some("corridor") => todo!(),
-        _ => unimplemented!(),
+        QueryType::Corridor => todo!(),
     };
 
     let properties = if let Some(parameters) = query.parameter_name {
@@ -189,13 +184,8 @@ pub fn router(state: &State) -> Router {
         .conforms_to
         .append(&mut CONFORMANCE.map(String::from).to_vec());
 
-    Router::new()
-        .route("/collections/:collection_id/position", get(query))
-        .route("/collections/:collection_id/radius", get(query))
-        .route("/collections/:collection_id/area", get(query))
-        .route("/collections/:collection_id/cube", get(query))
-        .route("/collections/:collection_id/trajectory", get(query))
-        .route("/collections/:collection_id/corridor", get(query))
+    Router::new().route("/collections/:collection_id/:query_type", get(query))
     // .route("/collections/:collection_id/instances", get(instances))
-    // .route("/collections/:collection_id/instances/:id", get(instance))
+    // .route("/collections/:collection_id/instances/:instance_id", get(instance))
+    // .route("/collections/:collection_id/instances/:instance_id/:query_type", get(instance))
 }

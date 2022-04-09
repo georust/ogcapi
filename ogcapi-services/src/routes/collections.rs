@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, OriginalUri, Path, Query},
+    extract::{Extension, Path, Query},
     headers::HeaderMap,
     http::StatusCode,
     Json,
@@ -8,9 +8,9 @@ use axum::{
 use chrono::Utc;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
-use url::{Position, Url};
+use url::Position;
 
-use crate::{Result, State};
+use crate::{extractors::RemoteUrl, Result, State};
 use ogcapi_entities::common::{
     Bbox, Collection, Collections, Crs, Datetime, Link, LinkRel, MediaType,
 };
@@ -37,14 +37,10 @@ struct CollectionQuery {
 }
 
 async fn collections(
-    Query(query): Query<CollectionQuery>,
-    OriginalUri(uri): OriginalUri,
+    Query(_query): Query<CollectionQuery>,
+    RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<State>,
 ) -> Result<Json<Collections>> {
-    tracing::debug!("{:#?}", uri);
-    tracing::debug!("{:#?}", query);
-    let url = Url::parse(&format!("{}/collections", &state.remote)).unwrap();
-
     let mut collections: Vec<sqlx::types::Json<Collection>> =
         sqlx::query_scalar("SELECT collection FROM meta.collections")
             .fetch_all(&state.db.pool)
@@ -92,11 +88,9 @@ async fn insert(
 /// Get collection metadata
 async fn read(
     Path(collection_id): Path<String>,
+    RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<State>,
 ) -> Result<Json<Collection>> {
-    // TOOD: create custom extractor
-    let url = Url::parse(&format!("{}/collections/{}", &state.remote, collection_id)).unwrap();
-
     let mut collection = state.db.select_collection(&collection_id).await?;
 
     collection.links.push(

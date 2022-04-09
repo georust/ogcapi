@@ -12,9 +12,9 @@ pub enum QueryType {
     Cube,
     Trajectory,
     Corridor,
-    Items,
-    Locations,
-    Instances,
+    // Items,
+    // Locations,
+    // Instances,
 }
 
 #[serde_as]

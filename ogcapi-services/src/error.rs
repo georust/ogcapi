@@ -17,6 +17,10 @@ pub enum Error {
     #[error("an internal server error occurred")]
     Anyhow(#[from] anyhow::Error),
 
+    /// Return `500 Internal Server Error` on a `url::ParseError`.
+    #[error("an internal server error occurred")]
+    Url(#[from] url::ParseError),
+
     /// Custom Exception
     #[error("an ogcapi exception occurred")]
     Exception(StatusCode, String),
@@ -25,7 +29,7 @@ pub enum Error {
 impl Error {
     fn status_code(&self) -> StatusCode {
         match self {
-            Self::Sqlx(_) | Self::Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Sqlx(_) | Self::Anyhow(_) | Self::Url(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::Exception(status, _) => *status,
         }
     }
@@ -44,6 +48,10 @@ impl IntoResponse for Error {
                 (self.status_code(), self.to_string())
             }
             Self::Anyhow(ref e) => {
+                tracing::error!("Generic error: {:?}", e);
+                (self.status_code(), self.to_string())
+            }
+            Self::Url(ref e) => {
                 tracing::error!("Generic error: {:?}", e);
                 (self.status_code(), self.to_string())
             }

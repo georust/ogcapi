@@ -108,7 +108,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
         .await?;
 
     assert_eq!(200, res.status());
-    let body = hyper::body::to_bytes(res.into_body()).await.unwrap();
+    let body = hyper::body::to_bytes(res.into_body()).await?;
     let _feature: Feature = serde_json::from_slice(&body)?;
     // println!("{:#?}", feature);
 
