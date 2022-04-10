@@ -1,9 +1,7 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
-
-use super::MediaType;
+use serde_with::{serde_as, skip_serializing_none};
 
 pub type Links = Vec<Link>;
 
@@ -12,29 +10,28 @@ pub type Links = Vec<Link>;
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Link {
-    #[serde_as(as = "DisplayFromStr")]
     /// Supplies the URI to a remote resource (or resource fragment).
     pub href: String,
     /// The type or semantics of the relation.
     pub rel: String,
     /// A hint indicating what the media type of the result of dereferencing
     /// the link should be.
-    pub r#type: Option<MediaType>,
+    pub r#type: Option<String>,
     /// A hint indicating what the language of the result of dereferencing the
     /// link should be.
     pub hreflang: Option<String>,
     /// Used to label the destination of a link such that it can be used as a
     /// human-readable identifier.
     pub title: Option<String>,
-    pub length: Option<usize>,
+    pub length: Option<i64>,
 }
 
 impl Link {
-    /// Constructs a new Link with the given uri and the [LinkRel] `Self`
-    pub fn new(uri: &str) -> Link {
+    /// Constructs a new Link with the given href and link relation
+    pub fn new(href: impl ToString, rel: impl ToString) -> Link {
         Link {
-            href: uri.to_owned(),
-            rel: LinkRel::Selfie.to_string(),
+            href: href.to_string(),
+            rel: rel.to_string(),
             r#type: None,
             hreflang: None,
             title: None,
@@ -42,33 +39,27 @@ impl Link {
         }
     }
 
-    /// Sets the [LinkRel] of the Link and returns the Value
-    pub fn relation(mut self, relation: LinkRel) -> Link {
-        self.rel = relation.to_string();
-        self
-    }
-
-    /// Sets the [MediaType] of the Link and returns the Value
-    pub fn mime(mut self, mime: MediaType) -> Link {
-        self.r#type = Some(mime);
+    /// Sets the media type of the Link and returns the Value
+    pub fn mime(mut self, mime: impl ToString) -> Link {
+        self.r#type = Some(mime.to_string());
         self
     }
 
     /// Sets the language of the Link and returns the Value
-    pub fn language(mut self, language: String) -> Link {
-        self.hreflang = Some(language);
+    pub fn language(mut self, language: impl ToString) -> Link {
+        self.hreflang = Some(language.to_string());
         self
     }
 
     /// Sets the title of the Link and returns the Value
-    pub fn title(mut self, title: String) -> Link {
-        self.title = Some(title);
+    pub fn title(mut self, title: impl ToString) -> Link {
+        self.title = Some(title.to_string());
         self
     }
 
-    /// Sets the length of the Link and returns the Value
-    pub fn length(mut self, length: usize) -> Link {
-        self.length = Some(length.to_owned());
+    /// Sets the length of the reference resource by the Link and returns the Value
+    pub fn length(mut self, length: i64) -> Link {
+        self.length = Some(length);
         self
     }
 }
@@ -78,7 +69,7 @@ impl Link {
 /// [IANA Link Relations Registry](https://www.iana.org/assignments/link-relations/link-relations.xhtml)
 /// [OGC Link Relation Type Register](http://www.opengis.net/def/rel)
 #[non_exhaustive]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, )]
 #[serde(rename_all = "kebab-case")]
 pub enum LinkRel {
     About,
@@ -90,7 +81,10 @@ pub enum LinkRel {
     #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/conformance")]
     Conformance,
     Data,
+    /// Identifies general metadata for the context (dataset or collection) that is primarily intended for consumption by machines.
+    #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/data-meta")]
     DataMeta,
+    /// Refers to a resource providing information about the link’s context.
     Describedby,
     /// The target URI points to exceptions of a failed process.
     #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/exceptions")]
@@ -126,6 +120,8 @@ pub enum LinkRel {
     ServiceDesc,
     /// Identifies service documentation for the context that is primarily intended for human consumption.
     ServiceDoc,
+    /// Identifies general metadata for the context that is primarily intended for consumption by machines.
+    ServiceMeta,
     Start,
     /// Identifies a resource that represents the context’s status.
     Status,
@@ -140,6 +136,12 @@ pub enum LinkRel {
     Up,
 }
 
+impl Default for LinkRel {
+    fn default() -> Self {
+        LinkRel::Selfie
+    }
+}
+
 impl fmt::Display for LinkRel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -147,17 +149,5 @@ impl fmt::Display for LinkRel {
             "{}",
             serde_json::to_value(self).unwrap().as_str().unwrap()
         )
-    }
-}
-
-impl PartialEq<String> for LinkRel {
-    fn eq(&self, other: &String) -> bool {
-        serde_json::to_string(self).unwrap() == *other
-    }
-}
-
-impl PartialEq<LinkRel> for String {
-    fn eq(&self, other: &LinkRel) -> bool {
-        *self == serde_json::to_value(other).unwrap().as_str().unwrap()
     }
 }

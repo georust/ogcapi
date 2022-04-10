@@ -59,11 +59,10 @@ async fn tile_matrix_sets(Extension(state): Extension<State>) -> Result<Json<Til
                 .map(|tms| TileMatrixSetItem {
                     id: Some(tms.id.to_owned()),
                     title: tms.title_description_keywords.title.to_owned(),
-                    links: vec![Link::new(&format!(
-                        "{}/tileMatrixSets/{}",
-                        &state.remote, &tms.id
-                    ))
-                    .relation(LinkRel::TilingScheme)],
+                    links: vec![Link::new(
+                        format!("{}/tileMatrixSets/{}", &state.remote, &tms.id),
+                        LinkRel::TilingScheme,
+                    )],
                     ..Default::default()
                 })
                 .collect::<Vec<TileMatrixSetItem>>()
@@ -137,9 +136,8 @@ async fn tile(
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.push(
-        Link::new(&format!("{}/tiles", &state.remote))
-            .title("List of available vector features tilesets for the dataset".to_string())
-            .relation(LinkRel::TilesetsVector)
+        Link::new(format!("{}/tiles", &state.remote), LinkRel::TilesetsVector)
+            .title("List of available vector features tilesets for the dataset")
             .mime(MediaType::JSON),
     );
 

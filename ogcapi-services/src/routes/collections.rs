@@ -1,7 +1,7 @@
 use axum::{
     extract::{Extension, Path},
     headers::HeaderMap,
-    http::StatusCode,
+    http::{header::LOCATION, StatusCode},
     Json,
     {routing::get, Router},
 };
@@ -19,21 +19,6 @@ const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json",
 ];
 
-// #[serde_as]
-// #[derive(Deserialize, Debug, Clone)]
-// #[serde(deny_unknown_fields)]
-// struct CollectionQuery {
-//     bbox: Option<Bbox>,
-//     #[serde(default)]
-//     #[serde_as(as = "Option<DisplayFromStr>")]
-//     bbox_crs: Option<Crs>,
-//     #[serde(default)]
-//     #[serde_as(as = "Option<DisplayFromStr>")]
-//     datetime: Option<Datetime>,
-//     limit: Option<isize>,
-//     offset: Option<isize>,
-// }
-
 async fn collections(
     // Query(query): Query<CollectionQuery>,
     RemoteUrl(url): RemoteUrl,
@@ -49,20 +34,19 @@ async fn collections(
         .map(|c| {
             let base = &url[..Position::AfterPath];
             c.0.links.append(&mut vec![
-                Link::new(&format!("{}/{}", base, c.id)),
-                Link::new(&format!("{}/{}/items", base, c.id))
+                Link::new(format!("{}/{}", base, c.id), LinkRel::default()),
+                Link::new(format!("{}/{}/items", base, c.id), LinkRel::Items)
                     .mime(MediaType::GeoJSON)
-                    .title(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id)))
-                    .relation(LinkRel::Items),
+                    .title(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id))),
             ]);
             c.0.to_owned()
         })
         .collect();
 
     let collections = Collections {
-        links: vec![Link::new(url.as_str())
+        links: vec![Link::new(url, LinkRel::default())
             .mime(MediaType::JSON)
-            .title("this document".to_string())],
+            .title("this document")],
         time_stamp: Some(Utc::now().to_rfc3339()),
         crs: Some(vec![Crs::default(), Crs::from(4326)]),
         collections,
@@ -79,7 +63,7 @@ async fn insert(
 ) -> Result<(StatusCode, HeaderMap)> {
     let location = state.db.insert_collection(&collection).await?;
     let mut headers = HeaderMap::new();
-    headers.insert("Location", location.parse().unwrap());
+    headers.insert(LOCATION, location.parse().unwrap());
     Ok((StatusCode::CREATED, headers))
 }
 
@@ -92,12 +76,15 @@ async fn read(
     let mut collection = state.db.select_collection(&collection_id).await?;
 
     collection.links.push(
-        Link::new(&format!("{}/items", &url[..Position::AfterPath]))
-            .mime(MediaType::GeoJSON)
-            .title(format!(
-                "Items of {}",
-                collection.title.as_ref().unwrap_or(&collection.id)
-            )),
+        Link::new(
+            format!("{}/items", &url[..Position::AfterPath]),
+            LinkRel::default(),
+        )
+        .mime(MediaType::GeoJSON)
+        .title(format!(
+            "Items of {}",
+            collection.title.as_ref().unwrap_or(&collection.id)
+        )),
     );
 
     Ok(Json(collection))
@@ -129,9 +116,8 @@ async fn remove(
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.push(
-        Link::new(&format!("{}/collections", &state.remote))
-            .title("Metadata about the resource collections".to_string())
-            .relation(LinkRel::Data)
+        Link::new(format!("{}/collections", &state.remote), LinkRel::Data)
+            .title("Metadata about the resource collections")
             .mime(MediaType::JSON),
     );
 

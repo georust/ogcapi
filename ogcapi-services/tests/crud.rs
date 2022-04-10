@@ -7,7 +7,7 @@ use url::Url;
 use uuid::Uuid;
 
 use ogcapi_drivers::postgres::Db;
-use ogcapi_entities::common::{Collection, Crs, Link, MediaType};
+use ogcapi_entities::common::{Collection, Crs, Link, LinkRel, MediaType};
 use ogcapi_entities::features::Feature;
 
 async fn spawn_app() -> anyhow::Result<SocketAddr> {
@@ -45,7 +45,10 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
 
     let collection = Collection {
         id: "test".to_string(),
-        links: vec![Link::new("http://localhost:8080/collections/test")],
+        links: vec![Link::new(
+            "http://localhost:8080/collections/test",
+            LinkRel::default(),
+        )],
         crs: Some(vec![Crs::default()]),
         ..Default::default()
     };

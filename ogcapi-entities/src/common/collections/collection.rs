@@ -32,7 +32,6 @@ pub struct Collection {
     pub stac_extensions: Option<Vec<String>>,
     pub licence: Option<String>,
     pub providers: Option<Vec<Provider>>,
-    /// Dictionary of asset objects that can be downloaded, each with a unique key.
     pub summaries: Option<HashMap<String, Value>>,
 }
 

@@ -15,7 +15,7 @@ async fn edr() -> anyhow::Result<()> {
 
     use ogcapi_cli::import::{self, Args};
     use ogcapi_entities::common::Crs;
-    use ogcapi_entities::edr::EdrQuery;
+    use ogcapi_entities::edr::Query;
     use ogcapi_entities::features::FeatureCollection;
 
     // setup app
@@ -78,7 +78,7 @@ async fn edr() -> anyhow::Result<()> {
     .await?;
 
     // query position
-    let query = EdrQuery {
+    let query = Query {
         coords: "POINT(2600000 1200000)".to_string(),
         parameter_name: Some("NAME,ISO_A2,CONTINENT".to_string()),
         crs: Crs::from(2056),
@@ -115,7 +115,7 @@ async fn edr() -> anyhow::Result<()> {
     );
 
     // query area
-    let query = EdrQuery {
+    let query = Query {
         coords: "POLYGON((7 46, 7 48, 9 48, 9 46, 7 46))".to_string(),
         parameter_name: Some("NAME,ISO_A2,ADM0NAME".to_string()),
         ..Default::default()
@@ -148,7 +148,7 @@ async fn edr() -> anyhow::Result<()> {
     assert!(feature.is_some());
 
     // query radius
-    let query = EdrQuery {
+    let query = Query {
         coords: "POINT(7.5 47)".to_string(),
         parameter_name: Some("NAME,ISO_A2,ADM0NAME".to_string()),
         within: Some("1000".to_string()),

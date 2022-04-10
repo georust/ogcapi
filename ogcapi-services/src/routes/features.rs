@@ -1,9 +1,15 @@
 use std::convert::TryInto;
 
-use axum::extract::{Extension, Path, Query};
-use axum::http::{header::HeaderName, HeaderMap, HeaderValue, StatusCode};
-use axum::routing::get;
-use axum::{Json, Router};
+use anyhow::Context;
+use axum::extract::{Extension, Path};
+use axum::{
+    http::{
+        header::{CONTENT_TYPE, LOCATION},
+        HeaderMap, StatusCode,
+    },
+    routing::get,
+    Json, Router,
+};
 use chrono::Utc;
 use sqlx::PgPool;
 use url::Position;
@@ -11,7 +17,7 @@ use url::Position;
 use crate::extractors::{Qs, RemoteUrl};
 use crate::{Error, Result, State};
 use ogcapi_entities::common::{Bbox, Crs, Link, LinkRel, MediaType};
-use ogcapi_entities::features::{Feature, FeatureCollection, FeaturesQuery};
+use ogcapi_entities::features::{Feature, FeatureCollection, Query};
 
 const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
@@ -29,16 +35,13 @@ async fn insert(
 
     let location = state.db.insert_feature(&feature).await?;
     let mut headers = HeaderMap::new();
-    headers.insert(
-        HeaderName::from_static("location"),
-        HeaderValue::from_bytes(location.as_bytes()).unwrap(),
-    );
+    headers.insert(LOCATION, location.parse().unwrap());
     Ok((StatusCode::CREATED, headers))
 }
 
 async fn read(
     Path((collection_id, id)): Path<(String, i64)>,
-    Query(query): Query<FeaturesQuery>,
+    Qs(query): Qs<Query>,
     RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<State>,
 ) -> Result<(HeaderMap, Json<Feature>)> {
@@ -50,16 +53,19 @@ async fn read(
     let mut feature = state.db.select_feature(&collection_id, &id, srid).await?;
 
     feature.links = Some(sqlx::types::Json(vec![
-        Link::new(url.as_str()).mime(MediaType::GeoJSON),
-        Link::new(url.join(".")?.as_str())
-            .mime(MediaType::GeoJSON)
-            .relation(LinkRel::Collection),
+        Link::new(&url, LinkRel::default()).mime(MediaType::GeoJSON),
+        Link::new(url.join(".")?, LinkRel::Collection).mime(MediaType::GeoJSON),
     ]));
 
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Crs", crs.to_string().parse().unwrap());
     headers.insert(
-        "Content-Type",
+        "Content-Crs",
+        crs.to_string()
+            .parse()
+            .context("Unable to parse `Content-Crs` header value")?,
+    );
+    headers.insert(
+        CONTENT_TYPE,
         MediaType::GeoJSON.to_string().parse().unwrap(),
     );
 
@@ -90,7 +96,7 @@ async fn remove(
 
 async fn items(
     Path(collection_id): Path<String>,
-    Qs(mut query): Qs<FeaturesQuery>,
+    Qs(mut query): Qs<Query>,
     RemoteUrl(mut url): RemoteUrl,
     Extension(state): Extension<State>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
@@ -148,7 +154,7 @@ async fn items(
         .await?
         .rows_affected();
 
-    let mut links = vec![Link::new(url.as_str()).mime(MediaType::GeoJSON)];
+    let mut links = vec![Link::new(&url, LinkRel::default()).mime(MediaType::GeoJSON)];
 
     // pagination
     if let Some(limit) = query.limit {
@@ -164,19 +170,15 @@ async fn items(
 
             if offset != 0 && offset >= limit {
                 query.offset = Some(offset - limit);
-                url.set_query(Some(&query.to_string()));
-                let previous = Link::new(url.as_str())
-                    .relation(LinkRel::Prev)
-                    .mime(MediaType::GeoJSON);
+                url.set_query(serde_qs::to_string(&query).ok().as_deref());
+                let previous = Link::new(&url, LinkRel::Prev).mime(MediaType::GeoJSON);
                 links.push(previous);
             }
 
             if !(offset + limit) as u64 >= number_matched {
                 query.offset = Some(offset + limit);
-                url.set_query(Some(&query.to_string()));
-                let next = Link::new(url.as_str())
-                    .relation(LinkRel::Next)
-                    .mime(MediaType::GeoJSON);
+                url.set_query(serde_qs::to_string(&query).ok().as_deref());
+                let next = Link::new(&url, LinkRel::Next).mime(MediaType::GeoJSON);
                 links.push(next);
             }
         }
@@ -188,11 +190,14 @@ async fn items(
         .await?;
 
     for feature in features.iter_mut() {
-        feature.links = Some(sqlx::types::Json(vec![Link::new(&format!(
-            "{}/{}",
-            &url[..Position::AfterPath],
-            feature.id.as_ref().unwrap()
-        ))
+        feature.links = Some(sqlx::types::Json(vec![Link::new(
+            format!(
+                "{}/{}",
+                &url[..Position::AfterPath],
+                feature.id.as_ref().unwrap()
+            ),
+            LinkRel::default(),
+        )
         .mime(MediaType::GeoJSON)]))
     }
 
@@ -210,7 +215,7 @@ async fn items(
     let mut headers = HeaderMap::new();
     headers.insert("Content-Crs", crs.to_string().parse().unwrap());
     headers.insert(
-        "Content-Type",
+        CONTENT_TYPE,
         MediaType::GeoJSON.to_string().parse().unwrap(),
     );
 

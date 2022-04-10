@@ -1,8 +1,9 @@
-use axum::http::StatusCode;
+use axum::headers::HeaderMap;
+use axum::http::{header::CONTENT_TYPE, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 
-use ogcapi_entities::common::Exception;
+use ogcapi_entities::common::{Exception, MediaType};
 
 /// A common error type that can be used throughout the API.
 ///
@@ -61,16 +62,14 @@ impl IntoResponse for Error {
             }
         };
 
-        let exception = Exception {
-            r#type: format!(
-                "https://httpwg.org/specs/rfc7231.html#status.{}",
-                status.as_str()
-            ),
-            status: Some(status.as_u16()),
-            detail: Some(message),
-            ..Default::default()
-        };
+        let exception = Exception::new(status.as_u16()).detail(message);
 
-        (status, Json(exception)).into_response()
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            CONTENT_TYPE,
+            MediaType::ProblemJSON.to_string().parse().unwrap(),
+        );
+
+        (status, headers, Json(exception)).into_response()
     }
 }

@@ -3,14 +3,15 @@ use std::convert::TryInto;
 use axum::{
     extract::{Extension, Path},
     headers::HeaderMap,
+    http::header::CONTENT_TYPE,
     routing::get,
     Json, Router,
 };
 use chrono::Utc;
 
 use ogcapi_entities::{
-    common::{Link, MediaType},
-    edr::{EdrQuery, QueryType},
+    common::{Link, LinkRel, MediaType},
+    edr::{Query, QueryType},
     features::{Feature, FeatureCollection},
 };
 
@@ -25,7 +26,7 @@ const CONFORMANCE: [&str; 3] = [
 
 async fn query(
     Path((collection_id, query_type)): Path<(String, QueryType)>,
-    Qs(query): Qs<EdrQuery>,
+    Qs(query): Qs<Query>,
     Extension(state): Extension<State>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     let srid: i32 = query.crs.clone().try_into().unwrap();
@@ -144,12 +145,15 @@ async fn query(
         .await?;
 
     for feature in features.iter_mut() {
-        feature.links = Some(sqlx::types::Json(vec![Link::new(&format!(
-            "{}/collections/{}/items/{}",
-            &state.remote,
-            &collection_id,
-            feature.id.as_ref().unwrap()
-        ))
+        feature.links = Some(sqlx::types::Json(vec![Link::new(
+            format!(
+                "{}/collections/{}/items/{}",
+                &state.remote,
+                &collection_id,
+                feature.id.as_ref().unwrap()
+            ),
+            LinkRel::default(),
+        )
         .mime(MediaType::GeoJSON)]))
     }
 
@@ -167,7 +171,7 @@ async fn query(
     let mut headers = HeaderMap::new();
     headers.insert("Content-Crs", query.crs.to_string().parse().unwrap());
     headers.insert(
-        "Content-Type",
+        CONTENT_TYPE,
         MediaType::GeoJSON.to_string().parse().unwrap(),
     );
 

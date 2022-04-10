@@ -1,6 +1,8 @@
 mod collection;
+mod query;
 
 pub use collection::*;
+pub use query::Query;
 
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};

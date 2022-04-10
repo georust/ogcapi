@@ -45,7 +45,7 @@ pub struct TileSet {
     /// Type of data represented in the tileset
     data_type: DataType,
     /// Reference to a Tile Matrix Set on the OGC NA definition server
-    /// (http://www.opengis.net/def/tms/). Required if the tile matrix set is
+    /// (<http://www.opengis.net/def/tms/>). Required if the tile matrix set is
     /// registered on the definition server.
     #[serde(rename = "tileMatrixSetURI")]
     tile_matrix_set_uri: Option<String>,

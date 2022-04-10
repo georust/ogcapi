@@ -19,8 +19,8 @@ pub enum QueryType {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct EdrQuery {
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct Query {
     /// Well Known Text (WKT) of representation geometry. The representation
     /// type will depend on the [QueryType] of the API.
     #[serde(alias = "bbox")]

@@ -8,7 +8,9 @@ pub mod tiles;
 
 use std::sync::Arc;
 
-use axum::{extract::Extension, headers::HeaderMap, response::Html, Json};
+use axum::{
+    extract::Extension, headers::HeaderMap, http::header::CONTENT_TYPE, response::Html, Json,
+};
 use openapiv3::OpenAPI;
 
 use crate::{extractors::RemoteUrl, Result, State};
@@ -21,7 +23,7 @@ pub(crate) async fn root(Extension(state): Extension<State>) -> Result<Json<Land
 pub(crate) async fn api(Extension(state): Extension<State>) -> (HeaderMap, Json<Arc<OpenAPI>>) {
     let mut headers = HeaderMap::new();
     headers.insert(
-        "Content-Type",
+        CONTENT_TYPE,
         MediaType::OpenAPIJson.to_string().parse().unwrap(),
     );
 

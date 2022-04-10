@@ -22,3 +22,31 @@ pub struct Exception {
     #[serde(flatten)]
     pub additional_properties: Option<HashMap<String, Value>>,
 }
+
+impl Exception {
+    pub fn new(status_code: u16) -> Self {
+        Exception {
+            r#type: format!(
+                "https://httpwg.org/specs/rfc7231.html#status.{}",
+                status_code
+            ),
+            status: Some(status_code),
+            ..Default::default()
+        }
+    }
+
+    pub fn title(mut self, title: impl ToString) -> Self {
+        self.title = Some(title.to_string());
+        self
+    }
+
+    pub fn detail(mut self, detail: impl ToString) -> Self {
+        self.detail = Some(detail.to_string());
+        self
+    }
+
+    pub fn instance(mut self, instance: impl ToString) -> Self {
+        self.instance = Some(instance.to_string());
+        self
+    }
+}

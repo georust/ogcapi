@@ -1,18 +1,21 @@
 use anyhow::Context;
-use axum::extract::{Extension, Path, Query};
-use axum::http::{HeaderMap, StatusCode};
-use axum::routing::{get, post};
-use axum::{Json, Router};
+use axum::{
+    extract::{Extension, Path, Query},
+    http::{header::LOCATION, HeaderMap, StatusCode},
+    routing::{get, post},
+    Json, Router,
+};
 use chrono::Utc;
 use url::{Position, Url};
 use uuid::Uuid;
 
-use crate::extractors::RemoteUrl;
-use crate::{Error, Result, State};
 use ogcapi_entities::common::{Link, LinkRel, MediaType};
 use ogcapi_entities::processes::{
     Execute, Process, ProcessList, ProcessQuery, ProcessSummary, Results, StatusInfo,
 };
+
+use crate::extractors::RemoteUrl;
+use crate::{Result, State};
 
 const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
@@ -33,7 +36,7 @@ async fn processes(
 
     let mut url: Url = format!("{}/processes", &state.remote).parse().unwrap();
 
-    let mut links = vec![Link::new(url.as_str()).mime(MediaType::JSON)];
+    let mut links = vec![Link::new(&url, LinkRel::default()).mime(MediaType::JSON)];
 
     // pagination
     if let Some(limit) = query.limit {
@@ -53,9 +56,7 @@ async fn processes(
                 let query_string =
                     serde_qs::to_string(&query).context("failed to serialize query")?;
                 url.set_query(Some(&query_string));
-                let previous = Link::new(url.as_str())
-                    .relation(LinkRel::Prev)
-                    .mime(MediaType::JSON);
+                let previous = Link::new(&url, LinkRel::Prev).mime(MediaType::JSON);
                 links.push(previous);
             }
 
@@ -64,9 +65,7 @@ async fn processes(
                 let query_string =
                     serde_qs::to_string(&query).context("failed to serialize query")?;
                 url.set_query(Some(&query_string));
-                let next = Link::new(url.as_str())
-                    .relation(LinkRel::Next)
-                    .mime(MediaType::JSON);
+                let next = Link::new(&url, LinkRel::Next).mime(MediaType::JSON);
                 links.push(next);
             }
         }
@@ -80,13 +79,12 @@ async fn processes(
         processes: summaries
             .into_iter()
             .map(|mut p| {
-                p.0.links = Some(vec![Link::new(&format!(
-                    "{}/{}",
-                    p.0.id,
-                    &url[..Position::AfterPath]
-                ))
+                p.0.links = Some(vec![Link::new(
+                    format!("{}/{}", p.0.id, &url[..Position::AfterPath]),
+                    LinkRel::default(),
+                )
                 .mime(MediaType::JSON)
-                .title("process description".to_string())]);
+                .title("process description")]);
                 p.0
             })
             .collect(),
@@ -106,10 +104,10 @@ async fn process(
             .fetch_one(&state.db.pool)
             .await?;
 
-    process.summary.links = Some(vec![Link::new(&format!(
-        "{}/processes/{}",
-        &state.remote, &id
-    ))
+    process.summary.links = Some(vec![Link::new(
+        format!("{}/processes/{}", &state.remote, &id),
+        LinkRel::default(),
+    )
     .mime(MediaType::JSON)]);
 
     Ok(Json(process))
@@ -141,19 +139,11 @@ async fn execution(
     .await?;
 
     // TODO: validation & execution
-
+    let location = format!("{}/jobs/{}", &state.remote, job.job_id)
+        .parse()
+        .context("Unable to parse `Location` header value")?;
     let mut headers = HeaderMap::new();
-    headers.insert(
-        "Location",
-        format!("{}/jobs/{}", &state.remote, job.job_id)
-            .parse()
-            .map_err(|_| {
-                Error::Exception(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Unables to set location header".to_string(),
-                )
-            })?,
-    );
+    headers.insert(LOCATION, location);
 
     Ok((StatusCode::CREATED, headers, Json(job)))
 }
@@ -173,7 +163,7 @@ async fn status(
         .await?;
 
     status.links = Some(sqlx::types::Json(vec![
-        Link::new(url.as_str()).mime(MediaType::JSON)
+        Link::new(url, LinkRel::default()).mime(MediaType::JSON)
     ]));
 
     Ok(Json(status))
@@ -206,14 +196,12 @@ async fn results(
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
-        Link::new(&format!("{}/processes", &state.remote))
-            .relation(LinkRel::Processes)
+        Link::new(format!("{}/processes", &state.remote), LinkRel::Processes)
             .mime(MediaType::JSON)
-            .title("Metadata about the processes".to_string()),
-        Link::new(&format!("{}/jobs", &state.remote))
-            .relation(LinkRel::JobList)
+            .title("Metadata about the processes"),
+        Link::new(format!("{}/jobs", &state.remote), LinkRel::JobList)
             .mime(MediaType::JSON)
-            .title("The endpoint for job monitoring".to_string()),
+            .title("The endpoint for job monitoring"),
     ]);
 
     let mut conformance = state.conformance.write().unwrap();

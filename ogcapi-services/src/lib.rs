@@ -37,16 +37,14 @@ pub async fn server(db: Db) -> Router {
         title: Some(openapi.info.title.clone()),
         description: openapi.info.description.clone(),
         links: vec![
-            Link::new(&remote)
-                .title("This document".to_string())
+            Link::new(&remote, LinkRel::default())
+                .title("This document")
                 .mime(MediaType::JSON),
-            Link::new(&format!("{}/api", &remote))
-                .title("The Open API definition".to_string())
-                .relation(LinkRel::ServiceDesc)
+            Link::new(format!("{}/api", &remote), LinkRel::ServiceDesc)
+                .title("The Open API definition")
                 .mime(MediaType::OpenAPIJson),
-            Link::new(&format!("{}/conformance", &remote))
-                .title("OGC conformance classes implemented by this API".to_string())
-                .relation(LinkRel::Conformance)
+            Link::new(format!("{}/conformance", &remote), LinkRel::Conformance)
+                .title("OGC conformance classes implemented by this API")
                 .mime(MediaType::JSON),
         ],
         ..Default::default()
@@ -74,10 +72,6 @@ pub async fn server(db: Db) -> Router {
         .route("/api", get(routes::api))
         .route("/redoc", get(routes::redoc))
         .route("/conformance", get(routes::conformance))
-        .route(
-            "/favicon.ico",
-            get(|| async move { include_bytes!("../favicon.ico").to_vec() }),
-        )
         .merge(routes::collections::router(&state))
         .merge(routes::features::router(&state))
         .merge(routes::tiles::router(&state))
