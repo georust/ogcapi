@@ -14,7 +14,7 @@ use axum::{
 use openapiv3::OpenAPI;
 
 use crate::{extractors::RemoteUrl, Result, State};
-use ogcapi_entities::common::{Conformance, LandingPage, MediaType};
+use ogcapi_types::common::{Conformance, LandingPage, MediaType};
 
 pub(crate) async fn root(Extension(state): Extension<State>) -> Result<Json<LandingPage>> {
     Ok(Json(state.root.read().unwrap().clone()))

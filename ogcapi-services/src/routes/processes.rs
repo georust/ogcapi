@@ -9,8 +9,8 @@ use chrono::Utc;
 use url::{Position, Url};
 use uuid::Uuid;
 
-use ogcapi_entities::common::{Link, LinkRel, MediaType};
-use ogcapi_entities::processes::{
+use ogcapi_types::common::{Link, LinkRel, MediaType};
+use ogcapi_types::processes::{
     Execute, Process, ProcessList, ProcessQuery, ProcessSummary, Results, StatusInfo,
 };
 

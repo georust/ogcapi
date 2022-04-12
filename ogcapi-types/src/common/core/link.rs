@@ -69,7 +69,7 @@ impl Link {
 /// [IANA Link Relations Registry](https://www.iana.org/assignments/link-relations/link-relations.xhtml)
 /// [OGC Link Relation Type Register](http://www.opengis.net/def/rel)
 #[non_exhaustive]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, )]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub enum LinkRel {
     About,

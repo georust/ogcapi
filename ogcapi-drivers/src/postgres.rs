@@ -7,8 +7,8 @@ use sqlx::{
 };
 use url::Url;
 
-use ogcapi_entities::common::Collection;
-use ogcapi_entities::features::Feature;
+use ogcapi_types::common::Collection;
+use ogcapi_types::features::Feature;
 
 #[derive(Debug, Clone)]
 pub struct Db {

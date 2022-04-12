@@ -1,1 +1,0 @@
-# OGC API - CLI

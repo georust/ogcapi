@@ -10,4 +10,4 @@ anyhow = "1.0.56"
 sqlx = { version = "0.5.11", features = ["runtime-tokio-rustls", "postgres", "json", "offline", "chrono"] }
 url = { version = "2.2.2", features = ["serde"] }
 
-ogcapi_entities = { path = "../ogcapi-entities" }
+ogcapi_types = { path = "../ogcapi-types" }

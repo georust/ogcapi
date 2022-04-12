@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use url::Url;
 
 use ogcapi_drivers::postgres::Db;
-use ogcapi_entities::common::{Bbox, Collection, Crs, Extent, SpatialExtent};
+use ogcapi_types::common::{Bbox, Collection, Crs, Extent, SpatialExtent};
 
 use super::Args;
 
@@ -46,12 +46,13 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
     let db = Db::setup(database_url).await?;
 
     // Open input dataset
-    if args.input.starts_with("http") {
-        args.input = PathBuf::from("/vsicurl").join(args.input.as_path())
+    if args.input.display().to_string().starts_with("http") {
+        args.input = PathBuf::from("/vsicurl/").join(args.input.as_path())
     };
-    if args.input.ends_with("zip") {
-        args.input = PathBuf::from("/vsizip").join(args.input.as_path())
+    if args.input.extension() == Some(std::ffi::OsStr::new("zip")) {
+        args.input = PathBuf::from("/vsizip/").join(args.input.as_path())
     };
+
     let dataset = gdal::Dataset::open(&args.input)?;
 
     for mut layer in dataset.layers() {

@@ -1,9 +1,8 @@
 [package]
-name = "ogcapi_entities"
+name = "ogcapi_types"
 version = "0.1.0"
 license = "GPL-3.0-only"
 edition = "2021"
-
 
 [dependencies]
 chrono = { version = "0.4.19", features = ["serde"] }

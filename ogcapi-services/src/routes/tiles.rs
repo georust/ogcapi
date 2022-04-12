@@ -4,13 +4,11 @@ use axum::extract::{Extension, Path};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
-use ogcapi_entities::common::{Link, LinkRel, MediaType};
+use ogcapi_types::common::{Link, LinkRel, MediaType};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 
-use ogcapi_entities::tiles::{
-    TileMatrix, TileMatrixSet, TileMatrixSetItem, TileMatrixSets, TileSets,
-};
+use ogcapi_types::tiles::{TileMatrix, TileMatrixSet, TileMatrixSetItem, TileMatrixSets, TileSets};
 
 use crate::{Error, Result, State};
 
@@ -30,7 +28,7 @@ const CONFORMANCE: [&str; 7] = [
 ];
 
 const WEB_MERCARTOR_QUAD: &[u8; 8005] =
-    include_bytes!("../../../ogcapi-entities/src/tiles/examples/WebMercartorQuad.json");
+    include_bytes!("../../../ogcapi-types/src/tiles/examples/WebMercartorQuad.json");
 
 static TMS: OnceCell<HashMap<String, TileMatrixSet>> = OnceCell::new();
 static TM: OnceCell<HashMap<String, HashMap<String, TileMatrix>>> = OnceCell::new();

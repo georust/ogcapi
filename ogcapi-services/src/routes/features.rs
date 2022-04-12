@@ -16,8 +16,8 @@ use url::Position;
 
 use crate::extractors::{Qs, RemoteUrl};
 use crate::{Error, Result, State};
-use ogcapi_entities::common::{Bbox, Crs, Link, LinkRel, MediaType};
-use ogcapi_entities::features::{Feature, FeatureCollection, Query};
+use ogcapi_types::common::{Bbox, Crs, Link, LinkRel, MediaType};
+use ogcapi_types::features::{Feature, FeatureCollection, Query};
 
 const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",

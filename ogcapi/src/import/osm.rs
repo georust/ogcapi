@@ -8,7 +8,7 @@ use url::Url;
 
 use crate::import::boundaries;
 use ogcapi_drivers::postgres::Db;
-use ogcapi_entities::common::{Collection, Crs};
+use ogcapi_types::common::{Collection, Crs};
 
 use super::Args;
 

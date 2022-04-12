@@ -7,8 +7,8 @@ use url::Url;
 use uuid::Uuid;
 
 use ogcapi_drivers::postgres::Db;
-use ogcapi_entities::common::{Collection, Crs, Link, LinkRel, MediaType};
-use ogcapi_entities::features::Feature;
+use ogcapi_types::common::{Collection, Crs, Link, LinkRel, MediaType};
+use ogcapi_types::features::Feature;
 
 async fn spawn_app() -> anyhow::Result<SocketAddr> {
     dotenv::dotenv().ok();
