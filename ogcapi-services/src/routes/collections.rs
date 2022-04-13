@@ -11,7 +11,7 @@ use chrono::Utc;
 use url::Position;
 
 use crate::{extractors::RemoteUrl, Result, State};
-use ogcapi_entities::common::{Collection, Collections, Crs, Link, LinkRel, MediaType};
+use ogcapi_types::common::{Collection, Collections, Crs, Link, LinkRel, MediaType};
 
 const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",

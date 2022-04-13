@@ -13,10 +13,10 @@ async fn edr() -> anyhow::Result<()> {
     use url::Url;
     use uuid::Uuid;
 
-    use ogcapi_cli::import::{self, Args};
-    use ogcapi_entities::common::Crs;
-    use ogcapi_entities::edr::Query;
-    use ogcapi_entities::features::FeatureCollection;
+    use ogcapi::import::{self, Args};
+    use ogcapi_types::common::Crs;
+    use ogcapi_types::edr::Query;
+    use ogcapi_types::features::FeatureCollection;
 
     // setup app
     dotenv::dotenv().ok();
@@ -49,7 +49,7 @@ async fn edr() -> anyhow::Result<()> {
     // load data
     import::ogr::load(
         Args {
-            input: PathBuf::from_str("../ogcapi-cli/data/ne_10m_admin_0_countries.geojson")?,
+            input: PathBuf::from_str("../ogcapi/data/ne_10m_admin_0_countries.geojson")?,
             collection: Some("countries".to_string()),
             ..Default::default()
         },
@@ -59,7 +59,7 @@ async fn edr() -> anyhow::Result<()> {
 
     import::ogr::load(
         Args {
-            input: PathBuf::from_str("../ogcapi-cli/data/ne_10m_populated_places.geojson")?,
+            input: PathBuf::from_str("../ogcapi/data/ne_10m_populated_places.geojson")?,
             collection: Some("places".to_string()),
             ..Default::default()
         },
@@ -69,7 +69,7 @@ async fn edr() -> anyhow::Result<()> {
 
     import::ogr::load(
         Args {
-            input: PathBuf::from_str("../ogcapi-cli/data/ne_10m_railroads.geojson")?,
+            input: PathBuf::from_str("../ogcapi/data/ne_10m_railroads.geojson")?,
             collection: Some("railroads".to_string()),
             ..Default::default()
         },

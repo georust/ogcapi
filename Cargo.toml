@@ -1,8 +1,9 @@
 [workspace]
 
 members = [
-    "ogcapi-cli",
+    "ogcapi",
     "ogcapi-drivers",
-    "ogcapi-entities",
     "ogcapi-services",
+    "ogcapi-types",
 ]
+default-members = ["ogcapi"]

@@ -12,11 +12,11 @@ use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use ogcapi_drivers::postgres::Db;
-use ogcapi_entities::common::{Conformance, LandingPage, Link, LinkRel, MediaType};
+use ogcapi_types::common::{Conformance, LandingPage, Link, LinkRel, MediaType};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-static OPENAPI: &[u8; 29762] = include_bytes!("../openapi.yaml");
+static OPENAPI: &[u8; 29758] = include_bytes!("../openapi.yaml");
 
 #[derive(Clone)]
 pub struct State {
@@ -34,8 +34,8 @@ pub async fn server(db: Db) -> Router {
     let remote = openapi.servers[0].url.to_owned();
 
     let root = Arc::new(RwLock::new(LandingPage {
-        title: Some(openapi.info.title.clone()),
-        description: openapi.info.description.clone(),
+        title: Some(openapi.info.title.to_owned()),
+        description: openapi.info.description.to_owned(),
         links: vec![
             Link::new(&remote, LinkRel::default())
                 .title("This document")

@@ -9,7 +9,7 @@ use axum::{
 };
 use chrono::Utc;
 
-use ogcapi_entities::{
+use ogcapi_types::{
     common::{Link, LinkRel, MediaType},
     edr::{Query, QueryType},
     features::{Feature, FeatureCollection},

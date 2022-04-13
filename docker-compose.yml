@@ -7,8 +7,65 @@ services:
       POSTGRES_DB: ${DB_NAME}
     ports:
       - ${DB_PORT}:5432
-  teamengine:
-    image: ogccite/ets-ogcapi-features10:latest
-    # image: ogccite/ets-ogcapi-edr10:latest
+  db-migrations:
+    build:
+      context: .
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    command: 
+      - /bin/bash 
+      - -c
+      - |
+        until PGPASSWORD="${DB_PASSWORD}" psql -h "db" -U "${DB_USER}" -p "5432" -d "postgres" -c '\q'; do
+          sleep 1
+        done
+        sqlx database setup --source ogcapi-drivers/migrations
+  server:
+    build:
+      context: .
+    environment:
+      - RUST_LOG=${RUST_LOG}
+      - APP_HOST=${APP_HOST}
+      - APP_PORT=${APP_PORT}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    volumes:
+      - ./ogcapi-drivers/src:/app/ogcapi-drivers/src:ro
+      - ./ogcapi-drivers/Cargo.toml:/app/ogcapi-drivers/Cargo.toml:ro
+      - ./ogcapi-drivers/migrations:/app/ogcapi-drivers/migrations:ro
+      - ./ogcapi-services/src:/app/ogcapi-services/src:ro
+      - ./ogcapi-services/Cargo.toml:/app/ogcapi-services/Cargo.toml:ro
+      - ./ogcapi-types/src:/app/ogcapi-types/src:ro
+      - ./ogcapi-types/Cargo.toml:/app/ogcapi-types/Cargo.toml:ro
+    command: 
+      - /bin/bash 
+      - -c
+      - |
+        until PGPASSWORD="${DB_PASSWORD}" psql -h "db" -U "${DB_USER}" -p "5432" -d "postgres" -c '\q'; do
+          sleep 1
+        done
+        cargo watch --poll -x 'run -- serve'
     ports:
-      - 8081:8080
+      - ${APP_PORT}:${APP_PORT}
+  cli:
+    build:
+      context: .
+    container_name: ogcapi
+    environment:
+      - RUST_LOG=${RUST_LOG}
+      - APP_HOST=${APP_HOST}
+      - APP_PORT=${APP_PORT}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    volumes:
+      - ./ogcapi/data:/app/ogcapi/data:ro
+      - ./ogcapi/src:/app/ogcapi/src:ro
+      - ./ogcapi/Cargo.toml:/app/ogcapi/Cargo.toml:ro
+      - ./ogcapi-drivers/src:/app/ogcapi-drivers/src:ro
+      - ./ogcapi-drivers/Cargo.toml:/app/ogcapi-drivers/Cargo.toml:ro
+      - ./ogcapi-drivers/migrations:/app/ogcapi-drivers/migrations:ro
+      - ./ogcapi-services/src:/app/ogcapi-services/src:ro
+      - ./ogcapi-services/Cargo.toml:/app/ogcapi-services/Cargo.toml:ro
+      - ./ogcapi-types/src:/app/ogcapi-types/src:ro
+      - ./ogcapi-types/Cargo.toml:/app/ogcapi-types/Cargo.toml:ro
+    command: tail -f /dev/null

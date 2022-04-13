@@ -4,8 +4,8 @@ use axum::{Json, Router};
 use serde_json::Value;
 
 use crate::{Result, State};
-use ogcapi_entities::common::Links;
-use ogcapi_entities::styles::{Style, Styles, Stylesheet};
+use ogcapi_types::common::Links;
+use ogcapi_types::styles::{Style, Styles, Stylesheet};
 
 async fn styles(Extension(state): Extension<State>) -> Result<Json<Styles>> {
     let styles = sqlx::query_as!(
