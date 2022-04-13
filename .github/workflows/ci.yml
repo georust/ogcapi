@@ -1,0 +1,58 @@
+name: Rust
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Start postgres container
+        run: docker-compose up db -d
+
+      - name: Migrate database
+        run: docker-compose up db-migrations -d
+
+      - name: Run cargo test
+        run: docker-compose up cli -d
+        run: docker exec -ti ogcapi cargo test --workspace
+
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Check format
+        run: docker-compose up cli -d
+        run: docker exec -ti ogcapi cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Start postgres container
+        run: docker-compose up db -d
+
+      - name: Migrate database
+        run: docker-compose up db-migrations -d
+
+      - name: Run clippy
+        run: docker-compose up cli -d
+        run: docker exec -ti ogcapi cargo clippy -- -D warnings

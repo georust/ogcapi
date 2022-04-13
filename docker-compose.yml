@@ -51,7 +51,7 @@ services:
   cli:
     build:
       context: .
-    container_name: ogcapi_cli
+    container_name: ogcapi
     environment:
       - RUST_LOG=${RUST_LOG}
       - APP_HOST=${APP_HOST}

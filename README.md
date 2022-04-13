@@ -12,7 +12,7 @@ This will take a while and use quite some disk space
 docker-compose up
 
 # Import administrative bounaries
-docker exec -ti ogcapi_cli cargo run -- import ogcapi/data/ne_10m_admin_0_countries.geojson --collection countries
+docker exec -ti ogcapi cargo run -- import ogcapi/data/ne_10m_admin_0_countries.geojson --collection countries
 ```
 
 Open <http://localhost:8484/> were you will find the landing page.
