@@ -25,6 +25,8 @@ services:
   server:
     build:
       context: .
+      args:
+        - CARGO_WATCH=true
     environment:
       - RUST_LOG=${RUST_LOG}
       - APP_HOST=${APP_HOST}

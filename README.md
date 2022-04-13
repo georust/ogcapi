@@ -1,5 +1,7 @@
 # OGC API
 
+[![build badge](https://github.com/camptocamp/ogcapi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/camptocamp/ogcapi/actions/workflows/ci.yml)
+
 [OGC API](https://ogcapi.ogc.org/) implementation in Rust leveraging [axum](https://github.com/tokio-rs/axum) and [SQLx](https://github.com/launchbadge/sqlx)
 
 
@@ -34,7 +36,7 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 ```bash
 # Setup the database
-docker-compose up db
+docker-compose up db db-migrations
 
 # Run tests
 cargo test --workspace
