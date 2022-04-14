@@ -15,44 +15,19 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Setup compose
+        run: docker-compose up -d db db-migrations cli
+
+      - name: Format
+        run: docker exec -i ogcapi cargo fmt --all -- --check
       
-      - name: Start postgres container
-        run: docker-compose up db -d
+      - name: Clippy
+        run: docker exec -i ogcapi cargo clippy -- -D warnings
 
-      - name: Migrate database
-        run: docker-compose up db-migrations -d
-
-      - name: Run cargo test
-        run: docker-compose up cli -d
-        run: docker exec -ti ogcapi cargo test --workspace
-
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        
-      - name: Check format
-        run: docker-compose up cli -d
-        run: docker exec -ti ogcapi cargo fmt --all -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Start postgres container
-        run: docker-compose up db -d
-
-      - name: Migrate database
-        run: docker-compose up db-migrations -d
-
-      - name: Run clippy
-        run: docker-compose up cli -d
-        run: docker exec -ti ogcapi cargo clippy -- -D warnings
+      - name: Test
+        run: docker exec -i ogcapi cargo test --workspace
