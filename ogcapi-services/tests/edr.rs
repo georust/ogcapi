@@ -47,30 +47,30 @@ async fn edr() -> anyhow::Result<()> {
     let client = hyper::Client::new();
 
     // load data
-    import::ogr::load(
+    import::geojson::load(
         Args {
             input: PathBuf::from_str("../ogcapi/data/ne_10m_admin_0_countries.geojson")?,
-            collection: Some("countries".to_string()),
+            collection: "countries".to_string(),
             ..Default::default()
         },
         &database_url,
     )
     .await?;
 
-    import::ogr::load(
+    import::geojson::load(
         Args {
             input: PathBuf::from_str("../ogcapi/data/ne_10m_populated_places.geojson")?,
-            collection: Some("places".to_string()),
+            collection: "places".to_string(),
             ..Default::default()
         },
         &database_url,
     )
     .await?;
 
-    import::ogr::load(
+    import::geojson::load(
         Args {
             input: PathBuf::from_str("../ogcapi/data/ne_10m_railroads.geojson")?,
-            collection: Some("railroads".to_string()),
+            collection: "railroads".to_string(),
             ..Default::default()
         },
         &database_url,

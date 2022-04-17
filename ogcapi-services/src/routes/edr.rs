@@ -29,6 +29,8 @@ async fn query(
     Qs(query): Qs<Query>,
     Extension(state): Extension<State>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
+    tracing::debug!("{:#?}", query);
+
     let srid: i32 = query.crs.clone().try_into().unwrap();
     let storage_srid = state.db.storage_srid(&collection_id).await?;
 

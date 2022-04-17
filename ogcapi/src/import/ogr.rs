@@ -78,13 +78,10 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
         let transform = CoordTransform::new(&spatial_ref_src, &spatial_ref_dst)?;
 
         // Create collection
-        let title = args.collection.to_owned().unwrap_or_else(|| layer.name());
         let storage_crs = Crs::from(spatial_ref_dst.auth_code()?);
 
         let collection = Collection {
-            id: title.to_lowercase().replace(' ', "_"),
-            title: Some(title),
-            links: serde_json::from_str("[]")?,
+            id: args.collection.to_owned(),
             crs: Some(vec![Crs::default(), storage_crs.clone()]),
             extent: layer.try_get_extent()?.map(|e| {
                 let mut x = [e.MinX, e.MaxX];

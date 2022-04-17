@@ -48,11 +48,15 @@ async fn main() -> anyhow::Result<()> {
     match app.command {
         #[cfg(feature = "import")]
         Command::Import(args) => {
-            // Import data
-            if args.input.extension() == Some(std::ffi::OsStr::new("pbf")) {
-                ogcapi::import::osm::load(args, &app.database_url).await?
-            } else {
-                ogcapi::import::ogr::load(args, &app.database_url).await?
+            if let Some(extension) = args.input.extension() {
+                match extension.to_str() {
+                    Some("pbf") => ogcapi::import::osm::load(args, &app.database_url).await?,
+                    Some("geojson") => {
+                        tracing::debug!("Using geojson loader ...");
+                        ogcapi::import::geojson::load(args, &app.database_url).await?
+                    }
+                    _ => ogcapi::import::ogr::load(args, &app.database_url).await?,
+                }
             }
         }
         #[cfg(feature = "serve")]

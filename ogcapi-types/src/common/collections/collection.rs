@@ -27,6 +27,7 @@ pub struct Collection {
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub storage_crs: Option<Crs>,
     pub storage_crs_coordinate_epoch: Option<f32>,
+    #[serde(default)]
     pub links: Links,
     pub stac_version: Option<String>,
     pub stac_extensions: Option<Vec<String>>,

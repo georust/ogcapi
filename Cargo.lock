@@ -1245,6 +1245,7 @@ dependencies = [
  "dotenv",
  "gdal",
  "geo",
+ "geojson",
  "ogcapi_drivers",
  "ogcapi_services",
  "ogcapi_types",

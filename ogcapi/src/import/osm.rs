@@ -18,15 +18,12 @@ pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
     let db = Db::setup(database_url).await?;
 
     // Create collection
-    let title = args.collection.unwrap_or_else(|| "OSM".to_string());
     let collection = Collection {
-        id: title.to_lowercase().replace(' ', "_"),
-        title: Some(title.to_string()),
-        links: serde_json::from_str("[]")?,
+        id: args.collection.to_owned(),
         crs: Some(vec![Crs::default()]),
         ..Default::default()
     };
-    db.delete_collection(&collection.id).await?;
+    // db.delete_collection(&collection.id).await?;
     db.insert_collection(&collection).await?;
 
     // Open file
