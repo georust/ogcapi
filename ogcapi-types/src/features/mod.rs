@@ -31,49 +31,24 @@ pub struct FeatureCollection {
 pub struct Feature {
     pub id: Option<i64>,
     pub collection: Option<String>,
-    #[serde(rename = "type")]
-    pub feature_type: Json<FeatureType>,
+    pub r#type: Json<String>,
     #[serialize_always]
     pub properties: Option<Json<HashMap<String, Value>>>,
     pub geometry: Json<Geometry>,
-    pub links: Option<Json<Links>>,
-    pub stac_version: Option<String>,
-    pub stac_extensions: Option<Vec<String>>,
-    pub assets: Option<Json<Assets>>,
-    pub bbox: Option<Json<Bbox>>,
-}
-
-#[derive(sqlx::Type, Deserialize, Serialize, Debug, PartialEq)]
-pub enum FeatureType {
-    Feature,
-    Unknown,
-}
-
-/// Dictionary of asset objects that can be downloaded, each with a unique key.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct Assets {
-    #[serde(flatten)]
-    inner: HashMap<String, Asset>,
-}
-
-/// An asset is an object that contains a link to data associated
-/// with the Item that can be downloaded or streamed. It is allowed
-/// to add additional fields.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct Asset {
-    href: String,
-    title: String,
-    description: String,
-    #[serde(rename = "type")]
-    content_type: String, // TODO: use content type
-    roles: Vec<AssetRole>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-#[serde(rename_all = "lowercase")]
-enum AssetRole {
-    Thumbnail,
-    Overview,
-    Data,
-    Metadata,
+    #[serde(default)]
+    pub links: Json<Links>,
+    /// The STAC version the Item implements.
+    #[cfg(feature = "stac")]
+    pub stac_version: String,
+    /// A list of extensions the Item implements.
+    #[serde(default)]
+    #[cfg(feature = "stac")]
+    pub stac_extensions: Vec<String>,
+    /// Dictionary of asset objects that can be downloaded, each with a unique key.
+    #[serde(default)]
+    #[cfg(feature = "stac")]
+    pub assets: HashMap<String, crate::stac::Asset>,
+    /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
+    #[cfg(feature = "stac")]
+    pub bbox: Option<Bbox>,
 }

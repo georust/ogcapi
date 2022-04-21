@@ -17,7 +17,7 @@ docker-compose up
 docker exec -ti ogcapi cargo run -- import ogcapi/data/ne_10m_admin_0_countries.geojson --collection countries
 ```
 
-Open <http://localhost:8484/> were you will find the landing page.
+Open <http://localhost:8484> were you will find the landing page.
 
 ## Developing
 

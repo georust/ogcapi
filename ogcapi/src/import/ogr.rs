@@ -82,7 +82,7 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
 
         let collection = Collection {
             id: args.collection.to_owned(),
-            crs: Some(vec![Crs::default(), storage_crs.clone()]),
+            crs: vec![Crs::default(), storage_crs.clone()],
             extent: layer.try_get_extent()?.map(|e| {
                 let mut x = [e.MinX, e.MaxX];
                 let mut y = [e.MinY, e.MaxY];

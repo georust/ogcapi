@@ -20,7 +20,7 @@ pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
     // Create collection
     let collection = Collection {
         id: args.collection.to_owned(),
-        crs: Some(vec![Crs::default()]),
+        crs: vec![Crs::default()],
         ..Default::default()
     };
     // db.delete_collection(&collection.id).await?;
@@ -73,7 +73,7 @@ pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
             sqlx::query(&format!(
                 r#"INSERT INTO {} (
                     id,
-                    feature_type,
+                    type,
                     properties,
                     geom
                 ) VALUES ($1, '"Feature"', $2, ST_GeomFromWKB($3, 4326))"#,

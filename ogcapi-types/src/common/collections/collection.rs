@@ -1,90 +1,56 @@
-use std::collections::HashMap;
-
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use serde_with::{serde_as, DisplayFromStr};
 
-use crate::common::{Bbox, Crs, Links};
-
+use crate::common::{Crs, Extent, Links};
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
 #[serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Collection {
+    /// Must be set to `Collection` to be a valid Collection.
+    #[cfg(feature = "stac")]
+    pub r#type: String,
     pub id: String,
     pub title: Option<String>,
     pub description: Option<String>,
     pub keywords: Option<Vec<String>>,
+    /// Attribution for the collection.
     pub attribution: Option<String>,
     pub extent: Option<Extent>,
-    pub item_type: Option<ItemType>,
+    /// An indicator about the type of the items in the collection.
+    pub item_type: Option<String>,
+    /// The list of coordinate reference systems supported by the API; the first item is the default coordinate reference system.
     #[serde(default)]
-    #[serde_as(as = "Option<Vec<DisplayFromStr>>")]
-    pub crs: Option<Vec<Crs>>,
+    #[serde_as(as = "Vec<DisplayFromStr>")]
+    pub crs: Vec<Crs>,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub storage_crs: Option<Crs>,
     pub storage_crs_coordinate_epoch: Option<f32>,
     #[serde(default)]
     pub links: Links,
-    pub stac_version: Option<String>,
-    pub stac_extensions: Option<Vec<String>>,
-    pub licence: Option<String>,
-    pub providers: Option<Vec<Provider>>,
-    pub summaries: Option<HashMap<String, Value>>,
-}
-
-#[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
-pub struct Extent {
-    pub spatial: Option<SpatialExtent>,
-    pub temporal: Option<TemporalExtent>,
-}
-
-#[serde_as]
-#[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
-pub struct SpatialExtent {
-    pub bbox: Option<Vec<Bbox>>,
+    /// The STAC version the Collection implements.
+    #[cfg(feature = "stac")]
+    pub stac_version: String,
+    /// A list of extension identifiers the Collection implements.
     #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub crs: Option<Crs>,
-}
-
-#[serde_as]
-#[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
-pub struct TemporalExtent {
-    #[serde_as(as = "Option<Vec<Vec<Option<DisplayFromStr>>>>")]
-    pub interval: Option<Vec<Vec<Option<DateTime<Utc>>>>>,
-    pub trs: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum ItemType {
-    Feature,
-    Unknown,
-}
-
-/// A provider is any of the organizations that captures or processes the content
-/// of the collection and therefore influences the data offered by this collection.
-#[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
-pub struct Provider {
-    name: String,
-    description: Option<String>,
-    roles: Option<ProviderRole>,
-    url: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum ProviderRole {
-    Licensor,
-    Producer,
-    Processor,
-    Host,
+    #[cfg(feature = "stac")]
+    pub stac_extensions: Vec<String>,
+    /// Collection's license(s), either a SPDX License identifier, `various` if
+    /// multiple licenses apply or `proprietary` for all other cases.
+    #[cfg(feature = "stac")]
+    pub licence: String,
+    /// A list of providers, which may include all organizations capturing or processing the data or the hosting provider.
+    #[serde(default)]
+    #[cfg(feature = "stac")]
+    pub providers: Vec<crate::stac::Provider>,
+    /// A map of property summaries, either a set of values, a range of values or a JSON Schema.
+    #[serde(default)]
+    #[cfg(feature = "stac")]
+    pub summaries: std::collections::HashMap<String, serde_json::Value>,
+    /// Dictionary of asset objects that can be downloaded, each with a unique key.
+    #[serde(default)]
+    #[cfg(feature = "stac")]
+    pub assets: std::collections::HashMap<String, crate::stac::Asset>,
 }

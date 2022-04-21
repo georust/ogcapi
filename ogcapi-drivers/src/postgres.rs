@@ -76,13 +76,10 @@ impl Db {
             r#"
             CREATE TABLE IF NOT EXISTS items.{} (
                 id bigserial PRIMARY KEY,
-                feature_type jsonb NOT NULL DEFAULT '"Feature"'::jsonb,
+                type jsonb NOT NULL DEFAULT '"Feature"'::jsonb,
                 properties jsonb,
                 geom geometry NOT NULL,
-                links jsonb,
-                stac_version text,
-                stac_extensions text[],
-                assets jsonb
+                links jsonb NOT NULL DEFAULT '[]'::jsonb
             )
             "#,
             collection.id
@@ -170,25 +167,19 @@ impl Db {
         let id: (i64,) = sqlx::query_as(&format!(
             r#"
             INSERT INTO items.{0} (
-                feature_type,
+                type,
                 properties,
                 geom,
-                links,
-                stac_version,
-                stac_extensions,
-                assets
-            ) VALUES ($1, $2, ST_GeomFromGeoJSON($3), $4, $5, $6, $7)
+                links
+            ) VALUES ($1, $2, ST_GeomFromGeoJSON($3), $4)
             RETURNING id
             "#,
             &collection
         ))
-        .bind(&feature.feature_type)
+        .bind(&feature.r#type)
         .bind(&feature.properties)
         .bind(&feature.geometry)
         .bind(&feature.links)
-        .bind(&feature.stac_version)
-        .bind(&feature.stac_extensions.as_deref())
-        .bind(&feature.assets)
         .fetch_one(&self.pool)
         .await?;
 
@@ -206,14 +197,10 @@ impl Db {
             SELECT
                 id,
                 '{0}' AS collection,
-                feature_type,
+                type,
                 properties,
                 ST_AsGeoJSON(ST_Transform(geom, $2::int))::jsonb as geometry,
-                links,
-                stac_version,
-                stac_extensions,
-                ST_AsGeoJSON(ST_Transform(geom, $2::int), 9, 1)::jsonb -> 'bbox' AS bbox,
-                assets
+                links
             FROM items.{0}
             WHERE id = $1
             "#,
@@ -232,25 +219,19 @@ impl Db {
             r#"
             UPDATE items.{0}
             SET
-                feature_type = $2,
+                type = $2,
                 properties = $3,
                 geom = ST_GeomFromGeoJSON($4),
-                links = $5,
-                stac_version = $6,
-                stac_extensions = $7,
-                assets = $8
+                links = $5
             WHERE id = $1
             "#,
             &feature.collection.as_ref().unwrap()
         ))
         .bind(&feature.id)
-        .bind(&feature.feature_type)
+        .bind(&feature.r#type)
         .bind(&feature.properties)
         .bind(&feature.geometry)
         .bind(&feature.links)
-        .bind(&feature.stac_version)
-        .bind(&feature.stac_extensions.as_deref())
-        .bind(&feature.assets)
         .execute(&self.pool)
         .await?;
 

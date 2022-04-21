@@ -121,14 +121,10 @@ async fn query(
     let sql = vec![format!(
         "SELECT
             id,
-            feature_type,
+            type,
             {1},
             ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
             links,
-            stac_version,
-            stac_extensions,
-            ST_AsGeoJSON(ST_Transform(geom, $1), 9, 1)::jsonb -> 'bbox' as bbox,
-            assets,
             '{0}' as collection
         FROM items.{0}
         WHERE {2}",
@@ -147,7 +143,7 @@ async fn query(
         .await?;
 
     for feature in features.iter_mut() {
-        feature.links = Some(sqlx::types::Json(vec![Link::new(
+        feature.links = sqlx::types::Json(vec![Link::new(
             format!(
                 "{}/collections/{}/items/{}",
                 &state.remote,
@@ -156,7 +152,7 @@ async fn query(
             ),
             LinkRel::default(),
         )
-        .mime(MediaType::GeoJSON)]))
+        .mime(MediaType::GeoJSON)])
     }
 
     let number_returned = features.len();

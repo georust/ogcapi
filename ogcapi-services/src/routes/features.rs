@@ -52,10 +52,10 @@ async fn read(
     let srid = crs.clone().try_into().ok();
     let mut feature = state.db.select_feature(&collection_id, &id, srid).await?;
 
-    feature.links = Some(sqlx::types::Json(vec![
+    feature.links = sqlx::types::Json(vec![
         Link::new(&url, LinkRel::default()).mime(MediaType::GeoJSON),
         Link::new(url.join(".")?, LinkRel::Collection).mime(MediaType::GeoJSON),
-    ]));
+    ]);
 
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -111,7 +111,7 @@ async fn items(
     let mut sql = vec![format!(
         "SELECT
             id,
-            feature_type,
+            type,
             properties,
             ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
             links,
@@ -190,7 +190,7 @@ async fn items(
         .await?;
 
     for feature in features.iter_mut() {
-        feature.links = Some(sqlx::types::Json(vec![Link::new(
+        feature.links = sqlx::types::Json(vec![Link::new(
             format!(
                 "{}/{}",
                 &url[..Position::AfterPath],
@@ -198,7 +198,7 @@ async fn items(
             ),
             LinkRel::default(),
         )
-        .mime(MediaType::GeoJSON)]))
+        .mime(MediaType::GeoJSON)])
     }
 
     let number_returned = features.len();

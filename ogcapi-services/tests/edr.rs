@@ -21,7 +21,7 @@ async fn edr() -> anyhow::Result<()> {
     // setup app
     dotenv::dotenv().ok();
 
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
     let mut database_url = Url::parse(&env::var("DATABASE_URL")?)?;
     let daatbase_name = Uuid::new_v4().to_string();

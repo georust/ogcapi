@@ -48,7 +48,7 @@ async fn collections(
             .mime(MediaType::JSON)
             .title("this document")],
         time_stamp: Some(Utc::now().to_rfc3339()),
-        crs: Some(vec![Crs::default(), Crs::from(4326)]),
+        crs: vec![Crs::default(), Crs::from(4326)],
         collections,
         ..Default::default()
     };

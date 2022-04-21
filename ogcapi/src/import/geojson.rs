@@ -1,6 +1,6 @@
 use geojson::GeoJson;
 use ogcapi_drivers::postgres::Db;
-use ogcapi_types::common::{Collection, Crs, ItemType};
+use ogcapi_types::common::{Collection, Crs};
 use serde_json::Value;
 use url::Url;
 
@@ -13,8 +13,8 @@ pub async fn load(args: Args, database_url: &Url) -> anyhow::Result<()> {
     // Create colection
     let collection = Collection {
         id: args.collection.to_owned(),
-        item_type: Some(ItemType::Feature),
-        crs: Some(vec![Crs::default(), Crs::from(4326), Crs::from(3857)]),
+        item_type: Some("Feature".to_string()),
+        crs: vec![Crs::default(), Crs::from(4326), Crs::from(3857)],
         storage_crs: Some(Crs::from(4326)),
         ..Default::default()
     };
@@ -36,7 +36,7 @@ pub async fn load(args: Args, database_url: &Url) -> anyhow::Result<()> {
                 sqlx::query(&format!(
                     r#"INSERT INTO items.{} (
                     id,
-                    feature_type,
+                    type,
                     properties,
                     geom
                 ) VALUES ($1, '"Feature"', $2, ST_GeomFromGeoJSON($3))"#,

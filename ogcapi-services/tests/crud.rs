@@ -49,7 +49,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             "http://localhost:8080/collections/test",
             LinkRel::default(),
         )],
-        crs: Some(vec![Crs::default()]),
+        crs: vec![Crs::default()],
         ..Default::default()
     };
 
