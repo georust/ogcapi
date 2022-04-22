@@ -40,7 +40,7 @@ async fn insert(
 }
 
 async fn read(
-    Path((collection_id, id)): Path<(String, i64)>,
+    Path((collection_id, id)): Path<(String, String)>,
     Qs(query): Qs<Query>,
     RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<State>,
@@ -73,7 +73,7 @@ async fn read(
 }
 
 async fn update(
-    Path((collection_id, id)): Path<(String, i64)>,
+    Path((collection_id, id)): Path<(String, String)>,
     Json(mut feature): Json<Feature>,
     Extension(state): Extension<State>,
 ) -> Result<StatusCode> {
@@ -86,7 +86,7 @@ async fn update(
 }
 
 async fn remove(
-    Path((collection_id, id)): Path<(String, i64)>,
+    Path((collection_id, id)): Path<(String, String)>,
     Extension(state): Extension<State>,
 ) -> Result<StatusCode> {
     state.db.delete_feature(&collection_id, &id).await?;
@@ -210,7 +210,7 @@ async fn items(
     let feature_collection = FeatureCollection {
         r#type: "FeatureCollection".to_string(),
         features: features.0,
-        links: Some(links),
+        links,
         time_stamp: Some(Utc::now().to_rfc3339()),
         number_matched: Some(number_matched),
         number_returned: Some(number_returned),

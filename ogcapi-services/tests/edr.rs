@@ -48,33 +48,36 @@ async fn edr() -> anyhow::Result<()> {
     // load data
     import::geojson::load(
         Args {
-            input: PathBuf::from_str("../ogcapi/data/ne_10m_admin_0_countries.geojson")?,
+            input: PathBuf::from_str("../ogcapi/data/ne_110m_admin_0_countries.geojson")?,
             collection: "countries".to_string(),
             ..Default::default()
         },
         &database_url,
+        false,
     )
     .await?;
 
     import::geojson::load(
         Args {
-            input: PathBuf::from_str("../ogcapi/data/ne_10m_populated_places.geojson")?,
+            input: PathBuf::from_str("../ogcapi/data/ne_110m_populated_places.geojson")?,
             collection: "places".to_string(),
             ..Default::default()
         },
         &database_url,
+        false,
     )
     .await?;
 
-    import::geojson::load(
-        Args {
-            input: PathBuf::from_str("../ogcapi/data/ne_10m_railroads.geojson")?,
-            collection: "railroads".to_string(),
-            ..Default::default()
-        },
-        &database_url,
-    )
-    .await?;
+    // import::geojson::load(
+    //     Args {
+    //         input: PathBuf::from_str("../ogcapi/data/ne_10m_railroads_north_america.geojson")?,
+    //         collection: "railroads".to_string(),
+    //         ..Default::default()
+    //     },
+    //     &database_url,
+    //     false,
+    // )
+    // .await?;
 
     // query position
     let query = Query {
@@ -115,7 +118,7 @@ async fn edr() -> anyhow::Result<()> {
 
     // query area
     let query = Query {
-        coords: "POLYGON((7 46, 7 48, 9 48, 9 46, 7 46))".to_string(),
+        coords: "POLYGON((6 45, 6 49, 9 49, 9 45, 6 45))".to_string(),
         parameter_name: Some("NAME,ISO_A2,ADM0NAME".to_string()),
         ..Default::default()
     };
@@ -138,8 +141,8 @@ async fn edr() -> anyhow::Result<()> {
     let body = hyper::body::to_bytes(res.into_body()).await?;
     let fc: FeatureCollection = serde_json::from_slice(&body)?;
 
-    assert_eq!(fc.number_matched, Some(19));
-    assert_eq!(fc.number_returned, Some(19));
+    assert_eq!(fc.number_matched, Some(2));
+    assert_eq!(fc.number_returned, Some(2));
     let feature = &fc
         .features
         .into_iter()

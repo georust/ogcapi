@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use serde_with::{serde_as, DisplayFromStr};
 
 use crate::common::{Crs, Extent, Links};
@@ -10,6 +11,7 @@ use crate::common::{Crs, Extent, Links};
 pub struct Collection {
     /// Must be set to `Collection` to be a valid Collection.
     #[cfg(feature = "stac")]
+    #[serde(default = "collection")]
     pub r#type: String,
     pub id: String,
     pub title: Option<String>,
@@ -32,15 +34,17 @@ pub struct Collection {
     pub links: Links,
     /// The STAC version the Collection implements.
     #[cfg(feature = "stac")]
+    #[serde(rename = "stac_version")]
     pub stac_version: String,
-    /// A list of extension identifiers the Collection implements.
+    // /// A list of extension identifiers the Collection implements.
     #[serde(default)]
     #[cfg(feature = "stac")]
+    #[serde(rename = "stac_extensions")]
     pub stac_extensions: Vec<String>,
     /// Collection's license(s), either a SPDX License identifier, `various` if
     /// multiple licenses apply or `proprietary` for all other cases.
     #[cfg(feature = "stac")]
-    pub licence: String,
+    pub license: String,
     /// A list of providers, which may include all organizations capturing or processing the data or the hosting provider.
     #[serde(default)]
     #[cfg(feature = "stac")]
@@ -53,4 +57,11 @@ pub struct Collection {
     #[serde(default)]
     #[cfg(feature = "stac")]
     pub assets: std::collections::HashMap<String, crate::stac::Asset>,
+    #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
+    pub additional_properties: Map<String, Value>,
+}
+
+#[cfg(feature = "stac")]
+fn collection() -> String {
+    "Collection".to_string()
 }

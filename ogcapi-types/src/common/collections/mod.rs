@@ -11,7 +11,7 @@ use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 
 use crate::common::{Crs, Links};
 
-pub static CRS_REF: &str = "#/crs";
+pub const CRS_REF: &str = "#/crs";
 
 #[serde_as]
 #[skip_serializing_none]

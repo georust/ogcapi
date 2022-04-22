@@ -6,7 +6,7 @@ use url::Url;
 
 use super::Args;
 
-pub async fn load(args: Args, database_url: &Url) -> anyhow::Result<()> {
+pub async fn load(args: Args, database_url: &Url, show_pb: bool) -> anyhow::Result<()> {
     // Setup a db connection pool
     let db = Db::setup(database_url).await?;
 
@@ -33,6 +33,15 @@ pub async fn load(args: Args, database_url: &Url) -> anyhow::Result<()> {
             let mut pb = pbr::ProgressBar::new(fc.features.len() as u64);
 
             for (i, feature) in fc.features.iter_mut().enumerate() {
+                let id = if let Some(id) = &feature.id {
+                    match id {
+                        geojson::feature::Id::String(id) => id.to_owned(),
+                        geojson::feature::Id::Number(id) => id.to_string(),
+                    }
+                } else {
+                    i.to_string()
+                };
+
                 sqlx::query(&format!(
                     r#"
                     INSERT INTO items.{} (
@@ -44,13 +53,15 @@ pub async fn load(args: Args, database_url: &Url) -> anyhow::Result<()> {
                 "#,
                     collection.id
                 ))
-                .bind(i as i32)
+                .bind(id)
                 .bind(Value::from(feature.properties.take().unwrap()))
                 .bind(feature.geometry.take().unwrap().value.to_string())
                 .execute(&mut tx)
                 .await?;
 
-                pb.inc();
+                if show_pb {
+                    pb.inc();
+                }
             }
             pb.finish_println("");
 

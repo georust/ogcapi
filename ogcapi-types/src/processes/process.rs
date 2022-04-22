@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub use crate::common::Links;
+use crate::common::Links;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Process {

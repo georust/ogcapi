@@ -74,8 +74,8 @@ impl Db {
 
         sqlx::query(&format!(
             r#"
-            CREATE TABLE IF NOT EXISTS items.{} (
-                id bigserial PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS items.{0} (
+                id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
                 type text NOT NULL DEFAULT 'Feature',
                 properties jsonb,
                 geom geometry NOT NULL,
@@ -168,7 +168,7 @@ impl Db {
     pub async fn insert_feature(&self, feature: &Feature) -> Result<String, anyhow::Error> {
         let collection = feature.collection.as_ref().unwrap();
 
-        let id: (i64,) = sqlx::query_as(&format!(
+        let id: (String,) = sqlx::query_as(&format!(
             r#"
             INSERT INTO items.{0} (
                 type,
@@ -193,7 +193,7 @@ impl Db {
     pub async fn select_feature(
         &self,
         collection: &str,
-        id: &i64,
+        id: &str,
         crs: Option<i32>,
     ) -> Result<Feature, anyhow::Error> {
         let feature: Json<Feature> = sqlx::query_scalar(&format!(
@@ -245,7 +245,7 @@ impl Db {
         Ok(())
     }
 
-    pub async fn delete_feature(&self, collection: &str, id: &i64) -> Result<(), anyhow::Error> {
+    pub async fn delete_feature(&self, collection: &str, id: &str) -> Result<(), anyhow::Error> {
         sqlx::query(&format!("DELETE FROM items.{} WHERE id = $1", collection))
             .bind(id)
             .execute(&self.pool)

@@ -4,6 +4,14 @@ version = "0.1.0"
 license = "GPL-3.0-only"
 edition = "2021"
 
+[features]
+default = ["common", "features", "edr", "processes", "styles", "tiles"]
+common = []
+features = []
+edr = ["rink-core"]
+processes = []
+styles = []
+tiles = []
 
 [dependencies]
 anyhow = "1.0.56"
@@ -16,7 +24,7 @@ once_cell = "1.10.0"
 openapiv3 = "1.0.1"
 rink-core = { version = "0.6.2", optional = true }
 serde = "1.0.136"
-serde_with = "1.12.1"
+serde_with = "1.13.0"
 serde_json = "1.0.79"
 serde_yaml = "0.8.23"
 serde_qs = "0.9.1"
@@ -36,14 +44,3 @@ ogcapi_drivers = { path = "../ogcapi-drivers" }
 [dev-dependencies]
 geojson = "0.22.3"
 ogcapi = { path = "../ogcapi" }
-
-
-[features]
-default = ["drivers", "common", "features", "processes", "styles", "tiles", "edr"]
-drivers = []
-common = []
-features = []
-processes = []
-styles = []
-tiles = []
-edr = ["rink-core"]

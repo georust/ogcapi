@@ -71,7 +71,7 @@ pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
             geometry_from_obj(&obj, &objs).and_then(|g| wkb::geom_to_wkb(&g).ok())
         {
             sqlx::query(&format!(
-                r#"INSERT INTO {} (
+                r#"INSERT INTO items.{} (
                     id,
                     type,
                     properties,
@@ -79,7 +79,7 @@ pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
                 ) VALUES ($1, '"Feature"', $2, ST_GeomFromWKB($3, 4326))"#,
                 collection.id
             ))
-            .bind(id as i32)
+            .bind(id.to_string())
             .bind(Value::from(properties) as Value)
             .bind(geometry as Vec<u8>)
             .execute(&mut tx)

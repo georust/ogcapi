@@ -19,7 +19,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 static OPENAPI: &[u8; 29758] = include_bytes!("../openapi.yaml");
 
 #[derive(Clone)]
-pub struct State {
+struct State {
     db: Db,
     // collections: Arc<RwLock<HashMap<String, Collection>>>,
     root: Arc<RwLock<LandingPage>>,

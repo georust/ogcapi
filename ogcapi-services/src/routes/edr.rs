@@ -168,7 +168,7 @@ async fn query(
     let feature_collection = FeatureCollection {
         r#type: "FeatureCollection".to_string(),
         features: features.0,
-        links: None,
+        links: Vec::new(),
         time_stamp: Some(Utc::now().to_rfc3339()),
         number_matched: Some(number_matched),
         number_returned: Some(number_returned),
@@ -188,7 +188,7 @@ async fn query(
 
 // async fn instance() {}
 
-pub fn router(state: &State) -> Router {
+pub(crate) fn router(state: &State) -> Router {
     let mut conformance = state.conformance.write().unwrap();
     conformance
         .conforms_to
