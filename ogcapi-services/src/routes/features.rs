@@ -52,10 +52,10 @@ async fn read(
     let srid = crs.clone().try_into().ok();
     let mut feature = state.db.select_feature(&collection_id, &id, srid).await?;
 
-    feature.links = sqlx::types::Json(vec![
+    feature.links = vec![
         Link::new(&url, LinkRel::default()).mime(MediaType::GeoJSON),
         Link::new(url.join(".")?, LinkRel::Collection).mime(MediaType::GeoJSON),
-    ]);
+    ];
 
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -109,18 +109,16 @@ async fn items(
     let srid: Option<i32> = crs.clone().try_into().ok();
 
     let mut sql = vec![format!(
-        "SELECT
+        r#"
+        SELECT
             id,
             type,
             properties,
             ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
             links,
-            stac_version,
-            stac_extensions,
-            ST_AsGeoJSON(ST_Transform(geom, $1), 9, 1)::jsonb -> 'bbox' as bbox,
-            assets,
             '{0}' as collection
-        FROM items.{0}",
+        FROM items.{0}
+        "#,
         collection_id
     )];
 
@@ -184,13 +182,19 @@ async fn items(
         }
     }
 
-    let mut features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
-        .bind(&srid)
-        .fetch_all(&state.db.pool)
-        .await?;
+    let mut features: sqlx::types::Json<Vec<Feature>> = sqlx::query_scalar(&format!(
+        r#"
+        SELECT array_to_json(array_agg(row_to_json(t)))
+        FROM ( {} ) t
+        "#,
+        sql.join(" ")
+    ))
+    .bind(&srid)
+    .fetch_one(&state.db.pool)
+    .await?;
 
     for feature in features.iter_mut() {
-        feature.links = sqlx::types::Json(vec![Link::new(
+        feature.links = vec![Link::new(
             format!(
                 "{}/{}",
                 &url[..Position::AfterPath],
@@ -198,14 +202,14 @@ async fn items(
             ),
             LinkRel::default(),
         )
-        .mime(MediaType::GeoJSON)])
+        .mime(MediaType::GeoJSON)]
     }
 
     let number_returned = features.len();
 
     let feature_collection = FeatureCollection {
         r#type: "FeatureCollection".to_string(),
-        features,
+        features: features.0,
         links: Some(links),
         time_stamp: Some(Utc::now().to_rfc3339()),
         number_matched: Some(number_matched),

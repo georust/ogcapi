@@ -34,12 +34,14 @@ pub async fn load(args: Args, database_url: &Url) -> anyhow::Result<()> {
 
             for (i, feature) in fc.features.iter_mut().enumerate() {
                 sqlx::query(&format!(
-                    r#"INSERT INTO items.{} (
-                    id,
-                    type,
-                    properties,
-                    geom
-                ) VALUES ($1, '"Feature"', $2, ST_GeomFromGeoJSON($3))"#,
+                    r#"
+                    INSERT INTO items.{} (
+                        id,
+                        type,
+                        properties,
+                        geom
+                    ) VALUES ($1, 'Feature', $2, ST_GeomFromGeoJSON($3))
+                "#,
                     collection.id
                 ))
                 .bind(i as i32)

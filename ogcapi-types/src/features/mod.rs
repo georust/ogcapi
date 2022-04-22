@@ -7,7 +7,6 @@ use std::collections::HashMap;
 pub use geojson::{Bbox, Geometry};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::types::Json;
 
 use crate::common::Links;
 
@@ -27,16 +26,16 @@ pub struct FeatureCollection {
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
 #[serde_with::skip_serializing_none]
-#[derive(sqlx::FromRow, Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct Feature {
     pub id: Option<i64>,
     pub collection: Option<String>,
-    pub r#type: Json<String>,
+    pub r#type: String,
     #[serialize_always]
-    pub properties: Option<Json<HashMap<String, Value>>>,
-    pub geometry: Json<Geometry>,
+    pub properties: Option<HashMap<String, Value>>,
+    pub geometry: Geometry,
     #[serde(default)]
-    pub links: Json<Links>,
+    pub links: Links,
     /// The STAC version the Item implements.
     #[cfg(feature = "stac")]
     pub stac_version: String,

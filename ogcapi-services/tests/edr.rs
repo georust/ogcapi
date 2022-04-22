@@ -9,7 +9,6 @@ async fn edr() -> anyhow::Result<()> {
     use axum::http::Request;
     use geojson::{Geometry, Value};
     use ogcapi_drivers::postgres::Db;
-    use sqlx::types::Json;
     use url::Url;
     use uuid::Uuid;
 
@@ -108,9 +107,9 @@ async fn edr() -> anyhow::Result<()> {
     assert_eq!(fc.number_matched, Some(1));
     assert_eq!(fc.number_returned, Some(1));
     let feature = &fc.features[0];
-    assert_eq!(feature.properties.as_ref().unwrap().0.len(), 3);
+    assert_eq!(feature.properties.as_ref().unwrap().len(), 3);
     assert_eq!(
-        feature.properties.as_ref().unwrap().0["NAME"].as_str(),
+        feature.properties.as_ref().unwrap()["NAME"].as_str(),
         Some("Switzerland")
     );
 
@@ -144,7 +143,7 @@ async fn edr() -> anyhow::Result<()> {
     let feature = &fc
         .features
         .into_iter()
-        .find(|f| f.properties.as_ref().unwrap().0["NAME"].as_str() == Some("Bern"));
+        .find(|f| f.properties.as_ref().unwrap()["NAME"].as_str() == Some("Bern"));
     assert!(feature.is_some());
 
     // query radius
@@ -175,7 +174,7 @@ async fn edr() -> anyhow::Result<()> {
     let mut fc: FeatureCollection = serde_json::from_slice(&body)?;
 
     for mut feature in fc.features.iter_mut() {
-        feature.geometry = Json(Geometry::new(Value::Point(vec![0.0, 0.0])));
+        feature.geometry = Geometry::new(Value::Point(vec![0.0, 0.0]));
     }
 
     tracing::debug!("{}", serde_json::to_string_pretty(&fc.number_matched)?);

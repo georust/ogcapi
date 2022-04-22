@@ -76,7 +76,7 @@ impl Db {
             r#"
             CREATE TABLE IF NOT EXISTS items.{} (
                 id bigserial PRIMARY KEY,
-                type jsonb NOT NULL DEFAULT '"Feature"'::jsonb,
+                type text NOT NULL DEFAULT 'Feature',
                 properties jsonb,
                 geom geometry NOT NULL,
                 links jsonb NOT NULL DEFAULT '[]'::jsonb
@@ -125,13 +125,17 @@ impl Db {
     }
 
     pub async fn select_collection(&self, id: &str) -> Result<Collection, anyhow::Error> {
-        let collection: (Json<Collection>,) =
-            sqlx::query_as("SELECT collection FROM meta.collections WHERE id = $1")
-                .bind(id)
-                .fetch_one(&self.pool)
-                .await?;
+        let collection = sqlx::query_scalar!(
+            r#"
+            SELECT collection as "collection!: sqlx::types::Json<Collection>" 
+            FROM meta.collections WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_one(&self.pool)
+        .await?;
 
-        Ok(collection.0 .0)
+        Ok(collection.0)
     }
 
     pub async fn update_collection(&self, collection: &Collection) -> Result<(), anyhow::Error> {
@@ -177,9 +181,9 @@ impl Db {
             &collection
         ))
         .bind(&feature.r#type)
-        .bind(&feature.properties)
-        .bind(&feature.geometry)
-        .bind(&feature.links)
+        .bind(serde_json::to_value(&feature.properties)?)
+        .bind(serde_json::to_value(&feature.geometry)?)
+        .bind(serde_json::to_value(&feature.links)?)
         .fetch_one(&self.pool)
         .await?;
 
@@ -192,17 +196,20 @@ impl Db {
         id: &i64,
         crs: Option<i32>,
     ) -> Result<Feature, anyhow::Error> {
-        let feature: Feature = sqlx::query_as(&format!(
+        let feature: Json<Feature> = sqlx::query_scalar(&format!(
             r#"
-            SELECT
-                id,
-                '{0}' AS collection,
-                type,
-                properties,
-                ST_AsGeoJSON(ST_Transform(geom, $2::int))::jsonb as geometry,
-                links
-            FROM items.{0}
-            WHERE id = $1
+            SELECT row_to_json(t)
+            FROM (
+                SELECT
+                    id,
+                    '{0}' AS collection,
+                    type,
+                    properties,
+                    ST_AsGeoJSON(ST_Transform(geom, $2::int))::jsonb as geometry,
+                    links
+                FROM items.{0}
+                WHERE id = $1
+            ) t
             "#,
             collection
         ))
@@ -211,7 +218,7 @@ impl Db {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(feature)
+        Ok(feature.0)
     }
 
     pub async fn update_feature(&self, feature: &Feature) -> Result<(), anyhow::Error> {
@@ -229,9 +236,9 @@ impl Db {
         ))
         .bind(&feature.id)
         .bind(&feature.r#type)
-        .bind(&feature.properties)
-        .bind(&feature.geometry)
-        .bind(&feature.links)
+        .bind(serde_json::to_value(&feature.properties)?)
+        .bind(serde_json::to_value(&feature.geometry)?)
+        .bind(serde_json::to_value(&feature.links)?)
         .execute(&self.pool)
         .await?;
 

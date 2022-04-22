@@ -39,9 +39,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.56"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4361135be9122e0870de935d7c439aef945b9f9ddd4199a553b5270b49c82a27"
+checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
 
 [[package]]
 name = "approx"
@@ -291,9 +291,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.10"
+version = "3.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3124f3f75ce09e22d1410043e1e24f2ecc44fad3afe4f08408f1f7663d68da2b"
+checksum = "7c167e37342afc5f33fd87bbc870cedd020d2a6dffa05d45ccd9241fbdd146db"
 dependencies = [
  "atty",
  "bitflags",
@@ -665,9 +665,9 @@ dependencies = [
 
 [[package]]
 name = "geo"
-version = "0.19.0"
+version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61faf6a68f9432b5287c393268e86a07e4dfed79e6e0962b0e6e59b2f70c77d8"
+checksum = "d7e2e3be15682a45e9dfe9a04f84bff275390047204ab22f3c6b2312fcfb9e24"
 dependencies = [
  "geo-types",
  "geographiclib-rs",
@@ -1229,7 +1229,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
- "clap 3.1.10",
+ "clap 3.1.12",
  "dotenv",
  "gdal",
  "geo",
@@ -1255,6 +1255,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ogcapi_types",
+ "serde_json",
  "sqlx",
  "url",
 ]
@@ -1266,7 +1267,7 @@ dependencies = [
  "anyhow",
  "axum",
  "chrono",
- "clap 3.1.10",
+ "clap 3.1.12",
  "dotenv",
  "geojson",
  "hyper",
@@ -1302,7 +1303,6 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "serde_with",
- "sqlx",
 ]
 
 [[package]]
@@ -2331,9 +2331,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-log"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6923477a48e41c1951f1999ef8bb5a3023eb723ceadafe78ffb65dc366761e3"
+checksum = "78ddad33d2d10b1ed7eb9d1f518a5674713876e97e5bb9b7345a7984fbb4f922"
 dependencies = [
  "lazy_static",
  "log",

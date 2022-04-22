@@ -3,24 +3,23 @@ mod symcore;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::types::Json;
 
 use crate::common::Links;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Styles {
     pub styles: Vec<Style>,
 }
 
-#[derive(Serialize, Deserialize, Debug, sqlx::FromRow)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Style {
     pub id: String,
     pub title: Option<String>,
-    pub links: Json<Links>,
+    pub links: Links,
 }
 
-#[derive(Serialize, Deserialize, Debug, sqlx::FromRow)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Stylesheet {
     pub id: String,
-    pub value: Json<Value>,
+    pub value: Value,
 }

@@ -24,24 +24,24 @@ async fn collections(
     RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<State>,
 ) -> Result<Json<Collections>> {
-    let mut collections: Vec<sqlx::types::Json<Collection>> =
-        sqlx::query_scalar("SELECT collection FROM meta.collections")
-            .fetch_all(&state.db.pool)
+    let mut collections =
+        sqlx::query_scalar!(
+            r#"
+            SELECT array_to_json(array_agg(collection)) as "collections!: sqlx::types::Json<Vec<Collection>>" 
+            FROM meta.collections
+            "#)
+            .fetch_one(&state.db.pool)
             .await?;
 
-    let collections = collections
-        .iter_mut()
-        .map(|c| {
-            let base = &url[..Position::AfterPath];
-            c.0.links.append(&mut vec![
-                Link::new(format!("{}/{}", base, c.id), LinkRel::default()),
-                Link::new(format!("{}/{}/items", base, c.id), LinkRel::Items)
-                    .mime(MediaType::GeoJSON)
-                    .title(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id))),
-            ]);
-            c.0.to_owned()
-        })
-        .collect();
+    let base = &url[..Position::AfterPath];
+    collections.0.iter_mut().for_each(|c| {
+        c.links.append(&mut vec![
+            Link::new(format!("{}/{}", base, c.id), LinkRel::default()),
+            Link::new(format!("{}/{}/items", base, c.id), LinkRel::Items)
+                .mime(MediaType::GeoJSON)
+                .title(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id))),
+        ]);
+    });
 
     let collections = Collections {
         links: vec![Link::new(url, LinkRel::default())
@@ -49,7 +49,7 @@ async fn collections(
             .title("this document")],
         time_stamp: Some(Utc::now().to_rfc3339()),
         crs: vec![Crs::default(), Crs::from(4326)],
-        collections,
+        collections: collections.0,
         ..Default::default()
     };
 

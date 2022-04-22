@@ -118,8 +118,9 @@ async fn query(
         "properties".to_string()
     };
 
-    let sql = vec![format!(
-        "SELECT
+    let sql = format!(
+        r#"
+        SELECT
             id,
             type,
             {1},
@@ -127,23 +128,30 @@ async fn query(
             links,
             '{0}' as collection
         FROM items.{0}
-        WHERE {2}",
+        WHERE {2}
+        "#,
         collection_id, properties, spatial_predicate
-    )];
+    );
 
-    let number_matched = sqlx::query(sql.join(" ").as_str())
+    let number_matched = sqlx::query(&sql)
         .bind(srid)
         .execute(&state.db.pool)
         .await?
         .rows_affected();
 
-    let mut features: Vec<Feature> = sqlx::query_as(sql.join(" ").as_str())
-        .bind(&srid)
-        .fetch_all(&state.db.pool)
-        .await?;
+    let mut features: sqlx::types::Json<Vec<Feature>> = sqlx::query_scalar(&format!(
+        r#"
+        SELECT array_to_json(array_agg(row_to_json(t)))
+        FROM ( {} ) t
+        "#,
+        sql
+    ))
+    .bind(&srid)
+    .fetch_one(&state.db.pool)
+    .await?;
 
     for feature in features.iter_mut() {
-        feature.links = sqlx::types::Json(vec![Link::new(
+        feature.links = vec![Link::new(
             format!(
                 "{}/collections/{}/items/{}",
                 &state.remote,
@@ -152,14 +160,14 @@ async fn query(
             ),
             LinkRel::default(),
         )
-        .mime(MediaType::GeoJSON)])
+        .mime(MediaType::GeoJSON)]
     }
 
     let number_returned = features.len();
 
     let feature_collection = FeatureCollection {
         r#type: "FeatureCollection".to_string(),
-        features,
+        features: features.0,
         links: None,
         time_stamp: Some(Utc::now().to_rfc3339()),
         number_matched: Some(number_matched),
