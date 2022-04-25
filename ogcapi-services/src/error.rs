@@ -3,7 +3,8 @@ use axum::http::{header::CONTENT_TYPE, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 
-use ogcapi_types::common::{Exception, MediaType};
+use ogcapi_types::common::media_type::PROBLEM_JSON;
+use ogcapi_types::common::Exception;
 
 /// A common error type that can be used throughout the API.
 ///
@@ -65,10 +66,7 @@ impl IntoResponse for Error {
         let exception = Exception::new(status.as_u16()).detail(message);
 
         let mut headers = HeaderMap::new();
-        headers.insert(
-            CONTENT_TYPE,
-            MediaType::ProblemJSON.to_string().parse().unwrap(),
-        );
+        headers.insert(CONTENT_TYPE, PROBLEM_JSON.parse().unwrap());
 
         (status, headers, Json(exception)).into_response()
     }

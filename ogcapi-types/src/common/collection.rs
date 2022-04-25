@@ -1,11 +1,30 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 
 use crate::common::{Crs, Extent, Links};
+
+pub const CRS_REF: &str = "#/crs";
+
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Collections {
+    #[serde(default)]
+    pub links: Links,
+    pub time_stamp: Option<String>,
+    pub number_matched: Option<u64>,
+    pub number_returned: Option<u64>,
+    pub collections: Vec<Collection>,
+    #[serde(default)]
+    #[serde_as(as = "Vec<DisplayFromStr>")]
+    pub crs: Vec<Crs>,
+}
+
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
 #[serde_as]
-#[serde_with::skip_serializing_none]
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Collection {

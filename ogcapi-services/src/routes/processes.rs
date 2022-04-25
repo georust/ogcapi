@@ -9,7 +9,11 @@ use chrono::Utc;
 use url::{Position, Url};
 use uuid::Uuid;
 
-use ogcapi_types::common::{Link, LinkRel, MediaType};
+use ogcapi_types::common::{
+    link_rel::{JOB_LIST, NEXT, PREV, PROCESSES, SELF},
+    media_type::JSON,
+    Link,
+};
 use ogcapi_types::processes::{
     Execute, Process, ProcessList, ProcessQuery, ProcessSummary, Results, StatusInfo,
 };
@@ -36,7 +40,7 @@ async fn processes(
 
     let mut url: Url = format!("{}/processes", &state.remote).parse().unwrap();
 
-    let mut links = vec![Link::new(&url, LinkRel::default()).mime(MediaType::JSON)];
+    let mut links = vec![Link::new(&url, SELF).mime(JSON)];
 
     // pagination
     if let Some(limit) = query.limit {
@@ -56,7 +60,7 @@ async fn processes(
                 let query_string =
                     serde_qs::to_string(&query).context("failed to serialize query")?;
                 url.set_query(Some(&query_string));
-                let previous = Link::new(&url, LinkRel::Prev).mime(MediaType::JSON);
+                let previous = Link::new(&url, PREV).mime(JSON);
                 links.push(previous);
             }
 
@@ -65,7 +69,7 @@ async fn processes(
                 let query_string =
                     serde_qs::to_string(&query).context("failed to serialize query")?;
                 url.set_query(Some(&query_string));
-                let next = Link::new(&url, LinkRel::Next).mime(MediaType::JSON);
+                let next = Link::new(&url, NEXT).mime(JSON);
                 links.push(next);
             }
         }
@@ -79,12 +83,12 @@ async fn processes(
         processes: summaries
             .into_iter()
             .map(|mut p| {
-                p.0.links = vec![Link::new(
-                    format!("{}/{}", p.0.id, &url[..Position::AfterPath]),
-                    LinkRel::default(),
-                )
-                .mime(MediaType::JSON)
-                .title("process description")];
+                p.0.links =
+                    vec![
+                        Link::new(format!("{}/{}", p.0.id, &url[..Position::AfterPath]), SELF)
+                            .mime(JSON)
+                            .title("process description"),
+                    ];
                 p.0
             })
             .collect(),
@@ -110,11 +114,8 @@ async fn process(
     .fetch_one(&state.db.pool)
     .await?;
 
-    process.summary.links = vec![Link::new(
-        format!("{}/processes/{}", &state.remote, &id),
-        LinkRel::default(),
-    )
-    .mime(MediaType::JSON)];
+    process.summary.links =
+        vec![Link::new(format!("{}/processes/{}", &state.remote, &id), SELF).mime(JSON)];
 
     Ok(Json(process.0))
 }
@@ -173,7 +174,7 @@ async fn status(
     .fetch_one(&state.db.pool)
     .await?;
 
-    status.links = vec![Link::new(url, LinkRel::default()).mime(MediaType::JSON)];
+    status.links = vec![Link::new(url, SELF).mime(JSON)];
 
     Ok(Json(status.0))
 }
@@ -205,11 +206,11 @@ async fn results(
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
-        Link::new(format!("{}/processes", &state.remote), LinkRel::Processes)
-            .mime(MediaType::JSON)
+        Link::new(format!("{}/processes", &state.remote), PROCESSES)
+            .mime(JSON)
             .title("Metadata about the processes"),
-        Link::new(format!("{}/jobs", &state.remote), LinkRel::JobList)
-            .mime(MediaType::JSON)
+        Link::new(format!("{}/jobs", &state.remote), JOB_LIST)
+            .mime(JSON)
             .title("The endpoint for job monitoring"),
     ]);
 

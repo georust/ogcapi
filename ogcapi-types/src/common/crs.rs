@@ -1,65 +1,38 @@
-use std::str::FromStr;
-use std::{convert::TryFrom, fmt};
+use std::{convert::TryFrom, fmt, str};
 
 use serde::{Deserialize, Serialize};
 
-// Default CRS
-pub static OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"; // for coordinates without height
-                                                                             // static OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h"; // for coordinates with height
+/// Default CRS for coordinates without height
+pub const OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84";
 
-/// CRS Authorities
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum CrsAuthority {
-    OGC,
-    EPSG,
-}
-
-impl fmt::Display for CrsAuthority {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            CrsAuthority::OGC => write!(f, "OGC"),
-            CrsAuthority::EPSG => write!(f, "EPSG"),
-        }
-    }
-}
-
-impl FromStr for CrsAuthority {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "OGC" => Ok(CrsAuthority::OGC),
-            "EPSG" => Ok(CrsAuthority::EPSG),
-            _ => Err("Unknown crs authority!"),
-        }
-    }
-}
+/// Default CRS for coordinates with height
+pub const OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h";
 
 /// Coordinate Reference System (CRS)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Crs {
-    pub authority: CrsAuthority,
+    pub authority: Authority,
     pub version: String,
     pub code: String,
 }
 
 impl Crs {
-    pub fn new(authority: CrsAuthority, version: &str, code: &str) -> Crs {
+    pub fn new(authority: Authority, version: impl ToString, code: impl ToString) -> Crs {
         Crs {
             authority,
-            version: version.to_owned(),
-            code: code.to_owned(),
+            version: version.to_string(),
+            code: code.to_string(),
         }
     }
 
     pub fn ogc_to_epsg(&self) -> Option<Crs> {
         match self.authority {
-            CrsAuthority::OGC => match self.code.as_str() {
+            Authority::OGC => match self.code.as_str() {
                 "CRS84" => Some(4326.into()),
                 "CRS84h" => Some(4979.into()),
                 _ => None,
             },
-            CrsAuthority::EPSG => Some(self.to_owned()),
+            Authority::EPSG => Some(self.to_owned()),
         }
     }
 
@@ -85,20 +58,17 @@ impl fmt::Display for Crs {
     }
 }
 
-impl FromStr for Crs {
+impl str::FromStr for Crs {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // TODO: handle urn
         let parts: Vec<&str> = s
             .trim_start_matches("http://www.opengis.net/def/crs/")
             .split('/')
             .collect();
         match parts.len() {
-            3 => Ok(Crs::new(
-                CrsAuthority::from_str(parts[0])?,
-                parts[1],
-                parts[2],
-            )),
+            3 => Ok(Crs::new(Authority::from_str(parts[0])?, parts[1], parts[2])),
             _ => Err("Unable to parse CRS from string!"),
         }
     }
@@ -106,13 +76,17 @@ impl FromStr for Crs {
 
 impl Default for Crs {
     fn default() -> Crs {
-        Crs::from_str(OGC_CRS84).unwrap()
+        Crs {
+            authority: Authority::OGC,
+            version: "1.3".to_string(),
+            code: "CRS84".to_string(),
+        }
     }
 }
 
 impl From<i32> for Crs {
     fn from(epsg_code: i32) -> Self {
-        Crs::new(CrsAuthority::EPSG, "0", &epsg_code.to_string())
+        Crs::new(Authority::EPSG, "0", &epsg_code.to_string())
     }
 }
 
@@ -121,12 +95,40 @@ impl TryFrom<Crs> for i32 {
 
     fn try_from(crs: Crs) -> Result<i32, &'static str> {
         match crs.authority {
-            CrsAuthority::OGC => match crs.code.as_str() {
+            Authority::OGC => match crs.code.as_str() {
                 "CRS84" => Ok(4326),
                 "CRS84h" => Ok(4979),
                 _ => Err("Unable to extract epsg code"),
             },
-            CrsAuthority::EPSG => Ok(crs.code.parse().unwrap()),
+            Authority::EPSG => Ok(crs.code.parse().unwrap()),
+        }
+    }
+}
+
+/// CRS Authorities
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum Authority {
+    OGC,
+    EPSG,
+}
+
+impl fmt::Display for Authority {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Authority::OGC => write!(f, "OGC"),
+            Authority::EPSG => write!(f, "EPSG"),
+        }
+    }
+}
+
+impl str::FromStr for Authority {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "OGC" => Ok(Authority::OGC),
+            "EPSG" => Ok(Authority::EPSG),
+            _ => Err("Unknown crs authority!"),
         }
     }
 }

@@ -7,8 +7,10 @@ use url::Url;
 use uuid::Uuid;
 
 use ogcapi_drivers::postgres::Db;
-use ogcapi_types::common::{Collection, Crs, Link, LinkRel, MediaType};
-use ogcapi_types::features::Feature;
+use ogcapi_types::{
+    common::{link_rel::SELF, media_type::JSON, Collection, Crs, Link},
+    features::Feature,
+};
 
 async fn spawn_app() -> anyhow::Result<SocketAddr> {
     dotenv::dotenv().ok();
@@ -45,10 +47,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
 
     let collection = Collection {
         id: "test".to_string(),
-        links: vec![Link::new(
-            "http://localhost:8080/collections/test",
-            LinkRel::default(),
-        )],
+        links: vec![Link::new("http://localhost:8080/collections/test", SELF)],
         crs: vec![Crs::default()],
         ..Default::default()
     };
@@ -59,7 +58,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::POST)
                 .uri(format!("http://{}/collections", addr))
-                .header("Content-Type", MediaType::JSON.to_string())
+                .header("Content-Type", JSON)
                 .body(Body::from(serde_json::to_string(&collection)?))?,
         )
         .await?;
@@ -88,7 +87,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::POST)
                 .uri(format!("http://{}/collections/test/items", addr))
-                .header("Content-Type", MediaType::JSON.to_string())
+                .header("Content-Type", JSON.to_string())
                 .body(Body::from(serde_json::to_string(&feature)?))?,
         )
         .await?;

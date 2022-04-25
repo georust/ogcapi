@@ -10,7 +10,7 @@ use axum::{
 use chrono::Utc;
 
 use ogcapi_types::{
-    common::{Link, LinkRel, MediaType},
+    common::{link_rel::SELF, media_type::GEO_JSON, Link},
     edr::{Query, QueryType},
     features::{Feature, FeatureCollection},
 };
@@ -158,9 +158,9 @@ async fn query(
                 &collection_id,
                 feature.id.as_ref().unwrap()
             ),
-            LinkRel::default(),
+            SELF,
         )
-        .mime(MediaType::GeoJSON)]
+        .mime(GEO_JSON)]
     }
 
     let number_returned = features.len();
@@ -176,10 +176,7 @@ async fn query(
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Crs", query.crs.to_string().parse().unwrap());
-    headers.insert(
-        CONTENT_TYPE,
-        MediaType::GeoJSON.to_string().parse().unwrap(),
-    );
+    headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(feature_collection)))
 }

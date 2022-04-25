@@ -9,11 +9,14 @@ use reqwest::{
 use ogcapi_types::{common::LandingPage, features::Feature};
 #[cfg(feature = "stac")]
 use ogcapi_types::{
-    common::Links,
+    common::{Links, link_rel::{SELF, CHILD, ITEM}},
     stac::{Catalog, Catalog as LandingPage, Item as Feature, SearchParams, StacEntity},
 };
 use ogcapi_types::{
-    common::{Collection, Conformance, Link, LinkRel},
+    common::{
+        link_rel::{CONFORMANCE, DATA, NEXT},
+        Collection, Conformance, Link,
+    },
     features::FeatureCollection,
 };
 
@@ -89,11 +92,7 @@ impl Client {
             });
         }
 
-        if let Some(link) = catalog
-            .links
-            .iter()
-            .find(|l| l.rel == LinkRel::Conformance.to_string())
-        {
+        if let Some(link) = catalog.links.iter().find(|l| l.rel == CONFORMANCE) {
             return self.fetch::<Conformance>(&link.href);
         }
 
@@ -105,7 +104,7 @@ impl Client {
     /// Returns an iterator over the catalogs of the SpatioTemporal Asset Catalog.
     #[cfg(feature = "stac")]
     pub fn catalogs(&self) -> Result<Catalogs, Error> {
-        let link = Link::new(&self.endpoint, LinkRel::default());
+        let link = Link::new(&self.endpoint, SELF);
         Ok(Catalogs {
             client: self.to_owned(),
             links: vec![link],
@@ -114,12 +113,7 @@ impl Client {
 
     /// Returns an iterator over the collections.
     pub fn collections(&self) -> Result<Collections, Error> {
-        if let Some(link) = self
-            .root()?
-            .links
-            .iter()
-            .find(|l| l.rel == LinkRel::Data.to_string())
-        {
+        if let Some(link) = self.root()?.links.iter().find(|l| l.rel == DATA) {
             self.fetch::<ogcapi_types::common::Collections>(&link.href)
                 .map(|c| Collections {
                     client: self.to_owned(),
@@ -153,7 +147,7 @@ impl Client {
     /// Returns an iterator over the catalogs of the SpatioTemporal Asset Catalog.
     #[cfg(feature = "stac")]
     pub fn walk(&self) -> Result<StacEntities, Error> {
-        let link = Link::new(&self.endpoint.to_string(), LinkRel::default());
+        let link = Link::new(&self.endpoint.to_string(), SELF);
         Ok(StacEntities {
             client: self.to_owned(),
             // entities: vec![StacEntity::Catalog(self.root.clone())].into_iter(),
@@ -234,10 +228,7 @@ impl Pagination<StacEntity> for StacEntities {
                     let mut children = catalog
                         .links
                         .iter()
-                        .filter(|l| {
-                            l.rel == LinkRel::Child.to_string()
-                                || l.rel == LinkRel::Item.to_string()
-                        })
+                        .filter(|l| l.rel == CHILD || l.rel == ITEM)
                         .cloned()
                         .collect();
 
@@ -254,10 +245,7 @@ impl Pagination<StacEntity> for StacEntities {
                     let mut children = collection
                         .links
                         .iter()
-                        .filter(|l| {
-                            l.rel == LinkRel::Child.to_string()
-                                || l.rel == LinkRel::Item.to_string()
-                        })
+                        .filter(|l| l.rel == CHILD || l.rel == ITEM)
                         .cloned()
                         .collect();
 
@@ -274,10 +262,7 @@ impl Pagination<StacEntity> for StacEntities {
                     let mut children = item
                         .links
                         .iter()
-                        .filter(|l| {
-                            l.rel == LinkRel::Child.to_string()
-                                || l.rel == LinkRel::Item.to_string()
-                        })
+                        .filter(|l| l.rel == CHILD || l.rel == ITEM)
                         .cloned()
                         .collect();
 
@@ -299,12 +284,12 @@ impl Pagination<Catalog> for Catalogs {
             let mut catalog = self.client.fetch::<Catalog>(&link.href)?;
 
             if catalog.r#type == "Catalog" {
-                resolve_relative_links(&mut catalog.links, &link.href.to_string());
+                resolve_relative_links(&mut catalog.links, &link.href);
 
                 let mut children = catalog
                     .links
                     .iter()
-                    .filter(|l| l.rel == LinkRel::Child.to_string())
+                    .filter(|l| l.rel == CHILD)
                     .cloned()
                     .collect();
 
@@ -325,14 +310,10 @@ impl Pagination<Collection> for Collections {
             return Ok(Some(value));
         }
 
-        if let Some(link) = self
-            .links
-            .iter()
-            .find(|l| l.rel == LinkRel::Next.to_string())
-        {
+        if let Some(link) = self.links.iter().find(|l| l.rel == NEXT) {
             match self
                 .client
-                .fetch::<ogcapi_types::common::Collections>(&link.href.to_string())
+                .fetch::<ogcapi_types::common::Collections>(&link.href)
             {
                 Ok(c) => {
                     self.collections = c.collections.into_iter();
@@ -357,15 +338,8 @@ impl Pagination<Feature> for Items {
             return Ok(Some(value));
         }
 
-        if let Some(link) = self
-            .links
-            .iter()
-            .find(|l| l.rel == LinkRel::Next.to_string())
-        {
-            match self
-                .client
-                .fetch::<FeatureCollection>(&link.href.to_string())
-            {
+        if let Some(link) = self.links.iter().find(|l| l.rel == NEXT) {
+            match self.client.fetch::<FeatureCollection>(&link.href) {
                 Ok(i) => {
                     self.items = i.features.into_iter();
                     self.links = i.links;
@@ -496,7 +470,7 @@ mod tests {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
         let bbox = ogcapi_types::common::Bbox::from([7.4473, 46.9479, 7.4475, 46.9481]);
-        let params = stac::SearchParams::new()
+        let params = ogcapi_types::stac::SearchParams::new()
             .with_bbox(bbox)
             .with_collections(["ch.swisstopo.swissalti3d"].as_slice());
         let mut items = client.search(params).unwrap();

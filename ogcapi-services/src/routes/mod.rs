@@ -13,8 +13,9 @@ use axum::{
 };
 use openapiv3::OpenAPI;
 
+use ogcapi_types::common::{media_type::OPEN_API_JSON, Conformance, LandingPage};
+
 use crate::{extractors::RemoteUrl, Result, State};
-use ogcapi_types::common::{Conformance, LandingPage, MediaType};
 
 pub(crate) async fn root(Extension(state): Extension<State>) -> Result<Json<LandingPage>> {
     Ok(Json(state.root.read().unwrap().clone()))
@@ -22,10 +23,7 @@ pub(crate) async fn root(Extension(state): Extension<State>) -> Result<Json<Land
 
 pub(crate) async fn api(Extension(state): Extension<State>) -> (HeaderMap, Json<Arc<OpenAPI>>) {
     let mut headers = HeaderMap::new();
-    headers.insert(
-        CONTENT_TYPE,
-        MediaType::OpenAPIJson.to_string().parse().unwrap(),
-    );
+    headers.insert(CONTENT_TYPE, OPEN_API_JSON.parse().unwrap());
 
     (headers, Json(state.openapi))
 }

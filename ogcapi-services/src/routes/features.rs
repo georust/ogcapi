@@ -14,10 +14,17 @@ use chrono::Utc;
 use sqlx::PgPool;
 use url::Position;
 
+use ogcapi_types::{
+    common::{
+        link_rel::{COLLECTION, NEXT, PREV, SELF},
+        media_type::GEO_JSON,
+        Bbox, Crs, Link,
+    },
+    features::{Feature, FeatureCollection, Query},
+};
+
 use crate::extractors::{Qs, RemoteUrl};
 use crate::{Error, Result, State};
-use ogcapi_types::common::{Bbox, Crs, Link, LinkRel, MediaType};
-use ogcapi_types::features::{Feature, FeatureCollection, Query};
 
 const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
@@ -53,8 +60,8 @@ async fn read(
     let mut feature = state.db.select_feature(&collection_id, &id, srid).await?;
 
     feature.links = vec![
-        Link::new(&url, LinkRel::default()).mime(MediaType::GeoJSON),
-        Link::new(url.join(".")?, LinkRel::Collection).mime(MediaType::GeoJSON),
+        Link::new(&url, SELF).mime(GEO_JSON),
+        Link::new(url.join(".")?, COLLECTION).mime(GEO_JSON),
     ];
 
     let mut headers = HeaderMap::new();
@@ -64,10 +71,7 @@ async fn read(
             .parse()
             .context("Unable to parse `Content-Crs` header value")?,
     );
-    headers.insert(
-        CONTENT_TYPE,
-        MediaType::GeoJSON.to_string().parse().unwrap(),
-    );
+    headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(feature)))
 }
@@ -152,7 +156,7 @@ async fn items(
         .await?
         .rows_affected();
 
-    let mut links = vec![Link::new(&url, LinkRel::default()).mime(MediaType::GeoJSON)];
+    let mut links = vec![Link::new(&url, SELF).mime(GEO_JSON)];
 
     // pagination
     if let Some(limit) = query.limit {
@@ -169,14 +173,14 @@ async fn items(
             if offset != 0 && offset >= limit {
                 query.offset = Some(offset - limit);
                 url.set_query(serde_qs::to_string(&query).ok().as_deref());
-                let previous = Link::new(&url, LinkRel::Prev).mime(MediaType::GeoJSON);
+                let previous = Link::new(&url, PREV).mime(GEO_JSON);
                 links.push(previous);
             }
 
             if !(offset + limit) as u64 >= number_matched {
                 query.offset = Some(offset + limit);
                 url.set_query(serde_qs::to_string(&query).ok().as_deref());
-                let next = Link::new(&url, LinkRel::Next).mime(MediaType::GeoJSON);
+                let next = Link::new(&url, NEXT).mime(GEO_JSON);
                 links.push(next);
             }
         }
@@ -200,9 +204,9 @@ async fn items(
                 &url[..Position::AfterPath],
                 feature.id.as_ref().unwrap()
             ),
-            LinkRel::default(),
+            SELF,
         )
-        .mime(MediaType::GeoJSON)]
+        .mime(GEO_JSON)]
     }
 
     let number_returned = features.len();
@@ -218,10 +222,7 @@ async fn items(
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Crs", crs.to_string().parse().unwrap());
-    headers.insert(
-        CONTENT_TYPE,
-        MediaType::GeoJSON.to_string().parse().unwrap(),
-    );
+    headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(feature_collection)))
 }

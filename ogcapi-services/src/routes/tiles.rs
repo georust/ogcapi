@@ -4,7 +4,9 @@ use axum::extract::{Extension, Path};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
-use ogcapi_types::common::{Link, LinkRel, MediaType};
+use ogcapi_types::common::link_rel::{TILESETS_VECTOR, TILING_SCHEME};
+use ogcapi_types::common::media_type::JSON;
+use ogcapi_types::common::Link;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 
@@ -59,7 +61,7 @@ async fn tile_matrix_sets(Extension(state): Extension<State>) -> Result<Json<Til
                     title: tms.title_description_keywords.title.to_owned(),
                     links: vec![Link::new(
                         format!("{}/tileMatrixSets/{}", &state.remote, &tms.id),
-                        LinkRel::TilingScheme,
+                        TILING_SCHEME,
                     )],
                     ..Default::default()
                 })
@@ -134,9 +136,9 @@ async fn tile(
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.push(
-        Link::new(format!("{}/tiles", &state.remote), LinkRel::TilesetsVector)
+        Link::new(format!("{}/tiles", &state.remote), TILESETS_VECTOR)
             .title("List of available vector features tilesets for the dataset")
-            .mime(MediaType::JSON),
+            .mime(JSON),
     );
 
     let mut conformance = state.conformance.write().unwrap();

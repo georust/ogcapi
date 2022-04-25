@@ -11,7 +11,11 @@ use chrono::Utc;
 use url::Position;
 
 use crate::{extractors::RemoteUrl, Result, State};
-use ogcapi_types::common::{Collection, Collections, Crs, Link, LinkRel, MediaType};
+use ogcapi_types::common::{
+    link_rel::{DATA, ITEMS, SELF},
+    media_type::{GEO_JSON, JSON},
+    Collection, Collections, Crs, Link,
+};
 
 const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",
@@ -36,17 +40,15 @@ async fn collections(
     let base = &url[..Position::AfterPath];
     collections.0.iter_mut().for_each(|c| {
         c.links.append(&mut vec![
-            Link::new(format!("{}/{}", base, c.id), LinkRel::default()),
-            Link::new(format!("{}/{}/items", base, c.id), LinkRel::Items)
-                .mime(MediaType::GeoJSON)
+            Link::new(format!("{}/{}", base, c.id), SELF),
+            Link::new(format!("{}/{}/items", base, c.id), ITEMS)
+                .mime(GEO_JSON)
                 .title(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id))),
         ]);
     });
 
     let collections = Collections {
-        links: vec![Link::new(url, LinkRel::default())
-            .mime(MediaType::JSON)
-            .title("this document")],
+        links: vec![Link::new(url, SELF).mime(JSON).title("this document")],
         time_stamp: Some(Utc::now().to_rfc3339()),
         crs: vec![Crs::default(), Crs::from(4326)],
         collections: collections.0,
@@ -76,15 +78,12 @@ async fn read(
     let mut collection = state.db.select_collection(&collection_id).await?;
 
     collection.links.push(
-        Link::new(
-            format!("{}/items", &url[..Position::AfterPath]),
-            LinkRel::default(),
-        )
-        .mime(MediaType::GeoJSON)
-        .title(format!(
-            "Items of {}",
-            collection.title.as_ref().unwrap_or(&collection.id)
-        )),
+        Link::new(format!("{}/items", &url[..Position::AfterPath]), SELF)
+            .mime(GEO_JSON)
+            .title(format!(
+                "Items of {}",
+                collection.title.as_ref().unwrap_or(&collection.id)
+            )),
     );
 
     Ok(Json(collection))
@@ -116,9 +115,9 @@ async fn remove(
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.push(
-        Link::new(format!("{}/collections", &state.remote), LinkRel::Data)
+        Link::new(format!("{}/collections", &state.remote), DATA)
             .title("Metadata about the resource collections")
-            .mime(MediaType::JSON),
+            .mime(JSON),
     );
 
     let mut conformance = state.conformance.write().unwrap();

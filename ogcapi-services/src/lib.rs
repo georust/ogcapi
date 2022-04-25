@@ -12,7 +12,11 @@ use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use ogcapi_drivers::postgres::Db;
-use ogcapi_types::common::{Conformance, LandingPage, Link, LinkRel, MediaType};
+use ogcapi_types::common::{
+    link_rel::{CONFORMANCE, SELF, SERVICE_DESC},
+    media_type::{JSON, OPEN_API_JSON},
+    Conformance, LandingPage, Link,
+};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -37,15 +41,13 @@ pub async fn server(db: Db) -> Router {
         title: Some(openapi.info.title.to_owned()),
         description: openapi.info.description.to_owned(),
         links: vec![
-            Link::new(&remote, LinkRel::default())
-                .title("This document")
-                .mime(MediaType::JSON),
-            Link::new(format!("{}/api", &remote), LinkRel::ServiceDesc)
+            Link::new(&remote, SELF).title("This document").mime(JSON),
+            Link::new(format!("{}/api", &remote), SERVICE_DESC)
                 .title("The Open API definition")
-                .mime(MediaType::OpenAPIJson),
-            Link::new(format!("{}/conformance", &remote), LinkRel::Conformance)
+                .mime(OPEN_API_JSON),
+            Link::new(format!("{}/conformance", &remote), CONFORMANCE)
                 .title("OGC conformance classes implemented by this API")
-                .mime(MediaType::JSON),
+                .mime(JSON),
         ],
         ..Default::default()
     }));
