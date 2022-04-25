@@ -14,7 +14,7 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
     // GDAL Configuration Options http://trac.osgeo.org/gdal/wiki/ConfigOptions
     gdal::config::set_config_option("PG_USE_COPY", "YES")?;
     gdal::config::set_config_option("OGR_PG_RETRIEVE_FID", "FALSE")?;
-    gdal::config::set_config_option("PGSQL_OGR_FID", "id")?;
+    // gdal::config::set_config_option("PGSQL_OGR_FID", "id")?;
 
     // Get target dataset layer
     // TODO: pass database url directly once GDAL 8.4 is out
@@ -78,14 +78,11 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
         let transform = CoordTransform::new(&spatial_ref_src, &spatial_ref_dst)?;
 
         // Create collection
-        let title = args.collection.to_owned().unwrap_or_else(|| layer.name());
         let storage_crs = Crs::from(spatial_ref_dst.auth_code()?);
 
         let collection = Collection {
-            id: title.to_lowercase().replace(' ', "_"),
-            title: Some(title),
-            links: serde_json::from_str("[]")?,
-            crs: Some(vec![Crs::default(), storage_crs.clone()]),
+            id: args.collection.to_owned(),
+            crs: vec![Crs::default(), storage_crs.clone()],
             extent: layer.try_get_extent()?.map(|e| {
                 let mut x = [e.MinX, e.MaxX];
                 let mut y = [e.MinY, e.MaxY];
@@ -117,7 +114,7 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
 
         let lyr = ds.layer_by_name(&format!("items.{}", collection.id))?;
 
-        for feature in layer.features() {
+        for (i, feature) in layer.features().enumerate() {
             // Extract & transform geometry
             let geom = feature.geometry();
             let geom = geom.transform(&transform)?;
@@ -147,10 +144,12 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
 
             // Create a new feature
             let mut ft = Feature::new(lyr.defn())?;
+            let id = feature.fid().unwrap_or(i as u64);
+            ft.set_field_string("id", &id.to_string())?;
             ft.set_geometry(geom)?;
-            ft.set_field(
+            ft.set_field_string(
                 "properties",
-                &FieldValue::StringValue(serde_json::to_string(&Value::from(properties))?),
+                &serde_json::to_string(&Value::from(properties))?,
             )?;
 
             // Add the feature to the layer

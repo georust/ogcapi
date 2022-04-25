@@ -79,12 +79,12 @@ async fn processes(
         processes: summaries
             .into_iter()
             .map(|mut p| {
-                p.0.links = Some(vec![Link::new(
+                p.0.links = vec![Link::new(
                     format!("{}/{}", p.0.id, &url[..Position::AfterPath]),
                     LinkRel::default(),
                 )
                 .mime(MediaType::JSON)
-                .title("process description")]);
+                .title("process description")];
                 p.0
             })
             .collect(),
@@ -98,19 +98,25 @@ async fn process(
     Path(id): Path<String>,
     Extension(state): Extension<State>,
 ) -> Result<Json<Process>> {
-    let mut process: Process =
-        sqlx::query_as("SELECT summary, inputs, outputs FROM meta.processes WHERE id = $id")
-            .bind(&id)
-            .fetch_one(&state.db.pool)
-            .await?;
+    let mut process = sqlx::query_scalar!(
+        r#"
+        SELECT row_to_json(t) as "process!: sqlx::types::Json<Process>"
+        FROM (
+            SELECT summary, inputs, outputs FROM meta.processes WHERE id = $1
+        ) t
+        "#,
+        &id
+    )
+    .fetch_one(&state.db.pool)
+    .await?;
 
-    process.summary.links = Some(vec![Link::new(
+    process.summary.links = vec![Link::new(
         format!("{}/processes/{}", &state.remote, &id),
         LinkRel::default(),
     )
-    .mime(MediaType::JSON)]);
+    .mime(MediaType::JSON)];
 
-    Ok(Json(process))
+    Ok(Json(process.0))
 }
 
 async fn execution(
@@ -157,16 +163,19 @@ async fn status(
     Path(id): Path<String>,
     Extension(state): Extension<State>,
 ) -> Result<Json<StatusInfo>> {
-    let mut status: StatusInfo = sqlx::query_as("SELECT * FROM meta.jobs WHERE job_id = $id")
-        .bind(id)
-        .fetch_one(&state.db.pool)
-        .await?;
+    let mut status = sqlx::query_scalar!(
+        r#"
+        SELECT row_to_json(jobs) as "status_info!: sqlx::types::Json<StatusInfo>" 
+        FROM meta.jobs WHERE job_id = $1
+        "#,
+        id
+    )
+    .fetch_one(&state.db.pool)
+    .await?;
 
-    status.links = Some(sqlx::types::Json(vec![
-        Link::new(url, LinkRel::default()).mime(MediaType::JSON)
-    ]));
+    status.links = vec![Link::new(url, LinkRel::default()).mime(MediaType::JSON)];
 
-    Ok(Json(status))
+    Ok(Json(status.0))
 }
 
 async fn delete(Path(id): Path<String>, Extension(state): Extension<State>) -> Result<StatusCode> {

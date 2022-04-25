@@ -1,9 +1,6 @@
 # OGC API
 
-[![build badge](https://github.com/camptocamp/ogcapi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/camptocamp/ogcapi/actions/workflows/ci.yml)
-
-[OGC API](https://ogcapi.ogc.org/) implementation in Rust leveraging [axum](https://github.com/tokio-rs/axum) and [SQLx](https://github.com/launchbadge/sqlx)
-
+[OGC API](https://ogcapi.ogc.org/) building blocks implemented in [Rust](https://www.rust-lang.org/)
 
 ## Quick Start
 
@@ -14,10 +11,13 @@ This will take a while and use quite some disk space
 docker-compose up
 
 # Import administrative bounaries
-docker exec -ti ogcapi cargo run -- import ogcapi/data/ne_10m_admin_0_countries.geojson --collection countries
+docker exec -ti ogcapi \
+    cargo run -- \
+    import ogcapi/data/ne_10m_admin_0_countries.geojson \
+    --collection countries
 ```
 
-Open <http://localhost:8484/> were you will find the landing page.
+Open <http://localhost:8484/> were you will find the `Landing Page`.
 
 ## Developing
 
@@ -46,6 +46,9 @@ cargo run -- import ogcapi/data/ne_10m_admin_0_countries.geojson --collection co
 
 # Serve 
 cargo run -- serve
+
+# Documentation
+cargo doc --workspace --all-features --no-deps --open
 ```
 
 ## Teamengine

@@ -9,27 +9,27 @@ pub static OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"; // 
 
 /// CRS Authorities
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum Authority {
+pub enum CrsAuthority {
     OGC,
     EPSG,
 }
 
-impl fmt::Display for Authority {
+impl fmt::Display for CrsAuthority {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Authority::OGC => write!(f, "OGC"),
-            Authority::EPSG => write!(f, "EPSG"),
+            CrsAuthority::OGC => write!(f, "OGC"),
+            CrsAuthority::EPSG => write!(f, "EPSG"),
         }
     }
 }
 
-impl FromStr for Authority {
+impl FromStr for CrsAuthority {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "OGC" => Ok(Authority::OGC),
-            "EPSG" => Ok(Authority::EPSG),
+            "OGC" => Ok(CrsAuthority::OGC),
+            "EPSG" => Ok(CrsAuthority::EPSG),
             _ => Err("Unknown crs authority!"),
         }
     }
@@ -38,13 +38,13 @@ impl FromStr for Authority {
 /// Coordinate Reference System (CRS)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Crs {
-    pub authority: Authority,
+    pub authority: CrsAuthority,
     pub version: String,
     pub code: String,
 }
 
 impl Crs {
-    pub fn new(authority: Authority, version: &str, code: &str) -> Crs {
+    pub fn new(authority: CrsAuthority, version: &str, code: &str) -> Crs {
         Crs {
             authority,
             version: version.to_owned(),
@@ -54,12 +54,12 @@ impl Crs {
 
     pub fn ogc_to_epsg(&self) -> Option<Crs> {
         match self.authority {
-            Authority::OGC => match self.code.as_str() {
+            CrsAuthority::OGC => match self.code.as_str() {
                 "CRS84" => Some(4326.into()),
                 "CRS84h" => Some(4979.into()),
                 _ => None,
             },
-            Authority::EPSG => Some(self.to_owned()),
+            CrsAuthority::EPSG => Some(self.to_owned()),
         }
     }
 
@@ -94,7 +94,11 @@ impl FromStr for Crs {
             .split('/')
             .collect();
         match parts.len() {
-            3 => Ok(Crs::new(Authority::from_str(parts[0])?, parts[1], parts[2])),
+            3 => Ok(Crs::new(
+                CrsAuthority::from_str(parts[0])?,
+                parts[1],
+                parts[2],
+            )),
             _ => Err("Unable to parse CRS from string!"),
         }
     }
@@ -108,7 +112,7 @@ impl Default for Crs {
 
 impl From<i32> for Crs {
     fn from(epsg_code: i32) -> Self {
-        Crs::new(Authority::EPSG, "0", &epsg_code.to_string())
+        Crs::new(CrsAuthority::EPSG, "0", &epsg_code.to_string())
     }
 }
 
@@ -117,12 +121,12 @@ impl TryFrom<Crs> for i32 {
 
     fn try_from(crs: Crs) -> Result<i32, &'static str> {
         match crs.authority {
-            Authority::OGC => match crs.code.as_str() {
+            CrsAuthority::OGC => match crs.code.as_str() {
                 "CRS84" => Ok(4326),
                 "CRS84h" => Ok(4979),
                 _ => Err("Unable to extract epsg code"),
             },
-            Authority::EPSG => Ok(crs.code.parse().unwrap()),
+            CrsAuthority::EPSG => Ok(crs.code.parse().unwrap()),
         }
     }
 }

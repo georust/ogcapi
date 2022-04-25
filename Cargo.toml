@@ -2,6 +2,7 @@
 
 members = [
     "ogcapi",
+    "ogcapi-client",
     "ogcapi-drivers",
     "ogcapi-services",
     "ogcapi-types",

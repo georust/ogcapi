@@ -1,12 +1,11 @@
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none};
+use serde_with::skip_serializing_none;
 
 pub type Links = Vec<Link>;
 
 /// Hyperlink to enable Hypermedia Access
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Link {
@@ -101,6 +100,7 @@ pub enum LinkRel {
     Last,
     /// Refers to a license associated with the link’s context.
     License,
+    Metadata,
     Next,
     Parent,
     #[serde(alias = "previous")]
@@ -125,6 +125,8 @@ pub enum LinkRel {
     Start,
     /// Identifies a resource that represents the context’s status.
     Status,
+    /// An asset that represents a thumbnail of the Item.
+    Thumbnail,
     Tiles,
     /// The target IRI points to a resource that describes how to provide tile sets of the context resource in vector format.
     #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector")]
@@ -132,6 +134,7 @@ pub enum LinkRel {
     /// The target IRI points to a resource that describes the TileMatrixSet according to the 2D-TMS standard.
     #[serde(alias = "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme")]
     TilingScheme,
+    Overview,
     /// Refers to a parent document in a hierarchy of documents.
     Up,
 }

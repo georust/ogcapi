@@ -18,15 +18,12 @@ pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
     let db = Db::setup(database_url).await?;
 
     // Create collection
-    let title = args.collection.unwrap_or_else(|| "OSM".to_string());
     let collection = Collection {
-        id: title.to_lowercase().replace(' ', "_"),
-        title: Some(title.to_string()),
-        links: serde_json::from_str("[]")?,
-        crs: Some(vec![Crs::default()]),
+        id: args.collection.to_owned(),
+        crs: vec![Crs::default()],
         ..Default::default()
     };
-    db.delete_collection(&collection.id).await?;
+    // db.delete_collection(&collection.id).await?;
     db.insert_collection(&collection).await?;
 
     // Open file
@@ -74,15 +71,15 @@ pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
             geometry_from_obj(&obj, &objs).and_then(|g| wkb::geom_to_wkb(&g).ok())
         {
             sqlx::query(&format!(
-                r#"INSERT INTO {} (
+                r#"INSERT INTO items.{} (
                     id,
-                    feature_type,
+                    type,
                     properties,
                     geom
                 ) VALUES ($1, '"Feature"', $2, ST_GeomFromWKB($3, 4326))"#,
                 collection.id
             ))
-            .bind(id as i32)
+            .bind(id.to_string())
             .bind(Value::from(properties) as Value)
             .bind(geometry as Vec<u8>)
             .execute(&mut tx)

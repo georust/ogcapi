@@ -74,15 +74,12 @@ impl Db {
 
         sqlx::query(&format!(
             r#"
-            CREATE TABLE IF NOT EXISTS items.{} (
-                id bigserial PRIMARY KEY,
-                feature_type jsonb NOT NULL DEFAULT '"Feature"'::jsonb,
+            CREATE TABLE IF NOT EXISTS items.{0} (
+                id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+                type text NOT NULL DEFAULT 'Feature',
                 properties jsonb,
                 geom geometry NOT NULL,
-                links jsonb,
-                stac_version text,
-                stac_extensions text[],
-                assets jsonb
+                links jsonb NOT NULL DEFAULT '[]'::jsonb
             )
             "#,
             collection.id
@@ -128,13 +125,17 @@ impl Db {
     }
 
     pub async fn select_collection(&self, id: &str) -> Result<Collection, anyhow::Error> {
-        let collection: (Json<Collection>,) =
-            sqlx::query_as("SELECT collection FROM meta.collections WHERE id = $1")
-                .bind(id)
-                .fetch_one(&self.pool)
-                .await?;
+        let collection = sqlx::query_scalar!(
+            r#"
+            SELECT collection as "collection!: sqlx::types::Json<Collection>" 
+            FROM meta.collections WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_one(&self.pool)
+        .await?;
 
-        Ok(collection.0 .0)
+        Ok(collection.0)
     }
 
     pub async fn update_collection(&self, collection: &Collection) -> Result<(), anyhow::Error> {
@@ -167,28 +168,22 @@ impl Db {
     pub async fn insert_feature(&self, feature: &Feature) -> Result<String, anyhow::Error> {
         let collection = feature.collection.as_ref().unwrap();
 
-        let id: (i64,) = sqlx::query_as(&format!(
+        let id: (String,) = sqlx::query_as(&format!(
             r#"
             INSERT INTO items.{0} (
-                feature_type,
+                type,
                 properties,
                 geom,
-                links,
-                stac_version,
-                stac_extensions,
-                assets
-            ) VALUES ($1, $2, ST_GeomFromGeoJSON($3), $4, $5, $6, $7)
+                links
+            ) VALUES ($1, $2, ST_GeomFromGeoJSON($3), $4)
             RETURNING id
             "#,
             &collection
         ))
-        .bind(&feature.feature_type)
-        .bind(&feature.properties)
-        .bind(&feature.geometry)
-        .bind(&feature.links)
-        .bind(&feature.stac_version)
-        .bind(&feature.stac_extensions.as_deref())
-        .bind(&feature.assets)
+        .bind(&feature.r#type)
+        .bind(serde_json::to_value(&feature.properties)?)
+        .bind(serde_json::to_value(&feature.geometry)?)
+        .bind(serde_json::to_value(&feature.links)?)
         .fetch_one(&self.pool)
         .await?;
 
@@ -198,24 +193,23 @@ impl Db {
     pub async fn select_feature(
         &self,
         collection: &str,
-        id: &i64,
+        id: &str,
         crs: Option<i32>,
     ) -> Result<Feature, anyhow::Error> {
-        let feature: Feature = sqlx::query_as(&format!(
+        let feature: Json<Feature> = sqlx::query_scalar(&format!(
             r#"
-            SELECT
-                id,
-                '{0}' AS collection,
-                feature_type,
-                properties,
-                ST_AsGeoJSON(ST_Transform(geom, $2::int))::jsonb as geometry,
-                links,
-                stac_version,
-                stac_extensions,
-                ST_AsGeoJSON(ST_Transform(geom, $2::int), 9, 1)::jsonb -> 'bbox' AS bbox,
-                assets
-            FROM items.{0}
-            WHERE id = $1
+            SELECT row_to_json(t)
+            FROM (
+                SELECT
+                    id,
+                    '{0}' AS collection,
+                    type,
+                    properties,
+                    ST_AsGeoJSON(ST_Transform(geom, $2::int))::jsonb as geometry,
+                    links
+                FROM items.{0}
+                WHERE id = $1
+            ) t
             "#,
             collection
         ))
@@ -224,7 +218,7 @@ impl Db {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(feature)
+        Ok(feature.0)
     }
 
     pub async fn update_feature(&self, feature: &Feature) -> Result<(), anyhow::Error> {
@@ -232,32 +226,26 @@ impl Db {
             r#"
             UPDATE items.{0}
             SET
-                feature_type = $2,
+                type = $2,
                 properties = $3,
                 geom = ST_GeomFromGeoJSON($4),
-                links = $5,
-                stac_version = $6,
-                stac_extensions = $7,
-                assets = $8
+                links = $5
             WHERE id = $1
             "#,
             &feature.collection.as_ref().unwrap()
         ))
         .bind(&feature.id)
-        .bind(&feature.feature_type)
-        .bind(&feature.properties)
-        .bind(&feature.geometry)
-        .bind(&feature.links)
-        .bind(&feature.stac_version)
-        .bind(&feature.stac_extensions.as_deref())
-        .bind(&feature.assets)
+        .bind(&feature.r#type)
+        .bind(serde_json::to_value(&feature.properties)?)
+        .bind(serde_json::to_value(&feature.geometry)?)
+        .bind(serde_json::to_value(&feature.links)?)
         .execute(&self.pool)
         .await?;
 
         Ok(())
     }
 
-    pub async fn delete_feature(&self, collection: &str, id: &i64) -> Result<(), anyhow::Error> {
+    pub async fn delete_feature(&self, collection: &str, id: &str) -> Result<(), anyhow::Error> {
         sqlx::query(&format!("DELETE FROM items.{} WHERE id = $1", collection))
             .bind(id)
             .execute(&self.pool)

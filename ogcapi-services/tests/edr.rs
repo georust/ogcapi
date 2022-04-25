@@ -9,7 +9,6 @@ async fn edr() -> anyhow::Result<()> {
     use axum::http::Request;
     use geojson::{Geometry, Value};
     use ogcapi_drivers::postgres::Db;
-    use sqlx::types::Json;
     use url::Url;
     use uuid::Uuid;
 
@@ -21,7 +20,7 @@ async fn edr() -> anyhow::Result<()> {
     // setup app
     dotenv::dotenv().ok();
 
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
     let mut database_url = Url::parse(&env::var("DATABASE_URL")?)?;
     let daatbase_name = Uuid::new_v4().to_string();
@@ -47,35 +46,38 @@ async fn edr() -> anyhow::Result<()> {
     let client = hyper::Client::new();
 
     // load data
-    import::ogr::load(
+    import::geojson::load(
         Args {
-            input: PathBuf::from_str("../ogcapi/data/ne_10m_admin_0_countries.geojson")?,
-            collection: Some("countries".to_string()),
+            input: PathBuf::from_str("../ogcapi/data/ne_110m_admin_0_countries.geojson")?,
+            collection: "countries".to_string(),
             ..Default::default()
         },
         &database_url,
+        false,
     )
     .await?;
 
-    import::ogr::load(
+    import::geojson::load(
         Args {
-            input: PathBuf::from_str("../ogcapi/data/ne_10m_populated_places.geojson")?,
-            collection: Some("places".to_string()),
+            input: PathBuf::from_str("../ogcapi/data/ne_110m_populated_places.geojson")?,
+            collection: "places".to_string(),
             ..Default::default()
         },
         &database_url,
+        false,
     )
     .await?;
 
-    import::ogr::load(
-        Args {
-            input: PathBuf::from_str("../ogcapi/data/ne_10m_railroads.geojson")?,
-            collection: Some("railroads".to_string()),
-            ..Default::default()
-        },
-        &database_url,
-    )
-    .await?;
+    // import::geojson::load(
+    //     Args {
+    //         input: PathBuf::from_str("../ogcapi/data/ne_10m_railroads_north_america.geojson")?,
+    //         collection: "railroads".to_string(),
+    //         ..Default::default()
+    //     },
+    //     &database_url,
+    //     false,
+    // )
+    // .await?;
 
     // query position
     let query = Query {
@@ -108,15 +110,15 @@ async fn edr() -> anyhow::Result<()> {
     assert_eq!(fc.number_matched, Some(1));
     assert_eq!(fc.number_returned, Some(1));
     let feature = &fc.features[0];
-    assert_eq!(feature.properties.as_ref().unwrap().0.len(), 3);
+    assert_eq!(feature.properties.as_ref().unwrap().len(), 3);
     assert_eq!(
-        feature.properties.as_ref().unwrap().0["NAME"].as_str(),
+        feature.properties.as_ref().unwrap()["NAME"].as_str(),
         Some("Switzerland")
     );
 
     // query area
     let query = Query {
-        coords: "POLYGON((7 46, 7 48, 9 48, 9 46, 7 46))".to_string(),
+        coords: "POLYGON((6 45, 6 49, 9 49, 9 45, 6 45))".to_string(),
         parameter_name: Some("NAME,ISO_A2,ADM0NAME".to_string()),
         ..Default::default()
     };
@@ -139,12 +141,12 @@ async fn edr() -> anyhow::Result<()> {
     let body = hyper::body::to_bytes(res.into_body()).await?;
     let fc: FeatureCollection = serde_json::from_slice(&body)?;
 
-    assert_eq!(fc.number_matched, Some(19));
-    assert_eq!(fc.number_returned, Some(19));
+    assert_eq!(fc.number_matched, Some(2));
+    assert_eq!(fc.number_returned, Some(2));
     let feature = &fc
         .features
         .into_iter()
-        .find(|f| f.properties.as_ref().unwrap().0["NAME"].as_str() == Some("Bern"));
+        .find(|f| f.properties.as_ref().unwrap()["NAME"].as_str() == Some("Bern"));
     assert!(feature.is_some());
 
     // query radius
@@ -175,7 +177,7 @@ async fn edr() -> anyhow::Result<()> {
     let mut fc: FeatureCollection = serde_json::from_slice(&body)?;
 
     for mut feature in fc.features.iter_mut() {
-        feature.geometry = Json(Geometry::new(Value::Point(vec![0.0, 0.0])));
+        feature.geometry = Geometry::new(Value::Point(vec![0.0, 0.0]));
     }
 
     tracing::debug!("{}", serde_json::to_string_pretty(&fc.number_matched)?);

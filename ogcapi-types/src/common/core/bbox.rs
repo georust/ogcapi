@@ -12,7 +12,7 @@ pub enum Bbox {
     Bbox3D(Bbox3D),
 }
 
-impl std::fmt::Display for Bbox {
+impl fmt::Display for Bbox {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Bbox::Bbox2D(bbox) => write!(f, "{},{},{},{}", bbox[0], bbox[1], bbox[2], bbox[3]),
@@ -55,8 +55,9 @@ impl str::FromStr for Bbox {
 
         let numbers: Vec<f64> = s
             .split(',')
-            .map(|d| d.trim().parse().expect("parse float from str"))
-            .collect();
+            .map(|d| d.trim().parse::<f64>())
+            .collect::<Result<Vec<f64>, std::num::ParseFloatError>>()
+            .map_err(|_| "Unable to convert bbox coordinates to float")?;
 
         match numbers.len() {
             4 => Ok(Bbox::Bbox2D([

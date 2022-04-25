@@ -1,4 +1,4 @@
-name: Rust
+name: CI
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup compose
-        run: docker-compose up -d db db-migrations cli
+        run: docker-compose up -d db db-migrations cli 
 
       - name: Format
         run: docker exec -i ogcapi cargo fmt --all -- --check

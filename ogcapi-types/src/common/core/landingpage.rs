@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
+
+use crate::edr::{Contact, Provider};
 
 use super::Links;
 
@@ -28,7 +28,9 @@ pub struct LandingPage {
     pub attribution: Option<String>,
     /// Links to the resources exposed through this API
     pub links: Links,
-    // pub keywords: Option<Vec<String>>,
-    #[serde(flatten)]
-    pub additional_properties: Option<HashMap<String, Value>>,
+    pub keywords: Option<Vec<String>>,
+    pub provider: Option<Provider>,
+    pub contact: Option<Contact>,
+    #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
+    pub additional_properties: Map<String, Value>,
 }
