@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
+#[doc(hidden)]
 pub type Links = Vec<Link>;
 
 /// Hyperlink to enable Hypermedia Access

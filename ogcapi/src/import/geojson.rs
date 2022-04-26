@@ -2,13 +2,12 @@ use geojson::GeoJson;
 use ogcapi_drivers::postgres::Db;
 use ogcapi_types::common::{Collection, Crs};
 use serde_json::Value;
-use url::Url;
 
 use super::Args;
 
-pub async fn load(args: Args, database_url: &Url, show_pb: bool) -> anyhow::Result<()> {
+pub async fn load(args: Args, show_pb: bool) -> anyhow::Result<()> {
     // Setup a db connection pool
-    let db = Db::setup(database_url).await?;
+    let db = Db::setup(&args.database_url).await?;
 
     // Create colection
     let collection = Collection {

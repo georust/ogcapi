@@ -3,30 +3,20 @@ use ogcapi_drivers::postgres::Db;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser, Debug)]
-#[clap(name = "ogcapi_cli", version, about = "CLI for the ogcapi project.")]
+#[clap(name = "ogcapi", version, about = "CLI for the `ogcapi` project.")]
 pub struct App {
-    /// Database url
-    #[clap(long, parse(try_from_str), env, hide_env_values = true)]
-    pub database_url: url::Url,
     #[clap(subcommand)]
     pub command: Command,
 }
 
 #[derive(Parser, Debug)]
 pub enum Command {
-    /// Imports geodata into the database
+    /// Import geodata into the database
     #[cfg(feature = "import")]
     Import(ogcapi::import::Args),
-    /// Starts the ogcapi services
+    /// Start the ogcapi services
     #[cfg(feature = "serve")]
-    Serve {
-        /// Host address of the server
-        #[clap(env = "APP_HOST")]
-        app_host: String,
-        /// Port of the server
-        #[clap(env = "APP_PORT")]
-        app_port: String,
-    },
+    Serve(ogcapi_services::Config),
 }
 
 #[tokio::main]
@@ -43,32 +33,32 @@ async fn main() -> anyhow::Result<()> {
 
     // parse cli args
     let app = App::parse();
-    // tracing::debug!("{:#?}", app);
+    tracing::debug!("{:#?}", app);
 
     match app.command {
         #[cfg(feature = "import")]
         Command::Import(args) => {
             if let Some(extension) = args.input.extension() {
                 match extension.to_str() {
-                    Some("pbf") => ogcapi::import::osm::load(args, &app.database_url).await?,
+                    Some("pbf") => ogcapi::import::osm::load(args).await?,
                     Some("geojson") => {
                         tracing::debug!("Using geojson loader ...");
-                        ogcapi::import::geojson::load(args, &app.database_url, true).await?
+                        ogcapi::import::geojson::load(args, true).await?
                     }
-                    _ => ogcapi::import::ogr::load(args, &app.database_url).await?,
+                    _ => ogcapi::import::ogr::load(args).await?,
                 }
             }
         }
         #[cfg(feature = "serve")]
-        Command::Serve { app_host, app_port } => {
+        Command::Serve(config) => {
             // Setup a database connection pool & run any pending migrations
-            let db = Db::setup(&app.database_url).await?;
+            let db = Db::setup(&config.database_url).await?;
 
             // Build our application
-            let router = ogcapi_services::server(db).await;
+            let router = ogcapi_services::app(db).await;
 
             // run our app with hyper
-            let address = format!("{}:{}", app_host, app_port).parse()?;
+            let address = format!("{}:{}", config.host, config.port).parse()?;
             tracing::info!("listening on http://{}", address);
 
             axum::Server::bind(&address)

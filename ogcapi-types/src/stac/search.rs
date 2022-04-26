@@ -30,7 +30,7 @@ impl SearchParams {
     ///
     /// let bbox = Bbox::from([7.4513398, 46.92792859, 7.4513662, 46.9279467]);
     ///
-    /// let params = Parameters::new()
+    /// let params = SearchParams::new()
     ///     .with_collections(["communes"].as_slice())
     ///     .with_bbox(bbox);
     /// ```

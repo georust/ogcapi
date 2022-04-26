@@ -13,6 +13,7 @@ pub struct Catalog {
     #[serde(default = "catalog")]
     pub r#type: String,
     /// The STAC version the Catalog implements.
+    #[serde(default = "crate::stac::stac_version")]
     pub stac_version: String,
     /// A list of extension identifiers the Catalog implements.
     #[serde(default)]

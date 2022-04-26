@@ -9,7 +9,10 @@ use reqwest::{
 use ogcapi_types::{common::LandingPage, features::Feature};
 #[cfg(feature = "stac")]
 use ogcapi_types::{
-    common::{Links, link_rel::{SELF, CHILD, ITEM}},
+    common::{
+        link_rel::{CHILD, ITEM, SELF},
+        Links,
+    },
     stac::{Catalog, Catalog as LandingPage, Item as Feature, SearchParams, StacEntity},
 };
 use ogcapi_types::{

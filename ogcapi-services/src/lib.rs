@@ -1,7 +1,9 @@
+mod config;
 mod error;
 mod extractors;
 mod routes;
 
+pub use config::Config;
 pub use error::Error;
 
 use std::sync::{Arc, RwLock};
@@ -32,7 +34,7 @@ struct State {
     remote: Arc<String>,
 }
 
-pub async fn server(db: Db) -> Router {
+pub async fn app(db: Db) -> Router {
     // state
     let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI).unwrap();
     let remote = openapi.servers[0].url.to_owned();

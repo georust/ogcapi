@@ -4,7 +4,6 @@ use geo::{Coordinate, Geometry, GeometryCollection, LineString, MultiLineString,
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 
 use serde_json::{Map, Value};
-use url::Url;
 
 use crate::import::boundaries;
 use ogcapi_drivers::postgres::Db;
@@ -13,9 +12,9 @@ use ogcapi_types::common::{Collection, Crs};
 use super::Args;
 
 /// Import osm data from pbf file
-pub async fn load(args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
+pub async fn load(args: Args) -> Result<(), anyhow::Error> {
     // Setup a db connection pool
-    let db = Db::setup(database_url).await?;
+    let db = Db::setup(&args.database_url).await?;
 
     // Create collection
     let collection = Collection {

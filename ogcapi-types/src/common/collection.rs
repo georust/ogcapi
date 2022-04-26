@@ -1,3 +1,6 @@
+#[cfg(feature = "stac")]
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
@@ -53,29 +56,28 @@ pub struct Collection {
     pub links: Links,
     /// The STAC version the Collection implements.
     #[cfg(feature = "stac")]
-    #[serde(rename = "stac_version")]
+    #[serde(default = "crate::stac::stac_version", rename = "stac_version")]
     pub stac_version: String,
     // /// A list of extension identifiers the Collection implements.
-    #[serde(default)]
     #[cfg(feature = "stac")]
-    #[serde(rename = "stac_extensions")]
+    #[serde(default, rename = "stac_extensions")]
     pub stac_extensions: Vec<String>,
     /// Collection's license(s), either a SPDX License identifier, `various` if
     /// multiple licenses apply or `proprietary` for all other cases.
     #[cfg(feature = "stac")]
     pub license: String,
     /// A list of providers, which may include all organizations capturing or processing the data or the hosting provider.
-    #[serde(default)]
     #[cfg(feature = "stac")]
+    #[serde(default)]
     pub providers: Vec<crate::stac::Provider>,
     /// A map of property summaries, either a set of values, a range of values or a JSON Schema.
-    #[serde(default)]
     #[cfg(feature = "stac")]
-    pub summaries: std::collections::HashMap<String, serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Map::is_empty")]
+    pub summaries: Map<String, Value>,
     /// Dictionary of asset objects that can be downloaded, each with a unique key.
-    #[serde(default)]
     #[cfg(feature = "stac")]
-    pub assets: std::collections::HashMap<String, crate::stac::Asset>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub assets: HashMap<String, crate::stac::Asset>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
 }

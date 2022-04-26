@@ -3,14 +3,13 @@ use std::path::PathBuf;
 use gdal::spatial_ref::{CoordTransform, SpatialRef};
 use gdal::vector::{Feature, FieldValue};
 use serde_json::{Map, Value};
-use url::Url;
 
 use ogcapi_drivers::postgres::Db;
 use ogcapi_types::common::{Bbox, Collection, Crs, Extent, SpatialExtent};
 
 use super::Args;
 
-pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Error> {
+pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
     // GDAL Configuration Options http://trac.osgeo.org/gdal/wiki/ConfigOptions
     gdal::config::set_config_option("PG_USE_COPY", "YES")?;
     gdal::config::set_config_option("OGR_PG_RETRIEVE_FID", "FALSE")?;
@@ -19,19 +18,19 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
     // Get target dataset layer
     // TODO: pass database url directly once GDAL 8.4 is out
     let mut db_params = Vec::new();
-    if let Some(host) = database_url.host_str() {
+    if let Some(host) = &args.database_url.host_str() {
         db_params.push(format!("host={}", host));
     }
-    if let Some(port) = database_url.port() {
+    if let Some(port) = args.database_url.port() {
         db_params.push(format!("port={}", port));
     }
-    if !database_url.username().is_empty() {
-        db_params.push(format!("user={}", database_url.username()));
+    if !args.database_url.username().is_empty() {
+        db_params.push(format!("user={}", args.database_url.username()));
     }
-    if let Some(password) = database_url.password() {
+    if let Some(password) = args.database_url.password() {
         db_params.push(format!("password={}", password));
     }
-    if let Some(mut path_segments) = database_url.path_segments() {
+    if let Some(mut path_segments) = args.database_url.path_segments() {
         db_params.push(format!(
             "dbname={}",
             path_segments.next().expect("Some path segment")
@@ -43,7 +42,7 @@ pub async fn load(mut args: Args, database_url: &Url) -> Result<(), anyhow::Erro
     let ds = drv.create_vector_only(&db_url)?;
 
     // Setup a db connection pool
-    let db = Db::setup(database_url).await?;
+    let db = Db::setup(&args.database_url).await?;
 
     // Open input dataset
     if args.input.display().to_string().starts_with("http") {

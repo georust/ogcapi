@@ -3,8 +3,6 @@
 async fn edr() -> anyhow::Result<()> {
     use std::env;
     use std::net::{SocketAddr, TcpListener};
-    use std::path::PathBuf;
-    use std::str::FromStr;
 
     use axum::http::Request;
     use geojson::{Geometry, Value};
@@ -30,7 +28,7 @@ async fn edr() -> anyhow::Result<()> {
         .await
         .expect("Setup database");
 
-    let app = ogcapi_services::server(db).await;
+    let app = ogcapi_services::app(db).await;
 
     let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>().unwrap()).unwrap();
     let addr = listener.local_addr().unwrap();
@@ -46,27 +44,19 @@ async fn edr() -> anyhow::Result<()> {
     let client = hyper::Client::new();
 
     // load data
-    import::geojson::load(
-        Args {
-            input: PathBuf::from_str("../ogcapi/data/ne_110m_admin_0_countries.geojson")?,
-            collection: "countries".to_string(),
-            ..Default::default()
-        },
+    let args = Args::new(
+        "../ogcapi/data/ne_110m_admin_0_countries.geojson",
+        "countries",
         &database_url,
-        false,
-    )
-    .await?;
+    );
+    import::geojson::load(args, false).await?;
 
-    import::geojson::load(
-        Args {
-            input: PathBuf::from_str("../ogcapi/data/ne_110m_populated_places.geojson")?,
-            collection: "places".to_string(),
-            ..Default::default()
-        },
+    let args = Args::new(
+        "../ogcapi/data/ne_110m_populated_places.geojson",
+        "places",
         &database_url,
-        false,
-    )
-    .await?;
+    );
+    import::geojson::load(args, false).await?;
 
     // import::geojson::load(
     //     Args {
