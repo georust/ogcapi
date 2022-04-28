@@ -8,7 +8,7 @@ RUN rustup component add rustfmt clippy
 
 RUN cargo install sqlx-cli --no-default-features --features postgres,rustls
 
-RUN if [ "$CARGO_WATCH" ] ; then cargo install cargo-binstall && cargo binstall cargo-watch ; else echo "Skipping installation of cargo watch"; fi
+RUN if [ "$CARGO_WATCH" ] ; then cargo install cargo-binstall && cargo binstall cargo-watch --no-confirm ; else echo "Skipping installation of cargo watch"; fi
 
 WORKDIR /app
 
