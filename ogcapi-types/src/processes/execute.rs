@@ -7,20 +7,24 @@ use crate::common::{Bbox, Link};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Execute {
-    inputs: Option<HashMap<String, Input>>,
-    outputs: Option<HashMap<String, Output>>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub inputs: HashMap<String, Input>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub outputs: HashMap<String, Output>,
     #[serde(default)]
-    response: Response,
-    subscriber: Subscriber,
+    pub response: Response,
+    pub subscriber: Option<Subscriber>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-enum Input {
+#[serde(untagged)]
+pub enum Input {
     InlineOrRefData(InlineOrRefData),
     InlineOrRefDataArray(Vec<InlineOrRefData>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum InlineOrRefData {
     InputValueNoObject(InputValueNoObject),
     QualifiedInputValue(QualifiedInputValue),
@@ -28,6 +32,7 @@ pub enum InlineOrRefData {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum InputValueNoObject {
     String(String),
     Number(f64),
@@ -40,48 +45,50 @@ pub enum InputValueNoObject {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BoundingBox {
-    bbox: Bbox,
-    crs: Option<String>,
+    pub bbox: Bbox,
+    pub crs: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct QualifiedInputValue {
-    value: InputValue,
+    pub value: InputValue,
     #[serde(flatten)]
-    format: Format,
+    pub format: Format,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-enum InputValue {
+#[serde(untagged)]
+pub enum InputValue {
     InputValueNoObject(InputValueNoObject),
     Object(Map<String, Value>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct Output {
-    format: Option<Format>,
+pub struct Output {
+    pub format: Option<Format>,
     #[serde(default)]
-    transmission_mode: TransmissionMode,
+    pub transmission_mode: TransmissionMode,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct Format {
-    media_type: Option<String>,
-    encoding: Option<String>,
-    schema: Option<Schema>,
+pub struct Format {
+    pub media_type: Option<String>,
+    pub encoding: Option<String>,
+    pub schema: Option<Schema>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-enum Schema {
+#[serde(untagged)]
+pub enum Schema {
     String(String),
     Object(Map<String, Value>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
-enum TransmissionMode {
+pub enum TransmissionMode {
     Value,
     Reference,
 }
@@ -94,7 +101,7 @@ impl Default for TransmissionMode {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
-enum Response {
+pub enum Response {
     Raw,
     Document,
 }
@@ -107,8 +114,8 @@ impl Default for Response {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-struct Subscriber {
-    success_uri: String,
-    in_progress_uri: Option<String>,
-    failed_uri: Option<String>,
+pub struct Subscriber {
+    pub success_uri: String,
+    pub in_progress_uri: Option<String>,
+    pub failed_uri: Option<String>,
 }

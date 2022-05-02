@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.57"
-serde_json = "1.0.79"
+serde_json = "1.0.80"
 sqlx = { version = "0.5.13", features = ["runtime-tokio-rustls", "postgres", "json", "offline", "chrono"] }
 url = { version = "2.2.2", features = ["serde"] }
 

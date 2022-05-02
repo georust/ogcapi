@@ -59,8 +59,6 @@ pub const NEXT: &str = "next";
 
 pub const PARENT: &str = "parent";
 
-///
-/// See: <previous>
 pub const PREV: &str = "prev";
 
 /// The target URI points to the list of processes the API offers.

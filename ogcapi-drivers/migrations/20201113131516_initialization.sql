@@ -32,27 +32,9 @@ CREATE TABLE meta.styles (
     value jsonb NOT NULL
 );
 
-CREATE TABLE meta.processes (
-    id text PRIMARY KEY,
-    summary jsonb NOT NULL,
-    -- title text,
-    -- description text,
-    -- version text NOT NULL,
-    -- job_control_options text[],
-    -- output_transmission text[],
-    -- links jsonb,
-    -- keywords text[],
-    -- metadata jsonb,
-    -- parameters jsonb,
-    -- role text,
-    -- href text,
-    inputs jsonb,
-    outputs jsonb
-);
-
 CREATE TABLE meta.jobs (
     job_id text PRIMARY KEY,
-    processes_id text REFERENCES meta.processes (id),
+    process_id text NOT NULL,
     status json NOT NULL,
     message text,
     created timestamptz,

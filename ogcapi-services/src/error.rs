@@ -23,6 +23,10 @@ pub enum Error {
     #[error("an internal server error occurred")]
     Url(#[from] url::ParseError),
 
+    /// Return `500 Internal Server Error` on a `serde_qs::Error`.
+    #[error("an internal server error occurred")]
+    Qs(#[from] serde_qs::Error),
+
     /// Custom Exception
     #[error("an ogcapi exception occurred")]
     Exception(StatusCode, String),
@@ -31,8 +35,8 @@ pub enum Error {
 impl Error {
     fn status_code(&self) -> StatusCode {
         match self {
-            Self::Sqlx(_) | Self::Anyhow(_) | Self::Url(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::Exception(status, _) => *status,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -54,7 +58,11 @@ impl IntoResponse for Error {
                 (self.status_code(), self.to_string())
             }
             Self::Url(ref e) => {
-                tracing::error!("Generic error: {:?}", e);
+                tracing::error!("Url error: {:?}", e);
+                (self.status_code(), self.to_string())
+            }
+            Self::Qs(ref e) => {
+                tracing::error!("Query string error: {:?}", e);
                 (self.status_code(), self.to_string())
             }
             Self::Exception(status, message) => {

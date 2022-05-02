@@ -1,10 +1,14 @@
 mod config;
 mod error;
 mod extractors;
+#[cfg(feature = "processes")]
+mod processor;
 mod routes;
 
 pub use config::Config;
 pub use error::Error;
+#[cfg(feature = "processes")]
+pub use processor::Processor;
 
 use std::sync::{Arc, RwLock};
 
@@ -82,7 +86,8 @@ pub async fn app(db: Db) -> Router {
         .merge(routes::styles::router(&state));
 
     #[cfg(feature = "processes")]
-    let router = router.merge(routes::processes::router(&state));
+    let processors = vec![processor::Greeter];
+    let router = router.merge(routes::processes::router(&state, processors));
 
     #[cfg(feature = "edr")]
     let router = router.merge(routes::edr::router(&state));

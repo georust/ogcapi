@@ -1,25 +1,28 @@
-use anyhow::Context;
+use std::collections::BTreeMap;
+
 use axum::{
     extract::{Extension, Path, Query},
-    http::{header::LOCATION, HeaderMap, StatusCode},
+    http::StatusCode,
+    response::Response,
     routing::{get, post},
     Json, Router,
 };
-use chrono::Utc;
-use url::{Position, Url};
-use uuid::Uuid;
+use once_cell::sync::OnceCell;
+use url::Position;
 
-use ogcapi_types::common::{
-    link_rel::{JOB_LIST, NEXT, PREV, PROCESSES, SELF},
-    media_type::JSON,
-    Link,
-};
-use ogcapi_types::processes::{
-    Execute, Process, ProcessList, ProcessQuery, ProcessSummary, Results, StatusInfo,
+use ogcapi_types::{
+    common::{
+        link_rel::{JOB_LIST, NEXT, PREV, PROCESSES, SELF},
+        media_type::JSON,
+        Link,
+    },
+    processes::{
+        Execute as ProcessExecute, Process, ProcessList, ProcessQuery, ProcessSummary, Results,
+        StatusInfo,
+    },
 };
 
-use crate::extractors::RemoteUrl;
-use crate::{Result, State};
+use crate::{extractors::RemoteUrl, Processor, Result, State};
 
 const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
@@ -32,127 +35,79 @@ const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/dismiss",
 ];
 
+static PROCESSORS: OnceCell<BTreeMap<String, Box<dyn Processor>>> = OnceCell::new();
+
 async fn processes(
     Query(mut query): Query<ProcessQuery>,
-    Extension(state): Extension<State>,
+    RemoteUrl(mut url): RemoteUrl,
 ) -> Result<Json<ProcessList>> {
-    let mut sql = vec!["SELECT summary FROM meta.processes".to_string()];
+    let processors = PROCESSORS.get().unwrap();
 
-    let mut url: Url = format!("{}/processes", &state.remote).parse().unwrap();
+    let limit = query.limit.unwrap_or(processors.len());
+    let offset = query.offset.unwrap_or(0);
+
+    let mut summaries: Vec<ProcessSummary> = processors
+        .values()
+        .into_iter()
+        .skip(offset)
+        .take(limit)
+        .map(|p| p.process().summary)
+        .collect();
 
     let mut links = vec![Link::new(&url, SELF).mime(JSON)];
 
-    // pagination
-    if let Some(limit) = query.limit {
-        sql.push("ORDER BY id".to_string());
-        sql.push(format!("LIMIT {}", limit));
+    if query.limit.is_some() {
+        if offset != 0 && offset >= limit {
+            query.offset = Some(offset - limit);
+            let query_string = serde_qs::to_string(&query)?;
+            url.set_query(Some(&query_string));
+            let previous = Link::new(&url, PREV).mime(JSON);
+            links.push(previous);
+        }
 
-        let count = sqlx::query("SELECT id FROM meta.processes")
-            .execute(&state.db.pool)
-            .await?
-            .rows_affected();
-
-        if let Some(offset) = query.offset.or(Some(0)) {
-            sql.push(format!("OFFSET {}", offset));
-
-            if offset != 0 && offset >= limit {
-                query.offset = Some(offset - limit);
-                let query_string =
-                    serde_qs::to_string(&query).context("failed to serialize query")?;
-                url.set_query(Some(&query_string));
-                let previous = Link::new(&url, PREV).mime(JSON);
-                links.push(previous);
-            }
-
-            if !(offset + limit) as u64 >= count {
-                query.offset = Some(offset + limit);
-                let query_string =
-                    serde_qs::to_string(&query).context("failed to serialize query")?;
-                url.set_query(Some(&query_string));
-                let next = Link::new(&url, NEXT).mime(JSON);
-                links.push(next);
-            }
+        if summaries.len() == limit {
+            query.offset = Some(offset + limit);
+            let query_string = serde_qs::to_string(&query)?;
+            url.set_query(Some(&query_string));
+            let next = Link::new(&url, NEXT).mime(JSON);
+            links.push(next);
         }
     }
 
-    let summaries: Vec<sqlx::types::Json<ProcessSummary>> = sqlx::query_scalar(&sql.join(" "))
-        .fetch_all(&state.db.pool)
-        .await?;
+    summaries.iter_mut().for_each(|mut p| {
+        p.links = vec![
+            Link::new(format!("{}/{}", &url[..Position::AfterPath], p.id), SELF)
+                .mime(JSON)
+                .title("process description"),
+        ];
+    });
 
     let process_list = ProcessList {
-        processes: summaries
-            .into_iter()
-            .map(|mut p| {
-                p.0.links =
-                    vec![
-                        Link::new(format!("{}/{}", p.0.id, &url[..Position::AfterPath]), SELF)
-                            .mime(JSON)
-                            .title("process description"),
-                    ];
-                p.0
-            })
-            .collect(),
+        processes: summaries,
         links,
     };
 
     Ok(Json(process_list))
 }
 
-async fn process(
-    Path(id): Path<String>,
-    Extension(state): Extension<State>,
-) -> Result<Json<Process>> {
-    let mut process = sqlx::query_scalar!(
-        r#"
-        SELECT row_to_json(t) as "process!: sqlx::types::Json<Process>"
-        FROM (
-            SELECT summary, inputs, outputs FROM meta.processes WHERE id = $1
-        ) t
-        "#,
-        &id
-    )
-    .fetch_one(&state.db.pool)
-    .await?;
+async fn process(Path(id): Path<String>, RemoteUrl(url): RemoteUrl) -> Result<Json<Process>> {
+    let processors = PROCESSORS.get().unwrap();
 
-    process.summary.links =
-        vec![Link::new(format!("{}/processes/{}", &state.remote, &id), SELF).mime(JSON)];
+    let mut process = processors.get(&id).unwrap().process();
 
-    Ok(Json(process.0))
+    process.summary.links = vec![Link::new(&url, SELF).mime(JSON)];
+
+    Ok(Json(process))
 }
 
 async fn execution(
     Path(id): Path<String>,
-    headers: HeaderMap,
-    Json(_payload): Json<Execute>,
-    Extension(state): Extension<State>,
-) -> Result<(StatusCode, HeaderMap, Json<StatusInfo>)> {
-    let _prefer = headers.get("Prefer");
+    Json(execute): Json<ProcessExecute>,
+) -> Result<Response> {
+    let processors = PROCESSORS.get().unwrap();
 
-    let job = StatusInfo {
-        job_id: Uuid::new_v4().to_string(),
-        process_id: Some(id),
-        created: Some(Utc::now()),
-        ..Default::default()
-    };
-
-    sqlx::query(
-        "INSERT INTO meta.jobs (job_id, process_id, status, created) VALUES ($1, $2, $3, $4)",
-    )
-    .bind(&job.job_id)
-    .bind(&job.process_id)
-    .bind(sqlx::types::Json(&job.status))
-    .bind(&job.created)
-    .execute(&state.db.pool)
-    .await?;
-
-    // TODO: validation & execution
-    let location = format!("{}/jobs/{}", &state.remote, job.job_id)
-        .parse()
-        .context("Unable to parse `Location` header value")?;
-    let mut headers = HeaderMap::new();
-    headers.insert(LOCATION, location);
-
-    Ok((StatusCode::CREATED, headers, Json(job)))
+    // TODO: validation & async execution
+    Ok(processors.get(&id).unwrap().execute(&execute))
 }
 
 async fn jobs() {
@@ -203,7 +158,7 @@ async fn results(
     Ok(Json(results.0 .0))
 }
 
-pub(crate) fn router(state: &State) -> Router {
+pub(crate) fn router(state: &State, processors: Vec<impl Processor + 'static>) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
         Link::new(format!("{}/processes", &state.remote), PROCESSES)
@@ -218,6 +173,13 @@ pub(crate) fn router(state: &State) -> Router {
     conformance
         .conforms_to
         .append(&mut CONFORMANCE.map(String::from).to_vec());
+
+    // Register processors
+    let mut processor_map: BTreeMap<String, Box<dyn Processor>> = BTreeMap::new();
+    for p in processors {
+        processor_map.insert(p.id(), Box::new(p));
+    }
+    let _ = PROCESSORS.set(processor_map);
 
     Router::new()
         .route("/processes", get(processes))
