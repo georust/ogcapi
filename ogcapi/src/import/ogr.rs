@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
-use gdal::spatial_ref::{CoordTransform, SpatialRef};
-use gdal::vector::{Feature, FieldValue};
+use gdal::{
+    spatial_ref::{CoordTransform, SpatialRef},
+    vector::{Feature, FieldValue},
+};
 use serde_json::{Map, Value};
 
 use ogcapi_drivers::postgres::Db;

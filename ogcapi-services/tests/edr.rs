@@ -6,14 +6,12 @@ async fn edr() -> anyhow::Result<()> {
 
     use axum::http::Request;
     use geojson::{Geometry, Value};
-    use ogcapi_drivers::postgres::Db;
     use url::Url;
     use uuid::Uuid;
 
     use ogcapi::import::{self, Args};
-    use ogcapi_types::common::Crs;
-    use ogcapi_types::edr::Query;
-    use ogcapi_types::features::FeatureCollection;
+    use ogcapi_drivers::postgres::Db;
+    use ogcapi_types::{common::Crs, edr::Query, features::FeatureCollection};
 
     // setup app
     dotenv::dotenv().ok();

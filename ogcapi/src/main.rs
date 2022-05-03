@@ -1,5 +1,4 @@
 use clap::Parser;
-use ogcapi_drivers::postgres::Db;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser, Debug)]
@@ -33,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
 
     // parse cli args
     let app = App::parse();
-    tracing::debug!("{:#?}", app);
+    // tracing::debug!("{:#?}", app);
 
     match app.command {
         #[cfg(feature = "import")]
@@ -52,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
         #[cfg(feature = "serve")]
         Command::Serve(config) => {
             // Setup a database connection pool & run any pending migrations
-            let db = Db::setup(&config.database_url).await?;
+            let db = ogcapi_drivers::postgres::Db::setup(&config.database_url).await?;
 
             // Build our application
             let router = ogcapi_services::app(db).await;

@@ -2,7 +2,7 @@
 
 ## Client
 
-The `ogcapi_client` crate provides a client for accessing geospatial datasets served through [OGC API](https://ogcapi.ogc.org/) or [SpatioTemporal Asset Catalog (STAC)](https://stacspec.org/) with the following features:
+The `ogcapi-client` crate provides a client for accessing geospatial datasets served through [OGC API](https://ogcapi.ogc.org/) or [SpatioTemporal Asset Catalog (STAC)](https://stacspec.org/) with the following features:
 
 * Depth first iterator over catalog tree
 * Iterator over collections

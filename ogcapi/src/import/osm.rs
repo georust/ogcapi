@@ -2,10 +2,8 @@ use std::{collections::BTreeMap, fs::File};
 
 use geo::{Coordinate, Geometry, GeometryCollection, LineString, MultiLineString, Point, Polygon};
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
-
 use serde_json::{Map, Value};
 
-use crate::import::boundaries;
 use ogcapi_drivers::postgres::Db;
 use ogcapi_types::common::{Collection, Crs};
 
@@ -106,7 +104,7 @@ fn geometry_from_obj(obj: &OsmObj, objs: &BTreeMap<OsmId, OsmObj>) -> Option<Geo
             // match type of relation https://wiki.openstreetmap.org/wiki/Types_of_relation
             if let Some(rel_type) = rel.tags.get("type").map(|s| s.as_str()) {
                 if vec!["multipolygon", "boundary"].contains(&rel_type) {
-                    boundaries::build_boundary(rel, objs).map(|p| p.into())
+                    crate::import::boundaries::build_boundary(rel, objs).map(|p| p.into())
                 } else if vec![
                     "multilinestring",
                     "route",

@@ -1,7 +1,8 @@
 use geojson::GeoJson;
+use serde_json::Value;
+
 use ogcapi_drivers::postgres::Db;
 use ogcapi_types::common::{Collection, Crs};
-use serde_json::Value;
 
 use super::Args;
 

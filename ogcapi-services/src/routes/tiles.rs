@@ -1,16 +1,22 @@
 use std::collections::HashMap;
 
-use axum::extract::{Extension, Path};
-use axum::http::StatusCode;
-use axum::routing::get;
-use axum::{Json, Router};
-use ogcapi_types::common::link_rel::{TILESETS_VECTOR, TILING_SCHEME};
-use ogcapi_types::common::media_type::JSON;
-use ogcapi_types::common::Link;
+use axum::{
+    extract::{Extension, Path},
+    http::StatusCode,
+    routing::get,
+    Json, Router,
+};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 
-use ogcapi_types::tiles::{TileMatrix, TileMatrixSet, TileMatrixSetItem, TileMatrixSets, TileSets};
+use ogcapi_types::{
+    common::{
+        link_rel::{TILESETS_VECTOR, TILING_SCHEME},
+        media_type::JSON,
+        Link,
+    },
+    tiles::{TileMatrix, TileMatrixSet, TileMatrixSetItem, TileMatrixSets, TileSets},
+};
 
 use crate::{Error, Result, State};
 

@@ -3,8 +3,7 @@ use axum::http::{header::CONTENT_TYPE, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 
-use ogcapi_types::common::media_type::PROBLEM_JSON;
-use ogcapi_types::common::Exception;
+use ogcapi_types::common::{media_type::PROBLEM_JSON, Exception};
 
 /// A common error type that can be used throughout the API.
 ///

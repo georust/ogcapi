@@ -15,8 +15,7 @@ use ogcapi_types::{
     features::{Feature, FeatureCollection},
 };
 
-use crate::extractors::Qs;
-use crate::{Result, State};
+use crate::{extractors::Qs, Result, State};
 
 const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/core",

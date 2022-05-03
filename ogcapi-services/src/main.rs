@@ -1,8 +1,5 @@
 use clap::StructOpt;
 
-use ogcapi_drivers::postgres::Db;
-use ogcapi_services::Config;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // setup env
@@ -11,10 +8,10 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     // parse config
-    let config = Config::parse();
+    let config = ogcapi_services::Config::parse();
 
     // setup database connection pool & run any pending migrations
-    let db = Db::setup(&config.database_url).await?;
+    let db = ogcapi_drivers::postgres::Db::setup(&config.database_url).await?;
 
     // build application
     let router = ogcapi_services::app(db).await;

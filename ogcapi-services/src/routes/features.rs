@@ -1,8 +1,8 @@
 use std::convert::TryInto;
 
 use anyhow::Context;
-use axum::extract::{Extension, Path};
 use axum::{
+    extract::{Extension, Path},
     http::{
         header::{CONTENT_TYPE, LOCATION},
         HeaderMap, StatusCode,
@@ -23,8 +23,10 @@ use ogcapi_types::{
     features::{Feature, FeatureCollection, Query},
 };
 
-use crate::extractors::{Qs, RemoteUrl};
-use crate::{Error, Result, State};
+use crate::{
+    extractors::{Qs, RemoteUrl},
+    Error, Result, State,
+};
 
 const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",

@@ -8,7 +8,7 @@ edition = "2021"
 [features]
 default = ["import", "serve"]
 import = ["gdal", "geo", "osmpbfreader", "pbr", "sqlx", "wkb"]
-serve = ["axum", "ogcapi_services"]
+serve = ["axum", "ogcapi-services"]
 
 [dependencies]
 anyhow = "1.0.57"
@@ -29,6 +29,6 @@ tracing-subscriber = { version="0.3.11", features = ["env-filter"] }
 url = { version = "2.2.2", features = ["serde"] }
 wkb = { version = "0.7.1", optional = true }
 
-ogcapi_types = { path = "../ogcapi-types" }
-ogcapi_drivers = { path = "../ogcapi-drivers" }
-ogcapi_services = { path = "../ogcapi-services", optional = true }
+ogcapi-types = { path = "../ogcapi-types" }
+ogcapi-drivers = { path = "../ogcapi-drivers" }
+ogcapi-services = { path = "../ogcapi-services", optional = true }

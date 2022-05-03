@@ -10,12 +10,13 @@ use chrono::Utc;
 // use serde_with::{serde_as, DisplayFromStr};
 use url::Position;
 
-use crate::{extractors::RemoteUrl, Result, State};
 use ogcapi_types::common::{
     link_rel::{DATA, ITEMS, SELF},
     media_type::{GEO_JSON, JSON},
     Collection, Collections, Crs, Link,
 };
+
+use crate::{extractors::RemoteUrl, Result, State};
 
 const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",

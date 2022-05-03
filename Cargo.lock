@@ -1271,9 +1271,9 @@ dependencies = [
  "gdal",
  "geo",
  "geojson",
- "ogcapi_drivers",
- "ogcapi_services",
- "ogcapi_types",
+ "ogcapi-drivers",
+ "ogcapi-services",
+ "ogcapi-types",
  "osmpbfreader",
  "pbr",
  "serde",
@@ -1287,11 +1287,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "ogcapi_client"
+name = "ogcapi-client"
 version = "0.1.0"
 dependencies = [
  "geojson",
- "ogcapi_types",
+ "ogcapi-types",
  "once_cell",
  "reqwest",
  "serde",
@@ -1302,18 +1302,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "ogcapi_drivers"
+name = "ogcapi-drivers"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "ogcapi_types",
+ "ogcapi-types",
  "serde_json",
  "sqlx",
  "url",
 ]
 
 [[package]]
-name = "ogcapi_services"
+name = "ogcapi-services"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1324,8 +1324,8 @@ dependencies = [
  "geojson",
  "hyper",
  "ogcapi",
- "ogcapi_drivers",
- "ogcapi_types",
+ "ogcapi-drivers",
+ "ogcapi-types",
  "once_cell",
  "openapiv3",
  "rink-core",
@@ -1346,7 +1346,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ogcapi_types"
+name = "ogcapi-types"
 version = "0.1.0"
 dependencies = [
  "chrono",

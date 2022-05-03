@@ -1,10 +1,13 @@
-use axum::extract::{Extension, Path};
-use axum::routing::get;
-use axum::{Json, Router};
+use axum::{
+    extract::{Extension, Path},
+    routing::get,
+    Json, Router,
+};
 use serde_json::Value;
 
-use crate::{Result, State};
 use ogcapi_types::styles::{Style, Styles, Stylesheet};
+
+use crate::{Result, State};
 
 async fn styles(Extension(state): Extension<State>) -> Result<Json<Styles>> {
     let styles = sqlx::query_scalar!(

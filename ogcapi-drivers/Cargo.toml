@@ -1,5 +1,5 @@
 [package]
-name = "ogcapi_drivers"
+name = "ogcapi-drivers"
 version = "0.1.0"
 license = "GPL-3.0-only"
 edition = "2021"
@@ -11,4 +11,4 @@ serde_json = "1.0.80"
 sqlx = { version = "0.5.13", features = ["runtime-tokio-rustls", "postgres", "json", "offline", "chrono"] }
 url = { version = "2.2.2", features = ["serde"] }
 
-ogcapi_types = { path = "../ogcapi-types" }
+ogcapi-types = { path = "../ogcapi-types" }

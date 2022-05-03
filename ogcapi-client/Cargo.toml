@@ -1,12 +1,12 @@
 [package]
-name = "ogcapi_client"
+name = "ogcapi-client"
 version = "0.1.0"
 license = "GPL-3.0-only"
 edition = "2021"
 
 [features]
 default = []
-stac = ["ogcapi_types/stac"]
+stac = ["ogcapi-types/stac"]
 
 [dependencies]
 geojson = "0.22.3"
@@ -18,4 +18,4 @@ serde_qs = "0.9.2"
 thiserror = "1.0.31"
 url = { version = "2.2.2", features = ["serde"]}
 
-ogcapi_types = { path = "../ogcapi-types" }
+ogcapi-types = { path = "../ogcapi-types" }

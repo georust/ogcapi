@@ -1,5 +1,6 @@
 use axum::response::{IntoResponse, Response};
-use ogcapi_types::processes::{InlineOrRefData, Input, InputValueNoObject, Process};
+
+use ogcapi_types::processes::{Execute, InlineOrRefData, Input, InputValueNoObject, Process};
 
 /// Trait for defining and executing a [Process]
 pub trait Processor: Send + Sync {
@@ -10,7 +11,7 @@ pub trait Processor: Send + Sync {
     fn process(&self) -> Process;
 
     /// Executes the Process and returns a response
-    fn execute(&self, execute: &ogcapi_types::processes::Execute) -> Response;
+    fn execute(&self, execute: &Execute) -> Response;
 }
 
 /// Example Processor
@@ -40,7 +41,7 @@ impl Processor for Greeter {
         )
     }
 
-    fn execute(&self, execute: &ogcapi_types::processes::Execute) -> Response {
+    fn execute(&self, execute: &Execute) -> Response {
         let input = execute.inputs.get("name").unwrap();
         match input {
             Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
