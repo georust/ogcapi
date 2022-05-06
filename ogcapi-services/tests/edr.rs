@@ -43,14 +43,14 @@ async fn edr() -> anyhow::Result<()> {
 
     // load data
     let args = Args::new(
-        "../ogcapi/data/ne_110m_admin_0_countries.geojson",
+        "../data/ne_110m_admin_0_countries.geojson",
         "countries",
         &database_url,
     );
     import::geojson::load(args, false).await?;
 
     let args = Args::new(
-        "../ogcapi/data/ne_110m_populated_places.geojson",
+        "../data/ne_110m_populated_places.geojson",
         "places",
         &database_url,
     );
@@ -58,7 +58,7 @@ async fn edr() -> anyhow::Result<()> {
 
     // import::geojson::load(
     //     Args {
-    //         input: PathBuf::from_str("../ogcapi/data/ne_10m_railroads_north_america.geojson")?,
+    //         input: PathBuf::from_str("../data/ne_10m_railroads_north_america.geojson")?,
     //         collection: "railroads".to_string(),
     //         ..Default::default()
     //     },

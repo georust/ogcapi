@@ -37,7 +37,8 @@ services:
       - ./ogcapi-drivers/src:/app/ogcapi-drivers/src:ro
       - ./ogcapi-drivers/Cargo.toml:/app/ogcapi-drivers/Cargo.toml:ro
       - ./ogcapi-drivers/migrations:/app/ogcapi-drivers/migrations:ro
-      - ./ogcapi-services:/app/ogcapi-services:ro
+      - ./ogcapi-services/src:/app/ogcapi-services/src:ro
+      - ./ogcapi-services/Cargo.toml:/app/ogcapi-services/Cargo.toml:ro
       - ./ogcapi-types:/app/ogcapi-types:ro
     command:
       - /bin/bash
@@ -63,6 +64,7 @@ services:
       - ./ogcapi-drivers/src:/app/ogcapi-drivers/src:ro
       - ./ogcapi-drivers/Cargo.toml:/app/ogcapi-drivers/Cargo.toml:ro
       - ./ogcapi-drivers/migrations:/app/ogcapi-drivers/migrations:ro
-      - ./ogcapi-services:/app/ogcapi-services:ro
+      - ./ogcapi-services/src:/app/ogcapi-services/src:ro
+      - ./ogcapi-services/Cargo.toml:/app/ogcapi-services/Cargo.toml:ro
       - ./ogcapi-types:/app/ogcapi-types:ro
     command: tail -f /dev/null

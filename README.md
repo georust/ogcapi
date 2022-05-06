@@ -12,9 +12,9 @@ docker-compose up
 
 # Import administrative bounaries
 docker exec -ti ogcapi \
-    cargo run -- \
-    import ogcapi/data/ne_110m_admin_0_countries.geojson \
-    --collection countries
+    cargo run --  import \
+        --input data/ne_110m_admin_0_countries.geojson \
+        --collection countries
 ```
 
 Open <http://localhost:8484/> were you will find the `Landing Page`.
@@ -42,7 +42,7 @@ docker-compose up db db-migrations
 cargo test --workspace
 
 # Import administrative bounaries
-cargo run -- import ogcapi/data/ne_110m_admin_0_countries.geojson --collection countries
+cargo run -- import --input data/ne_110m_admin_0_countries.geojson --collection countries
 
 # Serve 
 cargo run -- serve
