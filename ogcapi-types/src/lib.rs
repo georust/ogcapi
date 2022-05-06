@@ -15,3 +15,5 @@ pub mod stac;
 pub mod styles;
 /// Types specified in the `OGC API - Tiles` standard.
 pub mod tiles;
+
+mod coverage;

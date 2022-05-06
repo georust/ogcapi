@@ -17,7 +17,10 @@ use openapiv3::OpenAPI;
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
-use ogcapi_drivers::postgres::Db;
+use ogcapi_drivers::{
+    postgres::Db, CollectionTransactions, EdrQuerier, FeatureTransactions, JobHandler,
+    StyleTransactions, TileTransactions,
+};
 use ogcapi_types::common::{
     link_rel::{CONFORMANCE, SELF, SERVICE_DESC},
     media_type::{JSON, OPEN_API_JSON},
@@ -28,14 +31,23 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 static OPENAPI: &[u8; 29758] = include_bytes!("../openapi.yaml");
 
-#[derive(Clone)]
+// #[derive(Clone)]
 struct State {
-    db: Db,
-    // collections: Arc<RwLock<HashMap<String, Collection>>>,
-    root: Arc<RwLock<LandingPage>>,
-    conformance: Arc<RwLock<Conformance>>,
-    openapi: Arc<OpenAPI>,
-    remote: Arc<String>,
+    drivers: Drivers,
+    // collections: RwLock<HashMap<String, Collection>>,
+    root: RwLock<LandingPage>,
+    conformance: RwLock<Conformance>,
+    openapi: OpenAPI,
+    remote: String,
+}
+
+struct Drivers {
+    collections: Box<dyn CollectionTransactions>,
+    features: Box<dyn FeatureTransactions>,
+    edr: Box<dyn EdrQuerier>,
+    jobs: Box<dyn JobHandler>,
+    styles: Box<dyn StyleTransactions>,
+    tiles: Box<dyn TileTransactions>,
 }
 
 pub async fn app(db: Db) -> Router {
@@ -43,7 +55,7 @@ pub async fn app(db: Db) -> Router {
     let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI).unwrap();
     let remote = openapi.servers[0].url.to_owned();
 
-    let root = Arc::new(RwLock::new(LandingPage {
+    let root = RwLock::new(LandingPage {
         title: Some(openapi.info.title.to_owned()),
         description: openapi.info.description.to_owned(),
         links: vec![
@@ -56,22 +68,31 @@ pub async fn app(db: Db) -> Router {
                 .mime(JSON),
         ],
         ..Default::default()
-    }));
+    });
 
-    let conformance = Arc::new(RwLock::new(Conformance {
+    let conformance = RwLock::new(Conformance {
         conforms_to: vec![
             "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core".to_string(),
             "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections".to_string(),
             "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json".to_string(),
         ],
-    }));
+    });
+
+    let drivers = Drivers {
+        collections: Box::new(db.clone()),
+        features: Box::new(db.clone()),
+        edr: Box::new(db.clone()),
+        jobs: Box::new(db.clone()),
+        styles: Box::new(db.clone()),
+        tiles: Box::new(db),
+    };
 
     let state = State {
-        db,
+        drivers,
         root,
         conformance,
-        openapi: Arc::new(openapi),
-        remote: Arc::new(remote),
+        openapi,
+        remote,
     };
 
     // routes
@@ -96,6 +117,33 @@ pub async fn app(db: Db) -> Router {
         ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
             .layer(CorsLayer::permissive())
-            .layer(Extension(state)),
+            .layer(Extension(Arc::new(state))),
     )
+}
+
+/// Handle shutdown signals
+pub async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    tracing::debug!("signal received, starting graceful shutdown");
 }

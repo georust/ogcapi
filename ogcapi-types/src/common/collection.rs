@@ -9,26 +9,10 @@ use crate::common::{Crs, Extent, Links};
 
 pub const CRS_REF: &str = "#/crs";
 
-#[serde_as]
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Collections {
-    #[serde(default)]
-    pub links: Links,
-    pub time_stamp: Option<String>,
-    pub number_matched: Option<u64>,
-    pub number_returned: Option<u64>,
-    pub collections: Vec<Collection>,
-    #[serde(default)]
-    #[serde_as(as = "Vec<DisplayFromStr>")]
-    pub crs: Vec<Crs>,
-}
-
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Collection {
     /// Must be set to `Collection` to be a valid Collection.
@@ -38,7 +22,8 @@ pub struct Collection {
     pub id: String,
     pub title: Option<String>,
     pub description: Option<String>,
-    pub keywords: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keywords: Vec<String>,
     /// Attribution for the collection.
     pub attribution: Option<String>,
     pub extent: Option<Extent>,
@@ -60,7 +45,11 @@ pub struct Collection {
     pub stac_version: String,
     // /// A list of extension identifiers the Collection implements.
     #[cfg(feature = "stac")]
-    #[serde(default, rename = "stac_extensions")]
+    #[serde(
+        default,
+        rename = "stac_extensions",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     pub stac_extensions: Vec<String>,
     /// Collection's license(s), either a SPDX License identifier, `various` if
     /// multiple licenses apply or `proprietary` for all other cases.
@@ -68,7 +57,7 @@ pub struct Collection {
     pub license: String,
     /// A list of providers, which may include all organizations capturing or processing the data or the hosting provider.
     #[cfg(feature = "stac")]
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub providers: Vec<crate::stac::Provider>,
     /// A map of property summaries, either a set of values, a range of values or a JSON Schema.
     #[cfg(feature = "stac")]
@@ -85,4 +74,38 @@ pub struct Collection {
 #[cfg(feature = "stac")]
 fn collection() -> String {
     "Collection".to_string()
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for Collection {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "stac")]
+            r#type: "Collection".to_string(),
+            id: Default::default(),
+            title: Default::default(),
+            description: Default::default(),
+            keywords: Default::default(),
+            attribution: Default::default(),
+            extent: Default::default(),
+            item_type: Default::default(),
+            crs: Default::default(),
+            storage_crs: Default::default(),
+            storage_crs_coordinate_epoch: Default::default(),
+            links: Default::default(),
+            #[cfg(feature = "stac")]
+            stac_version: crate::stac::STAC_VERSION.to_string(),
+            #[cfg(feature = "stac")]
+            stac_extensions: Default::default(),
+            #[cfg(feature = "stac")]
+            license: "various".to_string(),
+            #[cfg(feature = "stac")]
+            providers: Default::default(),
+            #[cfg(feature = "stac")]
+            summaries: Default::default(),
+            #[cfg(feature = "stac")]
+            assets: Default::default(),
+            additional_properties: Default::default(),
+        }
+    }
 }

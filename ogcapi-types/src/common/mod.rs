@@ -1,5 +1,6 @@
 mod bbox;
 mod collection;
+mod collections;
 mod conformance;
 mod crs;
 mod datetime;
@@ -14,6 +15,7 @@ mod query;
 
 pub use bbox::Bbox;
 pub use collection::*;
+pub use collections::Collections;
 pub use conformance::Conformance;
 pub use crs::*;
 pub use datetime::Datetime;

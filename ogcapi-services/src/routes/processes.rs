@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use axum::{
     extract::{Extension, Path, Query},
@@ -117,28 +117,20 @@ async fn jobs() {
 async fn status(
     RemoteUrl(url): RemoteUrl,
     Path(id): Path<String>,
-    Extension(state): Extension<State>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<Json<StatusInfo>> {
-    let mut status = sqlx::query_scalar!(
-        r#"
-        SELECT row_to_json(jobs) as "status_info!: sqlx::types::Json<StatusInfo>" 
-        FROM meta.jobs WHERE job_id = $1
-        "#,
-        id
-    )
-    .fetch_one(&state.db.pool)
-    .await?;
+    let mut status = state.drivers.jobs.status(&id).await?;
 
     status.links = vec![Link::new(url, SELF).mime(JSON)];
 
-    Ok(Json(status.0))
+    Ok(Json(status))
 }
 
-async fn delete(Path(id): Path<String>, Extension(state): Extension<State>) -> Result<StatusCode> {
-    sqlx::query("DELETE FROM meta.jobs WHERE job_id = $1")
-        .bind(id)
-        .execute(&state.db.pool)
-        .await?;
+async fn delete(
+    Path(id): Path<String>,
+    Extension(state): Extension<Arc<State>>,
+) -> Result<StatusCode> {
+    state.drivers.jobs.delete(&id).await?;
 
     // TODO: cancel execution
 
@@ -147,15 +139,11 @@ async fn delete(Path(id): Path<String>, Extension(state): Extension<State>) -> R
 
 async fn results(
     Path(id): Path<String>,
-    Extension(state): Extension<State>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<Json<Results>> {
-    let results: (sqlx::types::Json<Results>,) =
-        sqlx::query_as("SELECT results FROM meta.jobs WHERE job_id = $id")
-            .bind(id)
-            .fetch_one(&state.db.pool)
-            .await?;
+    let results = state.drivers.jobs.results(&id).await?;
 
-    Ok(Json(results.0 .0))
+    Ok(Json(results))
 }
 
 pub(crate) fn router(state: &State, processors: Vec<impl Processor + 'static>) -> Router {

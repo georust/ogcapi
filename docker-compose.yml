@@ -1,12 +1,18 @@
 services:
   db:
-    image: postgis/postgis:latest
+    image: postgis/postgis
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     ports:
       - ${DB_PORT}:5432
+
   db-migrations:
     build:
       context: .
@@ -14,15 +20,13 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-    command:
-      - /bin/bash
-      - -c
-      - |
-        until PGPASSWORD="${DB_PASSWORD}" psql -h "db" -U "${DB_USER}" -p "5432" -d "${DB_NAME}" -c '\q'; do
-          sleep 1
-        done
-        sqlx database setup --source ogcapi-drivers/migrations
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sqlx database setup --source ogcapi-drivers/migrations
+
   server:
+    init: true
     build:
       context: .
       args:
@@ -32,6 +36,10 @@ services:
       - APP_HOST=${APP_HOST}
       - APP_PORT=${APP_PORT}
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_CUSTOM_ENDPOINT=http://minio:9000
     volumes:
       - ./ogcapi:/app/ogcapi:ro
       - ./ogcapi-drivers/src:/app/ogcapi-drivers/src:ro
@@ -40,17 +48,15 @@ services:
       - ./ogcapi-services/src:/app/ogcapi-services/src:ro
       - ./ogcapi-services/Cargo.toml:/app/ogcapi-services/Cargo.toml:ro
       - ./ogcapi-types:/app/ogcapi-types:ro
-    command:
-      - /bin/bash
-      - -c
-      - |
-        until PGPASSWORD="${DB_PASSWORD}" psql -h "db" -U "${DB_USER}" -p "5432" -d "${DB_NAME}" -c '\q'; do
-          sleep 1
-        done
-        cargo watch --poll -x 'run -- serve'
+    depends_on:
+      db:
+        condition: service_healthy
+    command: cargo watch --poll -x 'run -- serve'
     ports:
       - ${APP_PORT}:${APP_PORT}
+
   cli:
+    init: true
     build:
       context: .
     container_name: ogcapi
@@ -59,6 +65,10 @@ services:
       - APP_HOST=${APP_HOST}
       - APP_PORT=${APP_PORT}
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_CUSTOM_ENDPOINT=http://minio:9000
     volumes:
       - ./ogcapi:/app/ogcapi:ro
       - ./ogcapi-drivers/src:/app/ogcapi-drivers/src:ro
@@ -67,4 +77,16 @@ services:
       - ./ogcapi-services/src:/app/ogcapi-services/src:ro
       - ./ogcapi-services/Cargo.toml:/app/ogcapi-services/Cargo.toml:ro
       - ./ogcapi-types:/app/ogcapi-types:ro
+    depends_on:
+      db:
+        condition: service_healthy
     command: tail -f /dev/null
+
+  minio:
+    image: minio/minio
+    volumes:
+      - ./data/minio:/data
+    command: server /data --console-address ":9001"
+    ports:
+      - 9000:9000
+      - 9001:9001

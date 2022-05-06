@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use axum::{
     extract::{Extension, Path},
     headers::HeaderMap,
@@ -5,7 +7,7 @@ use axum::{
     Json,
     {routing::get, Router},
 };
-use chrono::Utc;
+
 // use serde::Deserialize;
 // use serde_with::{serde_as, DisplayFromStr};
 use url::Position;
@@ -27,19 +29,13 @@ const CONFORMANCE: [&str; 3] = [
 async fn collections(
     // Query(query): Query<CollectionQuery>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<State>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<Json<Collections>> {
-    let mut collections =
-        sqlx::query_scalar!(
-            r#"
-            SELECT array_to_json(array_agg(collection)) as "collections!: sqlx::types::Json<Vec<Collection>>" 
-            FROM meta.collections
-            "#)
-            .fetch_one(&state.db.pool)
-            .await?;
+    let mut collections = state.drivers.collections.list_collections().await?;
 
     let base = &url[..Position::AfterPath];
-    collections.0.iter_mut().for_each(|c| {
+
+    collections.collections.iter_mut().for_each(|c| {
         c.links.append(&mut vec![
             Link::new(format!("{}/{}", base, c.id), SELF),
             Link::new(format!("{}/{}/items", base, c.id), ITEMS)
@@ -48,23 +44,22 @@ async fn collections(
         ]);
     });
 
-    let collections = Collections {
-        links: vec![Link::new(url, SELF).mime(JSON).title("this document")],
-        time_stamp: Some(Utc::now().to_rfc3339()),
-        crs: vec![Crs::default(), Crs::from(4326)],
-        collections: collections.0,
-        ..Default::default()
-    };
+    collections.links = vec![Link::new(url, SELF).mime(JSON).title("this document")];
+    collections.crs = vec![Crs::default(), Crs::from(4326)];
 
     Ok(Json(collections))
 }
 
 /// Create new collection metadata
-async fn insert(
+async fn create(
     Json(collection): Json<Collection>,
-    Extension(state): Extension<State>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<(StatusCode, HeaderMap)> {
-    let location = state.db.insert_collection(&collection).await?;
+    let location = state
+        .drivers
+        .collections
+        .create_collection(&collection)
+        .await?;
     let mut headers = HeaderMap::new();
     headers.insert(LOCATION, location.parse().unwrap());
     Ok((StatusCode::CREATED, headers))
@@ -74,9 +69,13 @@ async fn insert(
 async fn read(
     Path(collection_id): Path<String>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<State>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<Json<Collection>> {
-    let mut collection = state.db.select_collection(&collection_id).await?;
+    let mut collection = state
+        .drivers
+        .collections
+        .read_collection(&collection_id)
+        .await?;
 
     collection.links.push(
         Link::new(format!("{}/items", &url[..Position::AfterPath]), SELF)
@@ -94,11 +93,15 @@ async fn read(
 async fn update(
     Path(collection_id): Path<String>,
     Json(mut collection): Json<Collection>,
-    Extension(state): Extension<State>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<StatusCode> {
     collection.id = collection_id;
 
-    state.db.update_collection(&collection).await?;
+    state
+        .drivers
+        .collections
+        .update_collection(&collection)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -106,9 +109,13 @@ async fn update(
 /// Delete collection metadata
 async fn remove(
     Path(collection_id): Path<String>,
-    Extension(state): Extension<State>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<StatusCode> {
-    state.db.delete_collection(&collection_id).await?;
+    state
+        .drivers
+        .collections
+        .delete_collection(&collection_id)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -127,7 +134,7 @@ pub(crate) fn router(state: &State) -> Router {
         .append(&mut CONFORMANCE.map(String::from).to_vec());
 
     Router::new()
-        .route("/collections", get(collections).post(insert))
+        .route("/collections", get(collections).post(create))
         .route(
             "/collections/:collection_id",
             get(read).put(update).delete(remove),

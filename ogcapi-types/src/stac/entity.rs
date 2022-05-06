@@ -10,7 +10,7 @@ use super::Catalog;
 #[serde(untagged)]
 pub enum StacEntity {
     Catalog(Catalog),
-    Collection(Collection),
+    Collection(Box<Collection>),
     Item(Item),
 }
 
