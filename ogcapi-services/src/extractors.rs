@@ -1,9 +1,8 @@
 use anyhow::Context;
-use axum::extract::{Host, OriginalUri};
-use axum::http::StatusCode;
 use axum::{
-    async_trait,
     extract::{FromRequest, RequestParts},
+    extract::{Host, OriginalUri},
+    http::StatusCode,
 };
 use url::Url;
 
@@ -12,7 +11,7 @@ use crate::Error;
 /// Extractor for the remote URL
 pub(crate) struct RemoteUrl(pub Url);
 
-#[async_trait]
+#[axum::async_trait]
 impl<B> FromRequest<B> for RemoteUrl
 where
     B: Send,

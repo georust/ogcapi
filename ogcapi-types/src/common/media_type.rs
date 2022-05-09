@@ -9,6 +9,9 @@ pub const JSON: &str = "application/json";
 /// Media Type for `application/geo+json`
 pub const GEO_JSON: &str = "application/geo+json";
 
+/// Media Type for `application/prs.coverage+json`
+pub const COVERAGE_JSON: &str = "application/prs.coverage+json";
+
 /// Media Type for `application/vnd.oai.openapi;version=3.0`
 pub const OPEN_API: &str = "application/vnd.oai.openapi;version=3.0";
 

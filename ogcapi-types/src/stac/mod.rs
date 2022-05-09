@@ -17,7 +17,7 @@ pub use crate::common::Collection;
 pub use crate::features::Feature as Item;
 
 /// Default stac version
-const STAC_VERSION: &str = "1.0.0";
+pub(crate) const STAC_VERSION: &str = "1.0.0";
 
 pub(crate) fn stac_version() -> String {
     STAC_VERSION.to_owned()

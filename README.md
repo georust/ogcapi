@@ -8,7 +8,7 @@ This will take a while and use quite some disk space
 
 ```bash
 # Setup the database
-docker-compose up
+docker compose up
 
 # Import administrative bounaries
 docker exec -ti ogcapi \
@@ -36,7 +36,7 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 ```bash
 # Setup the database
-docker-compose up db db-migrations
+docker compose up db db-migrations
 
 # Run tests
 cargo test --workspace
@@ -50,6 +50,12 @@ cargo run -- serve
 # Documentation
 cargo doc --workspace --all-features --no-deps --open
 ```
+
+### Object strage
+
+Some features like `stac` requires object storage. Simple object storage (S3) is provided trough `minio`.
+
+To setup run `docker compose up` then login to the minio console and create a user with read/write access using the credentials found in the [`.env`](.env) file and also create a bucket named `test-bucket`.
 
 ## Teamengine
 

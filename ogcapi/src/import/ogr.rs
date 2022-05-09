@@ -6,7 +6,7 @@ use gdal::{
 };
 use serde_json::{Map, Value};
 
-use ogcapi_drivers::postgres::Db;
+use ogcapi_drivers::{postgres::Db, CollectionTransactions};
 use ogcapi_types::common::{Bbox, Collection, Crs, Extent, SpatialExtent};
 
 use super::Args;
@@ -104,7 +104,7 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
         };
 
         // db.delete_collection(&collection.id).await?;
-        db.insert_collection(&collection).await?;
+        db.create_collection(&collection).await?;
 
         // Load features
         tracing::info!("Importing layer: `{}`", &collection.title.unwrap());

@@ -1,7 +1,9 @@
-use axum::headers::HeaderMap;
-use axum::http::{header::CONTENT_TYPE, StatusCode};
-use axum::response::{IntoResponse, Response};
-use axum::Json;
+use axum::{
+    headers::HeaderMap,
+    http::{header::CONTENT_TYPE, StatusCode},
+    response::{IntoResponse, Response},
+    Json,
+};
 
 use ogcapi_types::common::{media_type::PROBLEM_JSON, Exception};
 
@@ -11,8 +13,8 @@ use ogcapi_types::common::{media_type::PROBLEM_JSON, Exception};
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     /// Automatically return `500 Internal Server Error` on a `sqlx::Error`.
-    #[error("an error occurred with the database")]
-    Sqlx(#[from] sqlx::Error),
+    // #[error("an error occurred with the database")]
+    // Sqlx(#[from] sqlx::Error),
 
     /// Return `500 Internal Server Error` on a `anyhow::Error`.
     #[error("an internal server error occurred")]
@@ -48,10 +50,10 @@ impl Error {
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let (status, message) = match self {
-            Self::Sqlx(ref e) => {
-                tracing::error!("SQLx error: {:?}", e);
-                (self.status_code(), self.to_string())
-            }
+            // Self::Sqlx(ref e) => {
+            //     tracing::error!("SQLx error: {:?}", e);
+            //     (self.status_code(), self.to_string())
+            // }
             Self::Anyhow(ref e) => {
                 tracing::error!("Generic error: {:?}", e);
                 (self.status_code(), self.to_string())

@@ -254,7 +254,7 @@ impl Pagination<StacEntity> for StacEntities {
 
                     self.links.append(&mut children);
 
-                    return Ok(Some(StacEntity::Collection(collection)));
+                    return Ok(Some(StacEntity::Collection(Box::new(collection))));
                 }
                 Some("Feature") => {
                     let mut item = serde_json::from_value::<Feature>(entity.clone())

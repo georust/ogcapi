@@ -23,3 +23,16 @@ pub struct Asset {
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
 }
+
+impl Asset {
+    pub fn new(href: impl ToString) -> Self {
+        Asset {
+            href: href.to_string(),
+            title: None,
+            description: None,
+            r#type: None,
+            roles: None,
+            additional_properties: Map::new(),
+        }
+    }
+}

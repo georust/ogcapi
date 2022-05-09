@@ -9,11 +9,12 @@ edition = "2021"
 default = ["import", "serve"]
 import = ["gdal", "geo", "osmpbfreader", "pbr", "sqlx", "wkb"]
 serve = ["axum", "ogcapi-services"]
+stac = ["ogcapi-types/stac", "ogcapi-drivers/stac", "ogcapi-drivers/s3"]
 
 [dependencies]
 anyhow = "1.0.57"
 axum = { version = "0.5.4", optional = true, features = ["headers"] }
-clap = { version = "3.1.14", features = ["derive", "env"] }
+clap = { version = "3.1.17", features = ["derive", "env"] }
 dotenv = { version = "0.15.0" }
 gdal = { version = "0.12.0", optional = true, features = ["bindgen"] }
 geo = { version = "0.20.1", optional = true }
@@ -21,7 +22,7 @@ geojson = "0.22.3"
 osmpbfreader = { version = "0.15.2", optional = true }
 pbr = { version = "1.0.4", optional = true }
 serde = "1.0.137"
-serde_json = "1.0.80"
+serde_json = "1.0.81"
 sqlx = { version = "0.5.13", optional = true, features = ["runtime-tokio-rustls", "postgres"] }
 tokio = { version = "1.18.1", features = ["full"] }
 tracing = { version = "0.1.34"}

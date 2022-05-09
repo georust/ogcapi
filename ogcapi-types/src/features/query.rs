@@ -4,7 +4,7 @@ use serde_with::{serde_as, DisplayFromStr};
 use crate::common::{Bbox, Crs, Datetime};
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
     pub limit: Option<usize>,

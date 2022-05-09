@@ -4,7 +4,7 @@ use geo::{Coordinate, Geometry, GeometryCollection, LineString, MultiLineString,
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 use serde_json::{Map, Value};
 
-use ogcapi_drivers::postgres::Db;
+use ogcapi_drivers::{postgres::Db, CollectionTransactions};
 use ogcapi_types::common::{Collection, Crs};
 
 use super::Args;
@@ -21,7 +21,7 @@ pub async fn load(args: Args) -> Result<(), anyhow::Error> {
         ..Default::default()
     };
     // db.delete_collection(&collection.id).await?;
-    db.insert_collection(&collection).await?;
+    db.create_collection(&collection).await?;
 
     // Open file
     let file = File::open(args.input.as_path())?;

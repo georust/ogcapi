@@ -23,6 +23,7 @@ async fn main() -> anyhow::Result<()> {
     // setup env
     dotenv::dotenv().ok();
 
+    // setup tracing
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
@@ -62,6 +63,7 @@ async fn main() -> anyhow::Result<()> {
 
             axum::Server::bind(&address)
                 .serve(router.into_make_service())
+                .with_graceful_shutdown(ogcapi_services::shutdown_signal())
                 .await
                 .unwrap();
         }

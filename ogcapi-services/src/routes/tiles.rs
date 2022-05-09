@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     extract::{Extension, Path},
@@ -42,7 +42,7 @@ static TMS: OnceCell<HashMap<String, TileMatrixSet>> = OnceCell::new();
 static TM: OnceCell<HashMap<String, HashMap<String, TileMatrix>>> = OnceCell::new();
 
 #[derive(Deserialize, Debug)]
-struct TileParams {
+pub struct TileParams {
     collection_id: String,
     /// Identifier selecting one of the TileMatrixSetId supported by the resource.
     tms_id: String,
@@ -57,7 +57,7 @@ struct TileParams {
     col: u32,
 }
 
-async fn tile_matrix_sets(Extension(state): Extension<State>) -> Result<Json<TileMatrixSets>> {
+async fn tile_matrix_sets(Extension(state): Extension<Arc<State>>) -> Result<Json<TileMatrixSets>> {
     let tile_matrix_sets = TileMatrixSets {
         tile_matrix_sets: TMS.get().map_or_else(Vec::new, |tile_matrix_sets| {
             tile_matrix_sets
@@ -99,44 +99,26 @@ async fn tiles() -> Result<Json<TileSets>> {
 
 async fn tile(
     Path(params): Path<TileParams>,
-    Extension(state): Extension<State>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<Vec<u8>> {
-    let _tms = TMS
+    let tms = TMS
         .get()
         .and_then(|tms| tms.get(&params.tms_id))
         .expect("Get tms from TMS");
 
-    let mut sql: Vec<String> = Vec::new();
-
-    for collection in params.collection_id.split(',') {
-        let srid = state.db.storage_srid(collection).await?;
-
-        sql.push(format!(
-            r#"
-            SELECT ST_AsMVT(mvtgeom, '{0}', 4096, 'geom', 'id')
-            FROM (
-                SELECT
-                    ST_AsMVTGeom(ST_Transform(ST_Force2D(geom), 3857), ST_TileEnvelope($1, $3, $2), 4096, 64, TRUE) AS geom,
-                    '{0}' as collection,
-                    id,
-                    properties
-                FROM items.{0}
-                WHERE geom && ST_Transform(ST_TileEnvelope($1, $3, $2, margin => (64.0 / 4096)), {1})
-            ) AS mvtgeom
-            "#,
-            collection,
-            srid
-        ));
-    }
-
-    let tiles: Vec<Vec<u8>> = sqlx::query_scalar(&sql.join(" UNION ALL "))
-        .bind(params.matrix.parse::<i32>().unwrap())
-        .bind(params.row as i32)
-        .bind(params.col as i32)
-        .fetch_all(&state.db.pool)
+    let tiles = state
+        .drivers
+        .tiles
+        .tile(
+            &params.collection_id,
+            tms,
+            &params.matrix,
+            params.row,
+            params.col,
+        )
         .await?;
 
-    Ok(tiles.concat())
+    Ok(tiles)
 }
 
 pub(crate) fn router(state: &State) -> Router {
