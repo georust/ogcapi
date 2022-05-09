@@ -107,13 +107,14 @@ impl CollectionTransactions for Db {
     async fn list_collections(&self) -> Result<Collections, anyhow::Error> {
         let collections = sqlx::query_scalar!(
             r#"
-            SELECT array_to_json(array_agg(collection)) as "collections!: sqlx::types::Json<Vec<Collection>>" 
+            SELECT array_to_json(array_agg(collection)) as "collections: sqlx::types::Json<Vec<Collection>>" 
             FROM meta.collections
             "#)
             .fetch_one(&self.pool)
             .await?;
 
-        let mut collections = Collections::new(collections.0);
+        let collections = collections.map(|c| c.0).unwrap_or_default();
+        let mut collections = Collections::new(collections);
         collections.number_matched = collections.number_returned;
 
         Ok(collections)

@@ -128,7 +128,7 @@ impl EdrQuerier for Db {
             .await?
             .rows_affected();
 
-        let features: Json<Vec<Feature>> = sqlx::query_scalar(&format!(
+        let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
             r#"
             SELECT array_to_json(array_agg(row_to_json(t)))
             FROM ( {} ) t
@@ -139,7 +139,8 @@ impl EdrQuerier for Db {
         .fetch_one(&self.pool)
         .await?;
 
-        let mut fc = FeatureCollection::new(features.0);
+        let features = features.map(|f| f.0).unwrap_or_default();
+        let mut fc = FeatureCollection::new(features);
         fc.number_matched = Some(number_matched);
 
         Ok(fc)
