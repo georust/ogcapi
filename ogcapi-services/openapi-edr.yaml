@@ -1538,8 +1538,7 @@ components:
         A 2D trajectory, on the surface of earth with no time or height dimensions: 
             coords=LINESTRING(-2.87 51.14 , -2.98 51.36,-3.15 51.03 ,-3.48 50.74 ,-3.36 50.9 )
         A 2D trajectory, on the surface of earth with all for the same time and no height dimension, time value defined in ISO8601 format by the `datetime` query parameter : 
-            coords=LINESTRING(-2.87 51.14 , -2.98 51.36 ,-3.15 51.03 ,-3.48 50.74 ,-3.36 50.9 )&time=2018-02-12T23:00:00Z 
-            
+            coords=LINESTRING(-2.87 51.14 , -2.98 51.36 ,-3.15 51.03 ,-3.48 50.74 ,-3.36 50.9 )&time=2018-02-12T23:00:00Z
         A 2D trajectory, on the surface of earth with no time value but at a fixed height level, height defined in the collection height units by the `z` query parameter : 
             coords=LINESTRING(-2.87 51.14 , -2.98 51.36 ,-3.15 51.03 ,-3.48 50.74 ,-3.36 50.9 )&z=850 
         A 2D trajectory, on the surface of earth with all for the same time and at a fixed height level, time value defined in ISO8601 format by the `datetime` query parameter and height defined in the collection height units by the `z` query parameter : 
@@ -1699,15 +1698,15 @@ components:
           schema:
             type: string
   schemas:
-    anyAxis:
-      description: Validates any axis
-      if:
-        required:
-          - values
-      then:
-        $ref: "#/components/schemas/valuesAxis"
-      else:
-        $ref: "#/components/schemas/numericRegularlySpacedAxis"
+    # anyAxis:
+    #   description: Validates any axis
+    #   if:
+    #     required:
+    #       - values
+    #   then:
+    #     $ref: "#/components/schemas/valuesAxis"
+    #   else:
+    #     $ref: "#/components/schemas/numericRegularlySpacedAxis"
     areaDataQuery:
       description:
         Property to contain any extra metadata information that is specific
@@ -2052,21 +2051,18 @@ components:
               domain:
                 $ref: "#/components/schemas/domain"
               ranges:
-                patternProperties:
-                  .+:
-                    type: object
-                    $ref: "#/components/schemas/ndArray"
+                additionalProperties:
+                  type: object
+                  $ref: "#/components/schemas/ndArray"
         parameters:
-          patternProperties:
-            .+:
-              type: object
-              $ref: "#/components/schemas/parameter"
+          additionalProperties:
+            type: object
+            $ref: "#/components/schemas/parameter"
         ranges:
           type: object
-          patternProperties:
-            .+:
-              type: object
-              $ref: "#/components/schemas/ndArray"
+          additionalProperties:
+            type: object
+            $ref: "#/components/schemas/ndArray"
         referencing:
           type: array
           items:
@@ -2139,15 +2135,16 @@ components:
       type: object
       properties:
         type:
-          const: Domain
+          type: string
+          # const: Domain
         domainType:
           type: string
         axes:
           type: object
           description: Set of Axis objects, keyed by axis identifier
-          patternProperties:
-            .+:
-              $ref: "#/components/schemas/anyAxis"
+          # additionalProperties:
+          #   type:
+          #     $ref: "#/components/schemas/anyAxis"
         referencing:
           type: array
           items:
@@ -2155,46 +2152,46 @@ components:
       required:
         - type
         - axes
-      dependentSchemas:
-        domainType:
-          allOf:
-            - if:
-                properties:
-                  domainType:
-                    const: Grid
-              then:
-                description: "Grid domain: x and y are required, z and t optional"
-                properties:
-                  axes:
-                    properties:
-                      x:
-                        $ref: "#/components/schemas/numericAxis"
-                      y:
-                        $ref: "#/components/schemas/numericAxis"
-                      z:
-                        $ref: "#/components/schemas/numericAxis"
-                      t:
-                        $ref: "#/components/schemas/stringValuesAxis"
-                    required:
-                      - x
-                      - y
-                    additionalProperties: false
-            - if:
-                properties:
-                  domainType:
-                    const: Trajectory
-              then:
-                description: "Trajectory domain: mandatory composite axis and optional z axis"
-                properties:
-                  axes:
-                    properties:
-                      composite:
-                        $ref: "#/components/schemas/tupleValuesAxis"
-                      z:
-                        $ref: "#/components/schemas/numericAxis"
-                    required:
-                      - composite
-                    additionalProperties: false
+      # dependentSchemas:
+      #   domainType:
+      #     allOf:
+      #       - if:
+      #           properties:
+      #             domainType:
+      #               const: Grid
+      #         then:
+      #           description: "Grid domain: x and y are required, z and t optional"
+      #           properties:
+      #             axes:
+      #               properties:
+      #                 x:
+      #                   $ref: "#/components/schemas/numericAxis"
+      #                 y:
+      #                   $ref: "#/components/schemas/numericAxis"
+      #                 z:
+      #                   $ref: "#/components/schemas/numericAxis"
+      #                 t:
+      #                   $ref: "#/components/schemas/stringValuesAxis"
+      #               required:
+      #                 - x
+      #                 - y
+      #               additionalProperties: false
+      #       - if:
+      #           properties:
+      #             domainType:
+      #               const: Trajectory
+      #         then:
+      #           description: "Trajectory domain: mandatory composite axis and optional z axis"
+      #           properties:
+      #             axes:
+      #               properties:
+      #                 composite:
+      #                   $ref: "#/components/schemas/tupleValuesAxis"
+      #                 z:
+      #                   $ref: "#/components/schemas/numericAxis"
+      #               required:
+      #                 - composite
+      #               additionalProperties: false
     edrFeatureCollectionGeoJSON:
       type: object
       required:
@@ -2458,9 +2455,8 @@ components:
       description:
         Object representing an internationalised string. TODO test that the
         keys are valid language identifiers
-      patternProperties:
-        .+:
-          type: string
+      additionalProperties:
+        type: string
     instances:
       type: object
       required:
@@ -2695,7 +2691,8 @@ components:
         axes, encoded as a flat one-dimensional array in row-major order
       properties:
         type:
-          const: NdArray
+          type: string
+          # const: NdArray
         dataType:
           enum:
             - float
@@ -2713,64 +2710,64 @@ components:
         values:
           type: array
           minItems: 1
-      allOf:
-        - if:
-            properties:
-              dataType:
-                const: float
-          then:
-            properties:
-              values:
-                items:
-                  type:
-                    - number
-                    - "null"
-        - if:
-            properties:
-              dataType:
-                const: integer
-          then:
-            properties:
-              values:
-                items:
-                  type:
-                    - integer
-                    - "null"
-        - if:
-            properties:
-              dataType:
-                const: string
-          then:
-            properties:
-              values:
-                items:
-                  type:
-                    - string
-                    - "null"
-        - if:
-            anyOf:
-              - properties:
-                  values:
-                    minItems: 2
-              - properties:
-                  shape:
-                    minItems: 1
-                required:
-                  - shape
-              - properties:
-                  axisNames:
-                    minItems: 1
-                required:
-                  - axisNames
-          then:
-            properties:
-              shape:
-                minItems: 1
-              axisNames:
-                minItems: 1
-            required:
-              - shape
-              - axisNames
+      # allOf:
+      #   - if:
+      #       properties:
+      #         dataType:
+      #           const: float
+      #     then:
+      #       properties:
+      #         values:
+      #           items:
+      #             type:
+      #               - number
+      #               - "null"
+      #   - if:
+      #       properties:
+      #         dataType:
+      #           const: integer
+      #     then:
+      #       properties:
+      #         values:
+      #           items:
+      #             type:
+      #               - integer
+      #               - "null"
+      #   - if:
+      #       properties:
+      #         dataType:
+      #           const: string
+      #     then:
+      #       properties:
+      #         values:
+      #           items:
+      #             type:
+      #               - string
+      #               - "null"
+      #   - if:
+      #       anyOf:
+      #         - properties:
+      #             values:
+      #               minItems: 2
+      #         - properties:
+      #             shape:
+      #               minItems: 1
+      #           required:
+      #             - shape
+      #         - properties:
+      #             axisNames:
+      #               minItems: 1
+      #           required:
+      #             - axisNames
+      #     then:
+      #       properties:
+      #         shape:
+      #           minItems: 1
+      #         axisNames:
+      #           minItems: 1
+      #       required:
+      #         - shape
+      #         - axisNames
       required:
         - type
         - dataType
@@ -2794,15 +2791,15 @@ components:
       type: integer
       minimum: 0
       example: 10
-    numericAxis:
-      description: Simple axis with numeric values
-      if:
-        required:
-          - values
-      then:
-        $ref: "#/components/schemas/numericValuesAxis"
-      else:
-        $ref: "#/components/schemas/numericRegularlySpacedAxis"
+    # numericAxis:
+    #   description: Simple axis with numeric values
+    #   if:
+    #     required:
+    #       - values
+    #   then:
+    #     $ref: "#/components/schemas/numericValuesAxis"
+    #   else:
+    #     $ref: "#/components/schemas/numericRegularlySpacedAxis"
     numericRegularlySpacedAxis:
       description: A regularly-spaced numeric axis
       properties:
@@ -2876,9 +2873,9 @@ components:
             - type: object
               required:
                 - en
-              patternProperties:
-                ".+":
-                  type: string
+              # patternProperties:
+              #   ".+":
+              #     type: string
         description:
           type: string
         categories:
@@ -2902,9 +2899,9 @@ components:
                   - type: object
                     required:
                       - en
-                    patternProperties:
-                      ".+":
-                        type: string
+                    # patternProperties:
+                    #   ".+":
+                    #     type: string
               description:
                 oneOf:
                   - type: string
@@ -2925,7 +2922,8 @@ components:
           type: string
         type:
           description: Type of the parameter object, must be "Parameter"
-          const: Parameter
+          type: string
+          # const: Parameter
         description:
           $ref: "#/components/schemas/i18n"
         observedProperty:
@@ -2935,15 +2933,14 @@ components:
         categoryEncoding:
           type: object
           description: Maps IDs of categories in the observedProperty to range values
-          patternProperties:
-            .+:
-              oneOf:
-                - type: integer
-                - type: array
-                  items:
-                    type: integer
-                  minItems: 1
-                  uniqueItems: true
+          additionalProperties:
+            oneOf:
+              - type: integer
+              - type: array
+                items:
+                  type: integer
+                minItems: 1
+                uniqueItems: true
       required:
         - type
         - observedProperty
@@ -2963,9 +2960,9 @@ components:
           oneOf:
             - type: string
             - type: object
-              patternProperties:
-                ".+":
-                  type: string
+              # patternProperties:
+              #   ".+":
+              #     type: string
         label:
           type: string
         data-type:
@@ -2980,15 +2977,14 @@ components:
           $ref: "#/components/schemas/observedPropertyCollection"
         categoryEncoding:
           type: object
-          patternProperties:
-            ".+":
-              oneOf:
-                - type: integer
-                - type: array
-                  items:
-                    type: integer
-                  minItems: 1
-                  uniqueItems: true
+          additionalProperties:
+            oneOf:
+              - type: integer
+              - type: array
+                items:
+                  type: integer
+                minItems: 1
+                uniqueItems: true
         extent:
           $ref: "#/components/schemas/extent"
         id:
@@ -3065,7 +3061,8 @@ components:
         - $ref: "#/components/schemas/valuesAxisBase"
         - properties:
             dataType:
-              const: polygon
+              type: string
+              # const: polygon
             values:
               items:
                 description: A GeoJSON polygon
@@ -3132,26 +3129,26 @@ components:
           example: http://data.example.com/collections/monitoringsites/position
         variables:
           $ref: "#/components/schemas/positionDataQuery"
-    primitiveValuesAxis:
-      description: Validates any axis with primitive values
-      allOf:
-        - $ref: "#/components/schemas/valuesAxisBase"
-        - $comment: This redundant branch exists to fail early with succinct errors
-          properties:
-            values:
-              items:
-                oneOf:
-                  - type: number
-                  - type: string
-        - if:
-            properties:
-              values:
-                items:
-                  type: number
-          then:
-            $ref: "#/components/schemas/numericValuesAxis"
-          else:
-            $ref: "#/components/schemas/stringValuesAxis"
+    # primitiveValuesAxis:
+    #   description: Validates any axis with primitive values
+    #   allOf:
+    #     - $ref: "#/components/schemas/valuesAxisBase"
+    #     - description: This redundant branch exists to fail early with succinct errors
+    #       properties:
+    #         values:
+    #           items:
+    #             oneOf:
+    #               - type: number
+    #               - type: string
+    #     - if:
+    #         properties:
+    #           values:
+    #             items:
+    #               type: number
+    #       then:
+    #         $ref: "#/components/schemas/numericValuesAxis"
+    #       else:
+    #         $ref: "#/components/schemas/stringValuesAxis"
     radiusDataQuery:
       description:
         Property to contain any extra metadata information that is specific
@@ -3213,60 +3210,60 @@ components:
           type: string
       required:
         - type
-      allOf:
-        - if:
-            properties:
-              type:
-                const: TemporalRS
-          then:
-            description: Temporal reference system
-            properties:
-              calendar:
-                type: string
-              timeScale:
-                type: string
-            required:
-              - calendar
-        - if:
-            properties:
-              type:
-                const: IdentifierRS
-          then:
-            description: An identifier-based reference system
-            properties:
-              id:
-                type: string
-              label:
-                $ref: "#/components/schemas/i18n"
-              description:
-                $ref: "#/components/schemas/i18n"
-              targetConcept:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  label:
-                    $ref: "#/components/schemas/i18n"
-                  description:
-                    $ref: "#/components/schemas/i18n"
-                required:
-                  - label
-              identifiers:
-                type: object
-                patternProperties:
-                  .+:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                      label:
-                        $ref: "#/components/schemas/i18n"
-                      description:
-                        $ref: "#/components/schemas/i18n"
-                    required:
-                      - label
-            required:
-              - targetConcept
+      # allOf:
+      #   - if:
+      #       properties:
+      #         type:
+      #           const: TemporalRS
+      #     then:
+      #       description: Temporal reference system
+      #       properties:
+      #         calendar:
+      #           type: string
+      #         timeScale:
+      #           type: string
+      #       required:
+      #         - calendar
+      #   - if:
+      #       properties:
+      #         type:
+      #           const: IdentifierRS
+      #     then:
+      #       description: An identifier-based reference system
+      #       properties:
+      #         id:
+      #           type: string
+      #         label:
+      #           $ref: "#/components/schemas/i18n"
+      #         description:
+      #           $ref: "#/components/schemas/i18n"
+      #         targetConcept:
+      #           type: object
+      #           properties:
+      #             id:
+      #               type: string
+      #             label:
+      #               $ref: "#/components/schemas/i18n"
+      #             description:
+      #               $ref: "#/components/schemas/i18n"
+      #           required:
+      #             - label
+      #         identifiers:
+      #           type: object
+      #           patternProperties:
+      #             .+:
+      #               type: object
+      #               properties:
+      #                 id:
+      #                   type: string
+      #                 label:
+      #                   $ref: "#/components/schemas/i18n"
+      #                 description:
+      #                   $ref: "#/components/schemas/i18n"
+      #               required:
+      #                 - label
+      #       required:
+      #         - targetConcept
     referenceSystemConnection:
       description: "Reference System Connection object: connects coordinates to reference systems"
       type: object
@@ -3350,15 +3347,16 @@ components:
         - $ref: "#/components/schemas/valuesAxisBase"
         - properties:
             dataType:
-              const: tuple
+              type: string
+              # const: tuple
             values:
               items:
                 description: A tuple of axis values (numbers or strings)
                 type: array
                 items:
-                  type:
-                    - number
-                    - string
+                  oneOf:
+                    - type: number
+                    - type: string
                 minItems: 2
             coordinates: {}
           required:
@@ -3406,9 +3404,8 @@ components:
         label:
           oneOf:
             - type: object
-              patternProperties:
-                ".+":
-                  type: string
+              additionalProperties:
+                type: string
             - type: string
         symbol:
           title: Describe unit symbol
@@ -3437,38 +3434,38 @@ components:
         symbol:
           value: K
           type: http://www.opengis.net/def/uom/UCUM/
-    valuesAxis:
-      description: Validates any values-based axis
-      allOf:
-        - $ref: "#/components/schemas/valuesAxisBase"
-        - if:
-            not:
-              required:
-                - dataType
-          then:
-            $ref: "#/components/schemas/primitiveValuesAxis"
-      dependentSchemas:
-        dataType:
-          allOf:
-            - if:
-                properties:
-                  dataType:
-                    const: tuple
-              then:
-                $ref: "#/components/schemas/tupleValuesAxis"
-            - if:
-                properties:
-                  dataType:
-                    const: polygon
-              then:
-                $ref: "#/components/schemas/polygonValuesAxis"
+    # valuesAxis:
+    #   description: Validates any values-based axis
+    #   allOf:
+    #     - $ref: "#/components/schemas/valuesAxisBase"
+    #     - if:
+    #         not:
+    #           required:
+    #             - dataType
+    #       then:
+    #         $ref: "#/components/schemas/primitiveValuesAxis"
+    #   dependentSchemas:
+    #     dataType:
+    #       allOf:
+    #         - if:
+    #             properties:
+    #               dataType:
+    #                 const: tuple
+    #           then:
+    #             $ref: "#/components/schemas/tupleValuesAxis"
+    #         - if:
+    #             properties:
+    #               dataType:
+    #                 const: polygon
+    #           then:
+    #             $ref: "#/components/schemas/polygonValuesAxis"
     valuesAxisBase:
-      $comment: Base schema for values-based axis schemas
+      description: Base schema for values-based axis schemas
       properties:
         dataType:
           type: string
-          not:
-            const: primitive
+          # not:
+          #   const: primitive
         values:
           type: array
           minItems: 1
