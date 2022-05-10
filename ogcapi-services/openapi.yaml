@@ -55,8 +55,6 @@ paths:
       description: >-
         A list of all conformance classes specified in a standard that the
         server conforms to.
-      parameters:
-        - $ref: "#/components/parameters/f"
       operationId: getConformanceDeclaration
       responses:
         200:

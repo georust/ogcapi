@@ -29,7 +29,8 @@ use ogcapi_types::common::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-static OPENAPI: &[u8; 29758] = include_bytes!("../openapi.yaml");
+// static OPENAPI: &[u8; 29696] = include_bytes!("../openapi.yaml");
+static OPENAPI: &[u8; 121689] = include_bytes!("../openapi-edr.yaml");
 
 // #[derive(Clone)]
 struct State {
