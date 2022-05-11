@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+#[cfg(feature = "edr")]
 use crate::edr::{Contact, Provider};
 
 use super::Links;
@@ -17,6 +18,21 @@ use super::Links;
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
 pub struct LandingPage {
+    /// Set to `Catalog` if this Catalog only implements the Catalog spec.
+    #[cfg(feature = "stac")]
+    #[serde(default = "crate::stac::catalog")]
+    pub r#type: String,
+    /// The STAC version the Catalog implements.
+    #[cfg(feature = "stac")]
+    #[serde(default = "crate::stac::stac_version")]
+    pub stac_version: String,
+    /// A list of extension identifiers the Catalog implements.
+    #[cfg(feature = "stac")]
+    #[serde(default)]
+    pub stac_extensions: Vec<String>,
+    /// Identifier for the Catalog.
+    #[cfg(feature = "stac")]
+    pub id: String,
     /// The title of the API
     pub title: Option<String>,
     /// A textual description of the API
@@ -27,10 +43,17 @@ pub struct LandingPage {
     /// include HTML markup.
     pub attribution: Option<String>,
     /// Links to the resources exposed through this API
+    #[serde(default)]
     pub links: Links,
-    pub keywords: Option<Vec<String>>,
+    #[cfg(feature = "edr")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keywords: Vec<String>,
+    #[cfg(feature = "edr")]
     pub provider: Option<Provider>,
+    #[cfg(feature = "edr")]
     pub contact: Option<Contact>,
+    #[cfg(feature = "stac")]
+    pub conforms_to: Option<Vec<String>>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
 }

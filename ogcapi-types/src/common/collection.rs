@@ -1,6 +1,3 @@
-#[cfg(feature = "stac")]
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
@@ -39,6 +36,26 @@ pub struct Collection {
     pub storage_crs_coordinate_epoch: Option<f32>,
     #[serde(default)]
     pub links: Links,
+    /// Detailed information relevant to individual query types
+    #[cfg(feature = "edr")]
+    #[serde(rename = "data_queries")]
+    pub data_queries: Option<crate::edr::DataQueries>,
+    /// List of formats the results can be presented in
+    #[cfg(feature = "edr")]
+    #[serde(
+        default,
+        rename = "output_formats",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub output_formats: Vec<String>,
+    /// List of the data parameters available in the collection
+    #[cfg(feature = "edr")]
+    #[serde(
+        default,
+        rename = "parameter_names",
+        skip_serializing_if = "std::collections::HashMap::is_empty"
+    )]
+    pub parameter_names: std::collections::HashMap<String, crate::edr::ParameterNames>,
     /// The STAC version the Collection implements.
     #[cfg(feature = "stac")]
     #[serde(default = "crate::stac::stac_version", rename = "stac_version")]
@@ -65,8 +82,8 @@ pub struct Collection {
     pub summaries: Map<String, Value>,
     /// Dictionary of asset objects that can be downloaded, each with a unique key.
     #[cfg(feature = "stac")]
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub assets: HashMap<String, crate::stac::Asset>,
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub assets: std::collections::HashMap<String, crate::stac::Asset>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
 }
@@ -93,8 +110,14 @@ impl Default for Collection {
             storage_crs: Default::default(),
             storage_crs_coordinate_epoch: Default::default(),
             links: Default::default(),
+            #[cfg(feature = "edr")]
+            data_queries: Default::default(),
+            #[cfg(feature = "edr")]
+            output_formats: Default::default(),
+            #[cfg(feature = "edr")]
+            parameter_names: Default::default(),
             #[cfg(feature = "stac")]
-            stac_version: crate::stac::STAC_VERSION.to_string(),
+            stac_version: crate::stac::stac_version(),
             #[cfg(feature = "stac")]
             stac_extensions: Default::default(),
             #[cfg(feature = "stac")]

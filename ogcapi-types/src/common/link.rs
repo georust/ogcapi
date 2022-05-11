@@ -38,7 +38,7 @@ impl Link {
     }
 
     /// Sets the media type of the Link and returns the Value
-    pub fn mime(mut self, mime: impl ToString) -> Link {
+    pub fn mediatype(mut self, mime: impl ToString) -> Link {
         self.r#type = Some(mime.to_string());
         self
     }

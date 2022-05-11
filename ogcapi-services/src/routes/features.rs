@@ -14,8 +14,8 @@ use url::Position;
 
 use ogcapi_types::{
     common::{
-        link_rel::{COLLECTION, NEXT, PREV, SELF},
-        media_type::GEO_JSON,
+        link_rel::{COLLECTION, NEXT, PARENT, PREV, ROOT, SELF},
+        media_type::{GEO_JSON, JSON},
         Collection, Crs, Link,
     },
     features::{Feature, FeatureCollection, Query},
@@ -68,8 +68,10 @@ async fn read(
         .await?;
 
     feature.links = vec![
-        Link::new(&url, SELF).mime(GEO_JSON),
-        Link::new(url.join(".")?, COLLECTION).mime(GEO_JSON),
+        Link::new(&url, SELF).mediatype(GEO_JSON),
+        Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
+        Link::new(&url.join("..")?[..Position::AfterPath], PARENT).mediatype(JSON),
+        Link::new(&url.join("..")?[..Position::AfterPath], COLLECTION).mediatype(JSON),
     ];
 
     let mut headers = HeaderMap::new();
@@ -133,7 +135,12 @@ async fn items(
         .list_items(&collection_id, &query)
         .await?;
 
-    let mut links = vec![Link::new(&url, SELF).mime(GEO_JSON)];
+    let mut links = vec![
+        Link::new(&url, SELF).mediatype(GEO_JSON),
+        Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
+        Link::new(&url.join(".")?[..Position::AfterPath], PARENT).mediatype(JSON),
+        Link::new(&url.join(".")?[..Position::AfterPath], COLLECTION).mediatype(JSON),
+    ];
 
     // pagination
     if let Some(limit) = query.limit {
@@ -145,29 +152,32 @@ async fn items(
             if offset != 0 && offset >= limit {
                 query.offset = Some(offset - limit);
                 url.set_query(serde_qs::to_string(&query).ok().as_deref());
-                let previous = Link::new(&url, PREV).mime(GEO_JSON);
+                let previous = Link::new(&url, PREV).mediatype(GEO_JSON);
                 links.push(previous);
             }
 
-            if !(offset + limit) >= fc.features.len() {
-                query.offset = Some(offset + limit);
-                url.set_query(serde_qs::to_string(&query).ok().as_deref());
-                let next = Link::new(&url, NEXT).mime(GEO_JSON);
-                links.push(next);
+            if let Some(number_matched) = fc.number_matched {
+                if number_matched > (offset + limit) as u64 {
+                    query.offset = Some(offset + limit);
+                    url.set_query(serde_qs::to_string(&query).ok().as_deref());
+                    let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
+                    links.push(next);
+                }
             }
         }
     }
 
     for feature in fc.features.iter_mut() {
-        feature.links = vec![Link::new(
-            format!(
-                "{}/{}",
-                &url[..Position::AfterPath],
-                feature.id.as_ref().unwrap()
-            ),
-            SELF,
-        )
-        .mime(GEO_JSON)]
+        feature.links = vec![
+            Link::new(
+                &url.join(feature.id.as_ref().unwrap())?[..Position::AfterPath],
+                SELF,
+            )
+            .mediatype(GEO_JSON),
+            Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
+            Link::new(&url.join(".")?[..Position::AfterPath], PARENT).mediatype(JSON),
+            Link::new(&url.join(".")?[..Position::AfterPath], COLLECTION).mediatype(JSON),
+        ]
     }
 
     fc.links = links;

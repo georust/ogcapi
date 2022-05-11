@@ -88,7 +88,7 @@ impl EdrQuerier for Db {
                     )
                 }
             }
-            QueryType::Corridor => todo!(),
+            QueryType::Corridor | QueryType::Locations => unimplemented!(),
         };
 
         let properties = if let Some(parameters) = &query.parameter_name {

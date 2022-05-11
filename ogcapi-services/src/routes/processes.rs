@@ -54,14 +54,14 @@ async fn processes(
         .map(|p| p.process().summary)
         .collect();
 
-    let mut links = vec![Link::new(&url, SELF).mime(JSON)];
+    let mut links = vec![Link::new(&url, SELF).mediatype(JSON)];
 
     if query.limit.is_some() {
         if offset != 0 && offset >= limit {
             query.offset = Some(offset - limit);
             let query_string = serde_qs::to_string(&query)?;
             url.set_query(Some(&query_string));
-            let previous = Link::new(&url, PREV).mime(JSON);
+            let previous = Link::new(&url, PREV).mediatype(JSON);
             links.push(previous);
         }
 
@@ -69,7 +69,7 @@ async fn processes(
             query.offset = Some(offset + limit);
             let query_string = serde_qs::to_string(&query)?;
             url.set_query(Some(&query_string));
-            let next = Link::new(&url, NEXT).mime(JSON);
+            let next = Link::new(&url, NEXT).mediatype(JSON);
             links.push(next);
         }
     }
@@ -77,7 +77,7 @@ async fn processes(
     summaries.iter_mut().for_each(|mut p| {
         p.links = vec![
             Link::new(format!("{}/{}", &url[..Position::AfterPath], p.id), SELF)
-                .mime(JSON)
+                .mediatype(JSON)
                 .title("process description"),
         ];
     });
@@ -95,7 +95,7 @@ async fn process(Path(id): Path<String>, RemoteUrl(url): RemoteUrl) -> Result<Js
 
     let mut process = processors.get(&id).unwrap().process();
 
-    process.summary.links = vec![Link::new(&url, SELF).mime(JSON)];
+    process.summary.links = vec![Link::new(&url, SELF).mediatype(JSON)];
 
     Ok(Json(process))
 }
@@ -121,7 +121,7 @@ async fn status(
 ) -> Result<Json<StatusInfo>> {
     let mut status = state.drivers.jobs.status(&id).await?;
 
-    status.links = vec![Link::new(url, SELF).mime(JSON)];
+    status.links = vec![Link::new(url, SELF).mediatype(JSON)];
 
     Ok(Json(status))
 }
@@ -150,10 +150,10 @@ pub(crate) fn router(state: &State, processors: Vec<impl Processor + 'static>) -
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
         Link::new(format!("{}/processes", &state.remote), PROCESSES)
-            .mime(JSON)
+            .mediatype(JSON)
             .title("Metadata about the processes"),
         Link::new(format!("{}/jobs", &state.remote), JOB_LIST)
-            .mime(JSON)
+            .mediatype(JSON)
             .title("The endpoint for job monitoring"),
     ]);
 

@@ -237,7 +237,7 @@ impl Pagination<StacEntity> for StacEntities {
 
                     self.links.append(&mut children);
 
-                    return Ok(Some(StacEntity::Catalog(catalog)));
+                    return Ok(Some(StacEntity::Catalog(Box::new(catalog))));
                 }
                 Some("Collection") => {
                     let mut collection = serde_json::from_value::<Collection>(entity.clone())
@@ -271,7 +271,7 @@ impl Pagination<StacEntity> for StacEntities {
 
                     self.links.append(&mut children);
 
-                    return Ok(Some(StacEntity::Item(item)));
+                    return Ok(Some(StacEntity::Item(Box::new(item))));
                 }
                 _ => return Err(Error::ClientError("Unknown STAC entity!".to_string())),
             };

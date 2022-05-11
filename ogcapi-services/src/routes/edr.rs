@@ -16,10 +16,16 @@ use ogcapi_types::{
 
 use crate::{extractors::Qs, Result, State};
 
-const CONFORMANCE: [&str; 3] = [
+const CONFORMANCE: [&str; 8] = [
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/core",
-    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/collections",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/json",
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/geojson",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/edr-geojson",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/covjson",
+    // "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/html",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/queries",
 ];
 
 async fn query(
@@ -45,7 +51,7 @@ async fn query(
             ),
             SELF,
         )
-        .mime(GEO_JSON)]
+        .mediatype(GEO_JSON)]
     }
 
     let mut headers = HeaderMap::new();

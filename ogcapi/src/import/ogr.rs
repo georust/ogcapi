@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf};
 
 use gdal::{
     spatial_ref::{CoordTransform, SpatialRef},
@@ -83,31 +83,42 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
 
         let collection = Collection {
             id: args.collection.to_owned(),
-            crs: vec![Crs::default(), storage_crs.clone()],
-            extent: layer.try_get_extent()?.map(|e| {
-                let mut x = [e.MinX, e.MaxX];
-                let mut y = [e.MinY, e.MaxY];
-                // let mut z = [e.MinZ, e.MaxZ];
-                transform
-                    .transform_coords(&mut x, &mut y, &mut [])
-                    .expect("Transform extent coords");
-                Extent {
-                    spatial: Some(SpatialExtent {
-                        bbox: Some(vec![Bbox::Bbox2D([x[0], y[0], x[1], y[1]])]),
-                        crs: spatial_ref_dst.auth_code().map(|c| c.into()).ok(),
-                    }),
-                    temporal: None,
-                }
-            }),
+            crs: Vec::from_iter(HashSet::from([
+                Crs::default(),
+                storage_crs.clone(),
+                Crs::from(4326),
+                Crs::from(3857),
+                Crs::from(2056),
+            ])),
+            extent: layer
+                .try_get_extent()?
+                .map(|e| {
+                    let mut x = [e.MinX, e.MaxX];
+                    let mut y = [e.MinY, e.MaxY];
+                    // let mut z = [e.MinZ, e.MaxZ];
+                    transform
+                        .transform_coords(&mut x, &mut y, &mut [])
+                        .expect("Transform extent coords");
+                    Extent {
+                        spatial: Some(SpatialExtent {
+                            bbox: Some(vec![Bbox::Bbox2D([x[0], y[0], x[1], y[1]])]),
+                            crs: spatial_ref_dst.auth_code().map(|c| c.into()).ok(),
+                        }),
+                        temporal: None,
+                    }
+                })
+                .or_else(|| Some(Extent::default())),
             storage_crs: Some(storage_crs),
+            #[cfg(feature = "stac")]
+            assets: crate::import::load_asset_from_path(&args.input).await?,
             ..Default::default()
         };
 
-        // db.delete_collection(&collection.id).await?;
+        db.delete_collection(&collection.id).await?;
         db.create_collection(&collection).await?;
 
         // Load features
-        tracing::info!("Importing layer: `{}`", &collection.title.unwrap());
+        tracing::info!("Importing layer `{}`", &collection.id);
 
         let field_names: Vec<String> = layer.defn().fields().map(|f| f.name()).collect();
 
