@@ -1,9 +1,13 @@
 pub mod collections;
 #[cfg(feature = "edr")]
 pub mod edr;
+#[cfg(feature = "features")]
 pub mod features;
+#[cfg(feature = "processes")]
 pub mod processes;
+#[cfg(feature = "styles")]
 pub mod styles;
+#[cfg(feature = "tiles")]
 pub mod tiles;
 
 use std::sync::Arc;

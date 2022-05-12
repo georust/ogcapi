@@ -13,7 +13,7 @@ pub enum QueryType {
     Trajectory,
     Corridor,
     // Items,
-    // Locations,
+    Locations,
     // Instances,
 }
 
@@ -32,6 +32,7 @@ pub struct Query {
     #[serde(default)]
     #[serde_as(as = "DisplayFromStr")]
     pub crs: Crs,
+    pub f: Option<String>,
     pub z: Option<Vec<String>>,
     pub within: Option<String>,
     pub within_units: Option<String>,

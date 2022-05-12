@@ -13,7 +13,7 @@ impl StyleTransactions for Db {
     async fn list_styles(&self) -> Result<Styles, anyhow::Error> {
         let styles = sqlx::query_scalar!(
             r#"
-            SELECT array_to_json(array_agg(row_to_json(t))) as "styles!: Json<Vec<Style>>"
+            SELECT array_to_json(array_agg(row_to_json(t))) as "styles: Json<Vec<Style>>"
             FROM (
                 SELECT id, title, links FROM meta.styles
             ) t
@@ -22,7 +22,8 @@ impl StyleTransactions for Db {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(Styles { styles: styles.0 })
+        let styles = styles.map(|s| s.0).unwrap_or_default();
+        Ok(Styles { styles })
     }
 
     async fn read_style(&self, id: &str) -> Result<Value, anyhow::Error> {

@@ -15,10 +15,10 @@ use ogcapi_types::{
         media_type::JSON,
         Link,
     },
-    tiles::{TileMatrix, TileMatrixSet, TileMatrixSetItem, TileMatrixSets, TileSets},
+    tiles::{Query, TileMatrix, TileMatrixSet, TileMatrixSetItem, TileMatrixSets, TileSets},
 };
 
-use crate::{Error, Result, State};
+use crate::{extractors::Qs, Error, Result, State};
 
 const CONFORMANCE: [&str; 7] = [
     "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core",
@@ -43,7 +43,7 @@ static TM: OnceCell<HashMap<String, HashMap<String, TileMatrix>>> = OnceCell::ne
 
 #[derive(Deserialize, Debug)]
 pub struct TileParams {
-    collection_id: String,
+    collection_id: Option<String>,
     /// Identifier selecting one of the TileMatrixSetId supported by the resource.
     tms_id: String,
     /// Identifier selecting one of the scales defined in the TileMatrixSet
@@ -99,6 +99,7 @@ async fn tiles() -> Result<Json<TileSets>> {
 
 async fn tile(
     Path(params): Path<TileParams>,
+    Qs(query): Qs<Query>,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<Vec<u8>> {
     let tms = TMS
@@ -110,7 +111,7 @@ async fn tile(
         .drivers
         .tiles
         .tile(
-            &params.collection_id,
+            &params.collection_id.or(query.collections).unwrap(),
             tms,
             &params.matrix,
             params.row,
@@ -126,7 +127,7 @@ pub(crate) fn router(state: &State) -> Router {
     root.links.push(
         Link::new(format!("{}/tiles", &state.remote), TILESETS_VECTOR)
             .title("List of available vector features tilesets for the dataset")
-            .mime(JSON),
+            .mediatype(JSON),
     );
 
     let mut conformance = state.conformance.write().unwrap();
@@ -157,7 +158,7 @@ pub(crate) fn router(state: &State) -> Router {
         .route("/tileMatrixSets/:tms_id", get(tile_matrix_set))
         .route("/tiles", get(tiles))
         .route("/tiles/:tms_id", get(tile_matrix_set))
-        // .route("/tiles/:tms_id/:matrix/:row/:col", get(tile))
+        .route("/tiles/:tms_id/:matrix/:row/:col", get(tile))
         // .route("/collections/:collection_id/tiles", get(tiles))
         .route(
             "/collections/:collection_id/tiles/:tms_id/:matrix/:row/:col",

@@ -37,11 +37,11 @@ pub const EXCEPTIONS: &str = "exceptions";
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/execute>
 pub const EXECUTE: &str = "execute";
 
-pub const FIRST: &str = "FIRST";
+pub const FIRST: &str = "first";
 
-pub const ITEM: &str = "ITEM";
+pub const ITEM: &str = "item";
 
-pub const ITEMS: &str = "ITEMS";
+pub const ITEMS: &str = "items";
 
 /// The target URI points to the list of jobs.
 ///

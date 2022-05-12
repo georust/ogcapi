@@ -19,19 +19,19 @@ impl FeatureTransactions for Db {
         let id: (String,) = sqlx::query_as(&format!(
             r#"
             INSERT INTO items.{0} (
-                type,
                 properties,
                 geom,
                 links
-            ) VALUES ($1, $2, ST_GeomFromGeoJSON($3), $4)
+            ) VALUES (
+                $1 -> 'properties',
+                ST_GeomFromGeoJSON($1 -> 'geometry'),
+                $1 -> 'links'
+            )
             RETURNING id
             "#,
             &collection
         ))
-        .bind(&feature.r#type)
-        .bind(serde_json::to_value(&feature.properties)?)
-        .bind(serde_json::to_value(&feature.geometry)?)
-        .bind(serde_json::to_value(&feature.links)?)
+        .bind(serde_json::to_value(&feature)?)
         .fetch_one(&self.pool)
         .await?;
 
@@ -74,19 +74,14 @@ impl FeatureTransactions for Db {
             r#"
             UPDATE items.{0}
             SET
-                type = $2,
-                properties = $3,
-                geom = ST_GeomFromGeoJSON($4),
-                links = $5
-            WHERE id = $1
+                properties = $1 -> 'properties',
+                geom = ST_GeomFromGeoJSON($1 -> 'geometry'),
+                links = $1 -> 'links'
+            WHERE id = $1 -> 'id'
             "#,
             &feature.collection.as_ref().unwrap()
         ))
-        .bind(&feature.id)
-        .bind(&feature.r#type)
-        .bind(serde_json::to_value(&feature.properties)?)
-        .bind(serde_json::to_value(&feature.geometry)?)
-        .bind(serde_json::to_value(&feature.links)?)
+        .bind(serde_json::to_value(&feature)?)
         .execute(&self.pool)
         .await?;
 
@@ -160,7 +155,7 @@ impl FeatureTransactions for Db {
             .await?
             .rows_affected();
 
-        let features: sqlx::types::Json<Vec<Feature>> = sqlx::query_scalar(&format!(
+        let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
             r#"
             SELECT array_to_json(array_agg(row_to_json(t)))
             FROM ( {} ) t
@@ -171,7 +166,8 @@ impl FeatureTransactions for Db {
         .fetch_one(&self.pool)
         .await?;
 
-        let mut fc = FeatureCollection::new(features.0);
+        let features = features.map(|f| f.0).unwrap_or_default();
+        let mut fc = FeatureCollection::new(features);
         fc.number_matched = Some(number_matched);
 
         Ok(fc)

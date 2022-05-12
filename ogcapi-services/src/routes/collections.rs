@@ -13,7 +13,7 @@ use axum::{
 use url::Position;
 
 use ogcapi_types::common::{
-    link_rel::{DATA, ITEMS, SELF},
+    link_rel::{DATA, ITEMS, PARENT, ROOT, SELF},
     media_type::{GEO_JSON, JSON},
     Collection, Collections, Crs, Link,
 };
@@ -25,30 +25,6 @@ const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections",
     "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json",
 ];
-
-async fn collections(
-    // Query(query): Query<CollectionQuery>,
-    RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
-) -> Result<Json<Collections>> {
-    let mut collections = state.drivers.collections.list_collections().await?;
-
-    let base = &url[..Position::AfterPath];
-
-    collections.collections.iter_mut().for_each(|c| {
-        c.links.append(&mut vec![
-            Link::new(format!("{}/{}", base, c.id), SELF),
-            Link::new(format!("{}/{}/items", base, c.id), ITEMS)
-                .mime(GEO_JSON)
-                .title(format!("Items of {}", c.title.as_ref().unwrap_or(&c.id))),
-        ]);
-    });
-
-    collections.links = vec![Link::new(url, SELF).mime(JSON).title("this document")];
-    collections.crs = vec![Crs::default(), Crs::from(4326)];
-
-    Ok(Json(collections))
-}
 
 /// Create new collection metadata
 async fn create(
@@ -77,14 +53,14 @@ async fn read(
         .read_collection(&collection_id)
         .await?;
 
-    collection.links.push(
-        Link::new(format!("{}/items", &url[..Position::AfterPath]), SELF)
-            .mime(GEO_JSON)
-            .title(format!(
-                "Items of {}",
-                collection.title.as_ref().unwrap_or(&collection.id)
-            )),
-    );
+    collection.links.extend_from_slice(&[
+        Link::new(&url[..Position::BeforePath], ROOT),
+        Link::new(&url[..Position::BeforePath], PARENT),
+        Link::new(&url, SELF),
+        Link::new(&url.join("items")?[..Position::AfterPath], ITEMS).mediatype(GEO_JSON),
+        Link::new(&url.join("location")?[..Position::AfterPath], DATA)
+            .title("EDR location query endpoint"),
+    ]);
 
     Ok(Json(collection))
 }
@@ -120,12 +96,37 @@ async fn remove(
     Ok(StatusCode::NO_CONTENT)
 }
 
+async fn collections(
+    // Query(query): Query<CollectionQuery>,
+    RemoteUrl(url): RemoteUrl,
+    Extension(state): Extension<Arc<State>>,
+) -> Result<Json<Collections>> {
+    let mut collections = state.drivers.collections.list_collections().await?;
+
+    let base = &url[..Position::AfterPath];
+
+    collections.collections.iter_mut().for_each(|c| {
+        c.links.append(&mut vec![
+            Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
+            Link::new(format!("{}/{}", base, c.id), SELF).mediatype(JSON),
+            Link::new(format!("{}/{}/items", base, c.id), ITEMS).mediatype(GEO_JSON),
+            Link::new(format!("{}/{}/location", base, c.id), DATA)
+                .title("EDR location query endpoint"),
+        ]);
+    });
+
+    collections.links = vec![Link::new(&url, SELF).mediatype(JSON).title("this document")];
+    collections.crs = vec![Crs::default(), Crs::from(4326)];
+
+    Ok(Json(collections))
+}
+
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.push(
         Link::new(format!("{}/collections", &state.remote), DATA)
             .title("Metadata about the resource collections")
-            .mime(JSON),
+            .mediatype(JSON),
     );
 
     let mut conformance = state.conformance.write().unwrap();

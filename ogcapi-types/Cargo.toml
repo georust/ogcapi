@@ -5,6 +5,8 @@ license = "GPL-3.0-only"
 edition = "2021"
 
 [features]
+default = []
+edr = []
 stac = []
 
 [dependencies]

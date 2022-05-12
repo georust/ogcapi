@@ -9,9 +9,9 @@ use super::Catalog;
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum StacEntity {
-    Catalog(Catalog),
+    Catalog(Box<Catalog>),
     Collection(Box<Collection>),
-    Item(Item),
+    Item(Box<Item>),
 }
 
 impl StacEntity {

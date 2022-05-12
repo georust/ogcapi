@@ -30,7 +30,7 @@ pub struct TitleDescriptionKeywords {
 }
 
 #[derive(Deserialize)]
-pub struct TileQuery {
+pub struct Query {
     pub collections: Option<String>,
 }
 
@@ -46,18 +46,4 @@ pub struct BoundingBox2D {
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub crs: Option<Crs>,
     pub orderd_axes: Option<OrderedAxes>,
-}
-
-#[cfg(test)]
-mod test {
-    use serde_json::json;
-
-    use super::BoundingBox2D;
-
-    #[test]
-    fn deserialize_bounding_box() {
-        let value = json!({"lowerLeft": [1,2], "upperRight": [3, 4]});
-        let bbox: BoundingBox2D = serde_json::from_value(value).unwrap();
-        dbg!(bbox);
-    }
 }

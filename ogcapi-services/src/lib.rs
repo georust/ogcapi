@@ -29,7 +29,8 @@ use ogcapi_types::common::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-static OPENAPI: &[u8; 29758] = include_bytes!("../openapi.yaml");
+// static OPENAPI: &[u8; 29696] = include_bytes!("../openapi.yaml");
+static OPENAPI: &[u8; 122145] = include_bytes!("../openapi-edr.yaml");
 
 // #[derive(Clone)]
 struct State {
@@ -41,6 +42,7 @@ struct State {
     remote: String,
 }
 
+// TODO: Introduce service trait
 struct Drivers {
     collections: Box<dyn CollectionTransactions>,
     features: Box<dyn FeatureTransactions>,
@@ -59,13 +61,15 @@ pub async fn app(db: Db) -> Router {
         title: Some(openapi.info.title.to_owned()),
         description: openapi.info.description.to_owned(),
         links: vec![
-            Link::new(&remote, SELF).title("This document").mime(JSON),
+            Link::new(&remote, SELF)
+                .title("This document")
+                .mediatype(JSON),
             Link::new(format!("{}/api", &remote), SERVICE_DESC)
                 .title("The Open API definition")
-                .mime(OPEN_API_JSON),
+                .mediatype(OPEN_API_JSON),
             Link::new(format!("{}/conformance", &remote), CONFORMANCE)
                 .title("OGC conformance classes implemented by this API")
-                .mime(JSON),
+                .mediatype(JSON),
         ],
         ..Default::default()
     });
@@ -101,17 +105,22 @@ pub async fn app(db: Db) -> Router {
         .route("/api", get(routes::api))
         .route("/redoc", get(routes::redoc))
         .route("/conformance", get(routes::conformance))
-        .merge(routes::collections::router(&state))
-        .merge(routes::features::router(&state))
-        .merge(routes::tiles::router(&state))
-        .merge(routes::styles::router(&state));
+        .merge(routes::collections::router(&state));
 
-    #[cfg(feature = "processes")]
-    let processors = vec![processor::Greeter];
-    let router = router.merge(routes::processes::router(&state, processors));
+    #[cfg(feature = "features")]
+    let router = router.merge(routes::features::router(&state));
 
     #[cfg(feature = "edr")]
     let router = router.merge(routes::edr::router(&state));
+
+    #[cfg(feature = "styles")]
+    let router = router.merge(routes::styles::router(&state));
+
+    #[cfg(feature = "tiles")]
+    let router = router.merge(routes::tiles::router(&state));
+
+    #[cfg(feature = "processes")]
+    let router = router.merge(routes::processes::router(&state, vec![processor::Greeter]));
 
     router.layer(
         ServiceBuilder::new()
