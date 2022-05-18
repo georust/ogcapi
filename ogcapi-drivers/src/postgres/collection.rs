@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use ogcapi_types::common::{Collection, Collections};
+use ogcapi_types::common::{Collection, Collections, Query};
 use sqlx::types::Json;
 
 use crate::CollectionTransactions;
@@ -60,7 +60,7 @@ impl CollectionTransactions for Db {
 
         tx.commit().await?;
 
-        Ok(format!("collections/{}", collection.id))
+        Ok(collection.id.to_owned())
     }
 
     async fn read_collection(&self, id: &str) -> Result<Collection, anyhow::Error> {
@@ -104,7 +104,7 @@ impl CollectionTransactions for Db {
         Ok(())
     }
 
-    async fn list_collections(&self) -> Result<Collections, anyhow::Error> {
+    async fn list_collections(&self, _query: &Query) -> Result<Collections, anyhow::Error> {
         let collections = sqlx::query_scalar!(
             r#"
             SELECT array_to_json(array_agg(collection)) as "collections: sqlx::types::Json<Vec<Collection>>" 

@@ -138,8 +138,8 @@ async fn items(
     let mut links = vec![
         Link::new(&url, SELF).mediatype(GEO_JSON),
         Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
-        Link::new(&url.join(".")?[..Position::AfterPath], PARENT).mediatype(JSON),
-        Link::new(&url.join(".")?[..Position::AfterPath], COLLECTION).mediatype(JSON),
+        Link::new(&url.join(&format!("../{}", collection.id))?, PARENT).mediatype(JSON),
+        Link::new(&url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
     ];
 
     // pagination
@@ -169,14 +169,14 @@ async fn items(
 
     for feature in fc.features.iter_mut() {
         feature.links = vec![
+            Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
+            Link::new(&url.join(&format!("../{}", collection.id))?, PARENT).mediatype(JSON),
+            Link::new(&url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
             Link::new(
-                &url.join(feature.id.as_ref().unwrap())?[..Position::AfterPath],
+                &url.join(&format!("items/{}", feature.id.as_ref().unwrap()))?,
                 SELF,
             )
             .mediatype(GEO_JSON),
-            Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
-            Link::new(&url.join(".")?[..Position::AfterPath], PARENT).mediatype(JSON),
-            Link::new(&url.join(".")?[..Position::AfterPath], COLLECTION).mediatype(JSON),
         ]
     }
 

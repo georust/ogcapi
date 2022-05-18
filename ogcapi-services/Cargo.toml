@@ -16,7 +16,7 @@ stac = ["ogcapi-types/stac", "ogcapi-drivers/stac"]
 
 [dependencies]
 anyhow = "1.0.57"
-axum = { version = "0.5.5", features = ["headers"] }
+axum = { version = "0.5.6", features = ["headers"] }
 clap = { version = "3.1.17", features = ["derive", "env"] }
 dotenv = "0.15.0"
 hyper = { version = "0.14.18", features = ["full"] }

@@ -6,14 +6,14 @@ readme = "../README.md"
 edition = "2021"
 
 [features]
-default = ["import", "serve"]
+default = ["import", "serve", "stac"]
 import = ["gdal", "geo", "osmpbfreader", "pbr", "sqlx", "wkb"]
 serve = ["axum", "ogcapi-services", "ogcapi-types/edr", "ogcapi-services/edr"]
 stac = ["ogcapi-types/stac", "ogcapi-drivers/stac", "ogcapi-services?/stac", "ogcapi-drivers/s3"]
 
 [dependencies]
 anyhow = "1.0.57"
-axum = { version = "0.5.5", optional = true, features = ["headers"] }
+axum = { version = "0.5.6", optional = true, features = ["headers"] }
 clap = { version = "3.1.17", features = ["derive", "env"] }
 dotenv = { version = "0.15.0" }
 gdal = { version = "0.12.0", optional = true, features = ["bindgen"] }

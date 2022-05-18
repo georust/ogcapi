@@ -5,7 +5,7 @@ pub mod s3;
 
 use async_trait::async_trait;
 use ogcapi_types::{
-    common::{Collection, Collections, Crs},
+    common::{Collection, Collections, Crs, Query as CollectionQuery},
     edr::{Query as EdrQuery, QueryType},
     features::{Feature, FeatureCollection, Query as FeatureQuery},
     processes::{Results, StatusInfo},
@@ -25,7 +25,8 @@ pub trait CollectionTransactions: Send + Sync {
 
     async fn delete_collection(&self, id: &str) -> Result<(), anyhow::Error>;
 
-    async fn list_collections(&self) -> Result<Collections, anyhow::Error>;
+    async fn list_collections(&self, query: &CollectionQuery)
+        -> Result<Collections, anyhow::Error>;
 }
 
 /// Trait for `Feature` transactions

@@ -7,18 +7,18 @@ use axum::{
     Json,
     {routing::get, Router},
 };
-
-// use serde::Deserialize;
-// use serde_with::{serde_as, DisplayFromStr};
 use url::Position;
 
 use ogcapi_types::common::{
     link_rel::{DATA, ITEMS, PARENT, ROOT, SELF},
     media_type::{GEO_JSON, JSON},
-    Collection, Collections, Crs, Link,
+    Collection, Collections, Crs, Link, Query,
 };
 
-use crate::{extractors::RemoteUrl, Result, State};
+use crate::{
+    extractors::{Qs, RemoteUrl},
+    Result, State,
+};
 
 const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",
@@ -29,15 +29,20 @@ const CONFORMANCE: [&str; 3] = [
 /// Create new collection metadata
 async fn create(
     Json(collection): Json<Collection>,
+    RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<(StatusCode, HeaderMap)> {
-    let location = state
+    let id = state
         .drivers
         .collections
         .create_collection(&collection)
         .await?;
+
+    let location = url.join(&format!("collections/{id}"))?;
+
     let mut headers = HeaderMap::new();
-    headers.insert(LOCATION, location.parse().unwrap());
+    headers.insert(LOCATION, location.as_str().parse().unwrap());
+
     Ok((StatusCode::CREATED, headers))
 }
 
@@ -54,12 +59,12 @@ async fn read(
         .await?;
 
     collection.links.extend_from_slice(&[
-        Link::new(&url[..Position::BeforePath], ROOT),
-        Link::new(&url[..Position::BeforePath], PARENT),
+        Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
+        Link::new(&url[..Position::BeforePath], PARENT).mediatype(JSON),
         Link::new(&url, SELF),
-        Link::new(&url.join("items")?[..Position::AfterPath], ITEMS).mediatype(GEO_JSON),
-        Link::new(&url.join("location")?[..Position::AfterPath], DATA)
-            .title("EDR location query endpoint"),
+        Link::new(&url.join(&format!("{}/items", collection.id))?, ITEMS).mediatype(GEO_JSON),
+        // Link::new(&url.join(&format!("{}/location", collection.id))?, DATA)
+        //     .title("EDR location query endpoint"),
     ]);
 
     Ok(Json(collection))
@@ -97,25 +102,35 @@ async fn remove(
 }
 
 async fn collections(
-    // Query(query): Query<CollectionQuery>,
+    Qs(query): Qs<Query>,
     RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<Json<Collections>> {
-    let mut collections = state.drivers.collections.list_collections().await?;
+    let mut collections = state.drivers.collections.list_collections(&query).await?;
 
-    let base = &url[..Position::AfterPath];
+    let root = Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON);
 
-    collections.collections.iter_mut().for_each(|c| {
-        c.links.append(&mut vec![
-            Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
-            Link::new(format!("{}/{}", base, c.id), SELF).mediatype(JSON),
-            Link::new(format!("{}/{}/items", base, c.id), ITEMS).mediatype(GEO_JSON),
-            Link::new(format!("{}/{}/location", base, c.id), DATA)
-                .title("EDR location query endpoint"),
+    for collection in collections.collections.iter_mut() {
+        collection.links.append(&mut vec![
+            root.clone(),
+            Link::new(&url.join(&format!("collections/{}", collection.id))?, SELF).mediatype(JSON),
+            Link::new(
+                &url.join(&format!("collections/{}/items", collection.id))?,
+                ITEMS,
+            )
+            .mediatype(GEO_JSON),
+            // Link::new(
+            //     &url.join(&format!("collections/{}/location", collection.id))?,
+            //     DATA,
+            // )
+            // .title("EDR location query endpoint"),
         ]);
-    });
+    }
 
-    collections.links = vec![Link::new(&url, SELF).mediatype(JSON).title("this document")];
+    collections.links = vec![
+        Link::new(&url, SELF).mediatype(JSON).title("this document"),
+        root,
+    ];
     collections.crs = vec![Crs::default(), Crs::from(4326)];
 
     Ok(Json(collections))
