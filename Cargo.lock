@@ -1629,6 +1629,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "axum-server",
  "clap 3.1.18",
  "dotenv",
  "gdal",
@@ -1688,8 +1689,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
- "axum-server",
- "base64",
+
  "clap 3.1.18",
  "dotenv",
  "geojson",
@@ -2094,8 +2094,7 @@ dependencies = [
  "mime",
  "percent-encoding",
  "pin-project-lite",
- "rustls 0.20.4",
- "rustls-pemfile",
+
  "serde",
  "serde_json",
  "serde_urlencoded",

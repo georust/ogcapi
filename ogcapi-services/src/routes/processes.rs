@@ -164,10 +164,10 @@ async fn results(
 pub(crate) fn router(state: &State, processors: Vec<Box<dyn Processor>>) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
-        Link::new(format!("{}/processes", &state.remote), PROCESSES)
+        Link::new("processes", PROCESSES)
             .mediatype(JSON)
             .title("Metadata about the processes"),
-        Link::new(format!("{}/jobs", &state.remote), JOB_LIST)
+        Link::new("jobs", JOB_LIST)
             .mediatype(JSON)
             .title("The endpoint for job monitoring"),
     ]);

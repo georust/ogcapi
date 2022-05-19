@@ -54,16 +54,23 @@ async fn main() -> anyhow::Result<()> {
             // Setup a database connection pool & run any pending migrations
             let db = ogcapi_drivers::postgres::Db::setup(&config.database_url).await?;
 
+            // tls
+            let tls = axum_server::tls_rustls::RustlsConfig::from_pem_file(
+                "ogcapi-services/self_signed_certs/cert.pem",
+                "ogcapi-services/self_signed_certs/key.pem",
+            )
+            .await
+            .unwrap();
+
             // Build our application
             let router = ogcapi_services::app(db).await;
 
             // run our app with hyper
             let address = format!("{}:{}", config.host, config.port).parse()?;
-            tracing::info!("listening on http://{}", address);
+            tracing::info!("listening on https://{}", address);
 
-            axum::Server::bind(&address)
+            axum_server::bind_rustls(address, tls)
                 .serve(router.into_make_service())
-                .with_graceful_shutdown(ogcapi_services::shutdown_signal())
                 .await
                 .unwrap();
         }

@@ -17,12 +17,27 @@ use axum::{
 };
 use openapiv3::OpenAPI;
 
-use ogcapi_types::common::{media_type::OPEN_API_JSON, Conformance, LandingPage};
+use ogcapi_types::common::{
+    link_rel::SELF, media_type::OPEN_API_JSON, Conformance, LandingPage, Link, Linked,
+};
 
 use crate::{extractors::RemoteUrl, Result, State};
 
-pub(crate) async fn root(Extension(state): Extension<Arc<State>>) -> Result<Json<LandingPage>> {
-    Ok(Json(state.root.read().unwrap().clone()))
+pub(crate) async fn root(
+    RemoteUrl(url): RemoteUrl,
+    Extension(state): Extension<Arc<State>>,
+) -> Result<Json<LandingPage>> {
+    let mut root = state.root.read().expect("Read root from state").clone();
+
+    root.links
+        .iter_mut()
+        .find(|l| l.rel == SELF)
+        .map(|l| l.href = url.to_string())
+        .unwrap_or_else(|| root.links.insert(0, Link::new(url, SELF)));
+
+    root.links.resolve_relative_links();
+
+    Ok(Json(root))
 }
 
 pub(crate) async fn api(Extension(state): Extension<Arc<State>>) -> (HeaderMap, Json<OpenAPI>) {

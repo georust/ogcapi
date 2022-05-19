@@ -35,11 +35,9 @@ static OPENAPI: &[u8; 122145] = include_bytes!("../openapi-edr.yaml");
 // #[derive(Clone)]
 pub struct State {
     pub drivers: Drivers,
-    // collections: RwLock<HashMap<String, Collection>>,
     pub root: RwLock<LandingPage>,
     pub conformance: RwLock<Conformance>,
     pub openapi: OpenAPI,
-    pub remote: String,
 }
 
 // TODO: Introduce service trait
@@ -55,7 +53,6 @@ pub struct Drivers {
 pub async fn app(db: Db) -> Router {
     // state
     let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI).unwrap();
-    let remote = openapi.servers[0].url.to_owned();
 
     let root = RwLock::new(LandingPage {
         #[cfg(feature = "stac")]
@@ -63,13 +60,11 @@ pub async fn app(db: Db) -> Router {
         title: Some(openapi.info.title.to_owned()),
         description: openapi.info.description.to_owned(),
         links: vec![
-            Link::new(&remote, SELF)
-                .title("This document")
-                .mediatype(JSON),
-            Link::new(format!("{}/api", &remote), SERVICE_DESC)
+            Link::new(".", SELF).title("This document").mediatype(JSON),
+            Link::new("api", SERVICE_DESC)
                 .title("The Open API definition")
                 .mediatype(OPEN_API_JSON),
-            Link::new(format!("{}/conformance", &remote), CONFORMANCE)
+            Link::new("conformance", CONFORMANCE)
                 .title("OGC conformance classes implemented by this API")
                 .mediatype(JSON),
         ],
@@ -98,7 +93,6 @@ pub async fn app(db: Db) -> Router {
         root,
         conformance,
         openapi,
-        remote,
     };
 
     // routes
@@ -138,31 +132,4 @@ pub async fn app(db: Db) -> Router {
             .layer(CorsLayer::permissive())
             .layer(Extension(Arc::new(state))),
     )
-}
-
-/// Handle shutdown signals
-pub async fn shutdown_signal() {
-    let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-
-    tracing::debug!("signal received, starting graceful shutdown");
 }

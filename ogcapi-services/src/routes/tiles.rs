@@ -18,7 +18,10 @@ use ogcapi_types::{
     tiles::{Query, TileMatrix, TileMatrixSet, TileMatrixSetItem, TileMatrixSets, TileSets},
 };
 
-use crate::{extractors::Qs, Error, Result, State};
+use crate::{
+    extractors::{Qs, RemoteUrl},
+    Error, Result, State,
+};
 
 const CONFORMANCE: [&str; 7] = [
     "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core",
@@ -57,25 +60,26 @@ pub struct TileParams {
     col: u32,
 }
 
-async fn tile_matrix_sets(Extension(state): Extension<Arc<State>>) -> Result<Json<TileMatrixSets>> {
-    let tile_matrix_sets = TileMatrixSets {
-        tile_matrix_sets: TMS.get().map_or_else(Vec::new, |tile_matrix_sets| {
-            tile_matrix_sets
-                .values()
-                .map(|tms| TileMatrixSetItem {
-                    id: Some(tms.id.to_owned()),
-                    title: tms.title_description_keywords.title.to_owned(),
-                    links: vec![Link::new(
-                        format!("{}/tileMatrixSets/{}", &state.remote, &tms.id),
-                        TILING_SCHEME,
-                    )],
-                    ..Default::default()
-                })
-                .collect::<Vec<TileMatrixSetItem>>()
-        }),
-    };
+async fn tile_matrix_sets(RemoteUrl(url): RemoteUrl) -> Result<Json<TileMatrixSets>> {
+    let tms = TMS.get().expect("TMS cell to be inizialized");
 
-    Ok(Json(tile_matrix_sets))
+    let mut tile_matrix_sets = Vec::new();
+
+    for tms in tms.values() {
+        let item = TileMatrixSetItem {
+            id: Some(tms.id.to_owned()),
+            title: tms.title_description_keywords.title.to_owned(),
+            links: vec![Link::new(
+                &url.join(&format!("tileMatrixSets/{}", &tms.id))?,
+                TILING_SCHEME,
+            )],
+            ..Default::default()
+        };
+
+        tile_matrix_sets.push(item);
+    }
+
+    Ok(Json(TileMatrixSets { tile_matrix_sets }))
 }
 
 async fn tile_matrix_set(Path(id): Path<String>) -> Result<Json<TileMatrixSet>> {
@@ -125,7 +129,7 @@ async fn tile(
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.push(
-        Link::new(format!("{}/tiles", &state.remote), TILESETS_VECTOR)
+        Link::new("tiles", TILESETS_VECTOR)
             .title("List of available vector features tilesets for the dataset")
             .mediatype(JSON),
     );

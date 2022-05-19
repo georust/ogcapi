@@ -18,7 +18,7 @@ use ogcapi_types::{
     stac::Asset,
 };
 
-use crate::{Result, State};
+use crate::{Error, Result, State};
 
 #[async_trait]
 /// Trait for defining and executing a [Process]

@@ -139,7 +139,7 @@ async fn collections(
 pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.push(
-        Link::new(format!("{}/collections", &state.remote), DATA)
+        Link::new("collections", DATA)
             .title("Metadata about the resource collections")
             .mediatype(JSON),
     );
