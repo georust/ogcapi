@@ -29,7 +29,7 @@ serde_qs = "0.9.2"
 thiserror = "1.0.31"
 tokio = { version = "1.18.2", features = ["full"] }
 tower = "0.4.12"
-tower-http = { version = "0.3.3", features = ["cors", "trace"] }
+tower-http = { version = "0.3.3", features = ["auth", "compression-gzip", "cors", "trace"] }
 tracing = "0.1.34"
 tracing-subscriber = { version="0.3.11", features = ["env-filter"] }
 url = { version = "2.2.2", features = ["serde"] }

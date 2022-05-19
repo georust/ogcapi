@@ -15,7 +15,7 @@ use std::sync::{Arc, RwLock};
 use axum::{extract::Extension, routing::get, Router};
 use openapiv3::OpenAPI;
 use tower::ServiceBuilder;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
 
 use ogcapi_drivers::{
     postgres::Db, CollectionTransactions, EdrQuerier, FeatureTransactions, JobHandler,
@@ -126,9 +126,11 @@ pub async fn app(db: Db) -> Router {
         ],
     ));
 
+    // middleware stack
     router.layer(
         ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
+            .layer(CompressionLayer::new())
             .layer(CorsLayer::permissive())
             .layer(Extension(Arc::new(state))),
     )
