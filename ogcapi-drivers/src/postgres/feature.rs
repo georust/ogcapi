@@ -21,11 +21,13 @@ impl FeatureTransactions for Db {
             INSERT INTO items.{0} (
                 properties,
                 geom,
-                links
+                links,
+                assets
             ) VALUES (
                 $1 -> 'properties',
                 ST_GeomFromGeoJSON($1 -> 'geometry'),
-                $1 -> 'links'
+                $1 -> 'links',
+                COALESCE($1 -> 'assets', '{{}}'::jsonb)
             )
             RETURNING id
             "#,
@@ -51,10 +53,10 @@ impl FeatureTransactions for Db {
                 SELECT
                     id,
                     '{0}' AS collection,
-                    type,
                     properties,
                     ST_AsGeoJSON(ST_Transform(geom, $2::int))::jsonb as geometry,
-                    links
+                    links,
+                    assets
                 FROM items.{0}
                 WHERE id = $1
             ) t
@@ -76,8 +78,9 @@ impl FeatureTransactions for Db {
             SET
                 properties = $1 -> 'properties',
                 geom = ST_GeomFromGeoJSON($1 -> 'geometry'),
-                links = $1 -> 'links'
-            WHERE id = $1 -> 'id'
+                links = $1 -> 'links',
+                assets = COALESCE($1 -> 'assets', '{{}}'::jsonb)
+            WHERE id = $1 ->> 'id'
             "#,
             &feature.collection.as_ref().unwrap()
         ))
@@ -106,11 +109,11 @@ impl FeatureTransactions for Db {
             r#"
             SELECT
                 id,
-                type,
+                '{0}' as collection,
                 properties,
                 ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
                 links,
-                '{0}' as collection
+                assets
             FROM items.{0}
             "#,
             collection

@@ -66,10 +66,9 @@ pub async fn load(args: Args, show_pb: bool) -> anyhow::Result<()> {
                     r#"
                     INSERT INTO items.{} (
                         id,
-                        type,
                         properties,
                         geom
-                    ) VALUES ($1, 'Feature', $2, ST_GeomFromGeoJSON($3))
+                    ) VALUES ($1, $2, ST_GeomFromGeoJSON($3))
                 "#,
                     collection.id
                 ))

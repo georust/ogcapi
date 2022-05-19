@@ -39,7 +39,7 @@ pub enum InputValueNoObject {
     Integer(i64),
     Boolean(bool),
     Array(Vec<Value>),
-    BinaryInputValue(String),
+    BinaryInputValue(String), // Undistinguishable from String(String)
     Bbox(BoundingBox),
 }
 

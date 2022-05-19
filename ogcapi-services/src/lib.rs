@@ -33,17 +33,17 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 static OPENAPI: &[u8; 122145] = include_bytes!("../openapi-edr.yaml");
 
 // #[derive(Clone)]
-struct State {
-    drivers: Drivers,
+pub struct State {
+    pub drivers: Drivers,
     // collections: RwLock<HashMap<String, Collection>>,
-    root: RwLock<LandingPage>,
-    conformance: RwLock<Conformance>,
-    openapi: OpenAPI,
-    remote: String,
+    pub root: RwLock<LandingPage>,
+    pub conformance: RwLock<Conformance>,
+    pub openapi: OpenAPI,
+    pub remote: String,
 }
 
 // TODO: Introduce service trait
-struct Drivers {
+pub struct Drivers {
     collections: Box<dyn CollectionTransactions>,
     features: Box<dyn FeatureTransactions>,
     edr: Box<dyn EdrQuerier>,
@@ -124,7 +124,13 @@ pub async fn app(db: Db) -> Router {
     let router = router.merge(routes::tiles::router(&state));
 
     #[cfg(feature = "processes")]
-    let router = router.merge(routes::processes::router(&state, vec![processor::Greeter]));
+    let router = router.merge(routes::processes::router(
+        &state,
+        vec![
+            Box::new(processor::Greeter),
+            Box::new(processor::AssetLoader),
+        ],
+    ));
 
     router.layer(
         ServiceBuilder::new()

@@ -70,10 +70,9 @@ pub async fn load(args: Args) -> Result<(), anyhow::Error> {
             sqlx::query(&format!(
                 r#"INSERT INTO items.{} (
                     id,
-                    type,
                     properties,
                     geom
-                ) VALUES ($1, '"Feature"', $2, ST_GeomFromWKB($3, 4326))"#,
+                ) VALUES ($1, $2, ST_GeomFromWKB($3, 4326))"#,
                 collection.id
             ))
             .bind(id.to_string())

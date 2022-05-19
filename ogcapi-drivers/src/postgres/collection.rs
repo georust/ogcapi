@@ -15,10 +15,13 @@ impl CollectionTransactions for Db {
             r#"
             CREATE TABLE IF NOT EXISTS items.{0} (
                 id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-                type text NOT NULL DEFAULT 'Feature',
                 properties jsonb,
                 geom geometry NOT NULL,
-                links jsonb NOT NULL DEFAULT '[]'::jsonb
+                links jsonb NOT NULL DEFAULT '[]'::jsonb,
+                stac_version text,
+                stac_extensions text[],
+                assets jsonb NOT NULL DEFAULT '{{}}'::jsonb,
+                bbox jsonb
             )
             "#,
             collection.id

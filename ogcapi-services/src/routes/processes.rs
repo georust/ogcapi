@@ -22,7 +22,7 @@ use ogcapi_types::{
     },
 };
 
-use crate::{extractors::RemoteUrl, Processor, Result, State};
+use crate::{extractors::RemoteUrl, Error, Processor, Result, State};
 
 const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
@@ -93,6 +93,13 @@ async fn processes(
 async fn process(Path(id): Path<String>, RemoteUrl(url): RemoteUrl) -> Result<Json<Process>> {
     let processors = PROCESSORS.get().unwrap();
 
+    if !processors.contains_key(&id) {
+        return Err(Error::Exception(
+            StatusCode::NOT_FOUND,
+            format!("No process with id `{}`", id),
+        ));
+    }
+
     let mut process = processors.get(&id).unwrap().process();
 
     process.summary.links = vec![Link::new(&url, SELF).mediatype(JSON)];
@@ -103,11 +110,19 @@ async fn process(Path(id): Path<String>, RemoteUrl(url): RemoteUrl) -> Result<Js
 async fn execution(
     Path(id): Path<String>,
     Json(execute): Json<ProcessExecute>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<Response> {
     let processors = PROCESSORS.get().unwrap();
 
+    if !processors.contains_key(&id) {
+        return Err(Error::Exception(
+            StatusCode::NOT_FOUND,
+            format!("No process with id `{}`", id),
+        ));
+    }
+
     // TODO: validation & async execution
-    Ok(processors.get(&id).unwrap().execute(&execute))
+    processors.get(&id).unwrap().execute(&execute, &state).await
 }
 
 async fn jobs() {
@@ -146,7 +161,7 @@ async fn results(
     Ok(Json(results))
 }
 
-pub(crate) fn router(state: &State, processors: Vec<impl Processor + 'static>) -> Router {
+pub(crate) fn router(state: &State, processors: Vec<Box<dyn Processor>>) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
         Link::new(format!("{}/processes", &state.remote), PROCESSES)
@@ -165,7 +180,7 @@ pub(crate) fn router(state: &State, processors: Vec<impl Processor + 'static>) -
     // Register processors
     let mut processor_map: BTreeMap<String, Box<dyn Processor>> = BTreeMap::new();
     for p in processors {
-        processor_map.insert(p.id(), Box::new(p));
+        processor_map.insert(p.id(), p);
     }
     let _ = PROCESSORS.set(processor_map);
 
