@@ -58,6 +58,8 @@ pub async fn app(db: Db) -> Router {
     let remote = openapi.servers[0].url.to_owned();
 
     let root = RwLock::new(LandingPage {
+        #[cfg(feature = "stac")]
+        id: "root".to_string(),
         title: Some(openapi.info.title.to_owned()),
         description: openapi.info.description.to_owned(),
         links: vec![
@@ -104,8 +106,10 @@ pub async fn app(db: Db) -> Router {
         .route("/", get(routes::root))
         .route("/api", get(routes::api))
         .route("/redoc", get(routes::redoc))
-        .route("/conformance", get(routes::conformance))
-        .merge(routes::collections::router(&state));
+        .route("/swagger", get(routes::swagger))
+        .route("/conformance", get(routes::conformance));
+
+    let router = router.merge(routes::collections::router(&state));
 
     #[cfg(feature = "features")]
     let router = router.merge(routes::features::router(&state));

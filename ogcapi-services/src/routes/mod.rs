@@ -60,6 +60,38 @@ pub(crate) async fn redoc(RemoteUrl(url): RemoteUrl) -> Result<Html<String>> {
     )))
 }
 
+pub(crate) async fn swagger(RemoteUrl(url): RemoteUrl) -> Result<Html<String>> {
+    let api = url.join("../api")?;
+
+    Ok(Html(format!(
+        r#"
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <meta name="description" content="SwaggerIU" />
+            <title>SwaggerUI</title>
+            <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4.11.1/swagger-ui.css" />
+        </head>
+        <body>
+            <div id="swagger-ui"></div>
+            <script src="https://unpkg.com/swagger-ui-dist@4.11.1/swagger-ui-bundle.js" crossorigin></script>
+            <script>
+            window.onload = () => {{
+                window.ui = SwaggerUIBundle({{
+                url: '{}',
+                dom_id: '#swagger-ui',
+                }});
+            }};
+            </script>
+        </body>
+        </html>
+        "#,
+        &api
+    )))
+}
+
 pub(crate) async fn conformance(Extension(state): Extension<Arc<State>>) -> Json<Conformance> {
     Json(state.conformance.read().unwrap().to_owned())
 }

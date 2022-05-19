@@ -16,7 +16,7 @@ use super::Links;
 ///
 /// * the Collections (path `/collections`, link relation `data`).
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct LandingPage {
     /// Set to `Catalog` if this Catalog only implements the Catalog spec.
     #[cfg(feature = "stac")]
@@ -56,4 +56,32 @@ pub struct LandingPage {
     pub conforms_to: Option<Vec<String>>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
+}
+
+impl Default for LandingPage {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "stac")]
+            r#type: crate::stac::catalog(),
+            #[cfg(feature = "stac")]
+            stac_version: crate::stac::stac_version(),
+            #[cfg(feature = "stac")]
+            stac_extensions: Default::default(),
+            #[cfg(feature = "stac")]
+            id: Default::default(),
+            title: Default::default(),
+            description: Default::default(),
+            attribution: Default::default(),
+            links: Default::default(),
+            #[cfg(feature = "edr")]
+            keywords: Default::default(),
+            #[cfg(feature = "edr")]
+            provider: Default::default(),
+            #[cfg(feature = "edr")]
+            contact: Default::default(),
+            #[cfg(feature = "stac")]
+            conforms_to: Default::default(),
+            additional_properties: Default::default(),
+        }
+    }
 }
