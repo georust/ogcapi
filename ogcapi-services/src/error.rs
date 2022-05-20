@@ -67,7 +67,7 @@ impl IntoResponse for Error {
                 (self.status_code(), self.to_string())
             }
             Self::Exception(status, message) => {
-                tracing::error!("OGCAPI exception: {}", message);
+                tracing::debug!("OGCAPI exception: {}", message);
                 (status, message)
             }
         };

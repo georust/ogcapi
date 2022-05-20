@@ -36,9 +36,10 @@ pub trait Processor: Send + Sync {
 /// Example Processor
 ///
 /// ```bash
-/// curl http://localhost:8484/processes/greet/execution \
-///      -H 'Content-Type: application/json' \
-///      -d '{"inputs": { "name": "World" } }'
+/// curl -k https://localhost:8484/processes/greet/execution \
+///         -u 'user:password'
+///         -H 'Content-Type: application/json' \
+///         -d '{"inputs": { "name": "World" } }'
 /// ```
 pub(crate) struct Greeter;
 

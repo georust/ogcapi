@@ -35,6 +35,8 @@ services:
       - RUST_LOG=${RUST_LOG}
       - APP_HOST=${APP_HOST}
       - APP_PORT=${APP_PORT}
+      - APP_USER=${APP_USER}
+      - APP_PASSWORD=${APP_PASSWORD}
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}

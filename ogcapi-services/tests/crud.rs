@@ -1,6 +1,9 @@
 use std::net::{SocketAddr, TcpListener};
 
-use axum::http::Request;
+use axum::{
+    headers::{authorization::Credentials, Authorization},
+    http::Request,
+};
 use hyper::Body;
 use serde_json::json;
 use url::Url;
@@ -44,6 +47,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     // setup app
     let addr = spawn_app().await?;
     let client = hyper::Client::new();
+    let credentials = Authorization::basic("user", "password").0.encode();
 
     let collection = Collection {
         id: "test".to_string(),
@@ -59,6 +63,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
                 .method(axum::http::Method::POST)
                 .uri(format!("http://{}/collections", addr))
                 .header("Content-Type", JSON)
+                .header("Authorization", &credentials)
                 .body(Body::from(serde_json::to_string(&collection)?))?,
         )
         .await?;
@@ -88,6 +93,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
                 .method(axum::http::Method::POST)
                 .uri(format!("http://{}/collections/test/items", addr))
                 .header("Content-Type", JSON.to_string())
+                .header("Authorization", &credentials)
                 .body(Body::from(serde_json::to_string(&feature)?))?,
         )
         .await?;
@@ -114,15 +120,13 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let _feature: Feature = serde_json::from_slice(&body)?;
     // println!("{:#?}", feature);
 
-    // update
-    // db.update_feature(&feature).await?;
-
     // delete feature
     let res = client
         .request(
             Request::builder()
                 .method(axum::http::Method::DELETE)
                 .uri(format!("http://{}/collections/test/items/{}", addr, &id).as_str())
+                .header("Authorization", &credentials)
                 .body(Body::empty())?,
         )
         .await?;
@@ -135,6 +139,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::DELETE)
                 .uri(format!("http://{}/collections/{}", addr, &collection.id).as_str())
+                .header("Authorization", &credentials)
                 .body(Body::empty())?,
         )
         .await?;

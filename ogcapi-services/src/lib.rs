@@ -1,3 +1,4 @@
+mod auth;
 mod config;
 mod error;
 mod extractors;
@@ -5,6 +6,7 @@ mod extractors;
 mod processor;
 mod routes;
 
+use auth::MyAuth;
 pub use config::Config;
 pub use error::Error;
 #[cfg(feature = "processes")]
@@ -15,7 +17,10 @@ use std::sync::{Arc, RwLock};
 use axum::{extract::Extension, routing::get, Router};
 use openapiv3::OpenAPI;
 use tower::ServiceBuilder;
-use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    auth::RequireAuthorizationLayer, compression::CompressionLayer, cors::CorsLayer,
+    trace::TraceLayer,
+};
 
 use ogcapi_drivers::{
     postgres::Db, CollectionTransactions, EdrQuerier, FeatureTransactions, JobHandler,
@@ -30,7 +35,7 @@ use ogcapi_types::common::{
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 // static OPENAPI: &[u8; 29696] = include_bytes!("../openapi.yaml");
-static OPENAPI: &[u8; 122145] = include_bytes!("../openapi-edr.yaml");
+static OPENAPI: &[u8; 122245] = include_bytes!("../openapi-edr.yaml");
 
 // #[derive(Clone)]
 pub struct State {
@@ -127,11 +132,13 @@ pub async fn app(db: Db) -> Router {
     ));
 
     // middleware stack
-    router.layer(
-        ServiceBuilder::new()
-            .layer(TraceLayer::new_for_http())
-            .layer(CompressionLayer::new())
-            .layer(CorsLayer::permissive())
-            .layer(Extension(Arc::new(state))),
-    )
+    router
+        .layer(
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
+                .layer(CompressionLayer::new())
+                .layer(CorsLayer::permissive())
+                .layer(Extension(Arc::new(state))),
+        )
+        .route_layer(RequireAuthorizationLayer::custom(MyAuth))
 }

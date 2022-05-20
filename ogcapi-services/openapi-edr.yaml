@@ -4,7 +4,7 @@ info:
   description: Example of Environmental Data Retrieval API OpenAPI docs
   version: 1.0.1
 servers:
-  - url: "http://localhost:8484"
+  - url: "https://localhost:8484"
     description: "Local development server"
 paths:
   /:
@@ -3483,3 +3483,9 @@ components:
           minItems: 2
       required:
         - values
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+security:
+  - basicAuth: []
