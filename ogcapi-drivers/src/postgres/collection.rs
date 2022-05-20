@@ -112,6 +112,7 @@ impl CollectionTransactions for Db {
             r#"
             SELECT array_to_json(array_agg(collection)) as "collections: sqlx::types::Json<Vec<Collection>>" 
             FROM meta.collections
+            WHERE collection ->> 'type' = 'Collection'
             "#)
             .fetch_one(&self.pool)
             .await?;

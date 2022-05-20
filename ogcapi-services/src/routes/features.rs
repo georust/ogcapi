@@ -70,8 +70,8 @@ async fn read(
     feature.links = vec![
         Link::new(&url, SELF).mediatype(GEO_JSON),
         Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
-        Link::new(&url.join("..")?[..Position::AfterPath], PARENT).mediatype(JSON),
-        Link::new(&url.join("..")?[..Position::AfterPath], COLLECTION).mediatype(JSON),
+        Link::new(&url.join(&format!("../../{}", collection_id))?, PARENT).mediatype(JSON),
+        Link::new(&url.join(&format!("../../{}", collection_id))?, COLLECTION).mediatype(JSON),
     ];
 
     let mut headers = HeaderMap::new();
