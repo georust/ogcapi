@@ -122,7 +122,7 @@ async fn execution(
     }
 
     // TODO: validation & async execution
-    processors.get(&id).unwrap().execute(&execute, &state).await
+    processors.get(&id).unwrap().execute(execute, &state).await
 }
 
 async fn jobs() {

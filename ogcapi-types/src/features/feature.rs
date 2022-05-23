@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 
 use crate::common::Links;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Feature,
 }

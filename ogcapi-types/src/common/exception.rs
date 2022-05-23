@@ -3,7 +3,7 @@ use serde_json::{Map, Value};
 
 /// Exception based on [`RFC 7807`](https://datatracker.ietf.org/doc/html/rfc7807)
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
 pub struct Exception {
     /// A URI reference that identifies the problem type.
     pub r#type: String,

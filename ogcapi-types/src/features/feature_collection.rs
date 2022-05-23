@@ -1,11 +1,11 @@
-use chrono::{Utc, SecondsFormat};
+use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::common::Links;
 
 use super::Feature;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     FeatureCollection,
 }

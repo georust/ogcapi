@@ -6,7 +6,7 @@ use serde_with::skip_serializing_none;
 /// with the Item that can be downloaded or streamed. It is allowed
 /// to add additional fields.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Asset {
     /// URI to the asset object. Relative and absolute URI are both allowed.

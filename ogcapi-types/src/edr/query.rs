@@ -3,7 +3,7 @@ use serde_with::{serde_as, DisplayFromStr};
 
 use crate::common::{Crs, Datetime};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum QueryType {
     Position,

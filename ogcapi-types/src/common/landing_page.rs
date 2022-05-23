@@ -16,7 +16,7 @@ use super::Links;
 ///
 /// * the Collections (path `/collections`, link relation `data`).
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct LandingPage {
     /// Set to `Catalog` if this Catalog only implements the Catalog spec.
     #[cfg(feature = "stac")]

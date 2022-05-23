@@ -49,6 +49,9 @@ cargo run -- serve
 
 # Documentation
 cargo doc --workspace --all-features --no-deps --open
+
+# Prepare statements for sqlx offline
+cargo sqlx prepare -- -p ogcapi-drivers --all-features
 ```
 
 ### Object strage

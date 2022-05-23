@@ -9,7 +9,7 @@ services:
       test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     ports:
       - ${DB_PORT}:5432
 
@@ -32,6 +32,9 @@ services:
       args:
         - CARGO_WATCH=true
     environment:
+      - VIRTUAL_HOST=poc.meteoschweiz-poc.swisstopo.cloud
+      - VIRTUAL_PORT=8484
+      - LETSENCRYPT_HOST=poc.meteoschweiz-poc.swisstopo.cloud
       - RUST_LOG=${RUST_LOG}
       - APP_HOST=${APP_HOST}
       - APP_PORT=${APP_PORT}

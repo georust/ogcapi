@@ -12,3 +12,7 @@ pub struct Config {
     #[clap(long, env, hide_env_values = true, parse(try_from_str))]
     pub database_url: url::Url,
 }
+
+pub fn parse_config() -> Config {
+    Config::parse()
+}

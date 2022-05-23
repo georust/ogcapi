@@ -1,0 +1,131 @@
+{
+  "db": "PostgreSQL",
+  "3f7c4a17ce87dc2821b6dfcb7ce796534da806e78ac197d88407a17c95d9b126": {
+    "query": "\n            SELECT array_to_json(array_agg(row_to_json(t))) as \"styles: Json<Vec<Style>>\"\n            FROM (\n                SELECT id, title, links FROM meta.styles\n            ) t\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "styles: Json<Vec<Style>>",
+          "type_info": "Json"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "4e7be9fef30e6d7db06111992e6bcd05e71962bf69d79134f5409eec05a63ef5": {
+    "query": "\n            SELECT row_to_json(t) as \"stylesheet!: Json<Stylesheet>\"\n            FROM (\n                SELECT id, value FROM meta.styles WHERE id = $1\n            ) t\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "stylesheet!: Json<Stylesheet>",
+          "type_info": "Json"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "7d0fea1e38d74daebcc615d0bfe5066cb5e7e137b466d077b52fd2e89803fdd8": {
+    "query": "\n            SELECT collection as \"collection!: sqlx::types::Json<Collection>\" \n            FROM meta.collections WHERE id = $1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "collection!: sqlx::types::Json<Collection>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "7edba09d431016d87a07316446cebe49288be339b8c76d38737b881edb5aabf8": {
+    "query": "\n            SELECT results as \"results!: Json<Results>\"\n            FROM meta.jobs\n            WHERE job_id = $1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "results!: Json<Results>",
+          "type_info": "Jsonb"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        true
+      ]
+    }
+  },
+  "b2ba1b9b8745db19e22a3c01f72c54cb15ec3124f2820a5c78803a7aabb93354": {
+    "query": "\n            SELECT row_to_json(jobs) as \"status_info!: Json<StatusInfo>\" \n            FROM meta.jobs WHERE job_id = $1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "status_info!: Json<StatusInfo>",
+          "type_info": "Json"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "cf816e1e756813550be18810489c6f52b9deb11e9178761c2c09f0cc49763e79": {
+    "query": "\n            SELECT array_to_json(array_agg(collection)) as \"collections: sqlx::types::Json<Vec<Collection>>\" \n            FROM meta.collections\n            WHERE collection ->> 'type' = 'Collection'\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "collections: sqlx::types::Json<Vec<Collection>>",
+          "type_info": "Json"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        null
+      ]
+    }
+  },
+  "e9d6123d969afc7970a56d574fec65b4ef69e5063c3a082b3bb024be30a2455c": {
+    "query": "DELETE FROM meta.jobs WHERE job_id = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  }
+}

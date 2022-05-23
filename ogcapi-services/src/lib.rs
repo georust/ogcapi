@@ -7,7 +7,7 @@ mod processor;
 mod routes;
 
 use auth::MyAuth;
-pub use config::Config;
+pub use config::{parse_config, Config};
 pub use error::Error;
 #[cfg(feature = "processes")]
 pub use processor::Processor;
@@ -22,10 +22,18 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-use ogcapi_drivers::{
-    postgres::Db, CollectionTransactions, EdrQuerier, FeatureTransactions, JobHandler,
-    StyleTransactions, TileTransactions,
-};
+#[cfg(feature = "edr")]
+use ogcapi_drivers::EdrQuerier;
+#[cfg(feature = "features")]
+use ogcapi_drivers::FeatureTransactions;
+#[cfg(feature = "processes")]
+use ogcapi_drivers::JobHandler;
+#[cfg(feature = "styles")]
+use ogcapi_drivers::StyleTransactions;
+#[cfg(feature = "tiles")]
+use ogcapi_drivers::TileTransactions;
+use ogcapi_drivers::{postgres::Db, CollectionTransactions};
+
 use ogcapi_types::common::{
     link_rel::{CONFORMANCE, SELF, SERVICE_DESC},
     media_type::{JSON, OPEN_API_JSON},
@@ -47,12 +55,17 @@ pub struct State {
 
 // TODO: Introduce service trait
 pub struct Drivers {
-    collections: Box<dyn CollectionTransactions>,
-    features: Box<dyn FeatureTransactions>,
-    edr: Box<dyn EdrQuerier>,
-    jobs: Box<dyn JobHandler>,
-    styles: Box<dyn StyleTransactions>,
-    tiles: Box<dyn TileTransactions>,
+    pub collections: Box<dyn CollectionTransactions>,
+    #[cfg(feature = "features")]
+    pub features: Box<dyn FeatureTransactions>,
+    #[cfg(feature = "edr")]
+    pub edr: Box<dyn EdrQuerier>,
+    #[cfg(feature = "processes")]
+    pub jobs: Box<dyn JobHandler>,
+    #[cfg(feature = "styles")]
+    pub styles: Box<dyn StyleTransactions>,
+    #[cfg(feature = "tiles")]
+    pub tiles: Box<dyn TileTransactions>,
 }
 
 pub async fn app(db: Db) -> Router {
@@ -86,10 +99,15 @@ pub async fn app(db: Db) -> Router {
 
     let drivers = Drivers {
         collections: Box::new(db.clone()),
+        #[cfg(feature = "features")]
         features: Box::new(db.clone()),
+        #[cfg(feature = "edr")]
         edr: Box::new(db.clone()),
+        #[cfg(feature = "processes")]
         jobs: Box::new(db.clone()),
+        #[cfg(feature = "styles")]
         styles: Box::new(db.clone()),
+        #[cfg(feature = "tiles")]
         tiles: Box::new(db),
     };
 
@@ -127,7 +145,7 @@ pub async fn app(db: Db) -> Router {
         &state,
         vec![
             Box::new(processor::Greeter),
-            Box::new(processor::AssetLoader),
+            // Box::new(processor::AssetLoader),
         ],
     ));
 
@@ -141,4 +159,31 @@ pub async fn app(db: Db) -> Router {
                 .layer(Extension(Arc::new(state))),
         )
         .route_layer(RequireAuthorizationLayer::custom(MyAuth))
+}
+
+/// Handle shutdown signals
+pub async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    tracing::debug!("signal received, starting graceful shutdown");
 }

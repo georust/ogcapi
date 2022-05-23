@@ -23,7 +23,7 @@ pub struct ParameterNames {
     pub measurement_type: Option<MeasurementType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum Type {
     Parameter,
 }
@@ -34,7 +34,7 @@ impl Default for Type {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum DataType {
     Integer,
@@ -42,7 +42,7 @@ pub enum DataType {
     String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct MeasurementType {
     /// Approach to calculating the data values
     pub method: String,

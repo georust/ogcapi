@@ -41,7 +41,7 @@ impl Default for SpatialExtent {
 
 #[serde_as]
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct TemporalExtent {
     #[serde_as(as = "Option<Vec<Vec<Option<DisplayFromStr>>>>")]
     pub interval: Option<Vec<Vec<Option<DateTime<Utc>>>>>,

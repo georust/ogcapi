@@ -201,7 +201,7 @@ pub enum DataType {
 }
 
 #[repr(u8)]
-#[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
+#[derive(Serialize_repr, Deserialize_repr, PartialEq, Eq, Debug)]
 enum GeometryDimension {
     Points = 0,
     Curves = 1,
