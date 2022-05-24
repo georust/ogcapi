@@ -12,7 +12,7 @@ info:
     name: CC-BY 4.0 license
     url: https://creativecommons.org/licenses/by/4.0/
 servers:
-  - url: https://localhost:8484
+  - url: http://localhost:8484
     description: "Development server"
 tags:
   - name: server
