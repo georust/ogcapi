@@ -26,7 +26,7 @@ async fn edr() -> anyhow::Result<()> {
         .await
         .expect("Setup database");
 
-    let app = ogcapi_services::app(db).await;
+    let app = ogcapi_services::app(db, ogcapi_services::OPENAPI).await;
 
     let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>().unwrap()).unwrap();
     let addr = listener.local_addr().unwrap();

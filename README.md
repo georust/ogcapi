@@ -36,7 +36,7 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 ```bash
 # Setup the database
-docker compose up db db-migrations
+docker compose up db db-migrations minio
 
 # Run tests
 cargo test --workspace

@@ -37,8 +37,7 @@ use ogcapi_types::common::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-// static OPENAPI: &[u8; 29696] = include_bytes!("../openapi.yaml");
-static OPENAPI: &[u8; 122244] = include_bytes!("../openapi-edr.yaml");
+pub static OPENAPI: &[u8; 29696] = include_bytes!("../openapi.yaml");
 
 // #[derive(Clone)]
 pub struct State {
@@ -63,9 +62,9 @@ pub struct Drivers {
     pub tiles: Box<dyn TileTransactions>,
 }
 
-pub async fn app(db: Db) -> Router {
+pub async fn app(db: Db, api: &[u8]) -> Router {
     // state
-    let openapi: OpenAPI = serde_yaml::from_slice(OPENAPI).unwrap();
+    let openapi: OpenAPI = serde_yaml::from_slice(api).unwrap();
 
     let root = RwLock::new(LandingPage {
         #[cfg(feature = "stac")]
@@ -116,9 +115,9 @@ pub async fn app(db: Db) -> Router {
     // routes
     let router = Router::new()
         .route("/", get(routes::root))
-        .route("/api", get(routes::api))
-        .route("/redoc", get(routes::redoc))
-        .route("/swagger", get(routes::swagger))
+        .route("/api", get(routes::api::api))
+        .route("/redoc", get(routes::api::redoc))
+        .route("/swagger", get(routes::api::swagger))
         .route("/conformance", get(routes::conformance));
 
     let router = router.merge(routes::collections::router(&state));

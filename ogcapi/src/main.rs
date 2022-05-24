@@ -1,6 +1,5 @@
 use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 #[derive(Parser, Debug)]
 #[clap(name = "ogcapi", version, about = "CLI for the `ogcapi` project.")]
 pub struct App {
@@ -55,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
             let db = ogcapi_drivers::postgres::Db::setup(&config.database_url).await?;
 
             // Build our application
-            let router = ogcapi_services::app(db).await;
+            let router = ogcapi_services::app(db, ogcapi_services::OPENAPI).await;
 
             // run our app with hyper
             let address = &format!("{}:{}", config.host, config.port).parse()?;
