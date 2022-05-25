@@ -52,8 +52,11 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let credentials = Authorization::basic("user", "password").0.encode();
 
     let collection = Collection {
-        id: "test".to_string(),
-        links: vec![Link::new("http://localhost:8080/collections/test", SELF)],
+        id: "test.me-_".to_string(),
+        links: vec![Link::new(
+            "http://localhost:8080/collections/test.me-_",
+            SELF,
+        )],
         crs: vec![Crs::default()],
         ..Default::default()
     };
@@ -76,7 +79,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     println!("{:#?}", parts.headers.get("Location"));
 
     let feature: Feature = serde_json::from_value(json!({
-        "collection": "test",
+        "collection": collection.id,
         "type": "Feature",
         "geometry": {
             "type": "Point",
@@ -93,7 +96,10 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
         .request(
             Request::builder()
                 .method(axum::http::Method::POST)
-                .uri(format!("http://{}/collections/test/items", addr))
+                .uri(format!(
+                    "http://{}/collections/{}/items",
+                    addr, collection.id
+                ))
                 .header("Content-Type", JSON.to_string())
                 .header("Authorization", &credentials)
                 .body(Body::from(serde_json::to_string(&feature)?))?,
@@ -112,7 +118,13 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
         .request(
             Request::builder()
                 .method(axum::http::Method::GET)
-                .uri(format!("http://{}/collections/test/items/{}", addr, &id).as_str())
+                .uri(
+                    format!(
+                        "http://{}/collections/{}/items/{}",
+                        addr, collection.id, &id
+                    )
+                    .as_str(),
+                )
                 .body(Body::empty())?,
         )
         .await?;
@@ -127,7 +139,13 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
         .request(
             Request::builder()
                 .method(axum::http::Method::DELETE)
-                .uri(format!("http://{}/collections/test/items/{}", addr, &id).as_str())
+                .uri(
+                    format!(
+                        "http://{}/collections/{}/items/{}",
+                        addr, collection.id, &id
+                    )
+                    .as_str(),
+                )
                 .header("Authorization", &credentials)
                 .body(Body::empty())?,
         )

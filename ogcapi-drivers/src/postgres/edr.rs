@@ -116,7 +116,7 @@ impl EdrQuerier for Db {
                 links,
                 '{0}' as collection,
                 assets
-            FROM items.{0}
+            FROM items."{0}"
             WHERE {2}
             "#,
             collection_id, properties, spatial_predicate

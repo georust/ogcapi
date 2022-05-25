@@ -13,7 +13,7 @@ impl CollectionTransactions for Db {
 
         sqlx::query(&format!(
             r#"
-            CREATE TABLE IF NOT EXISTS items.{0} (
+            CREATE TABLE items."{0}" (
                 id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
                 properties jsonb,
                 geom geometry NOT NULL,
@@ -30,14 +30,14 @@ impl CollectionTransactions for Db {
         .await?;
 
         sqlx::query(&format!(
-            "CREATE INDEX ON items.{} USING gin (properties)",
+            r#"CREATE INDEX ON items."{}" USING gin (properties)"#,
             collection.id
         ))
         .execute(&mut tx)
         .await?;
 
         sqlx::query(&format!(
-            "CREATE INDEX ON items.{} USING gist (geom)",
+            r#"CREATE INDEX ON items."{}" USING gist (geom)"#,
             collection.id
         ))
         .execute(&mut tx)
@@ -93,7 +93,7 @@ impl CollectionTransactions for Db {
     async fn delete_collection(&self, id: &str) -> Result<(), anyhow::Error> {
         let mut tx = self.pool.begin().await?;
 
-        sqlx::query(&format!("DROP TABLE IF EXISTS items.{}", id))
+        sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{}""#, id))
             .execute(&mut tx)
             .await?;
 

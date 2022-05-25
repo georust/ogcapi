@@ -18,7 +18,7 @@ impl FeatureTransactions for Db {
 
         let id: (String,) = sqlx::query_as(&format!(
             r#"
-            INSERT INTO items.{0} (
+            INSERT INTO items."{0}" (
                 properties,
                 geom,
                 links,
@@ -57,7 +57,7 @@ impl FeatureTransactions for Db {
                     ST_AsGeoJSON(ST_Transform(geom, $2::int))::jsonb as geometry,
                     links,
                     assets
-                FROM items.{0}
+                FROM items."{0}"
                 WHERE id = $1
             ) t
             "#,
@@ -74,7 +74,7 @@ impl FeatureTransactions for Db {
     async fn update_feature(&self, feature: &Feature) -> Result<(), anyhow::Error> {
         sqlx::query(&format!(
             r#"
-            UPDATE items.{0}
+            UPDATE items."{0}"
             SET
                 properties = $1 -> 'properties',
                 geom = ST_GeomFromGeoJSON($1 -> 'geometry'),
@@ -92,10 +92,13 @@ impl FeatureTransactions for Db {
     }
 
     async fn delete_feature(&self, collection: &str, id: &str) -> Result<(), anyhow::Error> {
-        sqlx::query(&format!("DELETE FROM items.{} WHERE id = $1", collection))
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(&format!(
+            r#"DELETE FROM items."{}" WHERE id = $1"#,
+            collection
+        ))
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
@@ -114,7 +117,7 @@ impl FeatureTransactions for Db {
                 ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
                 links,
                 assets
-            FROM items.{0}
+            FROM items."{0}"
             "#,
             collection
         )];

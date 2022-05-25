@@ -41,6 +41,6 @@ ogcapi-drivers = { path = "../ogcapi-drivers", features = ["postgres"] }
 
 [dev-dependencies]
 geojson = "0.22.3"
-uuid = { version = "1.0.0", features = ["serde", "v4"] }
+uuid = { version = "1.1.0", features = ["serde", "v4"] }
 
 ogcapi = { path = "../ogcapi" }

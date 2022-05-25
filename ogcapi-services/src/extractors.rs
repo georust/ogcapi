@@ -28,7 +28,14 @@ where
             let host = Host::from_request(req)
                 .await
                 .context("Unabe to extract host")?;
-            format!("http://{}{}", host.0, uri.0)
+
+            let proto = req
+                .headers()
+                .get("X-Forwarded-Proto")
+                .and_then(|f| f.to_str().ok())
+                .unwrap_or("http");
+
+            format!("{}://{}{}", proto, host.0, uri.0)
         };
 
         Ok(RemoteUrl(Url::parse(&url)?))
