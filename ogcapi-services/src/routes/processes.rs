@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 use axum::{
     extract::{Extension, Path, Query},
@@ -7,46 +7,40 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use once_cell::sync::OnceCell;
 use url::Position;
 
 use ogcapi_types::{
     common::{
-        link_rel::{JOB_LIST, NEXT, PREV, PROCESSES, SELF},
+        link_rel::{NEXT, PREV, PROCESSES, SELF},
         media_type::JSON,
         Link,
     },
-    processes::{
-        Execute as ProcessExecute, Process, ProcessList, ProcessQuery, ProcessSummary, Results,
-        StatusInfo,
-    },
+    processes::{Execute as ProcessExecute, Process, ProcessList, ProcessQuery, ProcessSummary},
 };
 
-use crate::{extractors::RemoteUrl, Error, Processor, Result, State};
+use crate::{extractors::RemoteUrl, Error, Result, State};
 
-const CONFORMANCE: [&str; 5] = [
+const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/ogc-process-description",
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/json",
     // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/html",
     // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/oas30",
-    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/job-list",
+    // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/job-list",
     // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/callback",
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/dismiss",
 ];
 
-static PROCESSORS: OnceCell<BTreeMap<String, Box<dyn Processor>>> = OnceCell::new();
-
 async fn processes(
     Query(mut query): Query<ProcessQuery>,
     RemoteUrl(mut url): RemoteUrl,
+    Extension(state): Extension<Arc<State>>,
 ) -> Result<Json<ProcessList>> {
-    let processors = PROCESSORS.get().unwrap();
-
-    let limit = query.limit.unwrap_or(processors.len());
+    let limit = query.limit.unwrap_or(state.processors.len());
     let offset = query.offset.unwrap_or(0);
 
-    let mut summaries: Vec<ProcessSummary> = processors
+    let mut summaries: Vec<ProcessSummary> = state
+        .processors
         .values()
         .into_iter()
         .skip(offset)
@@ -90,86 +84,86 @@ async fn processes(
     Ok(Json(process_list))
 }
 
-async fn process(Path(id): Path<String>, RemoteUrl(url): RemoteUrl) -> Result<Json<Process>> {
-    let processors = PROCESSORS.get().unwrap();
+async fn process(
+    Path(id): Path<String>,
+    RemoteUrl(url): RemoteUrl,
+    Extension(state): Extension<Arc<State>>,
+) -> Result<Json<Process>> {
+    match state.processors.get(&id) {
+        Some(processor) => {
+            let mut process = processor.process();
 
-    if !processors.contains_key(&id) {
-        return Err(Error::Exception(
+            process.summary.links = vec![Link::new(&url, SELF).mediatype(JSON)];
+
+            Ok(Json(process))
+        }
+        None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
             format!("No process with id `{}`", id),
-        ));
+        )),
     }
-
-    let mut process = processors.get(&id).unwrap().process();
-
-    process.summary.links = vec![Link::new(&url, SELF).mediatype(JSON)];
-
-    Ok(Json(process))
 }
 
 async fn execution(
     Path(id): Path<String>,
     Json(execute): Json<ProcessExecute>,
+    RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<Response> {
-    let processors = PROCESSORS.get().unwrap();
-
-    if !processors.contains_key(&id) {
-        return Err(Error::Exception(
+    match state.processors.get(&id) {
+        Some(processor) => processor.execute(execute, &state, &url).await,
+        None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
             format!("No process with id `{}`", id),
-        ));
+        )),
     }
-
-    // TODO: validation & async execution
-    processors.get(&id).unwrap().execute(execute, &state).await
 }
 
-async fn jobs() {
-    todo!()
-}
+// async fn jobs() {
+//     todo!()
+// }
 
-async fn status(
-    RemoteUrl(url): RemoteUrl,
-    Path(id): Path<String>,
-    Extension(state): Extension<Arc<State>>,
-) -> Result<Json<StatusInfo>> {
-    let mut status = state.drivers.jobs.status(&id).await?;
+// async fn status(
+//     RemoteUrl(url): RemoteUrl,
+//     Path(id): Path<String>,
+//     Extension(state): Extension<Arc<State>>,
+// ) -> Result<Json<StatusInfo>> {
+//     let mut status = state.drivers.jobs.status(&id).await?;
 
-    status.links = vec![Link::new(url, SELF).mediatype(JSON)];
+//     status.links = vec![Link::new(url, SELF).mediatype(JSON)];
 
-    Ok(Json(status))
-}
+//     Ok(Json(status))
+// }
 
-async fn delete(
-    Path(id): Path<String>,
-    Extension(state): Extension<Arc<State>>,
-) -> Result<StatusCode> {
-    state.drivers.jobs.delete(&id).await?;
+// async fn delete(
+//     Path(id): Path<String>,
+//     Extension(state): Extension<Arc<State>>,
+// ) -> Result<StatusCode> {
+//     state.drivers.jobs.delete(&id).await?;
 
-    // TODO: cancel execution
+//     // TODO: cancel execution
 
-    Ok(StatusCode::NO_CONTENT)
-}
+//     Ok(StatusCode::NO_CONTENT)
+// }
 
-async fn results(
-    Path(id): Path<String>,
-    Extension(state): Extension<Arc<State>>,
-) -> Result<Json<Results>> {
-    let results = state.drivers.jobs.results(&id).await?;
+// async fn results(
+//     Path(id): Path<String>,
+//     Extension(state): Extension<Arc<State>>,
+// ) -> Result<Json<Results>> {
+//     let results = state.drivers.jobs.results(&id).await?;
 
-    Ok(Json(results))
-}
+//     Ok(Json(results))
+// }
 
-pub(crate) fn router(state: &State, processors: Vec<Box<dyn Processor>>) -> Router {
+pub(crate) fn router(state: &State) -> Router {
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
         Link::new("processes", PROCESSES)
             .mediatype(JSON)
             .title("Metadata about the processes"),
-        Link::new("jobs", JOB_LIST)
-            .mediatype(JSON)
-            .title("The endpoint for job monitoring"),
+        // Link::new("jobs", JOB_LIST)
+        //     .mediatype(JSON)
+        //     .title("The endpoint for job monitoring"),
     ]);
 
     let mut conformance = state.conformance.write().unwrap();
@@ -177,18 +171,11 @@ pub(crate) fn router(state: &State, processors: Vec<Box<dyn Processor>>) -> Rout
         .conforms_to
         .append(&mut CONFORMANCE.map(String::from).to_vec());
 
-    // Register processors
-    let mut processor_map: BTreeMap<String, Box<dyn Processor>> = BTreeMap::new();
-    for p in processors {
-        processor_map.insert(p.id(), p);
-    }
-    let _ = PROCESSORS.set(processor_map);
-
     Router::new()
         .route("/processes", get(processes))
         .route("/processes/:id", get(process))
         .route("/processes/:id/execution", post(execution))
-        .route("/jobs", get(jobs))
-        .route("/jobs/:id", get(status).delete(delete))
-        .route("/jobs/:id/results", get(results))
+    // .route("/jobs", get(jobs))
+    // .route("/jobs/:id", get(status).delete(delete))
+    // .route("/jobs/:id/results", get(results))
 }

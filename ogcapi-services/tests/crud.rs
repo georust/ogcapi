@@ -26,7 +26,9 @@ async fn spawn_app() -> anyhow::Result<SocketAddr> {
         .await
         .expect("Setup database");
 
-    let app = ogcapi_services::app(db, ogcapi_services::OPENAPI).await;
+    let state = ogcapi_services::State::new(db, ogcapi_services::OPENAPI);
+
+    let app = ogcapi_services::app(state).await;
 
     let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>()?)?;
     let addr = listener.local_addr()?;

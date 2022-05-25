@@ -2,11 +2,11 @@ use axum::{
     async_trait,
     response::{IntoResponse, Response},
 };
-
-// use ogcapi_drivers::s3::{ByteStream, S3};
-use ogcapi_types::processes::{Execute, Process};
 use schemars::{schema_for, JsonSchema};
 use serde::Deserialize;
+use url::Url;
+
+use ogcapi_types::processes::{Execute, Process};
 
 use crate::{Result, State};
 
@@ -20,7 +20,7 @@ pub trait Processor: Send + Sync {
     fn process(&self) -> Process;
 
     /// Executes the Process and returns a response
-    async fn execute(&self, execute: Execute, state: &State) -> Result<Response>;
+    async fn execute(&self, execute: Execute, state: &State, url: &Url) -> Result<Response>;
 }
 
 /// Example Processor
@@ -31,7 +31,7 @@ pub trait Processor: Send + Sync {
 ///         -H 'Content-Type: application/json' \
 ///         -d '{"inputs": { "name": "World" } }'
 /// ```
-pub(crate) struct Greeter;
+pub struct Greeter;
 
 /// Inputs for the `greet` process
 #[derive(Deserialize, Debug, JsonSchema)]
@@ -58,9 +58,9 @@ impl Processor for Greeter {
         )
     }
 
-    async fn execute(&self, execute: Execute, _state: &State) -> Result<Response> {
+    async fn execute(&self, execute: Execute, _state: &State, _url: &Url) -> Result<Response> {
         let value = serde_json::to_value(execute.inputs).unwrap();
         let inputs: GreeterInputs = serde_json::from_value(value).unwrap();
-        Ok(format!("Hello, {}!", inputs.name).into_response())
+        Ok(format!("Hello, {}!\n", inputs.name).into_response())
     }
 }

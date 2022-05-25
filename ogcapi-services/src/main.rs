@@ -19,8 +19,11 @@ async fn main() -> anyhow::Result<()> {
     // setup database connection pool & run any pending migrations
     let db = ogcapi_drivers::postgres::Db::setup(&config.database_url).await?;
 
+    // application state
+    let state = ogcapi_services::State::new(db, ogcapi_services::OPENAPI);
+
     // build application
-    let router = ogcapi_services::app(db, ogcapi_services::OPENAPI).await;
+    let router = ogcapi_services::app(state).await;
 
     // run our app with hyper
     let address = &format!("{}:{}", config.host, config.port).parse()?;
