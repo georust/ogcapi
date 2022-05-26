@@ -26,7 +26,7 @@ async fn edr() -> anyhow::Result<()> {
         .await
         .expect("Setup database");
 
-    let state = ogcapi_services::State::new(db, ogcapi_services::OPENAPI);
+    let state = ogcapi_services::State::new_with(db, ogcapi_services::OPENAPI).await;
 
     let app = ogcapi_services::app(state).await;
 

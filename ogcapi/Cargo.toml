@@ -6,7 +6,7 @@ readme = "../README.md"
 edition = "2021"
 
 [features]
-default = ["serve", "import"]
+default = ["serve", "import", "stac"]
 import = ["gdal", "geo", "osmpbfreader", "pbr", "sqlx", "wkb"]
 serve = ["axum", "ogcapi-services", "ogcapi-services/full"]
 stac = ["ogcapi-types/stac", "ogcapi-drivers/stac", "ogcapi-services?/stac", "ogcapi-drivers/s3"]

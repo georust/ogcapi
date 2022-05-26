@@ -20,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
     let db = ogcapi_drivers::postgres::Db::setup(&config.database_url).await?;
 
     // application state
-    let state = ogcapi_services::State::new(db, ogcapi_services::OPENAPI);
+    let state = ogcapi_services::State::new_with(db, ogcapi_services::OPENAPI).await;
 
     // build application
     let router = ogcapi_services::app(state).await;

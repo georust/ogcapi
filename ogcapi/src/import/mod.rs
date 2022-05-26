@@ -14,7 +14,7 @@ pub(crate) async fn load_asset_from_path(
     use ogcapi_types::common::media_type::GEO_JSON;
 
     // Setup S3 driver
-    let s3 = S3::setup().await;
+    let s3 = S3::new().await;
 
     let stream = ByteStream::from_path(&path).await?;
 
@@ -25,7 +25,7 @@ pub(crate) async fn load_asset_from_path(
 
     s3.client
         .put_object()
-        .bucket("test-bucket")
+        .bucket(std::env::var("AWS_S3_BUCKET_NAME")?)
         .key(&key)
         .body(stream)
         .content_type(GEO_JSON)

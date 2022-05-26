@@ -11,6 +11,9 @@ pub struct Config {
     /// Postgres database url
     #[clap(long, env, hide_env_values = true, parse(try_from_str))]
     pub database_url: url::Url,
+    /// OpenAPI definition
+    #[clap(long, env, parse(from_os_str))]
+    pub openapi: Option<std::path::PathBuf>,
 }
 
 pub fn parse_config() -> Config {

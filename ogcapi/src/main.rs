@@ -50,11 +50,8 @@ async fn main() -> anyhow::Result<()> {
         }
         #[cfg(feature = "serve")]
         Command::Serve(config) => {
-            // Setup a database connection pool & run any pending migrations
-            let db = ogcapi_drivers::postgres::Db::setup(&config.database_url).await?;
-
             // Application state
-            let mut state = ogcapi_services::State::new(db, ogcapi_services::OPENAPI);
+            let mut state = ogcapi_services::State::new_from(&config).await?;
 
             // Register processors
             state.register_processes(vec![Box::new(ogcapi_services::Greeter)]);

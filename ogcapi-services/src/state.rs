@@ -18,7 +18,7 @@ use ogcapi_types::common::{
     Conformance, LandingPage, Link,
 };
 
-use crate::Processor;
+use crate::{Config, Processor, OPENAPI};
 
 // #[derive(Clone)]
 pub struct State {
@@ -28,6 +28,8 @@ pub struct State {
     pub openapi: openapiv3::OpenAPI,
     #[cfg(feature = "processes")]
     pub processors: BTreeMap<String, Box<dyn Processor>>,
+    #[cfg(feature = "stac")]
+    pub s3: ogcapi_drivers::s3::S3,
 }
 
 // TODO: Introduce service trait
@@ -46,7 +48,19 @@ pub struct Drivers {
 }
 
 impl State {
-    pub fn new(db: Db, api: &[u8]) -> Self {
+    pub async fn new_from(config: &Config) -> Result<Self, anyhow::Error> {
+        let openapi = if let Some(openapi) = &config.openapi {
+            std::fs::read(openapi)?
+        } else {
+            OPENAPI.to_vec()
+        };
+
+        let db = Db::setup(&config.database_url).await?;
+
+        Ok(State::new_with(db, &openapi).await)
+    }
+
+    pub async fn new_with(db: Db, api: &[u8]) -> Self {
         let openapi: openapiv3::OpenAPI = serde_yaml::from_slice(api).unwrap();
 
         let root = RwLock::new(LandingPage {
@@ -95,9 +109,19 @@ impl State {
             openapi,
             #[cfg(feature = "processes")]
             processors: Default::default(),
+            #[cfg(feature = "stac")]
+            s3: ogcapi_drivers::s3::S3::new().await,
         }
     }
 
+    #[cfg(feature = "stac")]
+    pub async fn new_with_s3(db: Db, api: &[u8], client: ogcapi_drivers::s3::S3) -> Self {
+        let mut state = State::new_with(db, api).await;
+        state.s3 = client;
+        state
+    }
+
+    #[cfg(feature = "processes")]
     pub fn register_processes(&mut self, processors: Vec<Box<dyn Processor>>) {
         for p in processors {
             self.processors.insert(p.id(), p);
