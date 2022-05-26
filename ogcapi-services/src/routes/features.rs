@@ -36,13 +36,18 @@ const CONFORMANCE: [&str; 4] = [
 async fn create(
     Path(collection_id): Path<String>,
     Json(mut feature): Json<Feature>,
+    RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<(StatusCode, HeaderMap)> {
     feature.collection = Some(collection_id);
 
-    let location = state.drivers.features.create_feature(&feature).await?;
+    let id = state.drivers.features.create_feature(&feature).await?;
+
+    let location = url.join(&format!("items/{}", id))?;
+
     let mut headers = HeaderMap::new();
-    headers.insert(LOCATION, location.parse().unwrap());
+    headers.insert(LOCATION, location.as_str().parse().unwrap());
+
     Ok((StatusCode::CREATED, headers))
 }
 

@@ -37,7 +37,7 @@ impl FeatureTransactions for Db {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(format!("collections/{}/items/{}", &collection, id.0))
+        Ok(id.0)
     }
 
     async fn read_feature(
