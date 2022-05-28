@@ -13,11 +13,18 @@ pub use state::State;
 #[cfg(feature = "processes")]
 pub use processor::{Greeter, Processor};
 
-use std::sync::Arc;
+use std::{any::Any, iter::once, sync::Arc};
 
-use axum::{extract::Extension, routing::get, Router};
+use axum::{extract::Extension, http::header::AUTHORIZATION, routing::get, Router};
+use hyper::{header, Body, Response, StatusCode};
 use tower::ServiceBuilder;
-use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
+use tower_http::{
+    catch_panic::CatchPanicLayer, compression::CompressionLayer, cors::CorsLayer,
+    request_id::MakeRequestUuid, sensitive_headers::SetSensitiveRequestHeadersLayer,
+    trace::TraceLayer, ServiceBuilderExt,
+};
+
+use ogcapi_types::common::Exception;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -52,11 +59,37 @@ pub async fn app(state: State) -> Router {
     // middleware stack
     router.layer(
         ServiceBuilder::new()
+            .layer(SetSensitiveRequestHeadersLayer::new(once(AUTHORIZATION)))
+            .set_x_request_id(MakeRequestUuid)
             .layer(TraceLayer::new_for_http())
             .layer(CompressionLayer::new())
             .layer(CorsLayer::permissive())
-            .layer(Extension(Arc::new(state))),
+            .layer(CatchPanicLayer::custom(handle_panic))
+            .layer(Extension(Arc::new(state)))
+            .propagate_x_request_id(),
     )
+}
+
+/// Custom panic handler
+fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response<Body> {
+    let details = if let Some(s) = err.downcast_ref::<String>() {
+        s.clone()
+    } else if let Some(s) = err.downcast_ref::<&str>() {
+        s.to_string()
+    } else {
+        "Unknown panic message".to_string()
+    };
+
+    let body =
+        Exception::new_from_status(StatusCode::INTERNAL_SERVER_ERROR.as_u16()).detail(details);
+
+    let body = serde_json::to_string(&body).unwrap();
+
+    Response::builder()
+        .status(StatusCode::INTERNAL_SERVER_ERROR)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(body))
+        .unwrap()
 }
 
 /// Handle shutdown signals

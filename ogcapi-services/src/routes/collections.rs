@@ -17,7 +17,7 @@ use ogcapi_types::common::{
 
 use crate::{
     extractors::{Qs, RemoteUrl},
-    Result, State,
+    Error, Result, State,
 };
 
 const CONFORMANCE: [&str; 3] = [
@@ -32,6 +32,19 @@ async fn create(
     RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<(StatusCode, HeaderMap)> {
+    if state
+        .drivers
+        .collections
+        .read_collection(&collection.id)
+        .await
+        .is_ok()
+    {
+        return Err(Error::Exception(
+            StatusCode::CONFLICT,
+            format!("Collection with id `{}` already exists.", collection.id),
+        ));
+    }
+
     let id = state
         .drivers
         .collections

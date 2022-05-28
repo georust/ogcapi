@@ -27,7 +27,7 @@ async fn main() -> anyhow::Result<()> {
 
     // run our app with hyper
     let address = &format!("{}:{}", config.host, config.port).parse()?;
-    tracing::info!("listening on https://{}", address);
+    tracing::info!("listening on http://{}", address);
 
     axum::Server::bind(address)
         .serve(router.into_make_service())
