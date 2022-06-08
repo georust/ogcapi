@@ -39,8 +39,9 @@ pub enum InputValueNoObject {
     Integer(i64),
     Boolean(bool),
     Array(Vec<Value>),
-    BinaryInputValue(String), // Undistinguishable from String(String)
-    Bbox(BoundingBox),
+    // TODO: requires custom serde implementation
+    // BinaryInputValue(String), // Undistinguishable from String(String)
+    // Bbox(BoundingBox), // Bbox is actually an object
 }
 
 #[derive(Serialize, Deserialize, Debug)]
