@@ -19,11 +19,13 @@ impl FeatureTransactions for Db {
         let id: (String,) = sqlx::query_as(&format!(
             r#"
             INSERT INTO items."{0}" (
+                id,
                 properties,
                 geom,
                 links,
                 assets
             ) VALUES (
+                COALESCE($1 ->> 'id', gen_random_uuid()::text),
                 $1 -> 'properties',
                 ST_GeomFromGeoJSON($1 -> 'geometry'),
                 $1 -> 'links',

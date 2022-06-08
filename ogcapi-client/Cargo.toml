@@ -9,7 +9,7 @@ default = []
 stac = ["ogcapi-types/stac"]
 
 [dependencies]
-geojson = "0.22.4"
+geojson = "0.23.0"
 once_cell = "1.12.0"
 reqwest = { version = "0.11.10", default-features = false, features = ["json", "blocking", "rustls-tls", "hyper-rustls"] }
 serde = { version = "1.0.137", features = ["derive"] }
