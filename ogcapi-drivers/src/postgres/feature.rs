@@ -23,13 +23,15 @@ impl FeatureTransactions for Db {
                 properties,
                 geom,
                 links,
-                assets
+                assets,
+                bbox
             ) VALUES (
                 COALESCE($1 ->> 'id', gen_random_uuid()::text),
                 $1 -> 'properties',
                 ST_GeomFromGeoJSON($1 -> 'geometry'),
                 $1 -> 'links',
-                COALESCE($1 -> 'assets', '{{}}'::jsonb)
+                COALESCE($1 -> 'assets', '{{}}'::jsonb),
+                $1 -> 'bbox'
             )
             RETURNING id
             "#,
@@ -58,7 +60,8 @@ impl FeatureTransactions for Db {
                     properties,
                     ST_AsGeoJSON(ST_Transform(geom, $2::int))::jsonb as geometry,
                     links,
-                    assets
+                    assets,
+                    bbox
                 FROM items."{0}"
                 WHERE id = $1
             ) t
@@ -81,7 +84,8 @@ impl FeatureTransactions for Db {
                 properties = $1 -> 'properties',
                 geom = ST_GeomFromGeoJSON($1 -> 'geometry'),
                 links = $1 -> 'links',
-                assets = COALESCE($1 -> 'assets', '{{}}'::jsonb)
+                assets = COALESCE($1 -> 'assets', '{{}}'::jsonb),
+                bbox = $1 -> 'bbox'
             WHERE id = $1 ->> 'id'
             "#,
             &feature.collection.as_ref().unwrap()
@@ -118,7 +122,8 @@ impl FeatureTransactions for Db {
                 properties,
                 ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
                 links,
-                assets
+                assets,
+                bbox
             FROM items."{0}"
             "#,
             collection
