@@ -49,3 +49,13 @@ pub struct Feature {
     #[cfg(feature = "stac")]
     pub bbox: Option<Bbox>,
 }
+
+impl Feature {
+    pub fn append_properties(&mut self, mut other: Map<String, Value>) {
+        if let Some(properties) = self.properties.as_mut() {
+            properties.append(&mut other);
+        } else {
+            self.properties = Some(other);
+        }
+    }
+}
