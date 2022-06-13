@@ -36,7 +36,7 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 ```bash
 # Setup the database
-docker compose up db db-migrations minio
+docker compose up db db-migrations minio createbuckets
 
 # Import administrative bounaries
 cargo run -- import --input data/ne_110m_admin_0_countries.geojson --collection countries
