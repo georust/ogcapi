@@ -54,12 +54,6 @@ cargo doc --workspace --all-features --no-deps --open
 cargo sqlx prepare -- -p ogcapi-drivers --all-features
 ```
 
-### Object strage
-
-Some features like `stac` requires object storage. Simple object storage (S3) is provided trough `minio`.
-
-To setup run `docker compose up` then login to the minio console and create a user with read/write access using the credentials found in the [`.env`](.env) file and also create a bucket named `test-bucket`.
-
 ## Teamengine
 
 ```bash

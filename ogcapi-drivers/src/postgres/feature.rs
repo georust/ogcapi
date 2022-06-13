@@ -168,6 +168,13 @@ impl FeatureTransactions for Db {
             .await?
             .rows_affected();
 
+        if let Some(limit) = query.limit {
+            sql.push(format!("LIMIT {}", limit));
+            if let Some(offset) = query.offset {
+                sql.push(format!("OFFSET {}", offset));
+            }
+        }
+
         let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
             r#"
             SELECT array_to_json(array_agg(row_to_json(t)))
@@ -175,7 +182,7 @@ impl FeatureTransactions for Db {
             "#,
             sql.join(" ")
         ))
-        .bind(&srid)
+        .bind(srid)
         .fetch_one(&self.pool)
         .await?;
 

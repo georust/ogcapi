@@ -13,7 +13,7 @@ pub(crate) async fn api(Extension(state): Extension<Arc<State>>) -> (HeaderMap, 
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, OPEN_API_JSON.parse().unwrap());
 
-    (headers, Json(state.openapi.to_owned()))
+    (headers, Json(state.openapi.0.to_owned()))
 }
 
 pub(crate) async fn redoc() -> Result<Html<String>> {

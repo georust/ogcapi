@@ -7,12 +7,11 @@ use axum::{
     Json,
     {routing::get, Router},
 };
-use url::Position;
 
 use ogcapi_types::common::{
     link_rel::{DATA, ITEMS, PARENT, ROOT, SELF},
     media_type::{GEO_JSON, JSON},
-    Collection, Collections, Crs, Link, Query,
+    Collection, Collections, Crs, Link, Linked, Query,
 };
 
 use crate::{
@@ -71,10 +70,10 @@ async fn read(
         .read_collection(&collection_id)
         .await?;
 
-    collection.links.extend_from_slice(&[
-        Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
-        Link::new(&url[..Position::BeforePath], PARENT).mediatype(JSON),
+    collection.links.insert_or_update(&[
         Link::new(&url, SELF),
+        Link::new(&url.join("..")?, PARENT).mediatype(JSON),
+        Link::new(&url.join("..")?, ROOT).mediatype(JSON),
         Link::new(&url.join(&format!("{}/items", collection.id))?, ITEMS).mediatype(GEO_JSON),
         // Link::new(&url.join(&format!("{}/location", collection.id))?, DATA)
         //     .title("EDR location query endpoint"),
@@ -121,12 +120,10 @@ async fn collections(
 ) -> Result<Json<Collections>> {
     let mut collections = state.drivers.collections.list_collections(&query).await?;
 
-    let root = Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON);
-
     for collection in collections.collections.iter_mut() {
-        collection.links.append(&mut vec![
-            root.clone(),
+        collection.links.insert_or_update(&[
             Link::new(&url.join(&format!("collections/{}", collection.id))?, SELF).mediatype(JSON),
+            Link::new(&url.join(".")?, ROOT).mediatype(JSON),
             Link::new(
                 &url.join(&format!("collections/{}/items", collection.id))?,
                 ITEMS,
@@ -142,7 +139,7 @@ async fn collections(
 
     collections.links = vec![
         Link::new(&url, SELF).mediatype(JSON).title("this document"),
-        root,
+        Link::new(&url.join(".")?, ROOT).mediatype(JSON),
     ];
     collections.crs = vec![Crs::default(), Crs::from(4326)];
 

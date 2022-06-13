@@ -20,10 +20,7 @@ impl Db {
     /// Create Postgres Driver
     pub async fn setup(url: &Url) -> Result<Self, sqlx::Error> {
         let name = url.path().strip_prefix('/').unwrap();
-        Db::setup_with(url, name, false).await
-    }
 
-    pub async fn setup_with(url: &Url, name: &str, create: bool) -> Result<Self, sqlx::Error> {
         // Connection options
         let mut options = PgConnectOptions::new_without_pgpass();
         if url.has_host() {
@@ -39,16 +36,20 @@ impl Db {
             options = options.password(password);
         }
 
-        if create {
-            // Create database
-            let mut connection = PgConnection::connect_with(&options)
-                .await
-                .expect("Failed to connect to Postgres");
+        // Create database if not exists
+        let mut connection = PgConnection::connect_with(&options)
+            .await
+            .expect("Failed to connect to Postgres");
+        if sqlx::query!("SELECT FROM pg_database WHERE datname = $1", name)
+            .fetch_optional(&mut connection)
+            .await?
+            .is_none()
+        {
             connection
                 .execute(format!(r#"CREATE DATABASE "{}";"#, name).as_str())
                 .await
                 .expect("Failed to create database.");
-        }
+        };
 
         // Create pool
         let pool = PgPoolOptions::new()

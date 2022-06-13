@@ -32,19 +32,19 @@ services:
       args:
         - CARGO_WATCH=true
     environment:
-      - VIRTUAL_HOST=poc.meteoschweiz-poc.swisstopo.cloud
-      - VIRTUAL_PORT=8484
-      - LETSENCRYPT_HOST=poc.meteoschweiz-poc.swisstopo.cloud
-      - RUST_LOG=${RUST_LOG}
-      - APP_HOST=${APP_HOST}
-      - APP_PORT=${APP_PORT}
-      - APP_USER=${APP_USER}
-      - APP_PASSWORD=${APP_PASSWORD}
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - AWS_CUSTOM_ENDPOINT=http://minio:9000
+      VIRTUAL_HOST: poc.meteoschweiz-poc.swisstopo.cloud
+      VIRTUAL_PORT: 8484
+      LETSENCRYPT_HOST: poc.meteoschweiz-poc.swisstopo.cloud
+      RUST_LOG: ${RUST_LOG}
+      APP_HOST: ${APP_HOST}
+      APP_PORT: ${APP_PORT}
+      APP_USER: ${APP_USER}
+      APP_PASSWORD: ${APP_PASSWORD}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_CUSTOM_ENDPOINT: http://minio:9000
     volumes:
       - ./ogcapi:/app/ogcapi:ro
       - ./ogcapi-drivers/src:/app/ogcapi-drivers/src:ro
@@ -66,15 +66,15 @@ services:
       context: .
     container_name: ogcapi
     environment:
-      - RUST_LOG=${RUST_LOG}
-      - APP_HOST=${APP_HOST}
-      - APP_PORT=${APP_PORT}
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - AWS_CUSTOM_ENDPOINT=http://minio:9000
-      - AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}
+      RUST_LOG: ${RUST_LOG}
+      APP_HOST: ${APP_HOST}
+      APP_PORT: ${APP_PORT}
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_CUSTOM_ENDPOINT: http://minio:9000
+      AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
     volumes:
       - ./ogcapi:/app/ogcapi:ro
       - ./ogcapi-drivers/src:/app/ogcapi-drivers/src:ro

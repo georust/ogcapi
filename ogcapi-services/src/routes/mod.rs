@@ -15,7 +15,11 @@ use std::sync::Arc;
 
 use axum::{extract::Extension, Json};
 
-use ogcapi_types::common::{link_rel::SELF, Conformance, LandingPage, Link, Linked};
+use ogcapi_types::common::{
+    link_rel::{CONFORMANCE, SELF, SERVICE_DESC},
+    media_type::{JSON, OPEN_API_JSON},
+    Conformance, LandingPage, Link, Linked,
+};
 
 use crate::{extractors::RemoteUrl, Result, State};
 
@@ -23,14 +27,17 @@ pub(crate) async fn root(
     RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<Json<LandingPage>> {
-    let mut root = state.root.read().expect("Read root from state").clone();
+    let mut root = state.root.read().unwrap().to_owned();
 
-    root.links
-        .iter_mut()
-        .find(|l| l.rel == SELF)
-        .map(|l| l.href = url.to_string())
-        .unwrap_or_else(|| root.links.insert(0, Link::new(url, SELF)));
-
+    root.links.insert_or_update(&[
+        Link::new(url, SELF).title("This document").mediatype(JSON),
+        Link::new("api", SERVICE_DESC)
+            .title("The Open API definition")
+            .mediatype(OPEN_API_JSON),
+        Link::new("conformance", CONFORMANCE)
+            .title("OGC conformance classes implemented by this API")
+            .mediatype(JSON),
+    ]);
     root.links.resolve_relative_links();
 
     Ok(Json(root))

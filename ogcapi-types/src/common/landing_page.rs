@@ -85,3 +85,33 @@ impl Default for LandingPage {
         }
     }
 }
+
+impl LandingPage {
+    pub fn new(id: impl ToString) -> Self {
+        let landing_page = LandingPage::default();
+        #[cfg(feature = "stac")]
+        let landing_page = landing_page.id(id.to_string());
+        landing_page.title(id)
+    }
+
+    #[cfg(feature = "stac")]
+    pub fn id(mut self, id: impl ToString) -> Self {
+        self.id = id.to_string();
+        self
+    }
+
+    pub fn title(mut self, title: impl ToString) -> Self {
+        self.title = Some(title.to_string());
+        self
+    }
+
+    pub fn description(mut self, description: impl ToString) -> Self {
+        self.description = Some(description.to_string());
+        self
+    }
+
+    pub fn links(mut self, links: Links) -> Self {
+        self.links = links;
+        self
+    }
+}

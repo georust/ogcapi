@@ -1,62 +1,23 @@
-use std::net::{SocketAddr, TcpListener};
+mod setup;
 
-use axum::{
-    headers::{authorization::Credentials, Authorization},
-    http::Request,
-};
+use axum::http::Request;
 use hyper::Body;
 use serde_json::json;
-use url::Url;
-use uuid::Uuid;
 
-use ogcapi_drivers::postgres::Db;
 use ogcapi_types::{
-    common::{link_rel::SELF, media_type::JSON, Collection, Crs, Link},
+    common::{media_type::JSON, Collection, Crs},
     features::Feature,
 };
-
-async fn spawn_app() -> anyhow::Result<SocketAddr> {
-    dotenv::dotenv().ok();
-
-    // tracing_subscriber::fmt::init();
-
-    let database_url = Url::parse(&std::env::var("DATABASE_URL")?)?;
-
-    let db = Db::setup_with(&database_url, &Uuid::new_v4().to_string(), true)
-        .await
-        .expect("Setup database");
-
-    let state = ogcapi_services::State::new_with(db, ogcapi_services::OPENAPI).await;
-
-    let app = ogcapi_services::app(state).await;
-
-    let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>()?)?;
-    let addr = listener.local_addr()?;
-
-    tokio::spawn(async move {
-        axum::Server::from_tcp(listener)
-            .expect("")
-            .serve(app.into_make_service())
-            .await
-            .unwrap();
-    });
-
-    Ok(addr)
-}
 
 #[tokio::test]
 async fn minimal_feature_crud() -> anyhow::Result<()> {
     // setup app
-    let addr = spawn_app().await?;
+    let (addr, _) = setup::spawn_app().await?;
     let client = hyper::Client::new();
-    let credentials = Authorization::basic("user", "password").0.encode();
 
     let collection = Collection {
         id: "test.me-_".to_string(),
-        links: vec![Link::new(
-            "http://localhost:8080/collections/test.me-_",
-            SELF,
-        )],
+        links: vec![],
         crs: vec![Crs::default()],
         ..Default::default()
     };
@@ -68,7 +29,6 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
                 .method(axum::http::Method::POST)
                 .uri(format!("http://{}/collections", addr))
                 .header("Content-Type", JSON)
-                .header("Authorization", &credentials)
                 .body(Body::from(serde_json::to_string(&collection)?))?,
         )
         .await?;
@@ -101,7 +61,6 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
                     addr, collection.id
                 ))
                 .header("Content-Type", JSON.to_string())
-                .header("Authorization", &credentials)
                 .body(Body::from(serde_json::to_string(&feature)?))?,
         )
         .await?;
@@ -146,7 +105,6 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
                     )
                     .as_str(),
                 )
-                .header("Authorization", &credentials)
                 .body(Body::empty())?,
         )
         .await?;
@@ -159,7 +117,6 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             Request::builder()
                 .method(axum::http::Method::DELETE)
                 .uri(format!("http://{}/collections/{}", addr, &collection.id).as_str())
-                .header("Authorization", &credentials)
                 .body(Body::empty())?,
         )
         .await?;

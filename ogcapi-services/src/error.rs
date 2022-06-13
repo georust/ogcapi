@@ -16,6 +16,10 @@ pub enum Error {
     // #[error("an error occurred with the database")]
     // Sqlx(#[from] sqlx::Error),
 
+    /// Return `404 Not Found`
+    #[error("not found")]
+    NotFound,
+
     /// Return `500 Internal Server Error` on a `anyhow::Error`.
     #[error("an internal server error occurred")]
     Anyhow(#[from] anyhow::Error),
@@ -36,6 +40,7 @@ pub enum Error {
 impl Error {
     fn status_code(&self) -> StatusCode {
         match self {
+            Self::NotFound => StatusCode::NOT_FOUND,
             Self::Exception(status, _) => *status,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -54,6 +59,7 @@ impl IntoResponse for Error {
             //     tracing::error!("SQLx error: {:?}", e);
             //     (self.status_code(), self.to_string())
             // }
+            Self::NotFound => (self.status_code(), self.to_string()),
             Self::Anyhow(ref e) => {
                 tracing::error!("Generic error: {:?}", e);
                 (self.status_code(), self.to_string())

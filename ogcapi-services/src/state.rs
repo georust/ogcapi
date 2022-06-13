@@ -12,24 +12,21 @@ use ogcapi_drivers::StyleTransactions;
 use ogcapi_drivers::TileTransactions;
 
 use ogcapi_drivers::{postgres::Db, CollectionTransactions};
-use ogcapi_types::common::{
-    link_rel::{CONFORMANCE, SELF, SERVICE_DESC},
-    media_type::{JSON, OPEN_API_JSON},
-    Conformance, LandingPage, Link,
-};
+use ogcapi_types::common::{Conformance, LandingPage};
 
-use crate::{Config, Processor, OPENAPI};
+use crate::{openapi::OPENAPI, Config, ConfigParser, OpenAPI, Processor};
 
-// #[derive(Clone)]
+/// Application state
 pub struct State {
-    pub drivers: Drivers,
     pub root: RwLock<LandingPage>,
     pub conformance: RwLock<Conformance>,
-    pub openapi: openapiv3::OpenAPI,
-    #[cfg(feature = "processes")]
-    pub processors: BTreeMap<String, Box<dyn Processor>>,
+    pub openapi: OpenAPI,
+    pub drivers: Drivers,
+    pub db: Db,
     #[cfg(feature = "stac")]
     pub s3: ogcapi_drivers::s3::S3,
+    #[cfg(feature = "processes")]
+    pub processors: BTreeMap<String, Box<dyn Processor>>,
 }
 
 // TODO: Introduce service trait
@@ -48,45 +45,31 @@ pub struct Drivers {
 }
 
 impl State {
-    pub async fn new_from(config: &Config) -> Result<Self, anyhow::Error> {
-        let openapi = if let Some(openapi) = &config.openapi {
-            std::fs::read(openapi)?
-        } else {
-            OPENAPI.to_vec()
-        };
-
-        let db = Db::setup(&config.database_url).await?;
-
-        Ok(State::new_with(db, &openapi).await)
+    pub async fn new() -> Self {
+        let config = Config::parse();
+        State::new_from(&config).await
     }
 
-    pub async fn new_with(db: Db, api: &[u8]) -> Self {
-        let openapi: openapiv3::OpenAPI = serde_yaml::from_slice(api).unwrap();
+    pub async fn new_from(config: &Config) -> Self {
+        let openapi = if let Some(path) = &config.openapi {
+            OpenAPI::from_path(path).unwrap()
+        } else {
+            OpenAPI::from_slice(OPENAPI)
+        };
 
-        let root = RwLock::new(LandingPage {
-            #[cfg(feature = "stac")]
-            id: "root".to_string(),
-            title: Some(openapi.info.title.to_owned()),
-            description: openapi.info.description.to_owned(),
-            links: vec![
-                Link::new(".", SELF).title("This document").mediatype(JSON),
-                Link::new("api", SERVICE_DESC)
-                    .title("The Open API definition")
-                    .mediatype(OPEN_API_JSON),
-                Link::new("conformance", CONFORMANCE)
-                    .title("OGC conformance classes implemented by this API")
-                    .mediatype(JSON),
-            ],
-            ..Default::default()
-        });
+        let db = Db::setup(&config.database_url).await.unwrap();
 
-        let conformance = RwLock::new(Conformance {
+        State::new_with(db, openapi).await
+    }
+
+    pub async fn new_with(db: Db, openapi: OpenAPI) -> Self {
+        let conformance = Conformance {
             conforms_to: vec![
                 "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core".to_string(),
                 "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections".to_string(),
                 "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json".to_string(),
             ],
-        });
+        };
 
         let drivers = Drivers {
             collections: Box::new(db.clone()),
@@ -99,32 +82,43 @@ impl State {
             #[cfg(feature = "styles")]
             styles: Box::new(db.clone()),
             #[cfg(feature = "tiles")]
-            tiles: Box::new(db),
+            tiles: Box::new(db.clone()),
         };
 
         State {
-            drivers,
-            root,
-            conformance,
+            root: RwLock::new(LandingPage::new("root")),
+            conformance: RwLock::new(conformance),
             openapi,
-            #[cfg(feature = "processes")]
-            processors: Default::default(),
+            drivers,
+            db,
             #[cfg(feature = "stac")]
             s3: ogcapi_drivers::s3::S3::new().await,
+            #[cfg(feature = "processes")]
+            processors: Default::default(),
         }
+    }
+
+    pub fn root(mut self, root: LandingPage) -> Self {
+        self.root = RwLock::new(root);
+        self
+    }
+
+    pub fn openapi(mut self, openapi: OpenAPI) -> Self {
+        self.openapi = openapi;
+        self
     }
 
     #[cfg(feature = "stac")]
-    pub async fn new_with_s3(db: Db, api: &[u8], client: ogcapi_drivers::s3::S3) -> Self {
-        let mut state = State::new_with(db, api).await;
-        state.s3 = client;
-        state
+    pub async fn s3_client(mut self, client: ogcapi_drivers::s3::S3) -> Self {
+        self.s3 = client;
+        self
     }
 
     #[cfg(feature = "processes")]
-    pub fn register_processes(&mut self, processors: Vec<Box<dyn Processor>>) {
+    pub fn processors(mut self, processors: Vec<Box<dyn Processor>>) -> Self {
         for p in processors {
             self.processors.insert(p.id(), p);
         }
+        self
     }
 }

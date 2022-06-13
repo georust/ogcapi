@@ -26,11 +26,11 @@ pub async fn load(args: Args, show_pb: bool) -> anyhow::Result<()> {
                     .bbox
                     .map(|bbox| Extent {
                         spatial: Some(SpatialExtent {
-                            bbox: Some(vec![bbox
+                            bbox: vec![bbox
                                 .as_slice()
                                 .try_into()
-                                .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into())]),
-                            crs: Some(Crs::from(4326)),
+                                .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into())],
+                            crs: Crs::from(4326),
                         }),
                         ..Default::default()
                     })

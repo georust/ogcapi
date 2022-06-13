@@ -10,13 +10,12 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use url::Position;
 
 use ogcapi_types::{
     common::{
         link_rel::{COLLECTION, NEXT, PARENT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
-        Collection, Crs, Link,
+        Collection, Crs, Link, Linked,
     },
     features::{Feature, FeatureCollection, Query},
 };
@@ -72,12 +71,12 @@ async fn read(
         .read_feature(&collection_id, &id, &crs)
         .await?;
 
-    feature.links = vec![
+    feature.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
-        Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
+        Link::new(&url.join("../../..")?, ROOT).mediatype(JSON),
         Link::new(&url.join(&format!("../../{}", collection_id))?, PARENT).mediatype(JSON),
         Link::new(&url.join(&format!("../../{}", collection_id))?, COLLECTION).mediatype(JSON),
-    ];
+    ]);
 
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -140,12 +139,12 @@ async fn items(
         .list_items(&collection_id, &query)
         .await?;
 
-    let mut links = vec![
+    fc.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
-        Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
-        Link::new(&url.join(&format!("../{}", collection.id))?, PARENT).mediatype(JSON),
-        Link::new(&url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
-    ];
+        Link::new(&url.join("../..")?, ROOT).mediatype(JSON),
+        Link::new(&url.join(".")?, PARENT).mediatype(JSON),
+        Link::new(&url.join(".")?, COLLECTION).mediatype(JSON),
+    ]);
 
     // pagination
     if let Some(limit) = query.limit {
@@ -158,7 +157,7 @@ async fn items(
                 query.offset = Some(offset - limit);
                 url.set_query(serde_qs::to_string(&query).ok().as_deref());
                 let previous = Link::new(&url, PREV).mediatype(GEO_JSON);
-                links.push(previous);
+                fc.links.insert_or_update(&[previous]);
             }
 
             if let Some(number_matched) = fc.number_matched {
@@ -166,26 +165,24 @@ async fn items(
                     query.offset = Some(offset + limit);
                     url.set_query(serde_qs::to_string(&query).ok().as_deref());
                     let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
-                    links.push(next);
+                    fc.links.insert_or_update(&[next]);
                 }
             }
         }
     }
 
     for feature in fc.features.iter_mut() {
-        feature.links = vec![
-            Link::new(&url[..Position::BeforePath], ROOT).mediatype(JSON),
-            Link::new(&url.join(&format!("../{}", collection.id))?, PARENT).mediatype(JSON),
-            Link::new(&url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
+        feature.links.insert_or_update(&[
             Link::new(
                 &url.join(&format!("items/{}", feature.id.as_ref().unwrap()))?,
                 SELF,
             )
             .mediatype(GEO_JSON),
-        ]
+            Link::new(&url.join("../..")?, ROOT).mediatype(JSON),
+            Link::new(&url.join(&format!("../{}", collection.id))?, PARENT).mediatype(JSON),
+            Link::new(&url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
+        ])
     }
-
-    fc.links = links;
 
     let mut headers = HeaderMap::new();
     headers.insert("Content-Crs", crs.to_string().parse().unwrap());

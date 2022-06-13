@@ -1,10 +1,11 @@
 use clap::Parser;
 
+/// Application configuration
 #[derive(Parser, Debug)]
 pub struct Config {
     /// Listening port of the server
     #[clap(long, env("APP_PORT"), default_value = "8484")]
-    pub port: String,
+    pub port: u16,
     /// istening host address of the server
     #[clap(long, env("APP_HOST"), default_value = "0.0.0.0")]
     pub host: String,
@@ -14,8 +15,4 @@ pub struct Config {
     /// OpenAPI definition
     #[clap(long, env, parse(from_os_str))]
     pub openapi: Option<std::path::PathBuf>,
-}
-
-pub fn parse_config() -> Config {
-    Config::parse()
 }

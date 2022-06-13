@@ -1,9 +1,18 @@
 use url::Url;
 
-use super::{link_rel::SELF, Link, Linked};
+use super::{link_rel::SELF, Link};
 
 #[doc(hidden)]
 pub type Links = Vec<Link>;
+
+#[doc(hidden)]
+pub trait Linked {
+    fn get_base_url(&mut self) -> Option<Url>;
+
+    fn resolve_relative_links(&mut self);
+
+    fn insert_or_update(&mut self, other: &[Link]);
+}
 
 impl Linked for Links {
     fn get_base_url(&mut self) -> Option<Url> {
@@ -31,10 +40,13 @@ impl Linked for Links {
             }
         }
     }
-}
 
-#[test]
-fn join() {
-    let base: url::Url = "http://ogcapi/collections/collection?pi=3".parse().unwrap();
-    println!("{}", base.join("../items").unwrap());
+    fn insert_or_update(&mut self, others: &[Link]) {
+        for link in others {
+            self.iter_mut()
+                .find(|l| l.rel == link.rel)
+                .map(|l| l.href = link.href.to_owned())
+                .unwrap_or_else(|| self.push(link.to_owned()));
+        }
+    }
 }

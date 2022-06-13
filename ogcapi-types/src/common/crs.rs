@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub const OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84";
 
 /// Default CRS for coordinates with height
-pub const OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h";
+// pub const OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h";
 
 /// Coordinate Reference System (CRS)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]

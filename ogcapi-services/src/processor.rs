@@ -27,7 +27,7 @@ pub trait Processor: Send + Sync {
 ///
 /// ```bash
 /// curl http://localhost:8484/processes/greet/execution \
-///         -u 'user:password'
+///         -u 'user:password' \
 ///         -H 'Content-Type: application/json' \
 ///         -d '{"inputs": { "name": "World" } }'
 /// ```
