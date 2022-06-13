@@ -1,7 +1,16 @@
-use axum::response::{IntoResponse, Response};
+use axum::{
+    async_trait,
+    response::{IntoResponse, Response},
+};
+use schemars::{schema_for, JsonSchema};
+use serde::Deserialize;
+use url::Url;
 
-use ogcapi_types::processes::{Execute, InlineOrRefData, Input, InputValueNoObject, Process};
+use ogcapi_types::processes::{Execute, Process};
 
+use crate::{Result, State};
+
+#[async_trait]
 /// Trait for defining and executing a [Process]
 pub trait Processor: Send + Sync {
     /// Returns the process id (must be unique)
@@ -11,18 +20,31 @@ pub trait Processor: Send + Sync {
     fn process(&self) -> Process;
 
     /// Executes the Process and returns a response
-    fn execute(&self, execute: &Execute) -> Response;
+    async fn execute(&self, execute: Execute, state: &State, url: &Url) -> Result<Response>;
 }
 
 /// Example Processor
 ///
 /// ```bash
 /// curl http://localhost:8484/processes/greet/execution \
-///      -H 'Content-Type: application/json' \
-///      -d '{"inputs": { "name": "World" } }'
+///         -u 'user:password' \
+///         -H 'Content-Type: application/json' \
+///         -d '{"inputs": { "name": "World" } }'
 /// ```
-pub(crate) struct Greeter;
+pub struct Greeter;
 
+/// Inputs for the `greet` process
+#[derive(Deserialize, Debug, JsonSchema)]
+struct GreeterInputs {
+    /// Name to be greeted
+    name: String,
+}
+
+/// Outputs for the `greet` process
+#[derive(JsonSchema)]
+struct GreeterOutputs(String);
+
+#[async_trait]
 impl Processor for Greeter {
     fn id(&self) -> String {
         "greet".to_string()
@@ -31,23 +53,14 @@ impl Processor for Greeter {
         Process::new(
             self.id(),
             "0.1.0",
-            &serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "name": { "type": "string" }
-                }
-            }),
-            &serde_json::json!({ "type": "string" }),
+            &serde_json::to_value(&schema_for!(GreeterInputs).schema).unwrap(),
+            &serde_json::to_value(&schema_for!(GreeterOutputs).schema).unwrap(),
         )
     }
 
-    fn execute(&self, execute: &Execute) -> Response {
-        let input = execute.inputs.get("name").unwrap();
-        match input {
-            Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                InputValueNoObject::String(name),
-            )) => format!("Hello, {}!", name).into_response(),
-            _ => todo!(),
-        }
+    async fn execute(&self, execute: Execute, _state: &State, _url: &Url) -> Result<Response> {
+        let value = serde_json::to_value(execute.inputs).unwrap();
+        let inputs: GreeterInputs = serde_json::from_value(value).unwrap();
+        Ok(format!("Hello, {}!\n", inputs.name).into_response())
     }
 }

@@ -36,30 +36,60 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 ```bash
 # Setup the database
-docker compose up db db-migrations
-
-# Run tests
-cargo test --workspace
+docker compose up db db-migrations minio createbuckets
 
 # Import administrative bounaries
 cargo run -- import --input data/ne_110m_admin_0_countries.geojson --collection countries
 
-# Serve 
+# Start service 
 cargo run -- serve
+
+# Run tests
+cargo test --workspace
 
 # Documentation
 cargo doc --workspace --all-features --no-deps --open
 ```
 
-### Object strage
+### Format / Lint
 
-Some features like `stac` requires object storage. Simple object storage (S3) is provided trough `minio`.
+```bash
+# Format
+cargo fmt
 
-To setup run `docker compose up` then login to the minio console and create a user with read/write access using the credentials found in the [`.env`](.env) file and also create a bucket named `test-bucket`.
+# Clippy
+cargo clippy --all-features
+```
 
-## Teamengine
+### Prepared statements
+
+```bash
+# Prepare statements for sqlx offline
+cargo sqlx prepare -- -p ogcapi-drivers --all-features
+```
+
+### Teamengine
 
 ```bash
 docker run --network host ogccite/ets-ogcapi-features10
 # docker run --network host ogccite/ets-ogcapi-edr10
 ```
+
+Navigate to <http://localhost:8081/teamengine/> to execute the test suite. For documentation and more info see <https://cite.opengeospatial.org/teamengine/about/ogcapi-features-1.0/1.0/site>.
+
+## Example Project
+
+STAC enabled OGC API Features: https://github.com/camptocamp/oapi-poc
+
+## License
+
+Licensed under either of
+
+ * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.

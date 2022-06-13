@@ -16,7 +16,7 @@ use super::Links;
 ///
 /// * the Collections (path `/collections`, link relation `data`).
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct LandingPage {
     /// Set to `Catalog` if this Catalog only implements the Catalog spec.
     #[cfg(feature = "stac")]
@@ -56,4 +56,62 @@ pub struct LandingPage {
     pub conforms_to: Option<Vec<String>>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
+}
+
+impl Default for LandingPage {
+    fn default() -> Self {
+        Self {
+            #[cfg(feature = "stac")]
+            r#type: crate::stac::catalog(),
+            #[cfg(feature = "stac")]
+            stac_version: crate::stac::stac_version(),
+            #[cfg(feature = "stac")]
+            stac_extensions: Default::default(),
+            #[cfg(feature = "stac")]
+            id: Default::default(),
+            title: Default::default(),
+            description: Default::default(),
+            attribution: Default::default(),
+            links: Default::default(),
+            #[cfg(feature = "edr")]
+            keywords: Default::default(),
+            #[cfg(feature = "edr")]
+            provider: Default::default(),
+            #[cfg(feature = "edr")]
+            contact: Default::default(),
+            #[cfg(feature = "stac")]
+            conforms_to: Default::default(),
+            additional_properties: Default::default(),
+        }
+    }
+}
+
+impl LandingPage {
+    pub fn new(id: impl ToString) -> Self {
+        let landing_page = LandingPage::default();
+        #[cfg(feature = "stac")]
+        let landing_page = landing_page.id(id.to_string());
+        landing_page.title(id)
+    }
+
+    #[cfg(feature = "stac")]
+    pub fn id(mut self, id: impl ToString) -> Self {
+        self.id = id.to_string();
+        self
+    }
+
+    pub fn title(mut self, title: impl ToString) -> Self {
+        self.title = Some(title.to_string());
+        self
+    }
+
+    pub fn description(mut self, description: impl ToString) -> Self {
+        self.description = Some(description.to_string());
+        self
+    }
+
+    pub fn links(mut self, links: Links) -> Self {
+        self.links = links;
+        self
+    }
 }

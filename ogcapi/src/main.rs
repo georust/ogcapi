@@ -51,21 +51,16 @@ async fn main() -> anyhow::Result<()> {
         }
         #[cfg(feature = "serve")]
         Command::Serve(config) => {
-            // Setup a database connection pool & run any pending migrations
-            let db = ogcapi_drivers::postgres::Db::setup(&config.database_url).await?;
-
-            // Build our application
-            let router = ogcapi_services::app(db).await;
-
-            // run our app with hyper
-            let address = format!("{}:{}", config.host, config.port).parse()?;
-            tracing::info!("listening on http://{}", address);
-
-            axum::Server::bind(&address)
-                .serve(router.into_make_service())
-                .with_graceful_shutdown(ogcapi_services::shutdown_signal())
+            // Application state
+            let state = ogcapi_services::State::new_from(&config)
                 .await
-                .unwrap();
+                .processors(vec![Box::new(ogcapi_services::Greeter)]);
+
+            // Build & run with hyper
+            ogcapi_services::Service::new_with(&config, state)
+                .await
+                .serve()
+                .await;
         }
     }
 

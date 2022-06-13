@@ -14,7 +14,10 @@ use ogcapi_types::{
     features::FeatureCollection,
 };
 
-use crate::{extractors::Qs, Result, State};
+use crate::{
+    extractors::{Qs, RemoteUrl},
+    Result, State,
+};
 
 const CONFORMANCE: [&str; 8] = [
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/core",
@@ -31,6 +34,7 @@ const CONFORMANCE: [&str; 8] = [
 async fn query(
     Path((collection_id, query_type)): Path<(String, QueryType)>,
     Qs(query): Qs<Query>,
+    RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", query);
@@ -43,12 +47,10 @@ async fn query(
 
     for feature in fc.features.iter_mut() {
         feature.links = vec![Link::new(
-            format!(
-                "{}/collections/{}/items/{}",
-                &state.remote,
-                &collection_id,
-                feature.id.as_ref().unwrap()
-            ),
+            &url.join(&format!(
+                "items/{}",
+                feature.id.as_ref().expect("Feature should have id")
+            ))?,
             SELF,
         )
         .mediatype(GEO_JSON)]

@@ -101,8 +101,11 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
                         .expect("Transform extent coords");
                     Extent {
                         spatial: Some(SpatialExtent {
-                            bbox: Some(vec![Bbox::Bbox2D([x[0], y[0], x[1], y[1]])]),
-                            crs: spatial_ref_dst.auth_code().map(|c| c.into()).ok(),
+                            bbox: vec![Bbox::Bbox2D([x[0], y[0], x[1], y[1]])],
+                            crs: spatial_ref_dst
+                                .auth_code()
+                                .map(|c| c.into())
+                                .unwrap_or_default(),
                         }),
                         temporal: None,
                     }

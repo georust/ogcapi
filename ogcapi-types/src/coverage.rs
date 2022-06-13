@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Coverage {
     pub r#type: CoverageType,
     pub domain: Domain,
@@ -11,7 +11,7 @@ pub struct Coverage {
     pub ranges: Map<String, Value>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Domain {
     pub r#type: String,
     pub domain_type: Option<DomainType>,
@@ -19,7 +19,7 @@ pub struct Domain {
     pub referencing: Vec<Value>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum CoverageType {
     Domain,
     NdArray,
@@ -28,7 +28,7 @@ pub enum CoverageType {
     CoverageCollection,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum DomainType {
     Grid,
     VerticalProfile,

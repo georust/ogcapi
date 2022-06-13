@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 pub const OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84";
 
 /// Default CRS for coordinates with height
-pub const OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h";
+// pub const OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h";
 
 /// Coordinate Reference System (CRS)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Crs {
     pub authority: Authority,
     pub version: String,
@@ -106,7 +106,7 @@ impl TryFrom<Crs> for i32 {
 }
 
 /// CRS Authorities
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Hash, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Authority {
     OGC,
     EPSG,

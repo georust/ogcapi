@@ -11,14 +11,14 @@ use ogcapi_types::{common::LandingPage, features::Feature};
 use ogcapi_types::{
     common::{
         link_rel::{CHILD, ITEM, SELF},
-        Links,
+        Link,
     },
     stac::{Catalog, Catalog as LandingPage, Item as Feature, SearchParams, StacEntity},
 };
 use ogcapi_types::{
     common::{
         link_rel::{CONFORMANCE, DATA, NEXT},
-        Collection, Conformance, Link,
+        Collection, Conformance, Links,
     },
     features::FeatureCollection,
 };
@@ -190,25 +190,25 @@ impl Client {
 pub struct StacEntities {
     client: Client,
     // entities: <Vec<StacEntity> as IntoIterator>::IntoIter,
-    links: Vec<Link>,
+    links: Links,
 }
 
 #[cfg(feature = "stac")]
 pub struct Catalogs {
     client: Client,
-    links: Vec<Link>,
+    links: Links,
 }
 
 pub struct Collections {
     client: Client,
     collections: <Vec<Collection> as IntoIterator>::IntoIter,
-    links: Vec<Link>,
+    links: Links,
 }
 
 pub struct Items {
     client: Client,
     items: <Vec<Feature> as IntoIterator>::IntoIter,
-    links: Vec<Link>,
+    links: Links,
 }
 
 trait Pagination<T> {

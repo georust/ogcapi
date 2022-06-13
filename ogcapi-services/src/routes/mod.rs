@@ -1,63 +1,46 @@
-pub mod collections;
+pub(crate) mod api;
+pub(crate) mod collections;
 #[cfg(feature = "edr")]
-pub mod edr;
+pub(crate) mod edr;
 #[cfg(feature = "features")]
-pub mod features;
+pub(crate) mod features;
 #[cfg(feature = "processes")]
-pub mod processes;
+pub(crate) mod processes;
 #[cfg(feature = "styles")]
-pub mod styles;
+pub(crate) mod styles;
 #[cfg(feature = "tiles")]
-pub mod tiles;
+pub(crate) mod tiles;
 
 use std::sync::Arc;
 
-use axum::{
-    extract::Extension, headers::HeaderMap, http::header::CONTENT_TYPE, response::Html, Json,
-};
-use openapiv3::OpenAPI;
+use axum::{extract::Extension, Json};
 
-use ogcapi_types::common::{media_type::OPEN_API_JSON, Conformance, LandingPage};
+use ogcapi_types::common::{
+    link_rel::{CONFORMANCE, SELF, SERVICE_DESC},
+    media_type::{JSON, OPEN_API_JSON},
+    Conformance, LandingPage, Link, Linked,
+};
 
 use crate::{extractors::RemoteUrl, Result, State};
 
-pub(crate) async fn root(Extension(state): Extension<Arc<State>>) -> Result<Json<LandingPage>> {
-    Ok(Json(state.root.read().unwrap().clone()))
-}
+pub(crate) async fn root(
+    RemoteUrl(url): RemoteUrl,
+    Extension(state): Extension<Arc<State>>,
+) -> Result<Json<LandingPage>> {
+    let mut root = state.root.read().unwrap().to_owned();
 
-pub(crate) async fn api(Extension(state): Extension<Arc<State>>) -> (HeaderMap, Json<OpenAPI>) {
-    let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, OPEN_API_JSON.parse().unwrap());
+    root.links.insert_or_update(&[
+        Link::new(url, SELF).title("This document").mediatype(JSON),
+        Link::new("api", SERVICE_DESC)
+            .title("The Open API definition")
+            .mediatype(OPEN_API_JSON),
+        Link::new("conformance", CONFORMANCE)
+            .title("OGC conformance classes implemented by this API")
+            .mediatype(JSON),
+    ]);
+    root.links.resolve_relative_links();
 
-    (headers, Json(state.openapi.to_owned()))
-}
-
-pub(crate) async fn redoc(RemoteUrl(url): RemoteUrl) -> Result<Html<String>> {
-    let api = url.join("../api")?;
-
-    Ok(Html(format!(
-        r#"<!DOCTYPE html>
-        <html>
-        <head>
-            <title>ReDoc</title>
-            <!-- needed for adaptive design -->
-            <meta charset="utf-8"/>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 0;
-                }}
-            </style>
-        </head>
-        <body>
-            <redoc spec-url="{}"></redoc>
-            <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
-        </body>
-        </html>"#,
-        &api
-    )))
+    Ok(Json(root))
 }
 
 pub(crate) async fn conformance(Extension(state): Extension<Arc<State>>) -> Json<Conformance> {

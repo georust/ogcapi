@@ -1,43 +1,15 @@
+mod setup;
+
 #[cfg(feature = "edr")]
 #[tokio::test]
 async fn edr() -> anyhow::Result<()> {
-    use std::env;
-    use std::net::{SocketAddr, TcpListener};
-
     use axum::http::Request;
     use geojson::{Geometry, Value};
-    use url::Url;
-    use uuid::Uuid;
 
     use ogcapi::import::{self, Args};
-    use ogcapi_drivers::postgres::Db;
     use ogcapi_types::{common::Crs, edr::Query, features::FeatureCollection};
 
-    // setup app
-    dotenv::dotenv().ok();
-
-    // tracing_subscriber::fmt::init();
-
-    let mut database_url = Url::parse(&env::var("DATABASE_URL")?)?;
-    let daatbase_name = Uuid::new_v4().to_string();
-    database_url.set_path(&daatbase_name);
-
-    let db = Db::setup_with(&database_url, &daatbase_name, true)
-        .await
-        .expect("Setup database");
-
-    let app = ogcapi_services::app(db).await;
-
-    let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>().unwrap()).unwrap();
-    let addr = listener.local_addr().unwrap();
-
-    tokio::spawn(async move {
-        axum::Server::from_tcp(listener)
-            .expect("")
-            .serve(app.into_make_service())
-            .await
-            .unwrap();
-    });
+    let (addr, database_url) = setup::spawn_app().await?;
 
     let client = hyper::Client::new();
 

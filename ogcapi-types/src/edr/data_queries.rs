@@ -5,7 +5,7 @@ use crate::common::Link;
 use super::QueryType;
 
 /// Detailed information relevant to individual query types
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct DataQueries {
     pub position: Option<PositionLink>,
     // pub radius: Option<RadiusLink>,
@@ -17,7 +17,7 @@ pub struct DataQueries {
     // pub item: Option<ItemLink>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct PositionLink {
     #[serde(flatten)]
     pub link: Link,
@@ -26,7 +26,7 @@ pub struct PositionLink {
 
 /// Property to contain any extra metadata information that is specific
 /// to an individual data queries
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct PositionDataQuery {
     pub title: Option<String>,
     pub description: Option<String>,
@@ -36,7 +36,7 @@ pub struct PositionDataQuery {
     pub crs_details: Vec<CrsObject>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct CrsObject {
     /// name of the coordinate reference system, used as the value in the crs
     /// query parameter to define the required output CRS

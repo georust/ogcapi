@@ -3483,3 +3483,9 @@ components:
           minItems: 2
       required:
         - values
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+security:
+  - basicAuth: []

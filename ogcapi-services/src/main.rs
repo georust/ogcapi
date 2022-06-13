@@ -1,4 +1,3 @@
-use clap::StructOpt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -14,24 +13,8 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // parse config
-    let config = ogcapi_services::Config::parse();
-
-    // setup database connection pool & run any pending migrations
-    let db = ogcapi_drivers::postgres::Db::setup(&config.database_url).await?;
-
-    // build application
-    let router = ogcapi_services::app(db).await;
-
-    // run our app with hyper
-    let address = format!("{}:{}", config.host, config.port).parse()?;
-    tracing::info!("listening on http://{}", address);
-
-    axum::Server::bind(&address)
-        .serve(router.into_make_service())
-        .with_graceful_shutdown(ogcapi_services::shutdown_signal())
-        .await
-        .unwrap();
+    // build & run our application with hyper
+    ogcapi_services::Service::new().await.serve().await;
 
     Ok(())
 }

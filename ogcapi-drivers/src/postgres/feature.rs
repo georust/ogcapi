@@ -18,14 +18,20 @@ impl FeatureTransactions for Db {
 
         let id: (String,) = sqlx::query_as(&format!(
             r#"
-            INSERT INTO items.{0} (
+            INSERT INTO items."{0}" (
+                id,
                 properties,
                 geom,
-                links
+                links,
+                assets,
+                bbox
             ) VALUES (
+                COALESCE($1 ->> 'id', gen_random_uuid()::text),
                 $1 -> 'properties',
                 ST_GeomFromGeoJSON($1 -> 'geometry'),
-                $1 -> 'links'
+                $1 -> 'links',
+                COALESCE($1 -> 'assets', '{{}}'::jsonb),
+                $1 -> 'bbox'
             )
             RETURNING id
             "#,
@@ -35,7 +41,7 @@ impl FeatureTransactions for Db {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(format!("collections/{}/items/{}", &collection, id.0))
+        Ok(id.0)
     }
 
     async fn read_feature(
@@ -51,11 +57,12 @@ impl FeatureTransactions for Db {
                 SELECT
                     id,
                     '{0}' AS collection,
-                    type,
                     properties,
                     ST_AsGeoJSON(ST_Transform(geom, $2::int))::jsonb as geometry,
-                    links
-                FROM items.{0}
+                    links,
+                    assets,
+                    bbox
+                FROM items."{0}"
                 WHERE id = $1
             ) t
             "#,
@@ -72,12 +79,14 @@ impl FeatureTransactions for Db {
     async fn update_feature(&self, feature: &Feature) -> Result<(), anyhow::Error> {
         sqlx::query(&format!(
             r#"
-            UPDATE items.{0}
+            UPDATE items."{0}"
             SET
                 properties = $1 -> 'properties',
                 geom = ST_GeomFromGeoJSON($1 -> 'geometry'),
-                links = $1 -> 'links'
-            WHERE id = $1 -> 'id'
+                links = $1 -> 'links',
+                assets = COALESCE($1 -> 'assets', '{{}}'::jsonb),
+                bbox = $1 -> 'bbox'
+            WHERE id = $1 ->> 'id'
             "#,
             &feature.collection.as_ref().unwrap()
         ))
@@ -89,10 +98,13 @@ impl FeatureTransactions for Db {
     }
 
     async fn delete_feature(&self, collection: &str, id: &str) -> Result<(), anyhow::Error> {
-        sqlx::query(&format!("DELETE FROM items.{} WHERE id = $1", collection))
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(&format!(
+            r#"DELETE FROM items."{}" WHERE id = $1"#,
+            collection
+        ))
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
@@ -106,12 +118,13 @@ impl FeatureTransactions for Db {
             r#"
             SELECT
                 id,
-                type,
+                '{0}' as collection,
                 properties,
                 ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
                 links,
-                '{0}' as collection
-            FROM items.{0}
+                assets,
+                bbox
+            FROM items."{0}"
             "#,
             collection
         )];
@@ -155,6 +168,13 @@ impl FeatureTransactions for Db {
             .await?
             .rows_affected();
 
+        if let Some(limit) = query.limit {
+            sql.push(format!("LIMIT {}", limit));
+            if let Some(offset) = query.offset {
+                sql.push(format!("OFFSET {}", offset));
+            }
+        }
+
         let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
             r#"
             SELECT array_to_json(array_agg(row_to_json(t)))
@@ -162,7 +182,7 @@ impl FeatureTransactions for Db {
             "#,
             sql.join(" ")
         ))
-        .bind(&srid)
+        .bind(srid)
         .fetch_one(&self.pool)
         .await?;
 

@@ -7,7 +7,6 @@ use aws_sdk_s3::{
     types::SdkError,
     Client, Endpoint,
 };
-use aws_types::SdkConfig;
 use http::Uri;
 
 pub use aws_sdk_s3::types::ByteStream;
@@ -17,25 +16,23 @@ pub struct S3 {
 }
 
 impl S3 {
-    pub async fn setup() -> Self {
-        let mut config = aws_config::from_env().load().await;
-
-        // Use custom enpoint if specified in `AWS_CUSTOM_ENDPOINT` environment variable
-        if let Ok(endpoint) = std::env::var("AWS_CUSTOM_ENDPOINT") {
+    pub async fn new() -> Self {
+        let config = if let Ok(endpoint) = std::env::var("AWS_CUSTOM_ENDPOINT") {
+            // Use custom enpoint if specified in `AWS_CUSTOM_ENDPOINT` environment variable
             let endpoint = endpoint.parse::<Uri>().unwrap();
 
-            let provider = config.credentials_provider().unwrap().to_owned();
-            let region = config.region().unwrap().to_owned();
-
-            config = SdkConfig::builder()
-                .credentials_provider(provider)
-                .region(region)
+            aws_config::from_env()
                 .endpoint_resolver(Endpoint::immutable(endpoint))
-                .build();
-        }
+                .load()
+                .await
+        } else {
+            aws_config::from_env().load().await
+        };
 
-        let client = Client::new(&config);
+        S3::new_from(Client::new(&config)).await
+    }
 
+    pub async fn new_from(client: Client) -> Self {
         S3 { client }
     }
 

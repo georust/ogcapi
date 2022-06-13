@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 
 use crate::common::Links;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Feature,
 }
@@ -48,4 +48,14 @@ pub struct Feature {
     /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
     #[cfg(feature = "stac")]
     pub bbox: Option<Bbox>,
+}
+
+impl Feature {
+    pub fn append_properties(&mut self, mut other: Map<String, Value>) {
+        if let Some(properties) = self.properties.as_mut() {
+            properties.append(&mut other);
+        } else {
+            self.properties = Some(other);
+        }
+    }
 }

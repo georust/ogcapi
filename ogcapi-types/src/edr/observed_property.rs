@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 /// Description of the property
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 
 pub struct ObservedPropertyCollection {
@@ -15,7 +15,7 @@ pub struct ObservedPropertyCollection {
     pub categories: Vec<Category>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Category {
     /// URI linking to an external registry which contains the definitive
     /// definition of the observed property
@@ -24,7 +24,7 @@ pub struct Category {
     description: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum Label {
     String(String),
     Object {

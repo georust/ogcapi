@@ -1,12 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-#[doc(hidden)]
-pub type Links = Vec<Link>;
-
 /// Hyperlink to enable Hypermedia Access
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Link {
     /// Supplies the URI to a remote resource (or resource fragment).
     pub href: String,
@@ -28,7 +25,7 @@ impl Link {
     /// Constructs a new Link with the given href and link relation
     pub fn new(href: impl ToString, rel: impl ToString) -> Link {
         Link {
-            href: href.to_string(),
+            href: href.to_string().trim_end_matches('/').to_owned(),
             rel: rel.to_string(),
             r#type: None,
             hreflang: None,

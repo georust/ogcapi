@@ -1,11 +1,11 @@
-use chrono::Utc;
+use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::common::Links;
 
 use super::Feature;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     FeatureCollection,
 }
@@ -36,7 +36,7 @@ impl FeatureCollection {
         let number_returned = features.len();
         FeatureCollection {
             features,
-            time_stamp: Some(Utc::now().to_rfc3339()),
+            time_stamp: Some(Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)),
             number_returned: Some(number_returned as u64),
             ..Default::default()
         }

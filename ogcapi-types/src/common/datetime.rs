@@ -4,7 +4,7 @@ use std::str::FromStr;
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum Datetime {
     Datetime(DateTime<Utc>),
     Interval {
@@ -13,7 +13,7 @@ pub enum Datetime {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum IntervalDatetime {
     Datetime(DateTime<Utc>),
     Open,

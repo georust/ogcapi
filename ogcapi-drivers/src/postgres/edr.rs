@@ -111,12 +111,12 @@ impl EdrQuerier for Db {
             r#"
             SELECT
                 id,
-                type,
                 {1},
                 ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
                 links,
-                '{0}' as collection
-            FROM items.{0}
+                '{0}' as collection,
+                assets
+            FROM items."{0}"
             WHERE {2}
             "#,
             collection_id, properties, spatial_predicate

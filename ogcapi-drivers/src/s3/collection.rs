@@ -1,7 +1,7 @@
 use anyhow::Ok;
 use async_trait::async_trait;
 
-use ogcapi_types::common::{media_type::JSON, Collection, Collections};
+use ogcapi_types::common::{media_type::JSON, Collection, Collections, Query};
 
 use crate::CollectionTransactions;
 
@@ -16,7 +16,7 @@ impl CollectionTransactions for S3 {
         self.put_object("test-bucket", &key, data, Some(JSON.to_string()))
             .await?;
 
-        Ok(key)
+        Ok(collection.id.to_owned())
     }
 
     async fn read_collection(&self, id: &str) -> Result<Collection, anyhow::Error> {
@@ -47,7 +47,7 @@ impl CollectionTransactions for S3 {
         Ok(())
     }
 
-    async fn list_collections(&self) -> Result<Collections, anyhow::Error> {
+    async fn list_collections(&self, _query: &Query) -> Result<Collections, anyhow::Error> {
         let mut collections = Vec::new();
 
         let resp = self

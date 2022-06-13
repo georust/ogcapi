@@ -1,53 +1,23 @@
-use std::net::{SocketAddr, TcpListener};
+mod setup;
 
 use axum::http::Request;
 use hyper::Body;
 use serde_json::json;
-use url::Url;
-use uuid::Uuid;
 
-use ogcapi_drivers::postgres::Db;
 use ogcapi_types::{
-    common::{link_rel::SELF, media_type::JSON, Collection, Crs, Link},
+    common::{media_type::JSON, Collection, Crs},
     features::Feature,
 };
-
-async fn spawn_app() -> anyhow::Result<SocketAddr> {
-    dotenv::dotenv().ok();
-
-    // tracing_subscriber::fmt::init();
-
-    let database_url = Url::parse(&std::env::var("DATABASE_URL")?)?;
-
-    let db = Db::setup_with(&database_url, &Uuid::new_v4().to_string(), true)
-        .await
-        .expect("Setup database");
-
-    let app = ogcapi_services::app(db).await;
-
-    let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>()?)?;
-    let addr = listener.local_addr()?;
-
-    tokio::spawn(async move {
-        axum::Server::from_tcp(listener)
-            .expect("")
-            .serve(app.into_make_service())
-            .await
-            .unwrap();
-    });
-
-    Ok(addr)
-}
 
 #[tokio::test]
 async fn minimal_feature_crud() -> anyhow::Result<()> {
     // setup app
-    let addr = spawn_app().await?;
+    let (addr, _) = setup::spawn_app().await?;
     let client = hyper::Client::new();
 
     let collection = Collection {
-        id: "test".to_string(),
-        links: vec![Link::new("http://localhost:8080/collections/test", SELF)],
+        id: "test.me-_".to_string(),
+        links: vec![],
         crs: vec![Crs::default()],
         ..Default::default()
     };
@@ -69,7 +39,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     println!("{:#?}", parts.headers.get("Location"));
 
     let feature: Feature = serde_json::from_value(json!({
-        "collection": "test",
+        "collection": collection.id,
         "type": "Feature",
         "geometry": {
             "type": "Point",
@@ -86,7 +56,10 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
         .request(
             Request::builder()
                 .method(axum::http::Method::POST)
-                .uri(format!("http://{}/collections/test/items", addr))
+                .uri(format!(
+                    "http://{}/collections/{}/items",
+                    addr, collection.id
+                ))
                 .header("Content-Type", JSON.to_string())
                 .body(Body::from(serde_json::to_string(&feature)?))?,
         )
@@ -104,7 +77,13 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
         .request(
             Request::builder()
                 .method(axum::http::Method::GET)
-                .uri(format!("http://{}/collections/test/items/{}", addr, &id).as_str())
+                .uri(
+                    format!(
+                        "http://{}/collections/{}/items/{}",
+                        addr, collection.id, &id
+                    )
+                    .as_str(),
+                )
                 .body(Body::empty())?,
         )
         .await?;
@@ -114,15 +93,18 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let _feature: Feature = serde_json::from_slice(&body)?;
     // println!("{:#?}", feature);
 
-    // update
-    // db.update_feature(&feature).await?;
-
     // delete feature
     let res = client
         .request(
             Request::builder()
                 .method(axum::http::Method::DELETE)
-                .uri(format!("http://{}/collections/test/items/{}", addr, &id).as_str())
+                .uri(
+                    format!(
+                        "http://{}/collections/{}/items/{}",
+                        addr, collection.id, &id
+                    )
+                    .as_str(),
+                )
                 .body(Body::empty())?,
         )
         .await?;

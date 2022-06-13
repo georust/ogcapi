@@ -1,7 +1,6 @@
 use anyhow::Context;
 use axum::{
-    extract::{FromRequest, RequestParts},
-    extract::{Host, OriginalUri},
+    extract::{FromRequest, Host, OriginalUri, RequestParts},
     http::StatusCode,
 };
 use url::Url;
@@ -19,25 +18,27 @@ where
     type Rejection = Error;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let host = Host::from_request(req)
-            .await
-            .context("Unabe to extract host")?;
-
         let uri = OriginalUri::from_request(req)
             .await
-            // Infallible
-            .unwrap();
+            .expect("Infalllible, hence this should never fail");
 
-        let scheme = if host.0.contains(':') {
-            "http"
+        let url = if uri.0.scheme().is_some() {
+            uri.0.to_string()
         } else {
-            "https"
+            let host = Host::from_request(req)
+                .await
+                .context("Unabe to extract host")?;
+
+            let proto = req
+                .headers()
+                .get("X-Forwarded-Proto")
+                .and_then(|f| f.to_str().ok())
+                .unwrap_or("http");
+
+            format!("{}://{}{}", proto, host.0, uri.0)
         };
 
-        Ok(RemoteUrl(Url::parse(&format!(
-            "{}://{}{}",
-            scheme, host.0, uri.0
-        ))?))
+        Ok(RemoteUrl(Url::parse(&url)?))
     }
 }
 

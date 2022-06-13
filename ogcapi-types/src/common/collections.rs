@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
 
@@ -27,7 +27,7 @@ impl Collections {
         let count = collections.len();
         Collections {
             links: Vec::new(),
-            time_stamp: Some(Utc::now().to_rfc3339()),
+            time_stamp: Some(Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)),
             number_matched: None,
             number_returned: Some(count as u64),
             collections,

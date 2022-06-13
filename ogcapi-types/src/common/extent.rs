@@ -21,45 +21,43 @@ impl Default for Extent {
 }
 
 #[serde_as]
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SpatialExtent {
-    pub bbox: Option<Vec<Bbox>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub bbox: Vec<Bbox>,
     #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub crs: Option<Crs>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub crs: Crs,
 }
 
 impl Default for SpatialExtent {
     fn default() -> Self {
         Self {
-            bbox: Some(vec![Bbox::Bbox2D([-180.0, -90.0, 180.0, 90.0])]),
-            crs: Some(Crs::from(4326)),
+            bbox: vec![Bbox::Bbox2D([-180.0, -90.0, 180.0, 90.0])],
+            crs: Default::default(),
         }
     }
 }
 
 #[serde_as]
-#[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct TemporalExtent {
-    #[serde_as(as = "Option<Vec<Vec<Option<DisplayFromStr>>>>")]
-    pub interval: Option<Vec<Vec<Option<DateTime<Utc>>>>>,
-    pub trs: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde_as(as = "Vec<Vec<Option<DisplayFromStr>>>")]
+    pub interval: Vec<Vec<Option<DateTime<Utc>>>>,
+    #[serde(default = "default_trs")]
+    pub trs: String,
 }
 
 impl Default for TemporalExtent {
     fn default() -> Self {
         Self {
-            interval: Some(vec![vec![None, None]]),
-            trs: Default::default(),
+            interval: vec![vec![None, None]],
+            trs: default_trs(),
         }
     }
 }
 
-#[test]
-fn extent() {
-    let e = serde_json::to_string_pretty(&Extent::default()).unwrap();
-
-    println!("{}", e)
+fn default_trs() -> String {
+    "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian".to_string()
 }
