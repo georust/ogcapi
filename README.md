@@ -38,28 +38,48 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 # Setup the database
 docker compose up db db-migrations minio
 
-# Run tests
-cargo test --workspace
-
 # Import administrative bounaries
 cargo run -- import --input data/ne_110m_admin_0_countries.geojson --collection countries
 
-# Serve 
+# Start service 
 cargo run -- serve
+
+# Run tests
+cargo test --workspace
 
 # Documentation
 cargo doc --workspace --all-features --no-deps --open
+```
 
+### Format / Lint
+
+```bash
+# Format
+cargo fmt
+
+# Clippy
+cargo clippy --all-features
+```
+
+### Prepared statements
+
+```bash
 # Prepare statements for sqlx offline
 cargo sqlx prepare -- -p ogcapi-drivers --all-features
 ```
 
-## Teamengine
+### Teamengine
 
 ```bash
 docker run --network host ogccite/ets-ogcapi-features10
 # docker run --network host ogccite/ets-ogcapi-edr10
 ```
+
+Navigate to <http://localhost:8081/teamengine/> to execute the test suite. For documentation and more info see <https://cite.opengeospatial.org/teamengine/about/ogcapi-features-1.0/1.0/site>.
+
+## Example Project
+
+STAC enabled OGC API Features: https://github.com/camptocamp/oapi-poc
 
 ## License
 
