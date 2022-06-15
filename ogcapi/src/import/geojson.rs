@@ -30,18 +30,13 @@ pub async fn load(args: Args, show_pb: bool) -> anyhow::Result<()> {
                                 .as_slice()
                                 .try_into()
                                 .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into())],
-                            crs: Crs::from(4326),
+                            crs: Crs::default(),
                         }),
                         ..Default::default()
                     })
                     .or_else(|| Some(Extent::default())),
-                crs: vec![
-                    Crs::default(),
-                    Crs::from(4326),
-                    Crs::from(3857),
-                    Crs::from(2056),
-                ],
-                storage_crs: Some(Crs::from(4326)),
+                crs: vec![Crs::default(), Crs::from_epsg(3857), Crs::from_epsg(2056)],
+                storage_crs: Some(Crs::default()),
                 #[cfg(feature = "stac")]
                 assets: crate::import::load_asset_from_path(&args.input).await?,
                 ..Default::default()

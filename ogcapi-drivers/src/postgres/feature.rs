@@ -1,4 +1,3 @@
-use anyhow::Ok;
 use async_trait::async_trait;
 use sqlx::types::Json;
 
@@ -7,7 +6,7 @@ use ogcapi_types::{
     features::{Feature, FeatureCollection, Query},
 };
 
-use crate::FeatureTransactions;
+use crate::{CollectionTransactions, FeatureTransactions};
 
 use super::Db;
 
@@ -69,7 +68,7 @@ impl FeatureTransactions for Db {
             collection
         ))
         .bind(id)
-        .bind(crs.to_owned().try_into().unwrap_or(4326))
+        .bind(crs.as_srid())
         .fetch_one(&self.pool)
         .await?;
 
@@ -130,14 +129,11 @@ impl FeatureTransactions for Db {
         )];
 
         if let Some(bbox) = query.bbox.as_ref() {
-            let bbox_srid: i32 = query
-                .bbox_crs
-                .to_owned()
-                .unwrap_or_default()
-                .try_into()
-                .unwrap();
+            // TODO: Properly handle crs and bbox transformation
+            let bbox_srid: i32 = query.bbox_crs.as_srid();
 
-            let storage_srid = self.storage_srid(collection).await?;
+            let c = self.read_collection(collection).await?;
+            let storage_srid = c.storage_crs.unwrap_or_default().as_srid();
 
             let envelope = match bbox {
                 Bbox::Bbox2D(bbox) => format!(
@@ -155,12 +151,7 @@ impl FeatureTransactions for Db {
             ));
         }
 
-        let srid = query
-            .crs
-            .to_owned()
-            .unwrap_or_default()
-            .try_into()
-            .unwrap_or(4326);
+        let srid = query.crs.as_srid();
 
         let number_matched = sqlx::query(sql.join(" ").as_str())
             .bind(srid)

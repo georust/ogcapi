@@ -2,7 +2,7 @@ use async_trait::async_trait;
 
 use ogcapi_types::tiles::TileMatrixSet;
 
-use crate::TileTransactions;
+use crate::{CollectionTransactions, TileTransactions};
 
 use super::Db;
 
@@ -19,7 +19,8 @@ impl TileTransactions for Db {
         let mut sql: Vec<String> = Vec::new();
 
         for collection in collections.split(',') {
-            let srid = self.storage_srid(collection).await?;
+            let c = self.read_collection(collection).await?;
+            let storage_srid = c.storage_crs.unwrap_or_default().as_srid();
 
             sql.push(format!(
                 r#"
@@ -34,7 +35,7 @@ impl TileTransactions for Db {
                 ) AS mvtgeom
                 "#,
                 collection,
-                srid
+                storage_srid
             ));
         }
 

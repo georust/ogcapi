@@ -20,6 +20,7 @@ impl CollectionTransactions for S3 {
     }
 
     async fn read_collection(&self, id: &str) -> Result<Collection, anyhow::Error> {
+        // TODO: cache
         let key = format!("collections/{}/collection.json", id);
 
         let r = self.get_object("test-bucket", &key).await?;

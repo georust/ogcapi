@@ -141,7 +141,7 @@ async fn collections(
         Link::new(&url, SELF).mediatype(JSON).title("this document"),
         Link::new(&url.join(".")?, ROOT).mediatype(JSON),
     ];
-    collections.crs = vec![Crs::default(), Crs::from(4326)];
+    collections.crs = vec![Crs::default(), Crs::from_epsg(3857)];
 
     Ok(Json(collections))
 }

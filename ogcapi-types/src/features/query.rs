@@ -13,14 +13,14 @@ pub struct Query {
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub bbox: Option<Bbox>,
     #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub bbox_crs: Option<Crs>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub bbox_crs: Crs,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub datetime: Option<Datetime>,
     #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub crs: Option<Crs>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub crs: Crs,
     pub filter: Option<String>,
     #[serde(default)]
     pub filter_lang: Option<FilterLang>,

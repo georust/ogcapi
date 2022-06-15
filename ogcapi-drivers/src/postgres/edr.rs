@@ -5,7 +5,7 @@ use ogcapi_types::{
 };
 use sqlx::types::Json;
 
-use crate::EdrQuerier;
+use crate::{CollectionTransactions, EdrQuerier};
 
 use super::Db;
 
@@ -17,8 +17,10 @@ impl EdrQuerier for Db {
         query_type: &QueryType,
         query: &Query,
     ) -> anyhow::Result<FeatureCollection> {
-        let srid: i32 = query.crs.clone().try_into().unwrap();
-        let storage_srid = self.storage_srid(collection_id).await?;
+        let srid: i32 = query.crs.as_srid();
+        
+        let c = self.read_collection(collection_id).await?;
+        let storage_srid = c.storage_crs.unwrap_or_default().as_srid();
 
         let mut geometry_type = query.coords.split('(').next().unwrap().to_uppercase();
         geometry_type.retain(|c| !c.is_whitespace());

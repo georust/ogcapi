@@ -40,21 +40,4 @@ impl Db {
 
         Ok(Db { pool })
     }
-
-    pub async fn storage_srid(&self, collection: &str) -> Result<i32, anyhow::Error> {
-        let srid = sqlx::query_scalar!(
-            r#"
-            SELECT srid 
-            FROM public.geometry_columns 
-            WHERE f_table_schema = 'items' AND f_table_name = $1 AND f_geometry_column = 'geom'
-            "#,
-            &collection
-        )
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(srid.expect(&format!(
-            "Geometry column `geom` of table `items.{collection}` has no srid set!"
-        )))
-    }
 }

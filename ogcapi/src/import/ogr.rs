@@ -79,16 +79,15 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
         let transform = CoordTransform::new(&spatial_ref_src, &spatial_ref_dst)?;
 
         // Create collection
-        let storage_crs = Crs::from(spatial_ref_dst.auth_code()?);
+        let storage_crs = Crs::from_srid(spatial_ref_dst.auth_code()?);
 
         let collection = Collection {
             id: args.collection.to_owned(),
             crs: Vec::from_iter(HashSet::from([
                 Crs::default(),
                 storage_crs.clone(),
-                Crs::from(4326),
-                Crs::from(3857),
-                Crs::from(2056),
+                Crs::from_epsg(3857),
+                Crs::from_epsg(2056),
             ])),
             extent: layer
                 .try_get_extent()?
@@ -104,7 +103,7 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
                             bbox: vec![Bbox::Bbox2D([x[0], y[0], x[1], y[1]])],
                             crs: spatial_ref_dst
                                 .auth_code()
-                                .map(|c| c.into())
+                                .map(Crs::from_srid)
                                 .unwrap_or_default(),
                         }),
                         temporal: None,

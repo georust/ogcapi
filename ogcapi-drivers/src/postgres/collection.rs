@@ -45,13 +45,7 @@ impl CollectionTransactions for Db {
 
         sqlx::query("SELECT UpdateGeometrySRID('items', $1, 'geom', $2)")
             .bind(&collection.id)
-            .bind(
-                &collection
-                    .storage_crs
-                    .clone()
-                    .and_then(|c| c.try_into().ok())
-                    .unwrap_or(4326),
-            )
+            .bind(collection.storage_crs.clone().unwrap_or_default().as_srid())
             .execute(&mut tx)
             .await?;
 
@@ -67,6 +61,7 @@ impl CollectionTransactions for Db {
     }
 
     async fn read_collection(&self, id: &str) -> Result<Collection, anyhow::Error> {
+        // TODO: cache
         let collection = sqlx::query_scalar!(
             r#"
             SELECT collection as "collection!: sqlx::types::Json<Collection>" 

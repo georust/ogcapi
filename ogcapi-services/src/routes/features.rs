@@ -61,14 +61,12 @@ async fn read(
         .collections
         .read_collection(&collection_id)
         .await?;
-    let crs = query.crs.unwrap_or_default();
-
-    is_supported_crs(&collection, &crs).await?;
+    is_supported_crs(&collection, &query.crs).await?;
 
     let mut feature = state
         .drivers
         .features
-        .read_feature(&collection_id, &id, &crs)
+        .read_feature(&collection_id, &id, &query.crs)
         .await?;
 
     feature.links.insert_or_update(&[
@@ -81,7 +79,9 @@ async fn read(
     let mut headers = HeaderMap::new();
     headers.insert(
         "Content-Crs",
-        crs.to_string()
+        query
+            .crs
+            .to_string()
             .parse()
             .context("Unable to parse `Content-Crs` header value")?,
     );
@@ -129,9 +129,7 @@ async fn items(
         .collections
         .read_collection(&collection_id)
         .await?;
-    let crs = query.crs.to_owned().unwrap_or_default();
-
-    is_supported_crs(&collection, &crs).await?;
+    is_supported_crs(&collection, &query.crs).await?;
 
     let mut fc = state
         .drivers
@@ -185,7 +183,7 @@ async fn items(
     }
 
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Crs", crs.to_string().parse().unwrap());
+    headers.insert("Content-Crs", query.crs.to_string().parse().unwrap());
     headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(fc)))
