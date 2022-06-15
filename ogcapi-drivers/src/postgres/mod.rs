@@ -6,8 +6,9 @@ mod style;
 mod tile;
 
 use sqlx::{
-    postgres::{PgConnectOptions, PgConnection, PgPool, PgPoolOptions},
-    Connection, Executor,
+    migrate::MigrateDatabase,
+    postgres::{PgPool, PgPoolOptions},
+    Postgres,
 };
 use url::Url;
 
@@ -17,46 +18,18 @@ pub struct Db {
 }
 
 impl Db {
-    /// Create Postgres Driver
+    /// Setup database driver
     pub async fn setup(url: &Url) -> Result<Self, sqlx::Error> {
-        let name = url.path().strip_prefix('/').unwrap();
-
-        // Connection options
-        let mut options = PgConnectOptions::new_without_pgpass();
-        if url.has_host() {
-            options = options.host(url.host_str().unwrap())
-        }
-        if let Some(port) = url.port() {
-            options = options.password(&port.to_string());
-        }
-        if !url.username().is_empty() {
-            options = options.username(url.username())
-        }
-        if let Some(password) = url.password() {
-            options = options.password(password);
-        }
-
         // Create database if not exists
-        let mut connection = PgConnection::connect_with(&options)
-            .await
-            .expect("Failed to connect to Postgres");
-        if sqlx::query!("SELECT FROM pg_database WHERE datname = $1", name)
-            .fetch_optional(&mut connection)
-            .await?
-            .is_none()
-        {
-            connection
-                .execute(format!(r#"CREATE DATABASE "{}";"#, name).as_str())
-                .await
-                .expect("Failed to create database.");
-        };
+        if !Postgres::database_exists(url.as_str()).await? {
+            Postgres::create_database(url.as_str()).await?
+        }
 
         // Create pool
         let pool = PgPoolOptions::new()
             .max_connections(50)
-            .connect_with(options.database(name))
-            .await
-            .expect("Failed to connect to Postgres.");
+            .connect(url.as_str())
+            .await?;
 
         // This embeds database migrations in the application binary so we can
         // ensure the database is migrated correctly on startup
@@ -68,14 +41,20 @@ impl Db {
         Ok(Db { pool })
     }
 
-    pub async fn storage_srid(&self, collection: &str) -> Result<String, anyhow::Error> {
-        let row: (String,) = sqlx::query_as(
-            "SELECT collection ->> 'storageCrs' FROM meta.collections WHERE id = $1",
+    pub async fn storage_srid(&self, collection: &str) -> Result<i32, anyhow::Error> {
+        let srid = sqlx::query_scalar!(
+            r#"
+            SELECT srid 
+            FROM public.geometry_columns 
+            WHERE f_table_schema = 'items' AND f_table_name = $1 AND f_geometry_column = 'geom'
+            "#,
+            &collection
         )
-        .bind(&collection)
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(row.0.split('/').last().unwrap().to_string())
+        Ok(srid.expect(&format!(
+            "Geometry column `geom` of table `items.{collection}` has no srid set!"
+        )))
     }
 }
