@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Extension, Path, Query},
+    extract::{Extension, Multipart, Path, Query},
     http::StatusCode,
     response::Response,
     routing::{get, post},
@@ -106,12 +106,37 @@ async fn process(
 
 async fn execution(
     Path(id): Path<String>,
-    Json(execute): Json<ProcessExecute>,
+    json: Option<Json<ProcessExecute>>,
+    multipart: Option<Multipart>,
     RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<Response> {
+    let mut execute: Option<ProcessExecute> = None;
+
+    if let Some(Json(e)) = json {
+        execute = Some(e);
+    }
+
+    if let Some(mut multipart) = multipart {
+        while let Some(field) = multipart.next_field().await.unwrap() {
+            tracing::debug!("{:#?}", field);
+            let data = field.bytes().await.expect("Get field data as bytes");
+            if let Ok(e) = serde_json::from_slice(&data) {
+                execute = Some(e);
+                break;
+            }
+        }
+    }
+
+    if execute.is_none() {
+        return Err(Error::Exception(
+            StatusCode::BAD_REQUEST,
+            "Unable to extract `ProcessExecute` from body".to_string(),
+        ));
+    }
+
     match state.processors.get(&id) {
-        Some(processor) => processor.execute(execute, &state, &url).await,
+        Some(processor) => processor.execute(execute.unwrap(), &state, &url).await,
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
             format!("No process with id `{}`", id),

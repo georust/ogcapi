@@ -17,8 +17,8 @@ stac = ["ogcapi-types/stac", "ogcapi-drivers/stac"]
 
 [dependencies]
 anyhow = "1.0.57"
-axum = { version = "0.5.7", features = ["headers"] }
-clap = { version = "3.1.18", features = ["derive", "env"] }
+axum = { version = "0.5.7", features = ["headers", "multipart"] }
+clap = { version = "3.2.4", features = ["derive", "env"] }
 dotenv = "0.15.0"
 hyper = { version = "0.14.19", features = ["full"] }
 once_cell = "1.12.0"

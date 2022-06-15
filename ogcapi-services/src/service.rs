@@ -17,9 +17,13 @@ use axum::{
 };
 use tower::ServiceBuilder;
 use tower_http::{
-    catch_panic::CatchPanicLayer, compression::CompressionLayer, cors::CorsLayer,
-    request_id::MakeRequestUuid, sensitive_headers::SetSensitiveRequestHeadersLayer,
-    trace::TraceLayer, ServiceBuilderExt,
+    catch_panic::CatchPanicLayer,
+    compression::CompressionLayer,
+    cors::CorsLayer,
+    request_id::MakeRequestUuid,
+    sensitive_headers::SetSensitiveRequestHeadersLayer,
+    trace::{DefaultMakeSpan, TraceLayer},
+    ServiceBuilderExt,
 };
 
 use ogcapi_types::common::Exception;
@@ -83,7 +87,10 @@ impl Service {
                     COOKIE,
                     SET_COOKIE,
                 ]))
-                .layer(TraceLayer::new_for_http())
+                .layer(
+                    TraceLayer::new_for_http()
+                        .make_span_with(DefaultMakeSpan::new().include_headers(true)),
+                )
                 .layer(CompressionLayer::new())
                 .layer(CorsLayer::permissive())
                 .layer(CatchPanicLayer::custom(handle_panic))
