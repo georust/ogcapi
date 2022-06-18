@@ -171,9 +171,6 @@ mod tests {
 
         let epsg = crs.as_epsg();
         assert_eq!(epsg, Some(code));
-
-        let epsg = Crs::default().as_epsg();
-        assert_eq!(epsg, Some(4326))
     }
 
     #[test]

@@ -18,7 +18,7 @@ impl EdrQuerier for Db {
         query: &Query,
     ) -> anyhow::Result<FeatureCollection> {
         let srid: i32 = query.crs.as_srid();
-        
+
         let c = self.read_collection(collection_id).await?;
         let storage_srid = c.storage_crs.unwrap_or_default().as_srid();
 
