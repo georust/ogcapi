@@ -1,13 +1,10 @@
-use anyhow::Ok;
-use async_trait::async_trait;
-
 use ogcapi_types::common::{media_type::JSON, Collection, Collections, Query};
 
 use crate::CollectionTransactions;
 
 use super::S3;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl CollectionTransactions for S3 {
     async fn create_collection(&self, collection: &Collection) -> Result<String, anyhow::Error> {
         let key = format!("collections/{}/collection.json", collection.id);
@@ -57,6 +54,7 @@ impl CollectionTransactions for S3 {
             .bucket("test-bucket")
             .send()
             .await?;
+
         for object in resp.contents.unwrap() {
             if let Some(key) = object.key() {
                 if key.ends_with("collection.json") {

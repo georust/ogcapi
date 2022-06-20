@@ -1,30 +1,32 @@
 {
   "db": "PostgreSQL",
-  "3f7c4a17ce87dc2821b6dfcb7ce796534da806e78ac197d88407a17c95d9b126": {
-    "query": "\n            SELECT array_to_json(array_agg(row_to_json(t))) as \"styles: Json<Vec<Style>>\"\n            FROM (\n                SELECT id, title, links FROM meta.styles\n            ) t\n            ",
+  "30b3ea4c25253e2ce673fe6b75b31a8f6288999b75717053e599ed40e747a526": {
+    "query": "\n            SELECT row_to_json(t) as \"stylesheet!: sqlx::types::Json<Stylesheet>\"\n            FROM (\n                SELECT id, value FROM meta.styles WHERE id = $1\n            ) t\n            ",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
-          "name": "styles: Json<Vec<Style>>",
+          "name": "stylesheet!: sqlx::types::Json<Stylesheet>",
           "type_info": "Json"
         }
       ],
       "parameters": {
-        "Left": []
+        "Left": [
+          "Text"
+        ]
       },
       "nullable": [
         null
       ]
     }
   },
-  "4e7be9fef30e6d7db06111992e6bcd05e71962bf69d79134f5409eec05a63ef5": {
-    "query": "\n            SELECT row_to_json(t) as \"stylesheet!: Json<Stylesheet>\"\n            FROM (\n                SELECT id, value FROM meta.styles WHERE id = $1\n            ) t\n            ",
+  "4cc729ef5079b85f225afddab8591413cf872c313833860ddd9b5c8f7c1dfcf2": {
+    "query": "\n            SELECT row_to_json(jobs) as \"status_info!: sqlx::types::Json<StatusInfo>\" \n            FROM meta.jobs WHERE job_id = $1\n            ",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
-          "name": "stylesheet!: Json<Stylesheet>",
+          "name": "status_info!: sqlx::types::Json<StatusInfo>",
           "type_info": "Json"
         }
       ],
@@ -58,13 +60,13 @@
       ]
     }
   },
-  "7edba09d431016d87a07316446cebe49288be339b8c76d38737b881edb5aabf8": {
-    "query": "\n            SELECT results as \"results!: Json<Results>\"\n            FROM meta.jobs\n            WHERE job_id = $1\n            ",
+  "88e0608fdea26037ed1596644f479efb3bd2189817168e373f2d1ff305652e81": {
+    "query": "\n            SELECT results as \"results!: sqlx::types::Json<Results>\"\n            FROM meta.jobs\n            WHERE job_id = $1\n            ",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
-          "name": "results!: Json<Results>",
+          "name": "results!: sqlx::types::Json<Results>",
           "type_info": "Jsonb"
         }
       ],
@@ -78,20 +80,18 @@
       ]
     }
   },
-  "b2ba1b9b8745db19e22a3c01f72c54cb15ec3124f2820a5c78803a7aabb93354": {
-    "query": "\n            SELECT row_to_json(jobs) as \"status_info!: Json<StatusInfo>\" \n            FROM meta.jobs WHERE job_id = $1\n            ",
+  "93331560b0436539064c711f3169a5e3ea571ec55b90a1800fbe624087b76a01": {
+    "query": "\n            SELECT array_to_json(array_agg(row_to_json(t))) as \"styles: sqlx::types::Json<Vec<Style>>\"\n            FROM (\n                SELECT id, title, links FROM meta.styles\n            ) t\n            ",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
-          "name": "status_info!: Json<StatusInfo>",
+          "name": "styles: sqlx::types::Json<Vec<Style>>",
           "type_info": "Json"
         }
       ],
       "parameters": {
-        "Left": [
-          "Text"
-        ]
+        "Left": []
       },
       "nullable": [
         null

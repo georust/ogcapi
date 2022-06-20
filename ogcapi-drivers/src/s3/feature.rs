@@ -1,5 +1,3 @@
-use anyhow::Ok;
-use async_trait::async_trait;
 use ogcapi_types::{
     common::{media_type::GEO_JSON, Crs},
     features::{Feature, FeatureCollection, Query},
@@ -9,7 +7,7 @@ use crate::FeatureTransactions;
 
 use super::S3;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl FeatureTransactions for S3 {
     async fn create_feature(&self, feature: &Feature) -> Result<String, anyhow::Error> {
         let key = format!(

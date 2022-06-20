@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use ogcapi_types::{
     edr::{Query, QueryType},
     features::{Feature, FeatureCollection},
@@ -9,7 +8,7 @@ use crate::{CollectionTransactions, EdrQuerier};
 
 use super::Db;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl EdrQuerier for Db {
     async fn query(
         &self,

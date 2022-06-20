@@ -1,12 +1,10 @@
-use async_trait::async_trait;
-
 use ogcapi_types::tiles::TileMatrixSet;
 
 use crate::{CollectionTransactions, TileTransactions};
 
 use super::Db;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl TileTransactions for Db {
     async fn tile(
         &self,

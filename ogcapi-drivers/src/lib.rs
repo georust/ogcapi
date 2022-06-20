@@ -3,7 +3,6 @@ pub mod postgres;
 #[cfg(feature = "s3")]
 pub mod s3;
 
-use async_trait::async_trait;
 use ogcapi_types::{
     common::{Collection, Collections, Crs, Query as CollectionQuery},
     edr::{Query as EdrQuery, QueryType},
@@ -15,7 +14,7 @@ use ogcapi_types::{
 use serde_json::Value;
 
 /// Trait for `Collection` transactions
-#[async_trait]
+#[async_trait::async_trait]
 pub trait CollectionTransactions: Send + Sync {
     async fn create_collection(&self, collection: &Collection) -> Result<String, anyhow::Error>;
 
@@ -30,7 +29,7 @@ pub trait CollectionTransactions: Send + Sync {
 }
 
 /// Trait for `Feature` transactions
-#[async_trait]
+#[async_trait::async_trait]
 pub trait FeatureTransactions: Send + Sync {
     async fn create_feature(&self, feature: &Feature) -> Result<String, anyhow::Error>;
 
@@ -52,7 +51,7 @@ pub trait FeatureTransactions: Send + Sync {
 }
 
 /// Trait for `EDR` queries
-#[async_trait]
+#[async_trait::async_trait]
 pub trait EdrQuerier: Send + Sync {
     async fn query(
         &self,
@@ -63,7 +62,7 @@ pub trait EdrQuerier: Send + Sync {
 }
 
 /// Trait for `Processes` jobs
-#[async_trait]
+#[async_trait::async_trait]
 pub trait JobHandler: Send + Sync {
     async fn status(&self, id: &str) -> Result<StatusInfo, anyhow::Error>;
 
@@ -73,7 +72,7 @@ pub trait JobHandler: Send + Sync {
 }
 
 /// Trait for `Style` transactions
-#[async_trait]
+#[async_trait::async_trait]
 pub trait StyleTransactions: Send + Sync {
     async fn list_styles(&self) -> Result<Styles, anyhow::Error>;
 
@@ -81,7 +80,7 @@ pub trait StyleTransactions: Send + Sync {
 }
 
 /// Trait for `Tile` transacions
-#[async_trait]
+#[async_trait::async_trait]
 pub trait TileTransactions: Send + Sync {
     async fn tile(
         &self,

@@ -1,19 +1,15 @@
-use async_trait::async_trait;
-use serde_json::Value;
-use sqlx::types::Json;
-
 use ogcapi_types::styles::{Style, Styles, Stylesheet};
 
 use crate::StyleTransactions;
 
 use super::Db;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl StyleTransactions for Db {
     async fn list_styles(&self) -> Result<Styles, anyhow::Error> {
         let styles = sqlx::query_scalar!(
             r#"
-            SELECT array_to_json(array_agg(row_to_json(t))) as "styles: Json<Vec<Style>>"
+            SELECT array_to_json(array_agg(row_to_json(t))) as "styles: sqlx::types::Json<Vec<Style>>"
             FROM (
                 SELECT id, title, links FROM meta.styles
             ) t
@@ -26,10 +22,10 @@ impl StyleTransactions for Db {
         Ok(Styles { styles })
     }
 
-    async fn read_style(&self, id: &str) -> Result<Value, anyhow::Error> {
+    async fn read_style(&self, id: &str) -> Result<serde_json::Value, anyhow::Error> {
         let style = sqlx::query_scalar!(
             r#"
-            SELECT row_to_json(t) as "stylesheet!: Json<Stylesheet>"
+            SELECT row_to_json(t) as "stylesheet!: sqlx::types::Json<Stylesheet>"
             FROM (
                 SELECT id, value FROM meta.styles WHERE id = $1
             ) t

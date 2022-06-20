@@ -1,6 +1,3 @@
-use async_trait::async_trait;
-use sqlx::types::Json;
-
 use ogcapi_types::{
     common::{Bbox, Crs},
     features::{Feature, FeatureCollection, Query},
@@ -10,7 +7,7 @@ use crate::{CollectionTransactions, FeatureTransactions};
 
 use super::Db;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl FeatureTransactions for Db {
     async fn create_feature(&self, feature: &Feature) -> Result<String, anyhow::Error> {
         let collection = feature.collection.as_ref().unwrap();
@@ -49,7 +46,7 @@ impl FeatureTransactions for Db {
         id: &str,
         crs: &Crs,
     ) -> Result<Feature, anyhow::Error> {
-        let feature: Json<Feature> = sqlx::query_scalar(&format!(
+        let feature: sqlx::types::Json<Feature> = sqlx::query_scalar(&format!(
             r#"
             SELECT row_to_json(t)
             FROM (
@@ -166,7 +163,7 @@ impl FeatureTransactions for Db {
             }
         }
 
-        let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
+        let features: Option<sqlx::types::Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
             r#"
             SELECT array_to_json(array_agg(row_to_json(t)))
             FROM ( {} ) t

@@ -16,8 +16,8 @@ tiles = []
 stac = ["ogcapi-types/stac", "ogcapi-drivers/stac"]
 
 [dependencies]
-anyhow = "1.0.57"
-axum = { version = "0.5.7", features = ["headers", "multipart"] }
+anyhow = "1.0.58"
+axum = { version = "0.5.9", features = ["headers", "multipart"] }
 clap = { version = "3.2.5", features = ["derive", "env"] }
 dotenv = "0.15.0"
 hyper = { version = "0.14.19", features = ["full"] }

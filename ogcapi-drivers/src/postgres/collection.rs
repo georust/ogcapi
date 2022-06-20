@@ -1,12 +1,10 @@
-use async_trait::async_trait;
 use ogcapi_types::common::{Collection, Collections, Query};
-use sqlx::types::Json;
 
 use crate::CollectionTransactions;
 
 use super::Db;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl CollectionTransactions for Db {
     async fn create_collection(&self, collection: &Collection) -> Result<String, anyhow::Error> {
         let mut tx = self.pool.begin().await?;
@@ -51,7 +49,7 @@ impl CollectionTransactions for Db {
 
         sqlx::query("INSERT INTO meta.collections ( id, collection ) VALUES ( $1, $2 )")
             .bind(&collection.id)
-            .bind(Json(collection))
+            .bind(sqlx::types::Json(collection))
             .execute(&mut tx)
             .await?;
 
@@ -78,7 +76,7 @@ impl CollectionTransactions for Db {
     async fn update_collection(&self, collection: &Collection) -> Result<(), anyhow::Error> {
         sqlx::query("UPDATE meta.collections SET collection = $2 WHERE id = $1")
             .bind(&collection.id)
-            .bind(Json(collection))
+            .bind(sqlx::types::Json(collection))
             .execute(&self.pool)
             .await?;
 
