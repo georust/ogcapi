@@ -78,18 +78,6 @@
       ]
     }
   },
-  "901cb48f8bd6b7464a1fa4d4acb653279842d9aa5b75f80c1c3bcb04b225d82f": {
-    "query": "SELECT FROM pg_database WHERE datname = $1",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Name"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "b2ba1b9b8745db19e22a3c01f72c54cb15ec3124f2820a5c78803a7aabb93354": {
     "query": "\n            SELECT row_to_json(jobs) as \"status_info!: Json<StatusInfo>\" \n            FROM meta.jobs WHERE job_id = $1\n            ",
     "describe": {
