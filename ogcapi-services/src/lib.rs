@@ -7,6 +7,7 @@ mod processor;
 mod routes;
 mod service;
 mod state;
+pub mod telemetry;
 
 pub use config::Config;
 pub use error::Error;

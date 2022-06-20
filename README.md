@@ -75,7 +75,7 @@ docker run --network host ogccite/ets-ogcapi-features10
 # docker run --network host ogccite/ets-ogcapi-edr10
 ```
 
-Navigate to <http://localhost:8081/teamengine/> to execute the test suite. For documentation and more info see <https://cite.opengeospatial.org/teamengine/about/ogcapi-features-1.0/1.0/site>.
+Navigate to <http://localhost:8080/teamengine/> to execute the test suite. For documentation and more info see <https://cite.opengeospatial.org/teamengine/about/ogcapi-features-1.0/1.0/site>.
 
 ## Example Project
 

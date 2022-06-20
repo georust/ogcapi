@@ -87,10 +87,7 @@ impl Service {
                     COOKIE,
                     SET_COOKIE,
                 ]))
-                .layer(
-                    TraceLayer::new_for_http()
-                        .make_span_with(DefaultMakeSpan::new().include_headers(true)),
-                )
+                .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new()))
                 .layer(CompressionLayer::new())
                 .layer(CorsLayer::permissive())
                 .layer(CatchPanicLayer::custom(handle_panic))

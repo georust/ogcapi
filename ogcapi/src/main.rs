@@ -1,5 +1,4 @@
 use clap::Parser;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser, Debug)]
 #[clap(name = "ogcapi", version, about = "CLI for the `ogcapi` project.")]
@@ -24,12 +23,7 @@ async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
 
     // setup tracing
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    ogcapi_services::telemetry::init();
 
     // parse cli args
     let app = App::parse();
