@@ -11,6 +11,7 @@ use http::Uri;
 
 pub use aws_sdk_s3::types::ByteStream;
 
+#[derive(Clone)]
 pub struct S3 {
     pub client: Client,
 }
