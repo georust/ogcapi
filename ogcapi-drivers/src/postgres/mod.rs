@@ -7,7 +7,7 @@ mod tile;
 
 use sqlx::{
     migrate::MigrateDatabase,
-    postgres::{PgPool, PgPoolOptions},
+    postgres::{PgConnectOptions, PgPool, PgPoolOptions},
     Postgres,
 };
 use url::Url;
@@ -18,7 +18,24 @@ pub struct Db {
 }
 
 impl Db {
-    /// Setup database driver
+    /// Create driver from env `DATABASE_URL` or else `PGUSER` and friends
+    pub async fn new() -> Result<Self, sqlx::Error> {
+        let pool = if let Ok(url) = std::env::var("DATABASE_URL") {
+            PgPoolOptions::new()
+                .max_connections(8)
+                .connect(&url)
+                .await?
+        } else {
+            PgPoolOptions::new()
+                .max_connections(8)
+                .connect_with(PgConnectOptions::new())
+                .await?
+        };
+
+        Ok(Db { pool })
+    }
+
+    /// Setup database driver from url
     pub async fn setup(url: &Url) -> Result<Self, sqlx::Error> {
         // Create database if not exists
         if !Postgres::database_exists(url.as_str()).await? {
@@ -27,16 +44,12 @@ impl Db {
 
         // Create pool
         let pool = PgPoolOptions::new()
-            .max_connections(50)
+            .max_connections(8)
             .connect(url.as_str())
             .await?;
 
-        // This embeds database migrations in the application binary so we can
-        // ensure the database is migrated correctly on startup
-        sqlx::migrate!()
-            .run(&pool)
-            .await
-            .expect("Failed to migrate the database");
+        // Run embedded migrations
+        sqlx::migrate!().run(&pool).await?;
 
         Ok(Db { pool })
     }
