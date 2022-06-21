@@ -2,8 +2,8 @@ mod collection;
 mod feature;
 
 use aws_sdk_s3::{
-    error::{DeleteObjectError, GetObjectError, PutObjectError},
-    output::{DeleteObjectOutput, GetObjectOutput, PutObjectOutput},
+    error::{DeleteObjectError, GetObjectError, ListObjectsError, PutObjectError},
+    output::{DeleteObjectOutput, GetObjectOutput, ListObjectsOutput, PutObjectOutput},
     types::SdkError,
     Client, Endpoint,
 };
@@ -39,8 +39,8 @@ impl S3 {
 
     pub async fn put_object(
         &self,
-        bucket: &str,
-        key: &str,
+        bucket: impl Into<String>,
+        key: impl Into<String>,
         data: Vec<u8>,
         content_type: Option<String>,
     ) -> Result<PutObjectOutput, SdkError<PutObjectError>> {
@@ -56,8 +56,8 @@ impl S3 {
 
     pub async fn get_object(
         &self,
-        bucket: &str,
-        key: &str,
+        bucket: impl Into<String>,
+        key: impl Into<String>,
     ) -> Result<GetObjectOutput, SdkError<GetObjectError>> {
         self.client
             .get_object()
@@ -69,8 +69,8 @@ impl S3 {
 
     pub async fn delete_object(
         &self,
-        bucket: &str,
-        key: &str,
+        bucket: impl Into<String>,
+        key: impl Into<String>,
     ) -> Result<DeleteObjectOutput, SdkError<DeleteObjectError>> {
         self.client
             .delete_object()
@@ -78,5 +78,19 @@ impl S3 {
             .key(key)
             .send()
             .await
+    }
+
+    pub async fn list_objects(
+        &self,
+        bucket: impl Into<String>,
+        prefix: Option<impl Into<String>>,
+    ) -> Result<ListObjectsOutput, SdkError<ListObjectsError>> {
+        let mut list_objects = self.client.list_objects().bucket(bucket);
+
+        if let Some(prefix) = prefix {
+            list_objects = list_objects.prefix(prefix);
+        }
+
+        list_objects.send().await
     }
 }
