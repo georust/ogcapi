@@ -9,7 +9,7 @@ use axum::{
 };
 
 use ogcapi_types::common::{
-    link_rel::{DATA, ITEMS, PARENT, ROOT, SELF},
+    link_rel::{DATA, ITEMS, ROOT, SELF},
     media_type::{GEO_JSON, JSON},
     Collection, Collections, Crs, Link, Linked, Query,
 };
@@ -73,12 +73,16 @@ async fn read(
 
     collection.links.insert_or_update(&[
         Link::new(&url, SELF),
-        Link::new(&url.join("..")?, PARENT).mediatype(JSON),
         Link::new(&url.join("..")?, ROOT).mediatype(JSON),
-        Link::new(&url.join(&format!("{}/items", collection.id))?, ITEMS).mediatype(GEO_JSON),
-        // Link::new(&url.join(&format!("{}/location", collection.id))?, DATA)
-        //     .title("EDR location query endpoint"),
     ]);
+
+    if collection.r#type == "Collection" {
+        collection.links.insert_or_update(&[
+            Link::new(&url.join(&format!("{}/items", collection.id))?, ITEMS).mediatype(GEO_JSON),
+            // Link::new(&url.join(&format!("{}/location", collection.id))?, DATA)
+            //     .title("EDR location query endpoint"),
+        ]);
+    }
 
     Ok(Json(collection))
 }
