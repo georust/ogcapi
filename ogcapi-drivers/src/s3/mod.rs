@@ -11,9 +11,13 @@ use http::Uri;
 
 pub use aws_sdk_s3::types::ByteStream;
 
+/// S3 driver
 #[derive(Clone)]
 pub struct S3 {
+    /// S3 client
     pub client: Client,
+    /// Default bucket
+    pub bucket: Option<String>,
 }
 
 impl S3 {
@@ -30,11 +34,18 @@ impl S3 {
             aws_config::from_env().load().await
         };
 
-        S3::new_from(Client::new(&config)).await
+        S3::new_with(Client::new(&config)).await
     }
 
-    pub async fn new_from(client: Client) -> Self {
-        S3 { client }
+    pub async fn new_with(client: Client) -> Self {
+        S3 {
+            client,
+            bucket: None,
+        }
+    }
+
+    pub fn set_default_bucket(&mut self, bucket: impl ToString) {
+        self.bucket = Some(bucket.to_string())
     }
 
     pub async fn put_object(

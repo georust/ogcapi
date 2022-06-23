@@ -60,14 +60,16 @@ async fn read(
         .drivers
         .collections
         .read_collection(&collection_id)
-        .await?;
+        .await?
+        .ok_or(Error::NotFound)?;
     is_supported_crs(&collection, &query.crs).await?;
 
     let mut feature = state
         .drivers
         .features
         .read_feature(&collection_id, &id, &query.crs)
-        .await?;
+        .await?
+        .ok_or(Error::NotFound)?;
 
     feature.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
@@ -128,7 +130,8 @@ async fn items(
         .drivers
         .collections
         .read_collection(&collection_id)
-        .await?;
+        .await?
+        .ok_or(Error::NotFound)?;
     is_supported_crs(&collection, &query.crs).await?;
 
     let mut fc = state

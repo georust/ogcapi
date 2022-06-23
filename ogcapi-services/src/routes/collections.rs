@@ -35,8 +35,8 @@ async fn create(
         .drivers
         .collections
         .read_collection(&collection.id)
-        .await
-        .is_ok()
+        .await?
+        .is_some()
     {
         return Err(Error::Exception(
             StatusCode::CONFLICT,
@@ -68,7 +68,8 @@ async fn read(
         .drivers
         .collections
         .read_collection(&collection_id)
-        .await?;
+        .await?
+        .ok_or(Error::NotFound)?;
 
     collection.links.insert_or_update(&[
         Link::new(&url, SELF),

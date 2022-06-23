@@ -6,7 +6,7 @@ use super::Db;
 
 #[async_trait::async_trait]
 impl CollectionTransactions for Db {
-    async fn create_collection(&self, collection: &Collection) -> Result<String, anyhow::Error> {
+    async fn create_collection(&self, collection: &Collection) -> anyhow::Result<String> {
         let mut tx = self.pool.begin().await?;
 
         sqlx::query(&format!(
@@ -58,7 +58,7 @@ impl CollectionTransactions for Db {
         Ok(collection.id.to_owned())
     }
 
-    async fn read_collection(&self, id: &str) -> Result<Collection, anyhow::Error> {
+    async fn read_collection(&self, id: &str) -> anyhow::Result<Option<Collection>> {
         // TODO: cache
         let collection = sqlx::query_scalar!(
             r#"
@@ -67,13 +67,13 @@ impl CollectionTransactions for Db {
             "#,
             id
         )
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await?;
 
-        Ok(collection.0)
+        Ok(collection.map(|c| c.0))
     }
 
-    async fn update_collection(&self, collection: &Collection) -> Result<(), anyhow::Error> {
+    async fn update_collection(&self, collection: &Collection) -> anyhow::Result<()> {
         sqlx::query("UPDATE meta.collections SET collection = $2 WHERE id = $1")
             .bind(&collection.id)
             .bind(sqlx::types::Json(collection))
@@ -83,7 +83,7 @@ impl CollectionTransactions for Db {
         Ok(())
     }
 
-    async fn delete_collection(&self, id: &str) -> Result<(), anyhow::Error> {
+    async fn delete_collection(&self, id: &str) -> anyhow::Result<()> {
         let mut tx = self.pool.begin().await?;
 
         sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{}""#, id))
@@ -100,7 +100,7 @@ impl CollectionTransactions for Db {
         Ok(())
     }
 
-    async fn list_collections(&self, _query: &Query) -> Result<Collections, anyhow::Error> {
+    async fn list_collections(&self, _query: &Query) -> anyhow::Result<Collections> {
         let collections = sqlx::query_scalar!(
             r#"
             SELECT array_to_json(array_agg(collection)) as "collections: sqlx::types::Json<Vec<Collection>>" 

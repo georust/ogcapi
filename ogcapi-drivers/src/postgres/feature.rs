@@ -9,7 +9,7 @@ use super::Db;
 
 #[async_trait::async_trait]
 impl FeatureTransactions for Db {
-    async fn create_feature(&self, feature: &Feature) -> Result<String, anyhow::Error> {
+    async fn create_feature(&self, feature: &Feature) -> anyhow::Result<String> {
         let collection = feature.collection.as_ref().unwrap();
 
         let id: (String,) = sqlx::query_as(&format!(
@@ -45,8 +45,8 @@ impl FeatureTransactions for Db {
         collection: &str,
         id: &str,
         crs: &Crs,
-    ) -> Result<Feature, anyhow::Error> {
-        let feature: sqlx::types::Json<Feature> = sqlx::query_scalar(&format!(
+    ) -> anyhow::Result<Option<Feature>> {
+        let feature: Option<sqlx::types::Json<Feature>> = sqlx::query_scalar(&format!(
             r#"
             SELECT row_to_json(t)
             FROM (
@@ -66,13 +66,13 @@ impl FeatureTransactions for Db {
         ))
         .bind(id)
         .bind(crs.as_srid())
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await?;
 
-        Ok(feature.0)
+        Ok(feature.map(|f| f.0))
     }
 
-    async fn update_feature(&self, feature: &Feature) -> Result<(), anyhow::Error> {
+    async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()> {
         sqlx::query(&format!(
             r#"
             UPDATE items."{0}"
@@ -93,7 +93,7 @@ impl FeatureTransactions for Db {
         Ok(())
     }
 
-    async fn delete_feature(&self, collection: &str, id: &str) -> Result<(), anyhow::Error> {
+    async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()> {
         sqlx::query(&format!(
             r#"DELETE FROM items."{}" WHERE id = $1"#,
             collection
@@ -109,7 +109,7 @@ impl FeatureTransactions for Db {
         &self,
         collection: &str,
         query: &Query,
-    ) -> Result<FeatureCollection, anyhow::Error> {
+    ) -> anyhow::Result<FeatureCollection> {
         let mut sql = vec![format!(
             r#"
             SELECT
@@ -130,7 +130,11 @@ impl FeatureTransactions for Db {
             let bbox_srid: i32 = query.bbox_crs.as_srid();
 
             let c = self.read_collection(collection).await?;
-            let storage_srid = c.storage_crs.unwrap_or_default().as_srid();
+            let storage_srid = c
+                .expect("collection exists")
+                .storage_crs
+                .unwrap_or_default()
+                .as_srid();
 
             let envelope = match bbox {
                 Bbox::Bbox2D(bbox) => format!(

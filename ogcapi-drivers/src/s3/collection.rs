@@ -1,3 +1,5 @@
+use aws_sdk_s3::{error::GetObjectErrorKind, types::SdkError};
+
 use ogcapi_types::common::{media_type::JSON, Collection, Collections, Query};
 
 use crate::CollectionTransactions;
@@ -10,29 +12,49 @@ impl CollectionTransactions for S3 {
         let key = format!("collections/{}/collection.json", collection.id);
         let data = serde_json::to_vec(&collection)?;
 
-        self.put_object("test-bucket", &key, data, Some(JSON.to_string()))
-            .await?;
+        self.put_object(
+            self.bucket.clone().unwrap_or_default(),
+            &key,
+            data,
+            Some(JSON.to_string()),
+        )
+        .await?;
 
         Ok(collection.id.to_owned())
     }
 
-    async fn read_collection(&self, id: &str) -> Result<Collection, anyhow::Error> {
+    async fn read_collection(&self, id: &str) -> Result<Option<Collection>, anyhow::Error> {
         // TODO: cache
         let key = format!("collections/{}/collection.json", id);
 
-        let r = self.get_object("test-bucket", &key).await?;
-
-        let c = serde_json::from_slice(&r.body.collect().await?.into_bytes()[..])?;
-
-        Ok(c)
+        match self
+            .get_object(self.bucket.clone().unwrap_or_default(), &key)
+            .await
+        {
+            Ok(r) => Ok(Some(serde_json::from_slice(
+                &r.body.collect().await?.into_bytes(),
+            )?)),
+            Err(e) => match e {
+                SdkError::ServiceError { err, raw: _ } => match err.kind {
+                    GetObjectErrorKind::NoSuchKey(_) => Ok(None),
+                    _ => Err(anyhow::Error::new(err)),
+                },
+                _ => Err(anyhow::Error::new(e)),
+            },
+        }
     }
 
     async fn update_collection(&self, collection: &Collection) -> Result<(), anyhow::Error> {
         let key = format!("collections/{}/collection.json", collection.id);
         let data = serde_json::to_vec(&collection)?;
 
-        self.put_object("test-bucket", &key, data, Some(JSON.to_string()))
-            .await?;
+        self.put_object(
+            self.bucket.clone().unwrap_or_default(),
+            &key,
+            data,
+            Some(JSON.to_string()),
+        )
+        .await?;
 
         Ok(())
     }
@@ -40,7 +62,8 @@ impl CollectionTransactions for S3 {
     async fn delete_collection(&self, id: &str) -> Result<(), anyhow::Error> {
         let key = format!("collections/{}", id);
 
-        self.delete_object("test-bucket", &key).await?;
+        self.delete_object(self.bucket.clone().unwrap_or_default(), &key)
+            .await?;
 
         Ok(())
     }
@@ -51,14 +74,16 @@ impl CollectionTransactions for S3 {
         let resp = self
             .client
             .list_objects()
-            .bucket("test-bucket")
+            .bucket(self.bucket.clone().unwrap_or_default())
             .send()
             .await?;
 
         for object in resp.contents.unwrap() {
             if let Some(key) = object.key() {
                 if key.ends_with("collection.json") {
-                    let r = self.get_object("test-bucket", key).await?;
+                    let r = self
+                        .get_object(self.bucket.clone().unwrap_or_default(), key)
+                        .await?;
 
                     let c = serde_json::from_slice(&r.body.collect().await?.into_bytes()[..])?;
 
