@@ -87,11 +87,11 @@ impl Default for LandingPage {
 }
 
 impl LandingPage {
-    pub fn new(id: impl ToString) -> Self {
+    pub fn new(name: impl ToString) -> Self {
         let landing_page = LandingPage::default();
         #[cfg(feature = "stac")]
-        let landing_page = landing_page.id(id.to_string());
-        landing_page.title(id)
+        let landing_page = landing_page.id(name.to_string());
+        landing_page.title(name)
     }
 
     #[cfg(feature = "stac")]
