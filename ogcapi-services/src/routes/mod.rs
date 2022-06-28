@@ -16,8 +16,8 @@ use std::sync::Arc;
 use axum::{extract::Extension, Json};
 
 use ogcapi_types::common::{
-    link_rel::{CONFORMANCE, SELF, SERVICE_DESC},
-    media_type::{JSON, OPEN_API_JSON},
+    link_rel::{CONFORMANCE, SELF, SERVICE_DESC, SERVICE_DOC},
+    media_type::{HTML, JSON, OPEN_API_JSON},
     Conformance, LandingPage, Link, Linked,
 };
 
@@ -34,6 +34,12 @@ pub(crate) async fn root(
         Link::new("api", SERVICE_DESC)
             .title("The Open API definition")
             .mediatype(OPEN_API_JSON),
+        Link::new("api", SERVICE_DOC)
+            .title("The Open API definition (Swagger UI)")
+            .mediatype(HTML),
+        Link::new("api", SERVICE_DOC)
+            .title("The Open API definition (Redoc")
+            .mediatype(HTML),
         Link::new("conformance", CONFORMANCE)
             .title("OGC conformance classes implemented by this API")
             .mediatype(JSON),

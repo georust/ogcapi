@@ -6,7 +6,7 @@ use serde_with::skip_serializing_none;
 /// with the Item that can be downloaded or streamed. It is allowed
 /// to add additional fields.
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Asset {
     /// URI to the asset object. Relative and absolute URI are both allowed.
@@ -29,7 +29,31 @@ impl Asset {
     pub fn new(href: impl ToString) -> Self {
         Asset {
             href: href.to_string(),
-            ..Default::default()
+            title: Default::default(),
+            description: Default::default(),
+            r#type: Default::default(),
+            roles: Default::default(),
+            additional_properties: Default::default(),
         }
+    }
+
+    pub fn title(mut self, title: impl ToString) -> Self {
+        self.title = Some(title.to_string());
+        self
+    }
+
+    pub fn description(mut self, description: impl ToString) -> Self {
+        self.description = Some(description.to_string());
+        self
+    }
+
+    pub fn media_type(mut self, media_type: impl ToString) -> Self {
+        self.r#type = Some(media_type.to_string());
+        self
+    }
+
+    pub fn roles(mut self, roles: &[impl ToString]) -> Self {
+        self.roles = roles.iter().map(|r| r.to_string()).collect();
+        self
     }
 }
