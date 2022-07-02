@@ -53,7 +53,8 @@ pub struct LandingPage {
     #[cfg(feature = "edr")]
     pub contact: Option<Contact>,
     #[cfg(feature = "stac")]
-    pub conforms_to: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub conforms_to: Vec<String>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
 }
@@ -112,6 +113,12 @@ impl LandingPage {
 
     pub fn links(mut self, links: Links) -> Self {
         self.links = links;
+        self
+    }
+
+    #[cfg(feature = "stac")]
+    pub fn conforms_to(mut self, classes: &[impl ToString]) -> Self {
+        self.conforms_to = classes.iter().map(|c| c.to_string()).collect();
         self
     }
 }

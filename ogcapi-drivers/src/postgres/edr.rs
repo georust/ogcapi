@@ -19,11 +19,7 @@ impl EdrQuerier for Db {
         let srid: i32 = query.crs.as_srid();
 
         let c = self.read_collection(collection_id).await?;
-        let storage_srid = c
-            .expect("collection exists")
-            .storage_crs
-            .unwrap_or_default()
-            .as_srid();
+        let storage_srid = c.unwrap().storage_crs.unwrap_or_default().as_srid();
 
         let mut geometry_type = query.coords.split('(').next().unwrap().to_uppercase();
         geometry_type.retain(|c| !c.is_whitespace());

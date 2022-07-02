@@ -191,10 +191,7 @@ pub(crate) fn router(state: &State) -> Router {
         //     .title("The endpoint for job monitoring"),
     ]);
 
-    let mut conformance = state.conformance.write().unwrap();
-    conformance
-        .conforms_to
-        .append(&mut CONFORMANCE.map(String::from).to_vec());
+    state.conformance.write().unwrap().extend(&CONFORMANCE);
 
     Router::new()
         .route("/processes", get(processes))

@@ -89,9 +89,9 @@ impl Client {
         let catalog = self.root()?;
 
         #[cfg(feature = "stac")]
-        if let Some(classes) = catalog.conforms_to {
+        if !catalog.conforms_to.is_empty() {
             return Ok(Conformance {
-                conforms_to: classes,
+                conforms_to: catalog.conforms_to,
             });
         }
 

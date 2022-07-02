@@ -19,7 +19,7 @@ pub use collection::*;
 pub use collections::Collections;
 pub use conformance::Conformance;
 pub use crs::*;
-pub use datetime::Datetime;
+pub use datetime::{Datetime, IntervalDatetime};
 pub use exception::Exception;
 pub use extent::*;
 pub use landing_page::LandingPage;

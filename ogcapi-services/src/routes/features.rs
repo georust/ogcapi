@@ -201,10 +201,7 @@ async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Erro
 }
 
 pub(crate) fn router(state: &State) -> Router {
-    let mut conformance = state.conformance.write().unwrap();
-    conformance
-        .conforms_to
-        .append(&mut CONFORMANCE.map(String::from).to_vec());
+    state.conformance.write().unwrap().extend(&CONFORMANCE);
 
     Router::new()
         .route("/collections/:collection_id/items", get(items).post(create))

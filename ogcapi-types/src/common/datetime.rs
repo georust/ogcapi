@@ -30,24 +30,24 @@ impl FromStr for IntervalDatetime {
     }
 }
 
+impl fmt::Display for IntervalDatetime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            IntervalDatetime::Datetime(d) => {
+                write!(f, "{}", d.to_rfc3339_opts(SecondsFormat::Secs, true))
+            }
+            IntervalDatetime::Open => write!(f, ".."),
+        }
+    }
+}
+
 impl fmt::Display for Datetime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Datetime::Datetime(datetime) => {
                 write!(f, "{}", datetime.to_rfc3339_opts(SecondsFormat::Secs, true))
             }
-            Datetime::Interval { from, to } => write!(
-                f,
-                "{from}/{to}",
-                from = match from {
-                    IntervalDatetime::Datetime(d) => d.to_rfc3339_opts(SecondsFormat::Secs, true),
-                    IntervalDatetime::Open => "..".to_owned(),
-                },
-                to = match to {
-                    IntervalDatetime::Datetime(d) => d.to_rfc3339_opts(SecondsFormat::Secs, true),
-                    IntervalDatetime::Open => "..".to_owned(),
-                }
-            ),
+            Datetime::Interval { from, to } => write!(f, "{}/{}", from, to),
         }
     }
 }

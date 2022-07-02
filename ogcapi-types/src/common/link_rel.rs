@@ -75,6 +75,8 @@ pub const RESULTS: &str = "results";
 
 pub const ROOT: &str = "root";
 
+pub const SEARCH: &str = "search";
+
 /// Conveys an identifier for the link’s context.
 pub const SELF: &str = "self";
 

@@ -1,6 +1,7 @@
 use std::{fmt, str};
 
-pub struct ListParam(Vec<String>);
+#[derive(Debug)]
+pub struct ListParam(pub Vec<String>);
 
 impl fmt::Display for ListParam {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

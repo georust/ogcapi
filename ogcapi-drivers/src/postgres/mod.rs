@@ -2,6 +2,8 @@ mod collection;
 mod edr;
 mod feature;
 mod job;
+#[cfg(feature = "stac")]
+mod stac;
 mod style;
 mod tile;
 

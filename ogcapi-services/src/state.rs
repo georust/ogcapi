@@ -63,14 +63,6 @@ impl State {
     }
 
     pub async fn new_with(db: Db, openapi: OpenAPI) -> Self {
-        let conformance = Conformance {
-            conforms_to: vec![
-                "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core".to_string(),
-                "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections".to_string(),
-                "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json".to_string(),
-            ],
-        };
-
         let drivers = Drivers {
             collections: Box::new(db.clone()),
             #[cfg(feature = "features")]
@@ -87,7 +79,7 @@ impl State {
 
         State {
             root: RwLock::new(LandingPage::new("root")),
-            conformance: RwLock::new(conformance),
+            conformance: RwLock::new(Conformance::default()),
             openapi,
             drivers,
             db,

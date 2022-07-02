@@ -3,6 +3,8 @@ pub mod postgres;
 #[cfg(feature = "s3")]
 pub mod s3;
 
+#[cfg(feature = "stac")]
+use ogcapi_types::stac::SearchParams;
 use ogcapi_types::{
     common::{Collection, Collections, Crs, Query as CollectionQuery},
     edr::{Query as EdrQuery, QueryType},
@@ -11,7 +13,6 @@ use ogcapi_types::{
     styles::Styles,
     tiles::TileMatrixSet,
 };
-use serde_json::Value;
 
 /// Trait for `Collection` transactions
 #[async_trait::async_trait]
@@ -49,6 +50,13 @@ pub trait FeatureTransactions: Send + Sync {
     ) -> anyhow::Result<FeatureCollection>;
 }
 
+/// Trait for `STAC` search
+#[cfg(feature = "stac")]
+#[async_trait::async_trait]
+pub trait StacSeach: Send + Sync {
+    async fn search(&self, query: &SearchParams) -> anyhow::Result<FeatureCollection>;
+}
+
 /// Trait for `EDR` queries
 #[async_trait::async_trait]
 pub trait EdrQuerier: Send + Sync {
@@ -75,7 +83,7 @@ pub trait JobHandler: Send + Sync {
 pub trait StyleTransactions: Send + Sync {
     async fn list_styles(&self) -> anyhow::Result<Styles>;
 
-    async fn read_style(&self, id: &str) -> anyhow::Result<Option<Value>>;
+    async fn read_style(&self, id: &str) -> anyhow::Result<Option<serde_json::Value>>;
 }
 
 /// Trait for `Tile` transacions

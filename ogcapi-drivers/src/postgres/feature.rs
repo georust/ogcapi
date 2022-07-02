@@ -110,21 +110,9 @@ impl FeatureTransactions for Db {
         collection: &str,
         query: &Query,
     ) -> anyhow::Result<FeatureCollection> {
-        let mut sql = vec![format!(
-            r#"
-            SELECT
-                id,
-                '{0}' as collection,
-                properties,
-                ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
-                links,
-                assets,
-                bbox
-            FROM items."{0}"
-            "#,
-            collection
-        )];
+        let mut where_conditions = vec!["TRUE".to_owned()];
 
+        // bbox
         if let Some(bbox) = query.bbox.as_ref() {
             // TODO: Properly handle crs and bbox transformation
             let bbox_srid: i32 = query.bbox_crs.as_srid();
@@ -146,41 +134,55 @@ impl FeatureTransactions for Db {
                     bbox[0], bbox[1], bbox[3], bbox[4], bbox_srid
                 ),
             };
-            sql.push(format!(
-                "WHERE geom && ST_Transform({}, {})",
+            where_conditions.push(format!(
+                "geom && ST_Transform({}, {})",
                 envelope, storage_srid
             ));
         }
 
-        let srid = query.crs.as_srid();
+        let conditions = where_conditions.join(" AND ");
 
-        let number_matched = sqlx::query(sql.join(" ").as_str())
-            .bind(srid)
-            .execute(&self.pool)
-            .await?
-            .rows_affected();
+        // count
+        let number_matched: (i64,) = sqlx::query_as(&format!(
+            r#"
+            SELECT count(*) FROM items."{collection}"
+            WHERE {conditions}
+            "#,
+        ))
+        .fetch_one(&self.pool)
+        .await?;
 
-        if let Some(limit) = query.limit {
-            sql.push(format!("LIMIT {}", limit));
-            if let Some(offset) = query.offset {
-                sql.push(format!("OFFSET {}", offset));
-            }
-        }
-
+        // fetch
         let features: Option<sqlx::types::Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
             r#"
             SELECT array_to_json(array_agg(row_to_json(t)))
-            FROM ( {} ) t
+            FROM (
+                SELECT
+                    id,
+                    '{collection}' as collection,
+                    properties,
+                    ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
+                    links,
+                    assets,
+                    bbox
+                FROM items."{collection}"
+                WHERE {conditions}
+                LIMIT {}
+                OFFSET {}
+            ) t
             "#,
-            sql.join(" ")
+            query
+                .limit
+                .map_or_else(|| String::from("NULL"), |l| l.to_string()),
+            query.offset.unwrap_or(0)
         ))
-        .bind(srid)
+        .bind(query.crs.as_srid())
         .fetch_one(&self.pool)
         .await?;
 
         let features = features.map(|f| f.0).unwrap_or_default();
         let mut fc = FeatureCollection::new(features);
-        fc.number_matched = Some(number_matched);
+        fc.number_matched = Some(number_matched.0 as u64);
 
         Ok(fc)
     }
