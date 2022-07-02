@@ -1,6 +1,7 @@
 services:
   db:
     image: postgis/postgis
+    container_name: db
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -13,63 +14,19 @@ services:
     ports:
       - ${DB_PORT}:5432
 
-  db-migrations:
-    build:
-      context: .
-    environment:
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-    depends_on:
-      db:
-        condition: service_healthy
-    command: sqlx database setup --source ogcapi-drivers/migrations
-
   server:
     init: true
     build:
       context: .
       args:
-        - CARGO_WATCH=true
-    environment:
-      VIRTUAL_HOST: poc.meteoschweiz-poc.swisstopo.cloud
-      VIRTUAL_PORT: 8484
-      LETSENCRYPT_HOST: poc.meteoschweiz-poc.swisstopo.cloud
-      RUST_LOG: ${RUST_LOG}
-      APP_HOST: ${APP_HOST}
-      APP_PORT: ${APP_PORT}
-      APP_USER: ${APP_USER}
-      APP_PASSWORD: ${APP_PASSWORD}
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_REGION: ${AWS_REGION}
-      AWS_CUSTOM_ENDPOINT: http://minio:9000
-    volumes:
-      - ./ogcapi:/app/ogcapi:ro
-      - ./ogcapi-drivers/src:/app/ogcapi-drivers/src:ro
-      - ./ogcapi-drivers/Cargo.toml:/app/ogcapi-drivers/Cargo.toml:ro
-      - ./ogcapi-drivers/migrations:/app/ogcapi-drivers/migrations:ro
-      - ./ogcapi-services/src:/app/ogcapi-services/src:ro
-      - ./ogcapi-services/Cargo.toml:/app/ogcapi-services/Cargo.toml:ro
-      - ./ogcapi-types:/app/ogcapi-types:ro
-    depends_on:
-      db:
-        condition: service_healthy
-    command: cargo watch --poll -x 'run -- serve'
-    ports:
-      - ${APP_PORT}:${APP_PORT}
-
-  cli:
-    init: true
-    build:
-      context: .
+        - CARGO_WATCH=${WATCH:-false}
     container_name: ogcapi
     environment:
       RUST_LOG: ${RUST_LOG}
       APP_HOST: ${APP_HOST}
       APP_PORT: ${APP_PORT}
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      SQLX_OFFLINE: true
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION}
@@ -83,29 +40,42 @@ services:
       - ./ogcapi-services/src:/app/ogcapi-services/src:ro
       - ./ogcapi-services/Cargo.toml:/app/ogcapi-services/Cargo.toml:ro
       - ./ogcapi-types:/app/ogcapi-types:ro
+      - ./sqlx-data.json:/app/sqlx-data.json:ro
     depends_on:
       db:
         condition: service_healthy
-    command: tail -f /dev/null
+    command: >
+      /bin/sh -c "
+        if [ ${WATCH:-false} = true ]; then
+          cargo watch --poll -x 'run -- serve'
+        else
+          tail -f /dev/null
+        fi
+      "
+    ports:
+      - ${APP_PORT}:${APP_PORT}
 
   minio:
     image: minio/minio
+    container_name: minio
     volumes:
       - ./data/minio:/data
     command: server /data --console-address ":9001"
     ports:
       - 9000:9000
       - 9001:9001
-  createbuckets:
+
+  minio-mc:
     image: minio/mc
+    container_name: minio-mc
     depends_on:
       - minio
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
-      /usr/bin/mc mb myminio/${AWS_S3_BUCKET_NAME};
-      /usr/bin/mc policy set public myminio/${AWS_S3_BUCKET_NAME};
-      /usr/bin/mc admin user add myminio ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY};
-      /usr/bin/mc admin policy set myminio readwrite user=${AWS_ACCESS_KEY_ID};
-      exit 0;
+        /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
+        /usr/bin/mc mb myminio/${AWS_S3_BUCKET_NAME};
+        /usr/bin/mc policy set public myminio/${AWS_S3_BUCKET_NAME};
+        /usr/bin/mc admin user add myminio ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY};
+        /usr/bin/mc admin policy set myminio readwrite user=${AWS_ACCESS_KEY_ID};
+        exit 0;
       "

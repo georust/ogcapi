@@ -11,10 +11,12 @@ This will take a while and use quite some disk space
 docker compose up
 
 # Import administrative bounaries
-docker exec -ti ogcapi \
-    cargo run --  import \
+docker exec -ti ogcapi cargo run -- import \
         --input data/ne_110m_admin_0_countries.geojson \
         --collection countries
+
+# Run app
+docker exec -ti ogcapi cargo run -- serve
 ```
 
 Open <http://localhost:8484/> were you will find the `Landing Page`.
@@ -35,8 +37,11 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 ### Setup
 
 ```bash
+# Run services
+docker compose up db minio minio-mc
+
 # Setup the database
-docker compose up db db-migrations minio createbuckets
+sqlx database setup --source ogcapi-drivers/migrations
 
 # Import administrative bounaries
 cargo run -- import --input data/ne_110m_admin_0_countries.geojson --collection countries
@@ -45,7 +50,7 @@ cargo run -- import --input data/ne_110m_admin_0_countries.geojson --collection 
 cargo run -- serve
 
 # Run tests
-cargo test --workspace
+cargo test --workspace --all-features
 
 # Documentation
 cargo doc --workspace --all-features --no-deps --open
