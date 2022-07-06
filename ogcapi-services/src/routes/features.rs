@@ -133,6 +133,8 @@ async fn items(
         .ok_or(Error::NotFound)?;
     is_supported_crs(&collection, &query.crs).await?;
 
+    // TODO: validate additional parameters
+
     let mut fc = state
         .drivers
         .features

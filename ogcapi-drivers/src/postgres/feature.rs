@@ -140,6 +140,24 @@ impl FeatureTransactions for Db {
             ));
         }
 
+        // kv
+        for (k, v) in query.additional_parameters.iter() {
+            where_conditions.push(format!(
+                r#"
+                CASE
+                    WHEN properties ? '{k}' THEN (
+                        CASE
+                            WHEN jsonb_typeof(properties -> '{k}') = 'number'
+                            THEN RTRIM(properties ->> '{k}', '.0') = RTRIM('{v}', '.0')
+                            ELSE properties ->> '{k}' = '{v}'
+                        END
+                    ) 
+                    ELSE TRUE
+                END
+                "#
+            ));
+        }
+
         let conditions = where_conditions.join(" AND ");
 
         // count
