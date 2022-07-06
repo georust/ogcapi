@@ -25,6 +25,15 @@ pub(crate) async fn search(
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", query);
 
+    // Limit
+    if let Some(limit) = query.limit {
+        if limit > 10000 {
+            query.limit = Some(10000);
+        } 
+    } else {
+        query.limit = Some(100);
+    }
+
     let mut fc = state.db.search(&query).await?;
 
     fc.links.insert_or_update(&[
