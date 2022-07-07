@@ -129,7 +129,7 @@ async fn items(
     if let Some(limit) = query.limit {
         if limit > 10000 {
             query.limit = Some(10000);
-        } 
+        }
     } else {
         query.limit = Some(100);
     }

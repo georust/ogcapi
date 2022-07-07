@@ -53,7 +53,7 @@ pub struct LandingPage {
     #[cfg(feature = "edr")]
     pub contact: Option<Contact>,
     #[cfg(feature = "stac")]
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, rename = "conformsTo", skip_serializing_if = "Vec::is_empty")]
     pub conforms_to: Vec<String>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,

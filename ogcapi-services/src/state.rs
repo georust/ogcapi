@@ -63,6 +63,15 @@ impl State {
     }
 
     pub async fn new_with(db: Db, openapi: OpenAPI) -> Self {
+        // conformance
+        let mut conformace = Conformance::default();
+        #[cfg(feature = "stac")]
+        conformace.extend(&[
+            "https://api.stacspec.org/v1.0.0-rc.1/core",
+            "https://api.stacspec.org/v1.0.0-rc.1/item-search",
+        ]);
+
+        // drivers
         let drivers = Drivers {
             collections: Box::new(db.clone()),
             #[cfg(feature = "features")]
@@ -79,7 +88,7 @@ impl State {
 
         State {
             root: RwLock::new(LandingPage::new("root")),
-            conformance: RwLock::new(Conformance::default()),
+            conformance: RwLock::new(conformace),
             openapi,
             drivers,
             db,
