@@ -19,14 +19,14 @@ async fn edr() -> anyhow::Result<()> {
         "countries",
         &database_url,
     );
-    import::geojson::load(args, false).await?;
+    import::geojson::load(args).await?;
 
     let args = Args::new(
         "../data/ne_110m_populated_places.geojson",
         "places",
         &database_url,
     );
-    import::geojson::load(args, false).await?;
+    import::geojson::load(args).await?;
 
     // import::geojson::load(
     //     Args {

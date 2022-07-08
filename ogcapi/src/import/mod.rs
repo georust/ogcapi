@@ -41,3 +41,24 @@ pub(crate) async fn load_asset_from_path(
         asset,
     )]))
 }
+
+pub(crate) async fn bulk_load_items(
+    collection: &str,
+    ids: &[String],
+    properties: &[Option<sqlx::types::Json<serde_json::Map<String, serde_json::Value>>>],
+    geoms: &[Vec<u8>],
+    connection: &sqlx::PgPool,
+) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query(&format!(
+        r#"
+        INSERT INTO items."{}" (id, properties, geom)
+        SELECT * FROM UNNEST($1::text[], $2::jsonb[], $3::bytea[])
+        "#,
+        collection
+    ))
+    .bind(ids)
+    .bind(properties)
+    .bind(geoms)
+    .execute(connection)
+    .await
+}

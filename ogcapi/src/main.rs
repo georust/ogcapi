@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
                     Some("pbf") => ogcapi::import::osm::load(args).await?,
                     Some("geojson") => {
                         tracing::debug!("Using geojson loader ...");
-                        ogcapi::import::geojson::load(args, true).await?
+                        ogcapi::import::geojson::load(args).await?
                     }
                     _ => ogcapi::import::ogr::load(args).await?,
                 }
