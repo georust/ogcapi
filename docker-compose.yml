@@ -18,8 +18,6 @@ services:
     init: true
     build:
       context: .
-      args:
-        - CARGO_WATCH=${WATCH:-false}
     container_name: ogcapi
     environment:
       RUST_LOG: ${RUST_LOG}
@@ -44,14 +42,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: >
-      /bin/sh -c "
-        if [ ${WATCH:-false} = true ]; then
-          cargo watch --poll -x 'run -- serve'
-        else
-          tail -f /dev/null
-        fi
-      "
+    command: tail -f /dev/null
     ports:
       - ${APP_PORT}:${APP_PORT}
 

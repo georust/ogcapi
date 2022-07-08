@@ -8,7 +8,7 @@ use super::Args;
 
 pub async fn load(args: Args, show_pb: bool) -> anyhow::Result<()> {
     // Setup driver
-    let db = Db::new()?;
+    let db = Db::new().await?;
 
     // Load data
     let geojson_str = std::fs::read_to_string(&args.input)?;

@@ -10,12 +10,6 @@ RUN apt-get update && apt-get install -y \
 
 RUN rustup component add rustfmt clippy
 
-ARG CARGO_WATCH
-RUN if [ $CARGO_WATCH = true ] ; \
-    then cargo install cargo-watch ; \
-    else echo "Skip installing `cargo-watch`"; \
-    fi
-
 WORKDIR /app
 
 COPY ./ .
