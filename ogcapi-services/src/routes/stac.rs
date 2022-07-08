@@ -12,29 +12,46 @@ use ogcapi_types::{
     features::FeatureCollection,
     stac::SearchParams,
 };
+use url::Url;
 
 use crate::{
     extractors::{Qs, RemoteUrl},
     Result, State,
 };
 
-pub(crate) async fn search(
-    Qs(mut query): Qs<SearchParams>,
-    RemoteUrl(mut url): RemoteUrl,
+pub(crate) async fn search_get(
+    Qs(params): Qs<SearchParams>,
+    RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
-    tracing::debug!("{:#?}", query);
+    search(params, url, state).await
+}
+
+pub(crate) async fn search_post(
+    Json(params): Json<SearchParams>,
+    RemoteUrl(url): RemoteUrl,
+    Extension(state): Extension<Arc<State>>,
+) -> Result<(HeaderMap, Json<FeatureCollection>)> {
+    search(params, url, state).await
+}
+
+pub(crate) async fn search(
+    mut params: SearchParams,
+    mut url: Url,
+    state: Arc<State>,
+) -> Result<(HeaderMap, Json<FeatureCollection>)> {
+    tracing::debug!("{:#?}", params);
 
     // Limit
-    if let Some(limit) = query.limit {
+    if let Some(limit) = params.limit {
         if limit > 10000 {
-            query.limit = Some(10000);
+            params.limit = Some(10000);
         }
     } else {
-        query.limit = Some(100);
+        params.limit = Some(100);
     }
 
-    let mut fc = state.db.search(&query).await?;
+    let mut fc = state.db.search(&params).await?;
 
     fc.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
@@ -42,23 +59,23 @@ pub(crate) async fn search(
     ]);
 
     // pagination
-    if let Some(limit) = query.limit {
-        if query.offset.is_none() {
-            query.offset = Some(0);
+    if let Some(limit) = params.limit {
+        if params.offset.is_none() {
+            params.offset = Some(0);
         }
 
-        if let Some(offset) = query.offset {
+        if let Some(offset) = params.offset {
             if offset != 0 && offset >= limit {
-                query.offset = Some(offset - limit);
-                url.set_query(serde_qs::to_string(&query).ok().as_deref());
+                params.offset = Some(offset - limit);
+                url.set_query(serde_qs::to_string(&params).ok().as_deref());
                 let previous = Link::new(&url, PREV).mediatype(GEO_JSON);
                 fc.links.insert_or_update(&[previous]);
             }
 
             if let Some(number_matched) = fc.number_matched {
                 if number_matched > (offset + limit) as u64 {
-                    query.offset = Some(offset + limit);
-                    url.set_query(serde_qs::to_string(&query).ok().as_deref());
+                    params.offset = Some(offset + limit);
+                    url.set_query(serde_qs::to_string(&params).ok().as_deref());
                     let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
                     fc.links.insert_or_update(&[next]);
                 }

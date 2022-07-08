@@ -60,7 +60,10 @@ impl Service {
         let router = router.merge(routes::collections::router(&state));
 
         #[cfg(feature = "stac")]
-        let router = router.route("/search", get(routes::stac::search));
+        let router = router.route(
+            "/search",
+            get(routes::stac::search_get).post(routes::stac::search_post),
+        );
 
         #[cfg(feature = "features")]
         let router = router.merge(routes::features::router(&state));
