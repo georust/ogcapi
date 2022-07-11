@@ -25,7 +25,7 @@ impl Link {
     /// Constructs a new Link with the given href and link relation
     pub fn new(href: impl ToString, rel: impl ToString) -> Link {
         Link {
-            href: href.to_string().trim_end_matches('/').to_owned(),
+            href: href.to_string(),
             rel: rel.to_string(),
             r#type: None,
             hreflang: None,

@@ -69,6 +69,8 @@ impl State {
         conformace.extend(&[
             "https://api.stacspec.org/v1.0.0-rc.1/core",
             "https://api.stacspec.org/v1.0.0-rc.1/item-search",
+            "https://api.stacspec.org/v1.0.0-rc.1/collections",
+            "https://api.stacspec.org/v1.0.0-rc.1/ogcapi-features",
         ]);
 
         // drivers
@@ -87,7 +89,7 @@ impl State {
         };
 
         State {
-            root: RwLock::new(LandingPage::new("root")),
+            root: RwLock::new(LandingPage::new("root").description("root")),
             conformance: RwLock::new(conformace),
             openapi,
             drivers,

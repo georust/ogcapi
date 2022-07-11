@@ -18,7 +18,7 @@ use std::sync::Arc;
 use axum::{extract::Extension, Json};
 
 use ogcapi_types::common::{
-    link_rel::{CONFORMANCE, SEARCH, SELF, SERVICE_DESC, SERVICE_DOC},
+    link_rel::{CONFORMANCE, ROOT, SEARCH, SELF, SERVICE_DESC, SERVICE_DOC},
     media_type::{HTML, JSON, OPEN_API_JSON},
     Conformance, LandingPage, Link, Linked,
 };
@@ -32,7 +32,8 @@ pub(crate) async fn root(
     let mut root = state.root.read().unwrap().to_owned();
 
     root.links.insert_or_update(&[
-        Link::new(url, SELF).title("This document").mediatype(JSON),
+        Link::new(&url, SELF).mediatype(JSON),
+        Link::new(".", ROOT).mediatype(JSON),
         Link::new("api", SERVICE_DESC)
             .title("The Open API definition")
             .mediatype(OPEN_API_JSON),
@@ -43,7 +44,7 @@ pub(crate) async fn root(
         //     .title("The Open API definition (Redoc")
         //     .mediatype(HTML),
         Link::new("conformance", CONFORMANCE)
-            .title("OGC conformance classes implemented by this API")
+            .title("Conformance classes implemented by this API")
             .mediatype(JSON),
         #[cfg(feature = "stac")]
         Link::new("search", SEARCH)
@@ -53,10 +54,7 @@ pub(crate) async fn root(
     root.links.resolve_relative_links();
 
     #[cfg(feature = "stac")]
-    let root = root.conforms_to(&[
-        "https://api.stacspec.org/v1.0.0-rc.1/core",
-        "https://api.stacspec.org/v1.0.0-rc.1/item-search",
-    ]);
+    let root = root.conforms_to(&state.conformance.read().unwrap().conforms_to[..]);
 
     Ok(Json(root))
 }
