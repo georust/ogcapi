@@ -38,7 +38,7 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 ```bash
 # Run services
-docker compose up db minio minio-mc
+docker compose up db minio minio-mc -d
 
 # Setup the database
 sqlx database setup --source ogcapi-drivers/migrations

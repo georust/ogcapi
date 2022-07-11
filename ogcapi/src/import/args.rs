@@ -1,7 +1,3 @@
-use std::path::PathBuf;
-
-use url::Url;
-
 #[derive(clap::Parser, Debug)]
 pub struct Args {
     /// Input file
@@ -26,11 +22,15 @@ pub struct Args {
 
     /// Postgres database url
     #[clap(long, env, hide_env_values = true, parse(try_from_str))]
-    pub database_url: Url,
+    pub database_url: url::Url,
 }
 
 impl Args {
-    pub fn new(input: impl Into<PathBuf>, collection: &str, database_url: &Url) -> Self {
+    pub fn new(
+        input: impl Into<std::path::PathBuf>,
+        collection: &str,
+        database_url: &url::Url,
+    ) -> Self {
         Args {
             input: input.into(),
             collection: collection.to_string(),
