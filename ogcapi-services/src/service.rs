@@ -6,12 +6,10 @@ use std::{
 
 use axum::{
     body::Body,
-    handler::Handler,
     http::{
         header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, PROXY_AUTHORIZATION, SET_COOKIE},
         Response, StatusCode,
     },
-    response::IntoResponse,
     routing::get,
     Extension, Router,
 };
@@ -28,7 +26,7 @@ use tower_http::{
 
 use ogcapi_types::common::Exception;
 
-use crate::{routes, Config, ConfigParser, Error, State};
+use crate::{routes, Config, ConfigParser, State};
 
 /// OGC API Services
 pub struct Service {
@@ -81,7 +79,8 @@ impl Service {
         let router = router.merge(routes::processes::router(&state));
 
         // add a fallback service for handling routes to unknown paths
-        let router = router.fallback(handler_404.into_service());
+        // XXX: this breaks nesting routers
+        // let router = router.fallback(handler_404.into_service());
 
         // middleware stack
         let router = router.layer(
@@ -137,9 +136,9 @@ impl Service {
 }
 
 /// Custom 404 handler
-async fn handler_404() -> impl IntoResponse {
-    Error::NotFound
-}
+// async fn handler_404() -> impl IntoResponse {
+//     Error::NotFound
+// }
 
 /// Custom panic handler
 fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response<Body> {

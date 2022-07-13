@@ -32,7 +32,7 @@ pub(crate) async fn root(
     let mut root = state.root.read().unwrap().to_owned();
 
     root.links.insert_or_update(&[
-        Link::new(&url, SELF).mediatype(JSON),
+        Link::new(format!("{}/", url.as_str().trim_end_matches('/')), SELF).mediatype(JSON),
         Link::new(".", ROOT).mediatype(JSON),
         Link::new("api", SERVICE_DESC)
             .title("The Open API definition")

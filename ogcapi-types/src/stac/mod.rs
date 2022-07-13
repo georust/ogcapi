@@ -8,7 +8,7 @@ pub use asset::Asset;
 pub use catalog::Catalog;
 pub use entity::StacEntity;
 pub use provider::{Provider, ProviderRole};
-pub use search::SearchParams;
+pub use search::{SearchBody, SearchParams};
 
 #[doc(inline)]
 pub use crate::common::Collection;

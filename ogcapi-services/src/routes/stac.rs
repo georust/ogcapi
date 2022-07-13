@@ -1,22 +1,25 @@
 use std::sync::Arc;
 
-use axum::{http::HeaderMap, Extension, Json};
+use axum::{
+    http::{HeaderMap, StatusCode},
+    Extension, Json,
+};
 use hyper::header::CONTENT_TYPE;
 use ogcapi_drivers::StacSeach;
 use ogcapi_types::{
     common::{
         link_rel::{COLLECTION, NEXT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
-        Link, Linked,
+        Bbox, Link, Linked,
     },
     features::FeatureCollection,
-    stac::SearchParams,
+    stac::{SearchBody, SearchParams},
 };
 use url::Url;
 
 use crate::{
     extractors::{Qs, RemoteUrl},
-    Result, State,
+    Error, Result, State,
 };
 
 pub(crate) async fn search_get(
@@ -28,11 +31,11 @@ pub(crate) async fn search_get(
 }
 
 pub(crate) async fn search_post(
-    Json(params): Json<SearchParams>,
+    Json(params): Json<SearchBody>,
     RemoteUrl(url): RemoteUrl,
     Extension(state): Extension<Arc<State>>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
-    search(params, url, state).await
+    search(params.into(), url, state).await
 }
 
 pub(crate) async fn search(
@@ -44,11 +47,37 @@ pub(crate) async fn search(
 
     // Limit
     if let Some(limit) = params.limit {
-        if limit > 10000 {
-            params.limit = Some(10000);
+        if !(1..10001).contains(&limit) {
+            return Err(Error::Exception(
+                StatusCode::BAD_REQUEST,
+                "query parameter `limit` not in range 1 to 10000".to_string(),
+            ));
         }
     } else {
+        // default
         params.limit = Some(100);
+    }
+
+    // Bbox
+    if let Some(bbox) = params.bbox.as_ref() {
+        match bbox {
+            Bbox::Bbox2D(bbox) => {
+                if bbox[0] > bbox[2] || bbox[1] > bbox[3] {
+                    return Err(Error::Exception(
+                        StatusCode::BAD_REQUEST,
+                        "query parameter `bbox` not valid".to_string(),
+                    ));
+                }
+            }
+            Bbox::Bbox3D(bbox) => {
+                if bbox[0] > bbox[3] || bbox[1] > bbox[4] || bbox[2] > bbox[5] {
+                    return Err(Error::Exception(
+                        StatusCode::BAD_REQUEST,
+                        "query parameter `bbox` not valid".to_string(),
+                    ));
+                }
+            }
+        }
     }
 
     let mut fc = state.db.search(&params).await?;
