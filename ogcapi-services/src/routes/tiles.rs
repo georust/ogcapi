@@ -134,10 +134,7 @@ pub(crate) fn router(state: &State) -> Router {
             .mediatype(JSON),
     );
 
-    let mut conformance = state.conformance.write().unwrap();
-    conformance
-        .conforms_to
-        .append(&mut CONFORMANCE.map(String::from).to_vec());
+    state.conformance.write().unwrap().extend(&CONFORMANCE);
 
     // Setup tile matrix sets
     let mut tms_map = HashMap::new();

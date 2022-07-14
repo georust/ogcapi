@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, fmt, str};
+use std::{fmt, str};
 
 use serde::{Deserialize, Serialize};
 
@@ -25,24 +25,56 @@ impl Crs {
         }
     }
 
-    pub fn ogc_to_epsg(&self) -> Option<Crs> {
-        match self.authority {
-            Authority::OGC => match self.code.as_str() {
-                "CRS84" => Some(4326.into()),
-                "CRS84h" => Some(4979.into()),
-                _ => None,
-            },
-            Authority::EPSG => Some(self.to_owned()),
+    pub fn from_epsg(code: i32) -> Self {
+        Crs::new(Authority::EPSG, "0", code)
+    }
+
+    pub fn from_srid(code: i32) -> Self {
+        if code == 4326 {
+            Crs::default()
+        } else {
+            Crs::new(Authority::EPSG, "0", code)
         }
     }
 
-    pub fn to_ogc_urn(&self) -> String {
+    pub fn to_urn(&self) -> String {
         format!(
             "urn:ogc:def:crs:{authority}:{version}:{code}",
             authority = self.authority,
             version = self.version,
             code = self.code
         )
+    }
+
+    pub fn to_epsg(&self) -> Option<Crs> {
+        match self.authority {
+            Authority::OGC => match self.code.as_str() {
+                "CRS84h" => Some(Crs::new(Authority::EPSG, "0", "4979")),
+                _ => None,
+            },
+            Authority::EPSG => Some(self.to_owned()),
+        }
+    }
+
+    pub fn as_epsg(&self) -> Option<i32> {
+        match self.authority {
+            Authority::OGC => match self.code.as_str() {
+                "CRS84h" => Some(4979),
+                _ => panic!("Unable to extract epsg code from `{}`", self),
+            },
+            Authority::EPSG => self.code.parse().ok(),
+        }
+    }
+
+    pub fn as_srid(&self) -> i32 {
+        match self.authority {
+            Authority::OGC => match self.code.as_str() {
+                "CRS84" => 4326,
+                "CRS84h" => 4979,
+                _ => panic!("Unable to extract epsg code from `{}`", self),
+            },
+            Authority::EPSG => self.code.parse().unwrap(),
+        }
     }
 }
 
@@ -59,17 +91,21 @@ impl fmt::Display for Crs {
 }
 
 impl str::FromStr for Crs {
-    type Err = &'static str;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // TODO: handle urn
-        let parts: Vec<&str> = s
-            .trim_start_matches("http://www.opengis.net/def/crs/")
-            .split('/')
-            .collect();
+        let parts: Vec<&str> = if s.starts_with("urn") {
+            s.trim_start_matches("urn:ogc:def:crs:")
+                .split(':')
+                .collect()
+        } else {
+            s.trim_start_matches("http://www.opengis.net/def/crs/")
+                .split('/')
+                .collect()
+        };
         match parts.len() {
             3 => Ok(Crs::new(Authority::from_str(parts[0])?, parts[1], parts[2])),
-            _ => Err("Unable to parse CRS from string!"),
+            _ => Err(format!("Unable to parse CRS from `{s}`!")),
         }
     }
 }
@@ -80,27 +116,6 @@ impl Default for Crs {
             authority: Authority::OGC,
             version: "1.3".to_string(),
             code: "CRS84".to_string(),
-        }
-    }
-}
-
-impl From<i32> for Crs {
-    fn from(epsg_code: i32) -> Self {
-        Crs::new(Authority::EPSG, "0", &epsg_code.to_string())
-    }
-}
-
-impl TryFrom<Crs> for i32 {
-    type Error = &'static str;
-
-    fn try_from(crs: Crs) -> Result<i32, &'static str> {
-        match crs.authority {
-            Authority::OGC => match crs.code.as_str() {
-                "CRS84" => Ok(4326),
-                "CRS84h" => Ok(4979),
-                _ => Err("Unable to extract epsg code"),
-            },
-            Authority::EPSG => Ok(crs.code.parse().unwrap()),
         }
     }
 }
@@ -135,7 +150,7 @@ impl str::FromStr for Authority {
 
 #[cfg(test)]
 mod tests {
-    use std::{convert::TryInto, str::FromStr};
+    use std::str::FromStr;
 
     use crate::common::{Crs, OGC_CRS84};
 
@@ -148,22 +163,19 @@ mod tests {
     #[test]
     fn from_epsg() {
         let code = 4979;
-        let crs: Crs = code.into();
+        let crs = Crs::from_epsg(code);
         assert_eq!(
             crs.to_string(),
             "http://www.opengis.net/def/crs/EPSG/0/4979".to_string()
         );
 
-        let epsg: i32 = crs.try_into().unwrap();
-        assert_eq!(epsg, code);
-
-        let epsg: i32 = Crs::default().try_into().unwrap();
-        assert_eq!(epsg, 4326)
+        let epsg = crs.as_epsg();
+        assert_eq!(epsg, Some(code));
     }
 
     #[test]
     fn into_epsg() {
-        let crs: Crs = 4979.into();
+        let crs = Crs::from_epsg(4979);
         assert_eq!(
             crs.to_string(),
             "http://www.opengis.net/def/crs/EPSG/0/4979".to_string()
@@ -171,8 +183,8 @@ mod tests {
     }
 
     #[test]
-    fn ogc_to_epsg() {
+    fn to_epsg() {
         let crs = Crs::from_str("http://www.opengis.net/def/crs/EPSG/0/4979").unwrap();
-        assert_eq!(crs.ogc_to_epsg(), Some(4979.into()))
+        assert_eq!(crs.to_epsg(), Some(Crs::from_epsg(4979)))
     }
 }

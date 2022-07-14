@@ -12,21 +12,21 @@ serve = ["axum", "ogcapi-services", "ogcapi-services/full"]
 stac = ["ogcapi-types/stac", "ogcapi-drivers/stac", "ogcapi-services?/stac", "ogcapi-drivers/s3"]
 
 [dependencies]
-anyhow = "1.0.57"
-axum = { version = "0.5.7", optional = true, features = ["headers"] }
-clap = { version = "3.1.18", features = ["derive", "env"] }
+anyhow = "1.0.58"
+axum = { version = "0.5.11", optional = true, features = ["headers"] }
+clap = { version = "3.2.8", features = ["derive", "env"] }
 dotenv = { version = "0.15.0" }
 gdal = { version = "0.12.0", optional = true, features = ["bindgen"] }
-geo = { version = "0.21.0", optional = true }
-geojson = "0.23.0"
+geo = { version = "0.22.1", optional = true }
+geojson = { version = "0.23.0", features = ["geo-types"] }
 osmpbfreader = { version = "0.15.2", optional = true }
 pbr = { version = "1.0.4", optional = true }
-serde = "1.0.137"
-serde_json = "1.0.81"
-sqlx = { version = "0.5.13", optional = true, features = ["runtime-tokio-rustls", "postgres"] }
+serde = "1.0.138"
+serde_json = "1.0.82"
+sqlx = { version = "0.6.0", optional = true, features = ["runtime-tokio-rustls", "postgres"] }
 tokio = { version = "1.19.2", features = ["full"] }
 tracing = { version = "0.1.35"}
-tracing-subscriber = { version="0.3.11", features = ["env-filter"] }
+tracing-subscriber = { version="0.3.14", features = ["env-filter"] }
 url = { version = "2.2.2", features = ["serde"] }
 wkb = { version = "0.7.1", optional = true }
 

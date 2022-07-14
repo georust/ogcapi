@@ -63,14 +63,17 @@ impl State {
     }
 
     pub async fn new_with(db: Db, openapi: OpenAPI) -> Self {
-        let conformance = Conformance {
-            conforms_to: vec![
-                "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core".to_string(),
-                "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections".to_string(),
-                "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json".to_string(),
-            ],
-        };
+        // conformance
+        let mut conformace = Conformance::default();
+        #[cfg(feature = "stac")]
+        conformace.extend(&[
+            "https://api.stacspec.org/v1.0.0-rc.1/core",
+            "https://api.stacspec.org/v1.0.0-rc.1/item-search",
+            "https://api.stacspec.org/v1.0.0-rc.1/collections",
+            "https://api.stacspec.org/v1.0.0-rc.1/ogcapi-features",
+        ]);
 
+        // drivers
         let drivers = Drivers {
             collections: Box::new(db.clone()),
             #[cfg(feature = "features")]
@@ -86,8 +89,8 @@ impl State {
         };
 
         State {
-            root: RwLock::new(LandingPage::new("root")),
-            conformance: RwLock::new(conformance),
+            root: RwLock::new(LandingPage::new("root").description("root")),
+            conformance: RwLock::new(conformace),
             openapi,
             drivers,
             db,

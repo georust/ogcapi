@@ -19,14 +19,14 @@ async fn edr() -> anyhow::Result<()> {
         "countries",
         &database_url,
     );
-    import::geojson::load(args, false).await?;
+    import::geojson::load(args).await?;
 
     let args = Args::new(
         "../data/ne_110m_populated_places.geojson",
         "places",
         &database_url,
     );
-    import::geojson::load(args, false).await?;
+    import::geojson::load(args).await?;
 
     // import::geojson::load(
     //     Args {
@@ -43,7 +43,7 @@ async fn edr() -> anyhow::Result<()> {
     let query = Query {
         coords: "POINT(2600000 1200000)".to_string(),
         parameter_name: Some("NAME,ISO_A2,CONTINENT".to_string()),
-        crs: Crs::from(2056),
+        crs: Crs::from_epsg(2056),
         ..Default::default()
     };
 

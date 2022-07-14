@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
@@ -5,7 +7,7 @@ use crate::common::{Bbox, Crs, Datetime};
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub struct Query {
     pub limit: Option<usize>,
     pub offset: Option<usize>,
@@ -13,20 +15,23 @@ pub struct Query {
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub bbox: Option<Bbox>,
     #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub bbox_crs: Option<Crs>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub bbox_crs: Crs,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub datetime: Option<Datetime>,
     #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
-    pub crs: Option<Crs>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub crs: Crs,
     pub filter: Option<String>,
     #[serde(default)]
     pub filter_lang: Option<FilterLang>,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub filter_crs: Option<Crs>,
+    /// Parameters for filtering on feature properties
+    #[serde(default, flatten)]
+    pub additional_parameters: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

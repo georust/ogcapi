@@ -1,15 +1,14 @@
-use async_trait::async_trait;
 use ogcapi_types::{
     edr::{Query, QueryType},
     features::{Feature, FeatureCollection},
 };
 use sqlx::types::Json;
 
-use crate::EdrQuerier;
+use crate::{CollectionTransactions, EdrQuerier};
 
 use super::Db;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl EdrQuerier for Db {
     async fn query(
         &self,
@@ -17,8 +16,10 @@ impl EdrQuerier for Db {
         query_type: &QueryType,
         query: &Query,
     ) -> anyhow::Result<FeatureCollection> {
-        let srid: i32 = query.crs.clone().try_into().unwrap();
-        let storage_srid = self.storage_srid(collection_id).await?;
+        let srid: i32 = query.crs.as_srid();
+
+        let c = self.read_collection(collection_id).await?;
+        let storage_srid = c.unwrap().storage_crs.unwrap_or_default().as_srid();
 
         let mut geometry_type = query.coords.split('(').next().unwrap().to_uppercase();
         geometry_type.retain(|c| !c.is_whitespace());

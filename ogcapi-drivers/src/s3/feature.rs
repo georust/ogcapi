@@ -1,5 +1,5 @@
-use anyhow::Ok;
-use async_trait::async_trait;
+use aws_sdk_s3::{error::GetObjectErrorKind, types::SdkError};
+
 use ogcapi_types::{
     common::{media_type::GEO_JSON, Crs},
     features::{Feature, FeatureCollection, Query},
@@ -9,9 +9,9 @@ use crate::FeatureTransactions;
 
 use super::S3;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl FeatureTransactions for S3 {
-    async fn create_feature(&self, feature: &Feature) -> Result<String, anyhow::Error> {
+    async fn create_feature(&self, feature: &Feature) -> anyhow::Result<String> {
         let key = format!(
             "collections/{}/items/{}.json",
             feature.collection.as_ref().unwrap(),
@@ -19,8 +19,13 @@ impl FeatureTransactions for S3 {
         );
         let data = serde_json::to_vec(&feature)?;
 
-        self.put_object("test-bucket", &key, data, Some(GEO_JSON.to_string()))
-            .await?;
+        self.put_object(
+            self.bucket.clone().unwrap_or_default(),
+            &key,
+            data,
+            Some(GEO_JSON.to_string()),
+        )
+        .await?;
 
         Ok(key)
     }
@@ -30,16 +35,26 @@ impl FeatureTransactions for S3 {
         collection: &str,
         id: &str,
         _crs: &Crs,
-    ) -> Result<Feature, anyhow::Error> {
+    ) -> anyhow::Result<Option<Feature>> {
         let key = format!("collections/{}/items/{}.json", collection, id);
 
-        let r = self.get_object("test-bucket", &key).await?;
-
-        let c = serde_json::from_slice(&r.body.collect().await?.into_bytes()[..])?;
-
-        Ok(c)
+        match self
+            .get_object(self.bucket.clone().unwrap_or_default(), &key)
+            .await
+        {
+            Ok(r) => Ok(Some(serde_json::from_slice(
+                &r.body.collect().await?.into_bytes(),
+            )?)),
+            Err(e) => match e {
+                SdkError::ServiceError { err, raw: _ } => match err.kind {
+                    GetObjectErrorKind::NoSuchKey(_) => Ok(None),
+                    _ => Err(anyhow::Error::new(err)),
+                },
+                _ => Err(anyhow::Error::new(e)),
+            },
+        }
     }
-    async fn update_feature(&self, feature: &Feature) -> Result<(), anyhow::Error> {
+    async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()> {
         let key = format!(
             "collections/{}/items/{}.json",
             feature.collection.as_ref().unwrap(),
@@ -47,16 +62,22 @@ impl FeatureTransactions for S3 {
         );
         let data = serde_json::to_vec(&feature)?;
 
-        self.put_object("test-bucket", &key, data, Some(GEO_JSON.to_string()))
-            .await?;
+        self.put_object(
+            self.bucket.clone().unwrap_or_default(),
+            &key,
+            data,
+            Some(GEO_JSON.to_string()),
+        )
+        .await?;
 
         Ok(())
     }
 
-    async fn delete_feature(&self, collection: &str, id: &str) -> Result<(), anyhow::Error> {
+    async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()> {
         let key = format!("collections/{}/items/{}.json", collection, id);
 
-        self.delete_object("test-bucket", &key).await?;
+        self.delete_object(self.bucket.clone().unwrap_or_default(), &key)
+            .await?;
 
         Ok(())
     }
@@ -65,7 +86,7 @@ impl FeatureTransactions for S3 {
         &self,
         _collection: &str,
         _query: &Query,
-    ) -> Result<FeatureCollection, anyhow::Error> {
+    ) -> anyhow::Result<FeatureCollection> {
         unimplemented!()
     }
 }

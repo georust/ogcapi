@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use ogcapi_types::styles::Styles;
 
-use crate::{Result, State};
+use crate::{Error, Result, State};
 
 async fn styles(Extension(state): Extension<Arc<State>>) -> Result<Json<Styles>> {
     let styles = state.drivers.styles.list_styles().await?;
@@ -22,7 +22,7 @@ async fn read_style(
 ) -> Result<Json<Value>> {
     let style = state.drivers.styles.read_style(&id).await?;
 
-    Ok(Json(style))
+    style.map(Json).ok_or(Error::NotFound)
 }
 
 pub(crate) fn router(_state: &State) -> Router {

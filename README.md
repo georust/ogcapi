@@ -11,10 +11,12 @@ This will take a while and use quite some disk space
 docker compose up
 
 # Import administrative bounaries
-docker exec -ti ogcapi \
-    cargo run --  import \
+docker exec -ti ogcapi cargo run -- import \
         --input data/ne_110m_admin_0_countries.geojson \
         --collection countries
+
+# Run app
+docker exec -ti ogcapi cargo run -- serve
 ```
 
 Open <http://localhost:8484/> were you will find the `Landing Page`.
@@ -35,8 +37,11 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 ### Setup
 
 ```bash
+# Run services
+docker compose up db minio minio-mc -d
+
 # Setup the database
-docker compose up db db-migrations minio createbuckets
+sqlx database setup --source ogcapi-drivers/migrations
 
 # Import administrative bounaries
 cargo run -- import --input data/ne_110m_admin_0_countries.geojson --collection countries
@@ -45,7 +50,7 @@ cargo run -- import --input data/ne_110m_admin_0_countries.geojson --collection 
 cargo run -- serve
 
 # Run tests
-cargo test --workspace
+cargo test --workspace --all-features
 
 # Documentation
 cargo doc --workspace --all-features --no-deps --open
@@ -75,18 +80,18 @@ docker run --network host ogccite/ets-ogcapi-features10
 # docker run --network host ogccite/ets-ogcapi-edr10
 ```
 
-Navigate to <http://localhost:8081/teamengine/> to execute the test suite. For documentation and more info see <https://cite.opengeospatial.org/teamengine/about/ogcapi-features-1.0/1.0/site>.
+Navigate to <http://localhost:8080/teamengine/> to execute the test suite. For documentation and more info see <https://cite.opengeospatial.org/teamengine/about/ogcapi-features-1.0/1.0/site>.
 
 ## Example Project
 
-STAC enabled OGC API Features: https://github.com/camptocamp/oapi-poc
+STAC enabled OGC API Features: <https://github.com/camptocamp/oapi-poc>
 
 ## License
 
 Licensed under either of
 
- * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 

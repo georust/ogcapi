@@ -6,19 +6,19 @@ use reqwest::{
 };
 
 #[cfg(not(feature = "stac"))]
-use ogcapi_types::{common::LandingPage, features::Feature};
+use ogcapi_types::features::Feature;
 #[cfg(feature = "stac")]
 use ogcapi_types::{
     common::{
         link_rel::{CHILD, ITEM, SELF},
         Link,
     },
-    stac::{Catalog, Catalog as LandingPage, Item as Feature, SearchParams, StacEntity},
+    stac::{Catalog, Item as Feature, SearchParams, StacEntity},
 };
 use ogcapi_types::{
     common::{
         link_rel::{CONFORMANCE, DATA, NEXT},
-        Collection, Conformance, Links,
+        Collection, Conformance, LandingPage, Links,
     },
     features::FeatureCollection,
 };
@@ -89,9 +89,9 @@ impl Client {
         let catalog = self.root()?;
 
         #[cfg(feature = "stac")]
-        if let Some(classes) = catalog.conforms_to {
+        if !catalog.conforms_to.is_empty() {
             return Ok(Conformance {
-                conforms_to: classes,
+                conforms_to: catalog.conforms_to,
             });
         }
 

@@ -13,7 +13,7 @@ use axum::{
 
 use ogcapi_types::{
     common::{
-        link_rel::{COLLECTION, NEXT, PARENT, PREV, ROOT, SELF},
+        link_rel::{COLLECTION, NEXT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
         Collection, Crs, Link, Linked,
     },
@@ -60,28 +60,29 @@ async fn read(
         .drivers
         .collections
         .read_collection(&collection_id)
-        .await?;
-    let crs = query.crs.unwrap_or_default();
-
-    is_supported_crs(&collection, &crs).await?;
+        .await?
+        .ok_or(Error::NotFound)?;
+    is_supported_crs(&collection, &query.crs).await?;
 
     let mut feature = state
         .drivers
         .features
-        .read_feature(&collection_id, &id, &crs)
-        .await?;
+        .read_feature(&collection_id, &id, &query.crs)
+        .await?
+        .ok_or(Error::NotFound)?;
 
     feature.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
         Link::new(&url.join("../../..")?, ROOT).mediatype(JSON),
-        Link::new(&url.join(&format!("../../{}", collection_id))?, PARENT).mediatype(JSON),
         Link::new(&url.join(&format!("../../{}", collection_id))?, COLLECTION).mediatype(JSON),
     ]);
 
     let mut headers = HeaderMap::new();
     headers.insert(
         "Content-Crs",
-        crs.to_string()
+        query
+            .crs
+            .to_string()
             .parse()
             .context("Unable to parse `Content-Crs` header value")?,
     );
@@ -124,14 +125,24 @@ async fn items(
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", query);
 
+    // Limit
+    if let Some(limit) = query.limit {
+        if limit > 10000 {
+            query.limit = Some(10000);
+        }
+    } else {
+        query.limit = Some(100);
+    }
+
     let collection = state
         .drivers
         .collections
         .read_collection(&collection_id)
-        .await?;
-    let crs = query.crs.to_owned().unwrap_or_default();
+        .await?
+        .ok_or(Error::NotFound)?;
+    is_supported_crs(&collection, &query.crs).await?;
 
-    is_supported_crs(&collection, &crs).await?;
+    // TODO: validate additional parameters
 
     let mut fc = state
         .drivers
@@ -142,7 +153,6 @@ async fn items(
     fc.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
         Link::new(&url.join("../..")?, ROOT).mediatype(JSON),
-        Link::new(&url.join(".")?, PARENT).mediatype(JSON),
         Link::new(&url.join(".")?, COLLECTION).mediatype(JSON),
     ]);
 
@@ -179,13 +189,12 @@ async fn items(
             )
             .mediatype(GEO_JSON),
             Link::new(&url.join("../..")?, ROOT).mediatype(JSON),
-            Link::new(&url.join(&format!("../{}", collection.id))?, PARENT).mediatype(JSON),
             Link::new(&url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
         ])
     }
 
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Crs", crs.to_string().parse().unwrap());
+    headers.insert("Content-Crs", query.crs.to_string().parse().unwrap());
     headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(fc)))
@@ -203,10 +212,7 @@ async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Erro
 }
 
 pub(crate) fn router(state: &State) -> Router {
-    let mut conformance = state.conformance.write().unwrap();
-    conformance
-        .conforms_to
-        .append(&mut CONFORMANCE.map(String::from).to_vec());
+    state.conformance.write().unwrap().extend(&CONFORMANCE);
 
     Router::new()
         .route("/collections/:collection_id/items", get(items).post(create))

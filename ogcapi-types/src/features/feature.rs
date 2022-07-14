@@ -43,7 +43,7 @@ pub struct Feature {
     pub stac_extensions: Vec<String>,
     /// Dictionary of asset objects that can be downloaded, each with a unique key.
     #[cfg(feature = "stac")]
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    #[serde(default)]
     pub assets: HashMap<String, crate::stac::Asset>,
     /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
     #[cfg(feature = "stac")]

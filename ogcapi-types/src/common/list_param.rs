@@ -1,6 +1,9 @@
 use std::{fmt, str};
 
-pub struct ListParam(Vec<String>);
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ListParam(pub Vec<String>);
 
 impl fmt::Display for ListParam {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

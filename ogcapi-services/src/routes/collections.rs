@@ -9,7 +9,7 @@ use axum::{
 };
 
 use ogcapi_types::common::{
-    link_rel::{DATA, ITEMS, PARENT, ROOT, SELF},
+    link_rel::{DATA, ITEMS, ROOT, SELF},
     media_type::{GEO_JSON, JSON},
     Collection, Collections, Crs, Link, Linked, Query,
 };
@@ -20,9 +20,9 @@ use crate::{
 };
 
 const CONFORMANCE: [&str; 3] = [
-    "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",
-    "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections",
-    "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json",
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
+    "http://www.opengis.net/spec/ogcapi_common-2/1.0/conf/json",
 ];
 
 /// Create new collection metadata
@@ -35,8 +35,8 @@ async fn create(
         .drivers
         .collections
         .read_collection(&collection.id)
-        .await
-        .is_ok()
+        .await?
+        .is_some()
     {
         return Err(Error::Exception(
             StatusCode::CONFLICT,
@@ -68,16 +68,21 @@ async fn read(
         .drivers
         .collections
         .read_collection(&collection_id)
-        .await?;
+        .await?
+        .ok_or(Error::NotFound)?;
 
     collection.links.insert_or_update(&[
         Link::new(&url, SELF),
-        Link::new(&url.join("..")?, PARENT).mediatype(JSON),
         Link::new(&url.join("..")?, ROOT).mediatype(JSON),
-        Link::new(&url.join(&format!("{}/items", collection.id))?, ITEMS).mediatype(GEO_JSON),
-        // Link::new(&url.join(&format!("{}/location", collection.id))?, DATA)
-        //     .title("EDR location query endpoint"),
     ]);
+
+    if collection.r#type == "Collection" {
+        collection.links.insert_or_update(&[
+            Link::new(&url.join(&format!("{}/items", collection.id))?, ITEMS).mediatype(GEO_JSON),
+            // Link::new(&url.join(&format!("{}/location", collection.id))?, DATA)
+            //     .title("EDR location query endpoint"),
+        ]);
+    }
 
     Ok(Json(collection))
 }
@@ -141,7 +146,7 @@ async fn collections(
         Link::new(&url, SELF).mediatype(JSON).title("this document"),
         Link::new(&url.join(".")?, ROOT).mediatype(JSON),
     ];
-    collections.crs = vec![Crs::default(), Crs::from(4326)];
+    collections.crs = vec![Crs::default(), Crs::from_epsg(3857)];
 
     Ok(Json(collections))
 }
@@ -154,10 +159,7 @@ pub(crate) fn router(state: &State) -> Router {
             .mediatype(JSON),
     );
 
-    let mut conformance = state.conformance.write().unwrap();
-    conformance
-        .conforms_to
-        .append(&mut CONFORMANCE.map(String::from).to_vec());
+    state.conformance.write().unwrap().extend(&CONFORMANCE);
 
     Router::new()
         .route("/collections", get(collections).post(create))

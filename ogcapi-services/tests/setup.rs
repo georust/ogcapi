@@ -8,7 +8,7 @@ use ogcapi_services::{Config, ConfigParser};
 pub async fn spawn_app() -> anyhow::Result<(SocketAddr, Url)> {
     dotenv::dotenv().ok();
 
-    // tracing_subscriber::fmt::init();
+    // ogcapi_services::telemetry::init();
 
     let mut config = Config::parse();
     config.database_url.set_path(&Uuid::new_v4().to_string());

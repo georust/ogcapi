@@ -3,7 +3,8 @@ pub mod postgres;
 #[cfg(feature = "s3")]
 pub mod s3;
 
-use async_trait::async_trait;
+#[cfg(feature = "stac")]
+use ogcapi_types::stac::SearchParams;
 use ogcapi_types::{
     common::{Collection, Collections, Crs, Query as CollectionQuery},
     edr::{Query as EdrQuery, QueryType},
@@ -12,47 +13,52 @@ use ogcapi_types::{
     styles::Styles,
     tiles::TileMatrixSet,
 };
-use serde_json::Value;
 
 /// Trait for `Collection` transactions
-#[async_trait]
+#[async_trait::async_trait]
 pub trait CollectionTransactions: Send + Sync {
-    async fn create_collection(&self, collection: &Collection) -> Result<String, anyhow::Error>;
+    async fn create_collection(&self, collection: &Collection) -> anyhow::Result<String>;
 
-    async fn read_collection(&self, id: &str) -> Result<Collection, anyhow::Error>;
+    async fn read_collection(&self, id: &str) -> anyhow::Result<Option<Collection>>;
 
-    async fn update_collection(&self, collection: &Collection) -> Result<(), anyhow::Error>;
+    async fn update_collection(&self, collection: &Collection) -> anyhow::Result<()>;
 
-    async fn delete_collection(&self, id: &str) -> Result<(), anyhow::Error>;
+    async fn delete_collection(&self, id: &str) -> anyhow::Result<()>;
 
-    async fn list_collections(&self, query: &CollectionQuery)
-        -> Result<Collections, anyhow::Error>;
+    async fn list_collections(&self, query: &CollectionQuery) -> anyhow::Result<Collections>;
 }
 
 /// Trait for `Feature` transactions
-#[async_trait]
+#[async_trait::async_trait]
 pub trait FeatureTransactions: Send + Sync {
-    async fn create_feature(&self, feature: &Feature) -> Result<String, anyhow::Error>;
+    async fn create_feature(&self, feature: &Feature) -> anyhow::Result<String>;
 
     async fn read_feature(
         &self,
         collection: &str,
         id: &str,
         crs: &Crs,
-    ) -> Result<Feature, anyhow::Error>;
-    async fn update_feature(&self, feature: &Feature) -> Result<(), anyhow::Error>;
+    ) -> anyhow::Result<Option<Feature>>;
+    async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()>;
 
-    async fn delete_feature(&self, collection: &str, id: &str) -> Result<(), anyhow::Error>;
+    async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()>;
 
     async fn list_items(
         &self,
         collection: &str,
         query: &FeatureQuery,
-    ) -> Result<FeatureCollection, anyhow::Error>;
+    ) -> anyhow::Result<FeatureCollection>;
+}
+
+/// Trait for `STAC` search
+#[cfg(feature = "stac")]
+#[async_trait::async_trait]
+pub trait StacSeach: Send + Sync {
+    async fn search(&self, query: &SearchParams) -> anyhow::Result<FeatureCollection>;
 }
 
 /// Trait for `EDR` queries
-#[async_trait]
+#[async_trait::async_trait]
 pub trait EdrQuerier: Send + Sync {
     async fn query(
         &self,
@@ -63,25 +69,25 @@ pub trait EdrQuerier: Send + Sync {
 }
 
 /// Trait for `Processes` jobs
-#[async_trait]
+#[async_trait::async_trait]
 pub trait JobHandler: Send + Sync {
-    async fn status(&self, id: &str) -> Result<StatusInfo, anyhow::Error>;
+    async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
-    async fn delete(&self, id: &str) -> Result<(), anyhow::Error>;
+    async fn delete(&self, id: &str) -> anyhow::Result<()>;
 
-    async fn results(&self, id: &str) -> Result<Results, anyhow::Error>;
+    async fn results(&self, id: &str) -> anyhow::Result<Option<Results>>;
 }
 
 /// Trait for `Style` transactions
-#[async_trait]
+#[async_trait::async_trait]
 pub trait StyleTransactions: Send + Sync {
-    async fn list_styles(&self) -> Result<Styles, anyhow::Error>;
+    async fn list_styles(&self) -> anyhow::Result<Styles>;
 
-    async fn read_style(&self, id: &str) -> Result<Value, anyhow::Error>;
+    async fn read_style(&self, id: &str) -> anyhow::Result<Option<serde_json::Value>>;
 }
 
 /// Trait for `Tile` transacions
-#[async_trait]
+#[async_trait::async_trait]
 pub trait TileTransactions: Send + Sync {
     async fn tile(
         &self,
@@ -90,5 +96,5 @@ pub trait TileTransactions: Send + Sync {
         matrix: &str,
         row: u32,
         col: u32,
-    ) -> Result<Vec<u8>, anyhow::Error>;
+    ) -> anyhow::Result<Vec<u8>>;
 }

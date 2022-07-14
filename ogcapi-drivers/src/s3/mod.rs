@@ -2,8 +2,8 @@ mod collection;
 mod feature;
 
 use aws_sdk_s3::{
-    error::{DeleteObjectError, GetObjectError, PutObjectError},
-    output::{DeleteObjectOutput, GetObjectOutput, PutObjectOutput},
+    error::{DeleteObjectError, GetObjectError, ListObjectsError, PutObjectError},
+    output::{DeleteObjectOutput, GetObjectOutput, ListObjectsOutput, PutObjectOutput},
     types::SdkError,
     Client, Endpoint,
 };
@@ -11,8 +11,13 @@ use http::Uri;
 
 pub use aws_sdk_s3::types::ByteStream;
 
+/// S3 driver
+#[derive(Clone)]
 pub struct S3 {
+    /// S3 client
     pub client: Client,
+    /// Default bucket
+    pub bucket: Option<String>,
 }
 
 impl S3 {
@@ -29,17 +34,24 @@ impl S3 {
             aws_config::from_env().load().await
         };
 
-        S3::new_from(Client::new(&config)).await
+        S3::new_with(Client::new(&config)).await
     }
 
-    pub async fn new_from(client: Client) -> Self {
-        S3 { client }
+    pub async fn new_with(client: Client) -> Self {
+        S3 {
+            client,
+            bucket: None,
+        }
+    }
+
+    pub fn set_default_bucket(&mut self, bucket: impl ToString) {
+        self.bucket = Some(bucket.to_string())
     }
 
     pub async fn put_object(
         &self,
-        bucket: &str,
-        key: &str,
+        bucket: impl Into<String>,
+        key: impl Into<String>,
         data: Vec<u8>,
         content_type: Option<String>,
     ) -> Result<PutObjectOutput, SdkError<PutObjectError>> {
@@ -55,8 +67,8 @@ impl S3 {
 
     pub async fn get_object(
         &self,
-        bucket: &str,
-        key: &str,
+        bucket: impl Into<String>,
+        key: impl Into<String>,
     ) -> Result<GetObjectOutput, SdkError<GetObjectError>> {
         self.client
             .get_object()
@@ -68,8 +80,8 @@ impl S3 {
 
     pub async fn delete_object(
         &self,
-        bucket: &str,
-        key: &str,
+        bucket: impl Into<String>,
+        key: impl Into<String>,
     ) -> Result<DeleteObjectOutput, SdkError<DeleteObjectError>> {
         self.client
             .delete_object()
@@ -77,5 +89,19 @@ impl S3 {
             .key(key)
             .send()
             .await
+    }
+
+    pub async fn list_objects(
+        &self,
+        bucket: impl Into<String>,
+        prefix: Option<impl Into<String>>,
+    ) -> Result<ListObjectsOutput, SdkError<ListObjectsError>> {
+        let mut list_objects = self.client.list_objects().bucket(bucket);
+
+        if let Some(prefix) = prefix {
+            list_objects = list_objects.prefix(prefix);
+        }
+
+        list_objects.send().await
     }
 }

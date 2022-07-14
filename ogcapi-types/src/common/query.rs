@@ -7,6 +7,8 @@ use crate::common::{Bbox, Crs, Datetime};
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
+    #[serde(default)]
+    #[serde_as(as = "Option<DisplayFromStr>")]
     pub bbox: Option<Bbox>,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]

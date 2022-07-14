@@ -1,19 +1,15 @@
-use anyhow::Ok;
-use async_trait::async_trait;
-use sqlx::types::Json;
-
 use ogcapi_types::{
-    common::{Bbox, Crs},
+    common::{Bbox, Crs, Datetime, IntervalDatetime},
     features::{Feature, FeatureCollection, Query},
 };
 
-use crate::FeatureTransactions;
+use crate::{CollectionTransactions, FeatureTransactions};
 
 use super::Db;
 
-#[async_trait]
+#[async_trait::async_trait]
 impl FeatureTransactions for Db {
-    async fn create_feature(&self, feature: &Feature) -> Result<String, anyhow::Error> {
+    async fn create_feature(&self, feature: &Feature) -> anyhow::Result<String> {
         let collection = feature.collection.as_ref().unwrap();
 
         let id: (String,) = sqlx::query_as(&format!(
@@ -49,8 +45,8 @@ impl FeatureTransactions for Db {
         collection: &str,
         id: &str,
         crs: &Crs,
-    ) -> Result<Feature, anyhow::Error> {
-        let feature: Json<Feature> = sqlx::query_scalar(&format!(
+    ) -> anyhow::Result<Option<Feature>> {
+        let feature: Option<sqlx::types::Json<Feature>> = sqlx::query_scalar(&format!(
             r#"
             SELECT row_to_json(t)
             FROM (
@@ -69,14 +65,14 @@ impl FeatureTransactions for Db {
             collection
         ))
         .bind(id)
-        .bind(crs.to_owned().try_into().unwrap_or(4326))
-        .fetch_one(&self.pool)
+        .bind(crs.as_srid())
+        .fetch_optional(&self.pool)
         .await?;
 
-        Ok(feature.0)
+        Ok(feature.map(|f| f.0))
     }
 
-    async fn update_feature(&self, feature: &Feature) -> Result<(), anyhow::Error> {
+    async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()> {
         sqlx::query(&format!(
             r#"
             UPDATE items."{0}"
@@ -97,7 +93,7 @@ impl FeatureTransactions for Db {
         Ok(())
     }
 
-    async fn delete_feature(&self, collection: &str, id: &str) -> Result<(), anyhow::Error> {
+    async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()> {
         sqlx::query(&format!(
             r#"DELETE FROM items."{}" WHERE id = $1"#,
             collection
@@ -113,31 +109,20 @@ impl FeatureTransactions for Db {
         &self,
         collection: &str,
         query: &Query,
-    ) -> Result<FeatureCollection, anyhow::Error> {
-        let mut sql = vec![format!(
-            r#"
-            SELECT
-                id,
-                '{0}' as collection,
-                properties,
-                ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
-                links,
-                assets,
-                bbox
-            FROM items."{0}"
-            "#,
-            collection
-        )];
+    ) -> anyhow::Result<FeatureCollection> {
+        let mut where_conditions = vec!["TRUE".to_owned()];
 
+        // bbox
         if let Some(bbox) = query.bbox.as_ref() {
-            let bbox_srid: i32 = query
-                .bbox_crs
-                .to_owned()
-                .unwrap_or_default()
-                .try_into()
-                .unwrap();
+            // TODO: Properly handle crs and bbox transformation
+            let bbox_srid: i32 = query.bbox_crs.as_srid();
 
-            let storage_srid = self.storage_srid(collection).await?;
+            let c = self.read_collection(collection).await?;
+            let storage_srid = c
+                .expect("collection exists")
+                .storage_crs
+                .unwrap_or_default()
+                .as_srid();
 
             let envelope = match bbox {
                 Bbox::Bbox2D(bbox) => format!(
@@ -149,46 +134,122 @@ impl FeatureTransactions for Db {
                     bbox[0], bbox[1], bbox[3], bbox[4], bbox_srid
                 ),
             };
-            sql.push(format!(
-                "WHERE geom && ST_Transform({}, {})",
+            where_conditions.push(format!(
+                "geom && ST_Transform({}, {})",
                 envelope, storage_srid
             ));
         }
 
-        let srid = query
-            .crs
-            .to_owned()
-            .unwrap_or_default()
-            .try_into()
-            .unwrap_or(4326);
+        // datetime
+        if let Some(datetime) = query.datetime.as_ref() {
+            let (from, to) = match datetime {
+                Datetime::Datetime(_) => (
+                    format!("CAST('{datetime}' AS timestamptz)"),
+                    format!("CAST('{datetime}' AS timestamptz)"),
+                ),
+                Datetime::Interval { from, to } => {
+                    let from = match from {
+                        IntervalDatetime::Datetime(_) => {
+                            format!("CAST('{from}' AS timestamptz)")
+                        }
+                        IntervalDatetime::Open => "to_timestamp('-infinity')".to_owned(),
+                    };
+                    let to = match to {
+                        IntervalDatetime::Datetime(_) => {
+                            format!("CAST('{to}' AS timestamptz)")
+                        }
+                        IntervalDatetime::Open => "NOW()".to_owned(),
+                    };
+                    (from, to)
+                }
+            };
 
-        let number_matched = sqlx::query(sql.join(" ").as_str())
-            .bind(srid)
-            .execute(&self.pool)
-            .await?
-            .rows_affected();
-
-        if let Some(limit) = query.limit {
-            sql.push(format!("LIMIT {}", limit));
-            if let Some(offset) = query.offset {
-                sql.push(format!("OFFSET {}", offset));
-            }
+            where_conditions.push(format!(
+                r#"
+                (
+                    CASE
+                        WHEN (properties->'datetime') IS NOT NULL THEN (
+                            CAST(properties->>'datetime' AS timestamptz)
+                            BETWEEN {from} AND {to}
+                        )
+                        WHEN (
+                            (properties->'datetime') IS NULL
+                            AND (properties->'start_datetime') IS NOT NULL
+                            AND (properties->'end_datetime') IS NOT NULL
+                        ) THEN (
+                            ({from}, {to}) OVERLAPS (
+                                CAST(properties->>'start_datetime' AS timestamptz),
+                                CAST(properties->>'end_datetime' AS timestamptz)
+                            )
+                        )
+                        ELSE TRUE
+                    END
+                )
+                "#
+            ));
         }
 
-        let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
+        // kv
+        for (k, v) in query.additional_parameters.iter() {
+            where_conditions.push(format!(
+                r#"
+                CASE
+                    WHEN properties ? '{k}' THEN (
+                        CASE
+                            WHEN jsonb_typeof(properties -> '{k}') = 'number'
+                            THEN RTRIM(properties ->> '{k}', '.0') = RTRIM('{v}', '.0')
+                            ELSE properties ->> '{k}' = '{v}'
+                        END
+                    ) 
+                    ELSE TRUE
+                END
+                "#
+            ));
+        }
+
+        let conditions = where_conditions.join(" AND ");
+
+        // count
+        let number_matched: (i64,) = sqlx::query_as(&format!(
+            r#"
+            SELECT count(*) FROM items."{collection}"
+            WHERE {conditions}
+            "#,
+        ))
+        .fetch_one(&self.pool)
+        .await?;
+
+        // fetch
+        let features: Option<sqlx::types::Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
             r#"
             SELECT array_to_json(array_agg(row_to_json(t)))
-            FROM ( {} ) t
+            FROM (
+                SELECT
+                    id,
+                    '{collection}' as collection,
+                    properties,
+                    ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
+                    links,
+                    assets,
+                    bbox
+                FROM items."{collection}"
+                WHERE {conditions}
+                LIMIT {}
+                OFFSET {}
+            ) t
             "#,
-            sql.join(" ")
+            query
+                .limit
+                .map_or_else(|| String::from("NULL"), |l| l.to_string()),
+            query.offset.unwrap_or(0)
         ))
-        .bind(srid)
+        .bind(query.crs.as_srid())
         .fetch_one(&self.pool)
         .await?;
 
         let features = features.map(|f| f.0).unwrap_or_default();
         let mut fc = FeatureCollection::new(features);
-        fc.number_matched = Some(number_matched);
+        fc.number_matched = Some(number_matched.0 as u64);
 
         Ok(fc)
     }
