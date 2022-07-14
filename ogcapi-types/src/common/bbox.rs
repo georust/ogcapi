@@ -43,16 +43,6 @@ impl str::FromStr for Bbox {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = if s.trim().starts_with('[') {
-            s.trim()
-                .strip_prefix('[')
-                .and_then(|s| s.strip_suffix(']'))
-                .unwrap()
-                .to_owned()
-        } else {
-            s.to_owned()
-        };
-
         let numbers: Vec<f64> = s
             .split(',')
             .map(|d| d.trim().parse::<f64>())
@@ -105,11 +95,8 @@ mod tests {
 
     #[test]
     fn from_str() {
-        let s1 = "160.6,-55.95, -170, -25.89";
-        let _bbox: Bbox = Bbox::from_str(s1).unwrap();
-
-        let s2 = "[ 160.6, -55.95, -170, -25.89 ]";
-        let _bbox: Bbox = Bbox::from_str(s2).unwrap();
+        let s = "160.6,-55.95, -170, -25.89";
+        let _bbox: Bbox = Bbox::from_str(s).unwrap();
     }
 
     #[test]

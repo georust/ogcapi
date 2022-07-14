@@ -82,14 +82,11 @@ impl SearchParams {
 pub struct SearchBody {
     pub limit: Option<u64>,
     pub offset: Option<u64>,
-    #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
     pub bbox: Option<Bbox>,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub datetime: Option<Datetime>,
     #[serde(default)]
-    // #[serde_as(as = "Option<DisplayFromStr>")]
     pub intersects: Option<Geometry>,
     pub ids: Option<ListParam>,
     pub collections: Option<ListParam>,

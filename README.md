@@ -84,14 +84,14 @@ Navigate to <http://localhost:8080/teamengine/> to execute the test suite. For d
 
 ## Example Project
 
-STAC enabled OGC API Features: https://github.com/camptocamp/oapi-poc
+STAC enabled OGC API Features: <https://github.com/camptocamp/oapi-poc>
 
 ## License
 
 Licensed under either of
 
- * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 

@@ -1,5 +1,5 @@
 use ogcapi_types::{
-    common::{Bbox, Crs},
+    common::{Bbox, Crs, Datetime, IntervalDatetime},
     features::{Feature, FeatureCollection, Query},
 };
 
@@ -137,6 +137,55 @@ impl FeatureTransactions for Db {
             where_conditions.push(format!(
                 "geom && ST_Transform({}, {})",
                 envelope, storage_srid
+            ));
+        }
+
+        // datetime
+        if let Some(datetime) = query.datetime.as_ref() {
+            let (from, to) = match datetime {
+                Datetime::Datetime(_) => (
+                    format!("CAST('{datetime}' AS timestamptz)"),
+                    format!("CAST('{datetime}' AS timestamptz)"),
+                ),
+                Datetime::Interval { from, to } => {
+                    let from = match from {
+                        IntervalDatetime::Datetime(_) => {
+                            format!("CAST('{from}' AS timestamptz)")
+                        }
+                        IntervalDatetime::Open => "to_timestamp('-infinity')".to_owned(),
+                    };
+                    let to = match to {
+                        IntervalDatetime::Datetime(_) => {
+                            format!("CAST('{to}' AS timestamptz)")
+                        }
+                        IntervalDatetime::Open => "NOW()".to_owned(),
+                    };
+                    (from, to)
+                }
+            };
+
+            where_conditions.push(format!(
+                r#"
+                (
+                    CASE
+                        WHEN (properties->'datetime') IS NOT NULL THEN (
+                            CAST(properties->>'datetime' AS timestamptz)
+                            BETWEEN {from} AND {to}
+                        )
+                        WHEN (
+                            (properties->'datetime') IS NULL
+                            AND (properties->'start_datetime') IS NOT NULL
+                            AND (properties->'end_datetime') IS NOT NULL
+                        ) THEN (
+                            ({from}, {to}) OVERLAPS (
+                                CAST(properties->>'start_datetime' AS timestamptz),
+                                CAST(properties->>'end_datetime' AS timestamptz)
+                            )
+                        )
+                        ELSE TRUE
+                    END
+                )
+                "#
             ));
         }
 

@@ -20,9 +20,9 @@ use crate::{
 };
 
 const CONFORMANCE: [&str; 3] = [
-    "http://www.opengis.net/spec/ogcapi-common-1/1.0/req/core",
-    "http://www.opengis.net/spec/ogcapi-common-2/1.0/req/collections",
-    "http://www.opengis.net/spec/ogcapi_common-2/1.0/req/json",
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
+    "http://www.opengis.net/spec/ogcapi_common-2/1.0/conf/json",
 ];
 
 /// Create new collection metadata
