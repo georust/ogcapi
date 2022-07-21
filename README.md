@@ -1,4 +1,4 @@
-# OGC API
+# `ogcapi`
 
 [OGC API](https://ogcapi.ogc.org/) building blocks implemented in [Rust](https://www.rust-lang.org/)
 

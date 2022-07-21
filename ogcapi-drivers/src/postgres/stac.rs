@@ -14,11 +14,11 @@ impl StacSeach for Db {
         let mut tx = self.pool.begin().await?;
 
         // WITH
-        let mut collection_ids = sqlx::query_scalar!(
+        let mut collection_ids: Vec<String> = sqlx::query_scalar(
             r#"
             SELECT id FROM meta.collections 
             WHERE collection ->> 'type' = 'Collection'
-            "#
+            "#,
         )
         .fetch_all(&mut tx)
         .await?;

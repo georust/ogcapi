@@ -60,13 +60,13 @@ impl CollectionTransactions for Db {
 
     async fn read_collection(&self, id: &str) -> anyhow::Result<Option<Collection>> {
         // TODO: cache
-        let collection = sqlx::query_scalar!(
+        let collection: Option<sqlx::types::Json<Collection>> = sqlx::query_scalar(
             r#"
-            SELECT collection as "collection!: sqlx::types::Json<Collection>" 
+            SELECT collection as "collection!" 
             FROM meta.collections WHERE id = $1
             "#,
-            id
         )
+        .bind(id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -101,14 +101,15 @@ impl CollectionTransactions for Db {
     }
 
     async fn list_collections(&self, _query: &Query) -> anyhow::Result<Collections> {
-        let collections = sqlx::query_scalar!(
+        let collections: Option<sqlx::types::Json<Vec<Collection>>> = sqlx::query_scalar(
             r#"
-            SELECT array_to_json(array_agg(collection)) as "collections: sqlx::types::Json<Vec<Collection>>" 
+            SELECT array_to_json(array_agg(collection))
             FROM meta.collections
             WHERE collection ->> 'type' = 'Collection'
-            "#)
-            .fetch_one(&self.pool)
-            .await?;
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
 
         let collections = collections.map(|c| c.0).unwrap_or_default();
         let mut collections = Collections::new(collections);

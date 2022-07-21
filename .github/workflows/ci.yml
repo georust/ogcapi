@@ -30,4 +30,4 @@ jobs:
         run: docker exec -i ogcapi cargo clippy -- -D warnings
 
       - name: Test
-        run: docker exec -i ogcapi cargo test --workspace
+        run: docker exec -i ogcapi cargo test --workspace --all-features
