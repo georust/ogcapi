@@ -2,8 +2,8 @@ mod collection;
 mod feature;
 
 use aws_sdk_s3::{
-    error::{DeleteObjectError, GetObjectError, ListObjectsError, PutObjectError},
-    output::{DeleteObjectOutput, GetObjectOutput, ListObjectsOutput, PutObjectOutput},
+    error::{DeleteObjectError, GetObjectError, PutObjectError},
+    output::{DeleteObjectOutput, GetObjectOutput, PutObjectOutput},
     types::SdkError,
     Client, Endpoint,
 };
@@ -89,19 +89,5 @@ impl S3 {
             .key(key)
             .send()
             .await
-    }
-
-    pub async fn list_objects(
-        &self,
-        bucket: impl Into<String>,
-        prefix: Option<impl Into<String>>,
-    ) -> Result<ListObjectsOutput, SdkError<ListObjectsError>> {
-        let mut list_objects = self.client.list_objects().bucket(bucket);
-
-        if let Some(prefix) = prefix {
-            list_objects = list_objects.prefix(prefix);
-        }
-
-        list_objects.send().await
     }
 }
