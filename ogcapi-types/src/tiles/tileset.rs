@@ -2,13 +2,13 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::DisplayFromStr;
 
 use crate::common::Links;
 
 use super::{BoundingBox2D, Crs, Point2D, TitleDescriptionKeywords};
 
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +19,7 @@ pub struct TileSets {
 
 /// A minimal tileset element for use within a list of tilesets linking to
 /// full description of those tilesets.
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,7 +35,7 @@ pub struct TileSetItem {
 
 /// A resource describing a tileset based on the OGC TileSet Metadata Standard.
 /// At least one of the 'TileMatrixSet',  or a link with 'rel' tiling-scheme"
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,7 +90,7 @@ pub struct TileSet {
     media_types: Option<Vec<String>>,
 }
 
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -148,7 +148,7 @@ struct GeospatialData {
     links: Option<Links>,
 }
 
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -164,7 +164,7 @@ struct TilePoint {
     cell_size: Option<f64>,
 }
 
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

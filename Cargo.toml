@@ -8,3 +8,9 @@ members = [
     "ogcapi-types",
 ]
 default-members = ["ogcapi"]
+
+[patch.crates-io]
+ogcapi-types = { path = "ogcapi-types" }
+ogcapi-drivers = { path = "ogcapi-drivers" }
+ogcapi-services = { path = "ogcapi-services" }
+ogcapi-client = { path = "ogcapi-client" }

@@ -13,7 +13,7 @@ pub use config::Config;
 pub use error::Error;
 pub use openapi::OpenAPI;
 pub use service::Service;
-pub use state::State;
+pub use state::AppState;
 
 #[cfg(feature = "processes")]
 pub use processor::{Greeter, Processor};

@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use axum::{
-    extract::{Extension, Path},
+    extract::{Path, State},
     headers::HeaderMap,
     http::{header::LOCATION, StatusCode},
     Json,
@@ -16,7 +14,7 @@ use ogcapi_types::common::{
 
 use crate::{
     extractors::{Qs, RemoteUrl},
-    Error, Result, State,
+    AppState, Error, Result,
 };
 
 const CONFORMANCE: [&str; 3] = [
@@ -27,9 +25,9 @@ const CONFORMANCE: [&str; 3] = [
 
 /// Create new collection metadata
 async fn create(
-    Json(collection): Json<Collection>,
+    State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
+    Json(collection): Json<Collection>,
 ) -> Result<(StatusCode, HeaderMap)> {
     if state
         .drivers
@@ -60,9 +58,9 @@ async fn create(
 
 /// Get collection metadata
 async fn read(
+    State(state): State<AppState>,
     Path(collection_id): Path<String>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
 ) -> Result<Json<Collection>> {
     let mut collection = state
         .drivers
@@ -99,9 +97,9 @@ async fn read(
 
 /// Update collection metadata
 async fn update(
+    State(state): State<AppState>,
     Path(collection_id): Path<String>,
     Json(mut collection): Json<Collection>,
-    Extension(state): Extension<Arc<State>>,
 ) -> Result<StatusCode> {
     collection.id = collection_id;
 
@@ -117,7 +115,7 @@ async fn update(
 /// Delete collection metadata
 async fn remove(
     Path(collection_id): Path<String>,
-    Extension(state): Extension<Arc<State>>,
+    State(state): State<AppState>,
 ) -> Result<StatusCode> {
     state
         .drivers
@@ -131,7 +129,7 @@ async fn remove(
 async fn collections(
     Qs(query): Qs<Query>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
+    State(state): State<AppState>,
 ) -> Result<Json<Collections>> {
     let mut collections = state.drivers.collections.list_collections(&query).await?;
 
@@ -159,7 +157,7 @@ async fn collections(
     Ok(Json(collections))
 }
 
-pub(crate) fn router(state: &State) -> Router {
+pub(crate) fn router(state: &AppState) -> Router<AppState> {
     let mut root = state.root.write().unwrap();
     root.links.push(
         Link::new("collections", DATA)
@@ -169,7 +167,7 @@ pub(crate) fn router(state: &State) -> Router {
 
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::new()
+    Router::with_state(state.clone())
         .route("/collections", get(collections).post(create))
         .route(
             "/collections/:collection_id",

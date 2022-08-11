@@ -1,6 +1,4 @@
-#[cfg(feature = "processes")]
-use std::collections::BTreeMap;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 #[cfg(feature = "edr")]
 use ogcapi_drivers::EdrQuerier;
@@ -21,16 +19,17 @@ use crate::Processor;
 use crate::{openapi::OPENAPI, Config, ConfigParser, OpenAPI};
 
 /// Application state
-pub struct State {
-    pub root: RwLock<LandingPage>,
-    pub conformance: RwLock<Conformance>,
+#[derive(Clone)]
+pub struct AppState {
+    pub root: Arc<RwLock<LandingPage>>,
+    pub conformance: Arc<RwLock<Conformance>>,
     pub openapi: OpenAPI,
-    pub drivers: Drivers,
+    pub drivers: Arc<Drivers>,
     pub db: Db,
     #[cfg(feature = "stac")]
     pub s3: ogcapi_drivers::s3::S3,
     #[cfg(feature = "processes")]
-    pub processors: BTreeMap<String, Box<dyn Processor>>,
+    pub processors: Arc<RwLock<std::collections::HashMap<String, Box<dyn Processor>>>>,
 }
 
 // TODO: Introduce service trait
@@ -48,10 +47,10 @@ pub struct Drivers {
     pub tiles: Box<dyn TileTransactions>,
 }
 
-impl State {
+impl AppState {
     pub async fn new() -> Self {
         let config = Config::parse();
-        State::new_from(&config).await
+        AppState::new_from(&config).await
     }
 
     pub async fn new_from(config: &Config) -> Self {
@@ -63,7 +62,7 @@ impl State {
 
         let db = Db::setup(&config.database_url).await.unwrap();
 
-        State::new_with(db, openapi).await
+        AppState::new_with(db, openapi).await
     }
 
     pub async fn new_with(db: Db, openapi: OpenAPI) -> Self {
@@ -94,11 +93,11 @@ impl State {
             tiles: Box::new(db.clone()),
         };
 
-        State {
-            root: RwLock::new(LandingPage::new("root").description("root")),
-            conformance: RwLock::new(conformace),
+        AppState {
+            root: Arc::new(RwLock::new(LandingPage::new("root").description("root"))),
+            conformance: Arc::new(RwLock::new(conformace)),
             openapi,
-            drivers,
+            drivers: Arc::new(drivers),
             db,
             #[cfg(feature = "stac")]
             s3: ogcapi_drivers::s3::S3::new().await,
@@ -108,7 +107,7 @@ impl State {
     }
 
     pub fn root(mut self, root: LandingPage) -> Self {
-        self.root = RwLock::new(root);
+        self.root = Arc::new(RwLock::new(root));
         self
     }
 
@@ -124,9 +123,9 @@ impl State {
     }
 
     #[cfg(feature = "processes")]
-    pub fn processors(mut self, processors: Vec<Box<dyn Processor>>) -> Self {
+    pub fn processors(self, processors: Vec<Box<dyn Processor>>) -> Self {
         for p in processors {
-            self.processors.insert(p.id(), p);
+            self.processors.write().unwrap().insert(p.id(), p);
         }
         self
     }

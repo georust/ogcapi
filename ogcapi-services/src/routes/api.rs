@@ -1,19 +1,15 @@
-use std::sync::Arc;
-
-use axum::{
-    extract::Extension, headers::HeaderMap, http::header::CONTENT_TYPE, response::Html, Json,
-};
+use axum::{extract::State, headers::HeaderMap, http::header::CONTENT_TYPE, response::Html, Json};
 use openapiv3::OpenAPI;
 
 use ogcapi_types::common::media_type::OPEN_API_JSON;
 
-use crate::{Result, State};
+use crate::{AppState, Result};
 
-pub(crate) async fn api(Extension(state): Extension<Arc<State>>) -> (HeaderMap, Json<OpenAPI>) {
+pub(crate) async fn api(State(state): State<AppState>) -> (HeaderMap, Json<OpenAPI>) {
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, OPEN_API_JSON.parse().unwrap());
 
-    (headers, Json(state.openapi.0.to_owned()))
+    (headers, Json(state.openapi.0))
 }
 
 pub(crate) async fn redoc() -> Result<Html<String>> {

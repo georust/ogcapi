@@ -10,6 +10,7 @@ use axum::{
         header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, PROXY_AUTHORIZATION, SET_COOKIE},
         Response, StatusCode,
     },
+    response::IntoResponse,
     routing::get,
     Extension, Router,
 };
@@ -26,12 +27,12 @@ use tower_http::{
 
 use ogcapi_types::common::Exception;
 
-use crate::{routes, Config, ConfigParser, State};
+use crate::{routes, AppState, Config, ConfigParser, Error};
 
 /// OGC API Services
 pub struct Service {
-    pub state: State,
-    pub router: Router,
+    pub state: AppState,
+    pub router: Router<AppState>,
     listener: TcpListener,
 }
 
@@ -41,14 +42,14 @@ impl Service {
         let config = Config::parse();
 
         // state
-        let state = State::new_from(&config).await;
+        let state = AppState::new_from(&config).await;
 
         Service::new_with(&config, state).await
     }
 
-    pub async fn new_with(config: &Config, state: State) -> Self {
+    pub async fn new_with(config: &Config, state: AppState) -> Self {
         // router
-        let router = Router::new()
+        let router = Router::with_state(state.clone())
             .route("/", get(routes::root))
             .route("/api", get(routes::api::api))
             .route("/redoc", get(routes::api::redoc))
@@ -79,8 +80,7 @@ impl Service {
         let router = router.merge(routes::processes::router(&state));
 
         // add a fallback service for handling routes to unknown paths
-        // XXX: this breaks nesting routers
-        // let router = router.fallback(handler_404.into_service());
+        let router = router.fallback(handler_404);
 
         // middleware stack
         let router = router.layer(
@@ -136,9 +136,9 @@ impl Service {
 }
 
 /// Custom 404 handler
-// async fn handler_404() -> impl IntoResponse {
-//     Error::NotFound
-// }
+async fn handler_404() -> impl IntoResponse {
+    Error::NotFound
+}
 
 /// Custom panic handler
 fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response<Body> {

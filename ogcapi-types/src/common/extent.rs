@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::DisplayFromStr;
 
 use crate::common::{Bbox, Crs};
 
@@ -20,7 +20,7 @@ impl Default for Extent {
     }
 }
 
-#[serde_as]
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SpatialExtent {
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -39,7 +39,7 @@ impl Default for SpatialExtent {
     }
 }
 
-#[serde_as]
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct TemporalExtent {
     #[serde(skip_serializing_if = "Vec::is_empty")]

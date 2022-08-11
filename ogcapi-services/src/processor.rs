@@ -1,18 +1,16 @@
-use axum::{
-    async_trait,
-    response::{IntoResponse, Response},
-};
+use axum::response::{IntoResponse, Response};
+use dyn_clone::DynClone;
 use schemars::{schema_for, JsonSchema};
 use serde::Deserialize;
 use url::Url;
 
 use ogcapi_types::processes::{Execute, Process};
 
-use crate::{Result, State};
+use crate::{AppState, Result};
 
-#[async_trait]
+#[axum::async_trait]
 /// Trait for defining and executing a [Process]
-pub trait Processor: Send + Sync {
+pub trait Processor: Send + Sync + DynClone {
     /// Returns the process id (must be unique)
     fn id(&self) -> String;
 
@@ -20,8 +18,10 @@ pub trait Processor: Send + Sync {
     fn process(&self) -> Process;
 
     /// Executes the Process and returns a response
-    async fn execute(&self, execute: Execute, state: &State, url: &Url) -> Result<Response>;
+    async fn execute(&self, execute: Execute, state: &AppState, url: &Url) -> Result<Response>;
 }
+
+dyn_clone::clone_trait_object!(Processor);
 
 /// Example Processor
 ///
@@ -31,6 +31,7 @@ pub trait Processor: Send + Sync {
 ///         -H 'Content-Type: application/json' \
 ///         -d '{"inputs": { "name": "World" } }'
 /// ```
+#[derive(Clone)]
 pub struct Greeter;
 
 /// Inputs for the `greet` process
@@ -44,7 +45,7 @@ struct GreeterInputs {
 #[derive(JsonSchema)]
 struct GreeterOutputs(String);
 
-#[async_trait]
+#[axum::async_trait]
 impl Processor for Greeter {
     fn id(&self) -> String {
         "greet".to_string()
@@ -58,7 +59,7 @@ impl Processor for Greeter {
         )
     }
 
-    async fn execute(&self, execute: Execute, _state: &State, _url: &Url) -> Result<Response> {
+    async fn execute(&self, execute: Execute, _state: &AppState, _url: &Url) -> Result<Response> {
         let value = serde_json::to_value(execute.inputs).unwrap();
         let inputs: GreeterInputs = serde_json::from_value(value).unwrap();
         Ok(format!("Hello, {}!\n", inputs.name).into_response())

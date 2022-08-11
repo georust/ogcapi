@@ -1,11 +1,11 @@
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
-use serde_with::{formats::CommaSeparator, serde_as, DisplayFromStr, StringWithSeparator};
+use serde_with::{formats::CommaSeparator, DisplayFromStr, StringWithSeparator};
 
 use crate::common::{Bbox, Datetime};
 
 /// Search parameters for searching a SpatioTemporal Asset Catalog.
-#[serde_as]
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct SearchParams {
     pub limit: Option<u64>,
@@ -85,7 +85,7 @@ impl SearchParams {
 }
 
 /// Search body for searching a SpatioTemporal Asset Catalog.
-#[serde_as]
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct SearchBody {
     pub limit: Option<u64>,

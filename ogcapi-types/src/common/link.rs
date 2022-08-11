@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
 
 /// Hyperlink to enable Hypermedia Access
-#[skip_serializing_none]
+#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Link {
     /// Supplies the URI to a remote resource (or resource fragment).

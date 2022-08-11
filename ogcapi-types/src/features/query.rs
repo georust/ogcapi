@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::DisplayFromStr;
 
 use crate::common::{Bbox, Crs, Datetime};
 
-#[serde_as]
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Query {

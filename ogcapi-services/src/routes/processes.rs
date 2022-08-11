@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use axum::{
-    extract::{Extension, Multipart, Path, Query},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::Response,
     routing::{get, post},
@@ -15,10 +13,10 @@ use ogcapi_types::{
         media_type::JSON,
         Link,
     },
-    processes::{Execute as ProcessExecute, Process, ProcessList, ProcessQuery, ProcessSummary},
+    processes::{Execute, Process, ProcessList, ProcessQuery, ProcessSummary},
 };
 
-use crate::{extractors::RemoteUrl, Error, Result, State};
+use crate::{extractors::RemoteUrl, AppState, Error, Result};
 
 const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
@@ -32,20 +30,24 @@ const CONFORMANCE: [&str; 4] = [
 ];
 
 async fn processes(
-    Query(mut query): Query<ProcessQuery>,
+    State(state): State<AppState>,
     RemoteUrl(mut url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
+    Query(mut query): Query<ProcessQuery>,
 ) -> Result<Json<ProcessList>> {
-    let limit = query.limit.unwrap_or(state.processors.len());
+    let limit = query
+        .limit
+        .unwrap_or_else(|| state.processors.read().unwrap().len());
     let offset = query.offset.unwrap_or(0);
 
     let mut summaries: Vec<ProcessSummary> = state
         .processors
-        .values()
+        .read()
+        .unwrap()
+        .clone()
         .into_iter()
         .skip(offset)
         .take(limit)
-        .map(|p| p.process().summary)
+        .map(|(_id, p)| p.process().summary)
         .collect();
 
     let mut links = vec![Link::new(&url, SELF).mediatype(JSON)];
@@ -85,11 +87,11 @@ async fn processes(
 }
 
 async fn process(
-    Path(id): Path<String>,
+    State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
+    Path(id): Path<String>,
 ) -> Result<Json<Process>> {
-    match state.processors.get(&id) {
+    match state.processors.read().unwrap().get(&id) {
         Some(processor) => {
             let mut process = processor.process();
 
@@ -105,38 +107,15 @@ async fn process(
 }
 
 async fn execution(
-    Path(id): Path<String>,
-    json: Option<Json<ProcessExecute>>,
-    multipart: Option<Multipart>,
+    State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
+    Path(id): Path<String>,
+    Json(execute): Json<Execute>,
 ) -> Result<Response> {
-    let mut execute: Option<ProcessExecute> = None;
-
-    if let Some(Json(e)) = json {
-        execute = Some(e);
-    }
-
-    if let Some(mut multipart) = multipart {
-        while let Some(field) = multipart.next_field().await.unwrap() {
-            tracing::debug!("{:#?}", field);
-            let data = field.bytes().await.expect("Get field data as bytes");
-            if let Ok(e) = serde_json::from_slice(&data) {
-                execute = Some(e);
-                break;
-            }
-        }
-    }
-
-    if execute.is_none() {
-        return Err(Error::Exception(
-            StatusCode::BAD_REQUEST,
-            "Unable to extract `ProcessExecute` from body".to_string(),
-        ));
-    }
-
-    match state.processors.get(&id) {
-        Some(processor) => processor.execute(execute.unwrap(), &state, &url).await,
+    let processors = state.processors.read().unwrap().clone();
+    let processor = processors.get(&id);
+    match processor {
+        Some(processor) => processor.execute(execute, &state, &url).await,
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
             format!("No process with id `{}`", id),
@@ -180,7 +159,7 @@ async fn execution(
 //     Ok(Json(results))
 // }
 
-pub(crate) fn router(state: &State) -> Router {
+pub(crate) fn router(state: &AppState) -> Router<AppState> {
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
         Link::new("processes", PROCESSES)
@@ -193,7 +172,7 @@ pub(crate) fn router(state: &State) -> Router {
 
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::new()
+    Router::with_state(state.clone())
         .route("/processes", get(processes))
         .route("/processes/:id", get(process))
         .route("/processes/:id/execution", post(execution))

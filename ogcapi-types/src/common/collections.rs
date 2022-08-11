@@ -1,13 +1,13 @@
 use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
+use serde_with::DisplayFromStr;
 
 use crate::common::{Crs, Links};
 
 use super::Collection;
 
-#[serde_as]
-#[skip_serializing_none]
+#[serde_with::serde_as]
+#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Collections {

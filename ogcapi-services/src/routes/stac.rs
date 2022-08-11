@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
 use axum::{
+    extract::State,
     http::{HeaderMap, StatusCode},
-    Extension, Json,
+    Json,
 };
 use hyper::header::CONTENT_TYPE;
 use ogcapi_drivers::StacSeach;
@@ -19,21 +18,21 @@ use url::Url;
 
 use crate::{
     extractors::{Qs, RemoteUrl},
-    Error, Result, State,
+    AppState, Error, Result,
 };
 
 pub(crate) async fn search_get(
+    State(state): State<AppState>,
     Qs(params): Qs<SearchParams>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     search(params, url, state).await
 }
 
 pub(crate) async fn search_post(
-    Json(params): Json<SearchBody>,
+    State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
+    Json(params): Json<SearchBody>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     search(params.into(), url, state).await
 }
@@ -41,7 +40,7 @@ pub(crate) async fn search_post(
 pub(crate) async fn search(
     mut params: SearchParams,
     mut url: Url,
-    state: Arc<State>,
+    state: AppState,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", params);
 

@@ -1,7 +1,7 @@
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // setup env
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
 
     // setup tracing
     ogcapi_services::telemetry::init();

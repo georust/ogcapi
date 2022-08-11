@@ -2,7 +2,7 @@ use std::{collections::HashSet, path::PathBuf};
 
 use gdal::{
     spatial_ref::{CoordTransform, SpatialRef},
-    vector::FieldValue,
+    vector::{FieldValue, LayerAccess},
 };
 use serde_json::{Map, Value};
 

@@ -1,7 +1,7 @@
 use std::num::NonZeroU64;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::DisplayFromStr;
 
 use crate::common::{Crs, Links};
 
@@ -15,7 +15,7 @@ pub struct TileMatrixSets {
 
 /// A minimal tile matrix set element for use within a list of tile matrix
 /// sets linking to a full definition.
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -38,7 +38,7 @@ pub struct TileMatrixSetItem {
 /// For tileset metadata, such a description (in `tileMatrixSet` property) is
 /// only required for offline use, as an alternative to a link with a
 /// `http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme` relation type.
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -62,7 +62,7 @@ pub struct TileMatrixSet {
     pub tile_matrices: Vec<TileMatrix>,
 }
 
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]

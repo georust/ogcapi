@@ -1,14 +1,14 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
+use serde_with::DisplayFromStr;
 
 use crate::common::{Crs, Extent, Links};
 
 pub const CRS_REF: &str = "#/crs";
 
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
-#[serde_as]
-#[skip_serializing_none]
+#[serde_with::serde_as]
+#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Collection {

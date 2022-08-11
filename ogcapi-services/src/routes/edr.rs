@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use axum::{
-    extract::{Extension, Path},
+    extract::{Path, State},
     headers::HeaderMap,
     http::header::CONTENT_TYPE,
     routing::get,
@@ -16,7 +14,7 @@ use ogcapi_types::{
 
 use crate::{
     extractors::{Qs, RemoteUrl},
-    Result, State,
+    AppState, Result,
 };
 
 const CONFORMANCE: [&str; 8] = [
@@ -35,7 +33,7 @@ async fn query(
     Path((collection_id, query_type)): Path<(String, QueryType)>,
     Qs(query): Qs<Query>,
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
+    State(state): State<AppState>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", query);
 
@@ -67,10 +65,10 @@ async fn query(
 
 // async fn instance() {}
 
-pub(crate) fn router(state: &State) -> Router {
+pub(crate) fn router(state: &AppState) -> Router<AppState> {
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::new().route("/collections/:collection_id/:query_type", get(query))
+    Router::with_state(state.clone()).route("/collections/:collection_id/:query_type", get(query))
     // .route("/collections/:collection_id/instances", get(instances))
     // .route("/collections/:collection_id/instances/:instance_id", get(instance))
     // .route("/collections/:collection_id/instances/:instance_id/:query_type", get(instance))

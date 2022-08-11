@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
 use anyhow::Context;
 use axum::{
-    extract::{Extension, Path},
+    extract::{Path, State},
     http::{
         header::{CONTENT_TYPE, LOCATION},
         HeaderMap, StatusCode,
@@ -22,7 +20,7 @@ use ogcapi_types::{
 
 use crate::{
     extractors::{Qs, RemoteUrl},
-    Error, Result, State,
+    AppState, Error, Result,
 };
 
 const CONFORMANCE: [&str; 4] = [
@@ -33,10 +31,10 @@ const CONFORMANCE: [&str; 4] = [
 ];
 
 async fn create(
+    State(state): State<AppState>,
+    RemoteUrl(url): RemoteUrl,
     Path(collection_id): Path<String>,
     Json(mut feature): Json<Feature>,
-    RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
 ) -> Result<(StatusCode, HeaderMap)> {
     feature.collection = Some(collection_id);
 
@@ -51,10 +49,10 @@ async fn create(
 }
 
 async fn read(
+    State(state): State<AppState>,
+    RemoteUrl(url): RemoteUrl,
     Path((collection_id, id)): Path<(String, String)>,
     Qs(query): Qs<Query>,
-    RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
 ) -> Result<(HeaderMap, Json<Feature>)> {
     let collection = state
         .drivers
@@ -93,9 +91,9 @@ async fn read(
 }
 
 async fn update(
+    State(state): State<AppState>,
     Path((collection_id, id)): Path<(String, String)>,
     Json(mut feature): Json<Feature>,
-    Extension(state): Extension<Arc<State>>,
 ) -> Result<StatusCode> {
     feature.id = Some(id);
     feature.collection = Some(collection_id);
@@ -106,8 +104,8 @@ async fn update(
 }
 
 async fn remove(
+    State(state): State<AppState>,
     Path((collection_id, id)): Path<(String, String)>,
-    Extension(state): Extension<Arc<State>>,
 ) -> Result<StatusCode> {
     state
         .drivers
@@ -119,10 +117,10 @@ async fn remove(
 }
 
 async fn items(
+    State(state): State<AppState>,
+    RemoteUrl(mut url): RemoteUrl,
     Path(collection_id): Path<String>,
     Qs(mut query): Qs<Query>,
-    RemoteUrl(mut url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", query);
 
@@ -212,10 +210,10 @@ async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Erro
     }
 }
 
-pub(crate) fn router(state: &State) -> Router {
+pub(crate) fn router(state: &AppState) -> Router<AppState> {
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::new()
+    Router::with_state(state.clone())
         .route("/collections/:collection_id/items", get(items).post(create))
         .route(
             "/collections/:collection_id/items/:id",

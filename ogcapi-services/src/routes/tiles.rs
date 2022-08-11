@@ -1,7 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use axum::{
-    extract::{Extension, Path},
+    extract::{Path, State},
     http::StatusCode,
     routing::get,
     Json, Router,
@@ -20,7 +20,7 @@ use ogcapi_types::{
 
 use crate::{
     extractors::{Qs, RemoteUrl},
-    Error, Result, State,
+    AppState, Error, Result,
 };
 
 const CONFORMANCE: [&str; 7] = [
@@ -103,7 +103,7 @@ async fn tiles() -> Result<Json<TileSets>> {
 async fn tile(
     Path(params): Path<TileParams>,
     Qs(query): Qs<Query>,
-    Extension(state): Extension<Arc<State>>,
+    State(state): State<AppState>,
 ) -> Result<Vec<u8>> {
     let tms = TMS
         .get()
@@ -125,7 +125,7 @@ async fn tile(
     Ok(tiles)
 }
 
-pub(crate) fn router(state: &State) -> Router {
+pub(crate) fn router(state: &AppState) -> Router<AppState> {
     let mut root = state.root.write().unwrap();
     root.links.push(
         Link::new("tiles", TILESETS_VECTOR)
@@ -153,7 +153,7 @@ pub(crate) fn router(state: &State) -> Router {
     TMS.set(tms_map).expect("set `TMS` once cell content");
     TM.set(tm).expect("set `TM` once cell content");
 
-    Router::new()
+    Router::with_state(state.clone())
         .route("/tileMatrixSets", get(tile_matrix_sets))
         .route("/tileMatrixSets/:tms_id", get(tile_matrix_set))
         .route("/tiles", get(tiles))

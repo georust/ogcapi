@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::DisplayFromStr;
 
 use crate::common::{Crs, Datetime};
 
@@ -17,7 +17,7 @@ pub enum QueryType {
     // Instances,
 }
 
-#[serde_as]
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {

@@ -1,9 +1,9 @@
 use serde::Deserialize;
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::DisplayFromStr;
 
 use crate::common::{Bbox, Crs, Datetime};
 
-#[serde_as]
+#[serde_with::serde_as]
 #[derive(Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {

@@ -13,9 +13,7 @@ pub(crate) mod styles;
 #[cfg(feature = "tiles")]
 pub(crate) mod tiles;
 
-use std::sync::Arc;
-
-use axum::{extract::Extension, Json};
+use axum::{extract::State, Json};
 
 #[cfg(feature = "stac")]
 use ogcapi_types::common::link_rel::SEARCH;
@@ -25,11 +23,11 @@ use ogcapi_types::common::{
     Conformance, LandingPage, Link, Linked,
 };
 
-use crate::{extractors::RemoteUrl, Result, State};
+use crate::{extractors::RemoteUrl, AppState, Result};
 
 pub(crate) async fn root(
     RemoteUrl(url): RemoteUrl,
-    Extension(state): Extension<Arc<State>>,
+    State(state): State<AppState>,
 ) -> Result<Json<LandingPage>> {
     let mut root = state.root.read().unwrap().to_owned();
 
@@ -61,6 +59,6 @@ pub(crate) async fn root(
     Ok(Json(root))
 }
 
-pub(crate) async fn conformance(Extension(state): Extension<Arc<State>>) -> Json<Conformance> {
+pub(crate) async fn conformance(State(state): State<AppState>) -> Json<Conformance> {
     Json(state.conformance.read().unwrap().to_owned())
 }

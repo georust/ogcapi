@@ -21,7 +21,7 @@ pub enum Command {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // setup env
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
 
     // setup tracing
     tracing_subscriber::registry()
@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
         #[cfg(feature = "services")]
         Command::Serve(config) => {
             // Application state
-            let state = ogcapi_services::State::new_from(&config)
+            let state = ogcapi_services::AppState::new_from(&config)
                 .await
                 .processors(vec![Box::new(ogcapi_services::Greeter)]);
 

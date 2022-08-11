@@ -80,7 +80,7 @@ impl Client {
     pub fn root(&self) -> Result<LandingPage, Error> {
         let root = self
             .root
-            .get_or_try_init(|| self.fetch::<LandingPage>(&self.endpoint.to_string()))?;
+            .get_or_try_init(|| self.fetch::<LandingPage>(self.endpoint.as_ref()))?;
         Ok(root.clone())
     }
 

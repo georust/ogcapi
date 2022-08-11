@@ -5,7 +5,7 @@ mod tileset;
 mod tms;
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
+use serde_with::DisplayFromStr;
 
 use crate::common::Crs;
 
@@ -15,7 +15,7 @@ type Point2D = [f64; 2];
 /// Ordered list of names of the dimensions defined in the CRS
 type OrderedAxes = [String; 2];
 
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TitleDescriptionKeywords {
@@ -35,7 +35,7 @@ pub struct Query {
 }
 
 /// Minimum bounding rectangle surrounding a 2D resource in the CRS indicated elsewere
-#[serde_as]
+#[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]

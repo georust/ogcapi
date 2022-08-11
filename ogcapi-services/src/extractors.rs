@@ -1,7 +1,7 @@
 use anyhow::Context;
 use axum::{
-    extract::{FromRequest, Host, OriginalUri, RequestParts},
-    http::StatusCode,
+    extract::{FromRequestParts, Host, OriginalUri},
+    http::{request::Parts, StatusCode},
 };
 use url::Url;
 
@@ -11,26 +11,26 @@ use crate::Error;
 pub(crate) struct RemoteUrl(pub Url);
 
 #[axum::async_trait]
-impl<B> FromRequest<B> for RemoteUrl
+impl<S> FromRequestParts<S> for RemoteUrl
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = Error;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let uri = OriginalUri::from_request(req)
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let uri = OriginalUri::from_request_parts(parts, state)
             .await
             .expect("Infalllible, hence this should never fail");
 
         let url = if uri.0.scheme().is_some() {
             uri.0.to_string()
         } else {
-            let host = Host::from_request(req)
+            let host = Host::from_request_parts(parts, state)
                 .await
                 .context("Unabe to extract host")?;
 
-            let proto = req
-                .headers()
+            let proto = parts
+                .headers
                 .get("X-Forwarded-Proto")
                 .and_then(|f| f.to_str().ok())
                 .unwrap_or("http");
@@ -46,15 +46,15 @@ where
 pub(crate) struct Qs<T>(pub(crate) T);
 
 #[axum::async_trait]
-impl<B, T> FromRequest<B> for Qs<T>
+impl<S, T> FromRequestParts<S> for Qs<T>
 where
-    B: Send,
+    S: Send + Sync,
     T: serde::de::DeserializeOwned,
 {
     type Rejection = Error;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let qs = req.uri().query().unwrap_or("");
+    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+        let qs = parts.uri.query().unwrap_or("");
         match serde_qs::from_str(qs) {
             Ok(query) => Ok(Self(query)),
             Err(e) => Err(Error::Exception(StatusCode::BAD_REQUEST, e.to_string())),
