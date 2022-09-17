@@ -9,9 +9,9 @@ use super::execute::InlineOrRefData;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct StatusInfo {
-    #[serde(rename = "processID")]
+    #[serde(rename = "processID", alias = "process_id")]
     pub process_id: Option<String>,
-    #[serde(rename = "jobID")]
+    #[serde(rename = "jobID", alias = "job_id")]
     pub job_id: String,
     pub status: StatusCode,
     pub message: Option<String>,
@@ -23,7 +23,7 @@ pub struct StatusInfo {
     pub links: Links,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum StatusCode {
     Accepted,

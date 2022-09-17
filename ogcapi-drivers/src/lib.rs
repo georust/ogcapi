@@ -71,9 +71,11 @@ pub trait EdrQuerier: Send + Sync {
 /// Trait for `Processes` jobs
 #[async_trait::async_trait]
 pub trait JobHandler: Send + Sync {
+    async fn register(&self, job: &StatusInfo) -> anyhow::Result<String>;
+
     async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
-    async fn delete(&self, id: &str) -> anyhow::Result<()>;
+    async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
     async fn results(&self, id: &str) -> anyhow::Result<Option<Results>>;
 }

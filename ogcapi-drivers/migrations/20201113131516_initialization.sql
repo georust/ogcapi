@@ -34,8 +34,8 @@ CREATE TABLE meta.styles (
 
 CREATE TABLE meta.jobs (
     job_id text PRIMARY KEY,
-    process_id text NOT NULL,
-    status json NOT NULL,
+    process_id text,
+    status jsonb NOT NULL,
     message text,
     created timestamptz,
     finished timestamptz,

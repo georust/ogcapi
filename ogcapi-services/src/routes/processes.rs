@@ -1,7 +1,7 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::Response,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -123,41 +123,57 @@ async fn execution(
     }
 }
 
-// async fn jobs() {
-//     todo!()
-// }
+async fn jobs() {
+    todo!()
+}
 
-// async fn status(
-//     RemoteUrl(url): RemoteUrl,
-//     Path(id): Path<String>,
-//     Extension(state): Extension<Arc<State>>,
-// ) -> Result<Json<StatusInfo>> {
-//     let mut status = state.drivers.jobs.status(&id).await?;
+async fn status(
+    State(state): State<AppState>,
+    RemoteUrl(url): RemoteUrl,
+    Path(id): Path<String>,
+) -> Result<Response> {
+    let status = state.drivers.jobs.status(&id).await?;
 
-//     status.links = vec![Link::new(url, SELF).mediatype(JSON)];
+    match status {
+        Some(mut info) => {
+            info.links = vec![Link::new(url, SELF).mediatype(JSON)];
 
-//     Ok(Json(status))
-// }
+            Ok(Json(info).into_response())
+        }
+        None => Err(Error::Exception(
+            StatusCode::NOT_FOUND,
+            format!("No job with id `{}`", id),
+        )),
+    }
+}
 
-// async fn delete(
-//     Path(id): Path<String>,
-//     Extension(state): Extension<Arc<State>>,
-// ) -> Result<StatusCode> {
-//     state.drivers.jobs.delete(&id).await?;
+async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> Result<Response> {
+    let status = state.drivers.jobs.dismiss(&id).await?;
 
-//     // TODO: cancel execution
+    // TODO: cancel execution
 
-//     Ok(StatusCode::NO_CONTENT)
-// }
+    match status {
+        Some(info) => Ok(Json(info).into_response()),
+        None => Err(Error::Exception(
+            StatusCode::NOT_FOUND,
+            format!("No job with id `{}`", id),
+        )),
+    }
+}
 
-// async fn results(
-//     Path(id): Path<String>,
-//     Extension(state): Extension<Arc<State>>,
-// ) -> Result<Json<Results>> {
-//     let results = state.drivers.jobs.results(&id).await?;
+async fn results(State(state): State<AppState>, Path(id): Path<String>) -> Result<Response> {
+    let results = state.drivers.jobs.results(&id).await?;
 
-//     Ok(Json(results))
-// }
+    // TODO: check if job is finished
+
+    match results {
+        Some(results) => Ok(Json(results).into_response()),
+        None => Err(Error::Exception(
+            StatusCode::NOT_FOUND,
+            format!("No job with id `{}`", id),
+        )),
+    }
+}
 
 pub(crate) fn router(state: &AppState) -> Router<AppState> {
     let mut root = state.root.write().unwrap();
@@ -176,7 +192,7 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
         .route("/processes", get(processes))
         .route("/processes/:id", get(process))
         .route("/processes/:id/execution", post(execution))
-    // .route("/jobs", get(jobs))
-    // .route("/jobs/:id", get(status).delete(delete))
-    // .route("/jobs/:id/results", get(results))
+        .route("/jobs", get(jobs))
+        .route("/jobs/:id", get(status).delete(delete))
+        .route("/jobs/:id/results", get(results))
 }
