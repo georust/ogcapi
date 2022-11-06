@@ -9,6 +9,12 @@ members = [
 ]
 default-members = ["ogcapi"]
 
+[workspace.package]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/georust/ogcapi"
+edition = "2021"
+rust-version = "1.64" # or greater
+
 [patch.crates-io]
 ogcapi-types = { path = "ogcapi-types" }
 ogcapi-drivers = { path = "ogcapi-drivers" }
