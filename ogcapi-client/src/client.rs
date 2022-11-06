@@ -325,7 +325,11 @@ impl Pagination<Collection> for Collections {
                         Ok(None)
                     }
                 }
-                Err(err) => Err(err),
+                Err(err) => {
+                    // reset links to prevent loop
+                    self.links = Vec::new();
+                    Err(err)
+                }
             }
         } else {
             Ok(None)
@@ -350,7 +354,11 @@ impl Pagination<Feature> for Items {
                         Ok(None)
                     }
                 }
-                Err(err) => Err(err),
+                Err(err) => {
+                    // reset links to prevent loop
+                    self.links = Vec::new();
+                    Err(err)
+                }
             }
         } else {
             Ok(None)
