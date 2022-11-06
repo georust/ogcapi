@@ -16,7 +16,7 @@ types = ["ogcapi-types"]
 
 import = ["gdal", "geo", "geojson", "osmpbfreader", "serde", "serde_json", "sqlx", "url", "wkb"]
 
-stac = ["ogcapi-types?/stac", "ogcapi-drivers?/stac", "ogcapi-drivers?/s3", "ogcapi-services?/stac"]
+stac = ["ogcapi-types?/stac", "ogcapi-drivers?/stac", "ogcapi-drivers?/s3", "ogcapi-services?/stac", "ogcapi-client?/stac"]
 
 [dependencies]
 anyhow = "1.0.65"
