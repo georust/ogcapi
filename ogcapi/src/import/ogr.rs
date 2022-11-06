@@ -133,7 +133,7 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
                 .await?;
             sqlx::query("SELECT AddGeometryColumn ('items', $1, 'geom', $2, $3, $4)")
                 .bind(&collection.id)
-                .bind(&storage_crs.as_srid())
+                .bind(storage_crs.as_srid())
                 .bind(geometry_type)
                 .bind(dimensions)
                 .execute(&db.pool)
