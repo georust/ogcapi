@@ -136,7 +136,7 @@ impl EdrQuerier for Db {
             "#,
             sql
         ))
-        .bind(&srid)
+        .bind(srid)
         .fetch_one(&self.pool)
         .await?;
 

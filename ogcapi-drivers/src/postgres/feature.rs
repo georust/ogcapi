@@ -68,7 +68,7 @@ impl FeatureTransactions for Db {
             "#,
             &collection
         ))
-        .bind(serde_json::to_value(&feature)?)
+        .bind(serde_json::to_value(feature)?)
         .fetch_one(&self.pool)
         .await?;
 
@@ -113,7 +113,7 @@ impl FeatureTransactions for Db {
             "#,
             &feature.collection.as_ref().unwrap()
         ))
-        .bind(serde_json::to_value(&feature)?)
+        .bind(serde_json::to_value(feature)?)
         .execute(&self.pool)
         .await?;
 
