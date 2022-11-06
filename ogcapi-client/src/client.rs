@@ -474,7 +474,7 @@ mod tests {
         let bbox = ogcapi_types::common::Bbox::from([7.4473, 46.9479, 7.4475, 46.9481]);
         let params = ogcapi_types::stac::SearchParams::new()
             .with_bbox(bbox)
-            .with_collections(&["ch.swisstopo.swissalti3d"]);
+            .with_collections(["ch.swisstopo.swissalti3d"]);
         let mut items = client.search(params).unwrap();
         let item = items.next().unwrap().unwrap();
         assert_eq!(Some("swissalti3d_2019_2600-1199".to_string()), item.id);
