@@ -31,7 +31,7 @@ impl Linked for Links {
                 match base.join(&link.href) {
                     Ok(url) => link.href = url.to_string(),
                     Err(_) => {
-                        eprintln!(
+                        log::error!(
                             "Unable to resolve link `{}` with base `{}`",
                             link.href, base
                         )
