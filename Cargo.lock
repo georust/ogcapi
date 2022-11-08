@@ -1785,6 +1785,7 @@ name = "ogcapi-client"
 version = "0.1.0"
 dependencies = [
  "geojson",
+ "log",
  "ogcapi-types",
  "once_cell",
  "reqwest",
@@ -1849,6 +1850,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "geojson",
+ "log",
  "serde",
  "serde_json",
  "serde_repr",

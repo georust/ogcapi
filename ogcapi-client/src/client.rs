@@ -173,7 +173,7 @@ impl Client {
     where
         T: serde::de::DeserializeOwned,
     {
-        println!("Fetching {}", url);
+        log::debug!("Fetching {}", url);
 
         self.client
             .get(url)
@@ -425,7 +425,7 @@ fn resolve_relative_links(links: &mut Links, base: &str) {
         Err(url::ParseError::RelativeUrlWithoutBase) => {
             l.href = base_url.join(&l.href).unwrap().to_string();
         }
-        Err(e) => eprintln!("{}", e),
+        Err(e) => log::error!("{}", e),
     });
 }
 
