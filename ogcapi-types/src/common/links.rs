@@ -33,7 +33,8 @@ impl Linked for Links {
                     Err(_) => {
                         log::error!(
                             "Unable to resolve link `{}` with base `{}`",
-                            link.href, base
+                            link.href,
+                            base
                         )
                     }
                 }
