@@ -21,18 +21,18 @@ stac = ["ogcapi-types?/stac", "ogcapi-drivers?/stac", "ogcapi-drivers?/s3", "ogc
 
 [dependencies]
 anyhow = "1.0.65"
-clap = { version = "3.2.22", features = ["derive", "env"] }
-dotenvy = "0.15.5"
-gdal = { version = "0.13.0", optional = true, features = ["bindgen"] }
-geo = { version = "0.23.0", optional = true }
+clap = { version = "4.0.32", features = ["derive", "env"] }
+dotenvy = "0.15.6"
+gdal = { version = "0.14.0", optional = true, features = ["bindgen"] }
+geo = { version = "0.23.1", optional = true }
 geojson = { version = "0.24.0", optional = true, features = ["geo-types"] }
 osmpbfreader = { version = "0.15.2", optional = true }
-serde = { version = "1.0.145", optional = true }
-serde_json = { version = "1.0.85", optional = true }
+serde = { version = "1.0.151", optional = true }
+serde_json = { version = "1.0.91", optional = true }
 sqlx = { version = "0.6.2", optional = true, features = ["runtime-tokio-rustls", "postgres"] }
-tokio = { version = "1.21.1", features = ["full"] }
-tracing = "0.1.36"
-tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
+tokio = { version = "1.23.0", features = ["full"] }
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 url = { version = "2.3.1", optional = true, features = ["serde"] }
 wkb = { version = "0.7.1", optional = true }
 

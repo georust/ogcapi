@@ -14,10 +14,10 @@ stac = []
 
 [dependencies]
 log = "0.4.17"
-chrono = { version = "0.4.22", features = ["serde"] }
+chrono = { version = "0.4.23", features = ["serde"] }
 geojson = "0.24.0"
-serde = "1.0.145"
-serde_json = "1.0.85"
-serde_repr = "0.1.9"
-serde_with = { version = "2.0.1", features = ["json"] }
+serde = "1.0.151"
+serde_json = "1.0.91"
+serde_repr = "0.1.10"
+serde_with = { version = "2.1.0", features = ["json"] }
 url = "2.3.1"

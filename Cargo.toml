@@ -13,5 +13,4 @@ default-members = ["ogcapi"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/georust/ogcapi"
 edition = "2021"
-rust-version = "1.64"
-
+rust-version = "1.66"
