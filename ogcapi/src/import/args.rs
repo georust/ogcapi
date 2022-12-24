@@ -1,7 +1,7 @@
 #[derive(clap::Parser, Debug)]
 pub struct Args {
     /// Input file
-    #[clap(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     pub input: std::path::PathBuf,
 
     /// Set the collection name, defaults to layer name or `osm`
@@ -21,7 +21,7 @@ pub struct Args {
     pub t_srs: Option<u32>,
 
     /// Postgres database url
-    #[clap(long, env, hide_env_values = true, parse(try_from_str))]
+    #[clap(long, env, hide_env_values = true, value_parser)]
     pub database_url: url::Url,
 }
 

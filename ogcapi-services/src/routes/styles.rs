@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use axum::{
-    extract::{Extension, Path, State},
+    extract::{Path, State},
     routing::get,
     Json, Router,
 };
@@ -11,7 +9,7 @@ use ogcapi_types::styles::Styles;
 
 use crate::{AppState, Error, Result};
 
-async fn styles(Extension(state): Extension<Arc<AppState>>) -> Result<Json<Styles>> {
+async fn styles(State(state): State<AppState>) -> Result<Json<Styles>> {
     let styles = state.drivers.styles.list_styles().await?;
     Ok(Json(styles))
 }
@@ -22,8 +20,8 @@ async fn read_style(Path(id): Path<String>, State(state): State<AppState>) -> Re
     style.map(Json).ok_or(Error::NotFound)
 }
 
-pub(crate) fn router(state: &AppState) -> Router<AppState> {
-    Router::with_state(state.clone())
+pub(crate) fn router(_state: &AppState) -> Router<AppState> {
+    Router::new()
         .route("/styles", get(styles))
         .route("/styles/:id", get(read_style))
 }

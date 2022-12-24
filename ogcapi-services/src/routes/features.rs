@@ -71,8 +71,8 @@ async fn read(
 
     feature.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
-        Link::new(&url.join("../../..")?, ROOT).mediatype(JSON),
-        Link::new(&url.join(&format!("../../{}", collection_id))?, COLLECTION).mediatype(JSON),
+        Link::new(url.join("../../..")?, ROOT).mediatype(JSON),
+        Link::new(url.join(&format!("../../{}", collection_id))?, COLLECTION).mediatype(JSON),
     ]);
     feature.links.resolve_relative_links();
 
@@ -151,8 +151,8 @@ async fn items(
 
     fc.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
-        Link::new(&url.join("../..")?, ROOT).mediatype(JSON),
-        Link::new(&url.join(".")?, COLLECTION).mediatype(JSON),
+        Link::new(url.join("../..")?, ROOT).mediatype(JSON),
+        Link::new(url.join(".")?, COLLECTION).mediatype(JSON),
     ]);
 
     // pagination
@@ -183,12 +183,12 @@ async fn items(
     for feature in fc.features.iter_mut() {
         feature.links.insert_or_update(&[
             Link::new(
-                &url.join(&format!("items/{}", feature.id.as_ref().unwrap()))?,
+                url.join(&format!("items/{}", feature.id.as_ref().unwrap()))?,
                 SELF,
             )
             .mediatype(GEO_JSON),
-            Link::new(&url.join("../..")?, ROOT).mediatype(JSON),
-            Link::new(&url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
+            Link::new(url.join("../..")?, ROOT).mediatype(JSON),
+            Link::new(url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
         ])
     }
 
@@ -213,7 +213,7 @@ async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Erro
 pub(crate) fn router(state: &AppState) -> Router<AppState> {
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::with_state(state.clone())
+    Router::new()
         .route("/collections/:collection_id/items", get(items).post(create))
         .route(
             "/collections/:collection_id/items/:id",

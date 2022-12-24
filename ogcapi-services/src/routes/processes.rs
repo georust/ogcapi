@@ -95,7 +95,7 @@ async fn process(
         Some(processor) => {
             let mut process = processor.process();
 
-            process.summary.links = vec![Link::new(&url, SELF).mediatype(JSON)];
+            process.summary.links = vec![Link::new(url, SELF).mediatype(JSON)];
 
             Ok(Json(process))
         }
@@ -188,7 +188,7 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
 
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::with_state(state.clone())
+    Router::new()
         .route("/processes", get(processes))
         .route("/processes/:id", get(process))
         .route("/processes/:id/execution", post(execution))

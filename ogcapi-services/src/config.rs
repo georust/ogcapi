@@ -10,9 +10,9 @@ pub struct Config {
     #[clap(long, env("APP_HOST"), default_value = "0.0.0.0")]
     pub host: String,
     /// Postgres database url
-    #[clap(long, env, hide_env_values = true, parse(try_from_str))]
+    #[clap(long, env, hide_env_values = true, value_parser)]
     pub database_url: url::Url,
     /// OpenAPI definition
-    #[clap(long, env, parse(from_os_str))]
+    #[clap(long, env, value_parser)]
     pub openapi: Option<std::path::PathBuf>,
 }

@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fs::File};
 
-use geo::{Coordinate, Geometry, GeometryCollection, LineString, MultiLineString, Point, Polygon};
+use geo::{Coord, Geometry, GeometryCollection, LineString, MultiLineString, Point, Polygon};
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 use serde_json::{Map, Value};
 
@@ -153,12 +153,12 @@ fn to_linestring(nodes: &[NodeId], objs: &BTreeMap<OsmId, OsmObj>) -> Option<Lin
     nodes
         .iter()
         .map(|id| objs.get(&OsmId::Node(*id)).and_then(to_coordinate))
-        .collect::<Option<Vec<Coordinate<f64>>>>()
+        .collect::<Option<Vec<Coord<f64>>>>()
         .map(LineString::from)
 }
 
-fn to_coordinate(obj: &OsmObj) -> Option<Coordinate<f64>> {
-    obj.node().map(|n| Coordinate {
+fn to_coordinate(obj: &OsmObj) -> Option<Coord<f64>> {
+    obj.node().map(|n| Coord {
         x: n.lon(),
         y: n.lat(),
     })

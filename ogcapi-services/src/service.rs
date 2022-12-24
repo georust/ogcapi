@@ -1,7 +1,6 @@
 use std::{
     any::Any,
     net::{SocketAddr, TcpListener},
-    sync::Arc,
 };
 
 use axum::{
@@ -12,7 +11,7 @@ use axum::{
     },
     response::IntoResponse,
     routing::get,
-    Extension, Router,
+    Router,
 };
 use tower::ServiceBuilder;
 use tower_http::{
@@ -49,7 +48,7 @@ impl Service {
 
     pub async fn new_with(config: &Config, state: AppState) -> Self {
         // router
-        let router = Router::with_state(state.clone())
+        let router = Router::new()
             .route("/", get(routes::root))
             .route("/api", get(routes::api::api))
             .route("/redoc", get(routes::api::redoc))
@@ -112,7 +111,7 @@ impl Service {
     /// Serve application
     pub async fn serve(self) {
         // add state
-        let router = self.router.layer(Extension(Arc::new(self.state)));
+        let router = self.router.with_state(self.state);
 
         // serve
         tracing::info!(

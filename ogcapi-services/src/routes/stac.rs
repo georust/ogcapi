@@ -83,7 +83,7 @@ pub(crate) async fn search(
 
     fc.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
-        Link::new(&url.join("../..")?, ROOT).mediatype(JSON),
+        Link::new(url.join("../..")?, ROOT).mediatype(JSON),
     ]);
 
     // pagination
@@ -101,7 +101,7 @@ pub(crate) async fn search(
             }
 
             if let Some(number_matched) = fc.number_matched {
-                if number_matched > (offset + limit) as u64 {
+                if number_matched > offset + limit {
                     params.offset = Some(offset + limit);
                     url.set_query(serde_qs::to_string(&params).ok().as_deref());
                     let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
@@ -115,7 +115,7 @@ pub(crate) async fn search(
         let collection = feature.collection.as_ref().unwrap();
         feature.links.insert_or_update(&[
             Link::new(
-                &url.join(&format!(
+                url.join(&format!(
                     "collections/{}/items/{}",
                     collection,
                     feature.id.as_ref().unwrap()
@@ -123,9 +123,9 @@ pub(crate) async fn search(
                 SELF,
             )
             .mediatype(GEO_JSON),
-            Link::new(&url.join(".")?, ROOT).mediatype(JSON),
+            Link::new(url.join(".")?, ROOT).mediatype(JSON),
             Link::new(
-                &url.join(&format!("collections/{}", collection))?,
+                url.join(&format!("collections/{}", collection))?,
                 COLLECTION,
             )
             .mediatype(JSON),

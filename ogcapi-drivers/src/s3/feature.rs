@@ -46,9 +46,9 @@ impl FeatureTransactions for S3 {
                 &r.body.collect().await?.into_bytes(),
             )?)),
             Err(e) => match e {
-                SdkError::ServiceError { err, raw: _ } => match err.kind {
+                SdkError::ServiceError(err) => match err.err().kind {
                     GetObjectErrorKind::NoSuchKey(_) => Ok(None),
-                    _ => Err(anyhow::Error::new(err)),
+                    _ => Err(anyhow::Error::new(err.into_err())),
                 },
                 _ => Err(anyhow::Error::new(e)),
             },

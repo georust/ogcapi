@@ -45,7 +45,7 @@ async fn query(
 
     for feature in fc.features.iter_mut() {
         feature.links = vec![Link::new(
-            &url.join(&format!(
+            url.join(&format!(
                 "items/{}",
                 feature.id.as_ref().expect("Feature should have id")
             ))?,
@@ -68,7 +68,7 @@ async fn query(
 pub(crate) fn router(state: &AppState) -> Router<AppState> {
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::with_state(state.clone()).route("/collections/:collection_id/:query_type", get(query))
+    Router::new().route("/collections/:collection_id/:query_type", get(query))
     // .route("/collections/:collection_id/instances", get(instances))
     // .route("/collections/:collection_id/instances/:instance_id", get(instance))
     // .route("/collections/:collection_id/instances/:instance_id/:query_type", get(instance))

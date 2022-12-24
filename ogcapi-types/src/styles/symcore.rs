@@ -4,7 +4,6 @@ use serde_json::{Map, Value};
 /// OGC Symbology Conceptual Model: Core Part
 
 // type Literal = Value;
-
 type Extension = Map<String, Value>;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -31,6 +30,7 @@ struct Rule {
     #[serde(flatten)]
     extension: Option<Extension>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Symbolizer {
     #[serde(flatten)]
@@ -39,15 +39,18 @@ struct Symbolizer {
     #[serde(flatten)]
     extension: Option<Extension>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 struct ParameterValue {
     language: Vec<String>, // IETF RFC 4646
     #[serde(flatten)]
     extension: Option<Extension>,
 }
+
+/// Unit of measures
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
-/// Unit of measures
+#[allow(clippy::upper_case_acronyms)]
 enum UOM {
     // portrayal units
     Pixel,
@@ -58,17 +61,20 @@ enum UOM {
     Meter,
     Foot,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Color {
     #[serde(flatten)]
     extension: Option<Extension>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Fill {
     uom: Option<UOM>,
     #[serde(flatten)]
     extension: Option<Extension>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Stroke {
     uom: Option<UOM>,
@@ -84,11 +90,13 @@ struct Graphic {
     #[serde(flatten)]
     extension: Option<Extension>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 struct GraphicSize {
     #[serde(flatten)]
     extension: Option<Extension>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct Label {
@@ -99,6 +107,7 @@ struct Label {
     #[serde(flatten)]
     extension: Option<Extension>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct Font {

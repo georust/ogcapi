@@ -150,7 +150,7 @@ impl Client {
     /// Returns an iterator over the catalogs of the SpatioTemporal Asset Catalog.
     #[cfg(feature = "stac")]
     pub fn walk(&self) -> Result<StacEntities, Error> {
-        let link = Link::new(&self.endpoint.to_string(), SELF);
+        let link = Link::new(self.endpoint.to_string(), SELF);
         Ok(StacEntities {
             client: self.to_owned(),
             // entities: vec![StacEntity::Catalog(self.root.clone())].into_iter(),

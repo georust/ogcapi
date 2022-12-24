@@ -69,7 +69,7 @@ async fn tile_matrix_sets(RemoteUrl(url): RemoteUrl) -> Result<Json<TileMatrixSe
             id: Some(tms.id.to_owned()),
             title: tms.title_description_keywords.title.to_owned(),
             links: vec![Link::new(
-                &url.join(&format!("tileMatrixSets/{}", &tms.id))?,
+                url.join(&format!("tileMatrixSets/{}", &tms.id))?,
                 TILING_SCHEME,
             )],
             ..Default::default()
@@ -153,7 +153,7 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
     TMS.set(tms_map).expect("set `TMS` once cell content");
     TM.set(tm).expect("set `TM` once cell content");
 
-    Router::with_state(state.clone())
+    Router::new()
         .route("/tileMatrixSets", get(tile_matrix_sets))
         .route("/tileMatrixSets/:tms_id", get(tile_matrix_set))
         .route("/tiles", get(tiles))

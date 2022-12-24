@@ -7,7 +7,6 @@ use aws_sdk_s3::{
     types::SdkError,
     Client, Endpoint,
 };
-use http::Uri;
 
 pub use aws_sdk_s3::types::ByteStream;
 
@@ -24,10 +23,8 @@ impl S3 {
     pub async fn new() -> Self {
         let config = if let Ok(endpoint) = std::env::var("AWS_CUSTOM_ENDPOINT") {
             // Use custom enpoint if specified in `AWS_CUSTOM_ENDPOINT` environment variable
-            let endpoint = endpoint.parse::<Uri>().unwrap();
-
             aws_config::from_env()
-                .endpoint_resolver(Endpoint::immutable(endpoint))
+                .endpoint_resolver(Endpoint::immutable(&endpoint).unwrap())
                 .load()
                 .await
         } else {

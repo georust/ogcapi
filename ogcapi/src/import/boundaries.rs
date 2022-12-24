@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
 
-use geo::{Coordinate, LineString, MultiPolygon, Point, Polygon};
+use geo::{Coord, LineString, MultiPolygon, Point, Polygon};
 
 // from https://github.com/Qwant/osm_boundaries_utils_rs
 
@@ -132,7 +132,7 @@ pub fn build_boundary_parts<T: Borrow<osmpbfreader::OsmObj>>(
     let mut append_ring = |nodes: &[osmpbfreader::Node]| {
         let poly_geom = nodes
             .iter()
-            .map(|n| Coordinate {
+            .map(|n| Coord {
                 x: n.lon(),
                 y: n.lat(),
             })
@@ -206,7 +206,7 @@ pub fn build_boundary_parts<T: Borrow<osmpbfreader::OsmObj>>(
             if !added_part {
                 use geo::haversine_distance::HaversineDistance;
                 let p = |n: &osmpbfreader::Node| {
-                    Point(Coordinate {
+                    Point(Coord {
                         x: n.lon(),
                         y: n.lat(),
                     })

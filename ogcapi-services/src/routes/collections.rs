@@ -71,7 +71,7 @@ async fn read(
 
     collection.links.insert_or_update(&[
         Link::new(&url, SELF),
-        Link::new(&url.join("..")?, ROOT).mediatype(JSON),
+        Link::new(url.join("..")?, ROOT).mediatype(JSON),
     ]);
 
     #[cfg(not(feature = "stac"))]
@@ -84,7 +84,7 @@ async fn read(
     #[cfg(feature = "stac")]
     if collection.r#type == "Collection" {
         collection.links.insert_or_update(&[Link::new(
-            &url.join(&format!("{}/items", collection.id))?,
+            url.join(&format!("{}/items", collection.id))?,
             ITEMS,
         )
         .mediatype(GEO_JSON)]);
@@ -135,10 +135,10 @@ async fn collections(
 
     for collection in collections.collections.iter_mut() {
         collection.links.insert_or_update(&[
-            Link::new(&url.join(&format!("collections/{}", collection.id))?, SELF).mediatype(JSON),
-            Link::new(&url.join(".")?, ROOT).mediatype(JSON),
+            Link::new(url.join(&format!("collections/{}", collection.id))?, SELF).mediatype(JSON),
+            Link::new(url.join(".")?, ROOT).mediatype(JSON),
             Link::new(
-                &url.join(&format!("collections/{}/items", collection.id))?,
+                url.join(&format!("collections/{}/items", collection.id))?,
                 ITEMS,
             )
             .mediatype(GEO_JSON),
@@ -149,7 +149,7 @@ async fn collections(
 
     collections.links = vec![
         Link::new(&url, SELF).mediatype(JSON).title("this document"),
-        Link::new(&url.join(".")?, ROOT).mediatype(JSON),
+        Link::new(url.join(".")?, ROOT).mediatype(JSON),
     ];
 
     collections.crs = vec![Crs::default(), Crs::from_epsg(3857)];
@@ -167,7 +167,7 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
 
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::with_state(state.clone())
+    Router::new()
         .route("/collections", get(collections).post(create))
         .route(
             "/collections/:collection_id",
