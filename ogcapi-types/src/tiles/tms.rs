@@ -1,11 +1,8 @@
-use std::num::NonZeroU64;
-
+use super::{BoundingBox2D, Point2D, TitleDescriptionKeywords};
+use crate::common::{Crs, Links};
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
-
-use crate::common::{Crs, Links};
-
-use super::{BoundingBox2D, Point2D, TitleDescriptionKeywords};
+use std::num::{NonZeroU16, NonZeroU64};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -79,17 +76,16 @@ pub struct TileMatrix {
     /// description": "The corner of the tile matrix (_topLeft_ or
     /// _bottomLeft_) used as the origin for numbering tile rows and columns.
     /// This corner is also a corner of the (0, 0) tile.
-    #[serde(default)]
-    pub corner_of_origin: CornerOfOrigin,
+    pub corner_of_origin: Option<CornerOfOrigin>,
     /// Precise position in CRS coordinates of the corner of origin (e.g. the
     /// top-left corner) for this tile matrix. This position is also a corner
     /// of the (0, 0) tile. In previous version, this was 'topLeftCorner' and
     /// 'cornerOfOrigin' did not exist.
     pub point_of_origin: Point2D,
     /// Width of each tile of this tile matrix in pixels
-    pub tile_width: NonZeroU64,
+    pub tile_width: NonZeroU16,
     /// Height of each tile of this tile matrix in pixels
-    pub tile_height: NonZeroU64,
+    pub tile_height: NonZeroU16,
     /// Width of the matrix (number of tiles in width)
     pub matrix_width: NonZeroU64,
     /// Height of the matrix (number of tiles in height)
