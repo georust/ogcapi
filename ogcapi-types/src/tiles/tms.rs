@@ -106,17 +106,12 @@ pub struct VariableMatrixWidth {
     pub smax_tile_row: u64,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum CornerOfOrigin {
+    #[default]
     TopLeft,
     BottomLeft,
-}
-
-impl Default for CornerOfOrigin {
-    fn default() -> Self {
-        CornerOfOrigin::TopLeft
-    }
 }
 
 #[cfg(test)]

@@ -9,15 +9,10 @@ use serde_json::{Map, Value};
 
 use crate::common::Links;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
+    #[default]
     Feature,
-}
-
-impl Default for Type {
-    fn default() -> Self {
-        Type::Feature
-    }
 }
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)

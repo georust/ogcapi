@@ -87,30 +87,20 @@ pub enum Schema {
     Object(Map<String, Value>),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum TransmissionMode {
+    #[default]
     Value,
     Reference,
 }
 
-impl Default for TransmissionMode {
-    fn default() -> Self {
-        TransmissionMode::Value
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum Response {
+    #[default]
     Raw,
     Document,
-}
-
-impl Default for Response {
-    fn default() -> Self {
-        Response::Raw
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

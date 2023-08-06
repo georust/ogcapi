@@ -212,20 +212,15 @@ pub enum GeometryDimension {
     Solids = 3,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum AccessConstraints {
+    #[default]
     Unclassified,
     Restricted,
     Confidential,
     Secret,
     TopSecret,
-}
-
-impl Default for AccessConstraints {
-    fn default() -> Self {
-        AccessConstraints::Unclassified
-    }
 }
 
 #[cfg(test)]
