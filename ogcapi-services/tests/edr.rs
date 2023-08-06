@@ -136,7 +136,7 @@ async fn edr() -> anyhow::Result<()> {
     let body = hyper::body::to_bytes(res.into_body()).await?;
     let mut fc: FeatureCollection = serde_json::from_slice(&body)?;
 
-    for mut feature in fc.features.iter_mut() {
+    for feature in fc.features.iter_mut() {
         feature.geometry = Geometry::new(Value::Point(vec![0.0, 0.0]));
     }
 

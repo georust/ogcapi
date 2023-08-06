@@ -76,6 +76,11 @@ impl Crs {
             Authority::EPSG => self.code.parse().unwrap(),
         }
     }
+
+    /// "AUTHORITY:CODE", like "EPSG:25832"
+    pub fn as_known_crs(&self) -> String {
+        format!("{}:{}", self.authority, self.code)
+    }
 }
 
 impl fmt::Display for Crs {

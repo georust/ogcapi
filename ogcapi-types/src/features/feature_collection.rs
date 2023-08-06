@@ -5,15 +5,10 @@ use crate::common::Links;
 
 use super::Feature;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub enum Type {
+    #[default]
     FeatureCollection,
-}
-
-impl Default for Type {
-    fn default() -> Self {
-        Type::FeatureCollection
-    }
 }
 
 /// A set of Features from a dataset

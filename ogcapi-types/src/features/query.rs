@@ -34,15 +34,10 @@ pub struct Query {
     pub additional_parameters: HashMap<String, String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub enum FilterLang {
+    #[default]
     CqlText,
     CqlJson,
-}
-
-impl std::default::Default for FilterLang {
-    fn default() -> Self {
-        FilterLang::CqlText
-    }
 }

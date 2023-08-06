@@ -23,15 +23,10 @@ pub struct ParameterNames {
     pub measurement_type: Option<MeasurementType>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
 pub enum Type {
+    #[default]
     Parameter,
-}
-
-impl Default for Type {
-    fn default() -> Self {
-        Type::Parameter
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]

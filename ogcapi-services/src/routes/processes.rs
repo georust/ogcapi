@@ -70,7 +70,7 @@ async fn processes(
         }
     }
 
-    summaries.iter_mut().for_each(|mut p| {
+    summaries.iter_mut().for_each(|p| {
         p.links = vec![
             Link::new(format!("{}/{}", &url[..Position::AfterPath], p.id), SELF)
                 .mediatype(JSON)
