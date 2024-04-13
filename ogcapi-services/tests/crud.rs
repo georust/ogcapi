@@ -1,7 +1,8 @@
 mod setup;
 
-use axum::http::Request;
-use hyper::Body;
+use axum::{body::Body, http::Request};
+use http_body_util::BodyExt;
+use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 use serde_json::json;
 
 use ogcapi_types::{
@@ -13,7 +14,7 @@ use ogcapi_types::{
 async fn minimal_feature_crud() -> anyhow::Result<()> {
     // setup app
     let (addr, _) = setup::spawn_app().await?;
-    let client = hyper::Client::new();
+    let client = Client::builder(TokioExecutor::new()).build_http();
 
     let collection = Collection {
         id: "test.me-_".to_string(),
@@ -89,7 +90,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
         .await?;
 
     assert_eq!(200, res.status());
-    let body = hyper::body::to_bytes(res.into_body()).await?;
+    let body = res.into_body().collect().await.unwrap().to_bytes();
     let _feature: Feature = serde_json::from_slice(&body)?;
     // println!("{:#?}", feature);
 

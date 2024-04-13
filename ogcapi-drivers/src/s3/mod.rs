@@ -2,13 +2,16 @@ mod collection;
 mod feature;
 
 use aws_sdk_s3::{
-    error::{DeleteObjectError, GetObjectError, PutObjectError},
-    output::{DeleteObjectOutput, GetObjectOutput, PutObjectOutput},
-    types::SdkError,
-    Client, Endpoint,
+    error::SdkError,
+    operation::{
+        delete_object::{DeleteObjectError, DeleteObjectOutput},
+        get_object::{GetObjectError, GetObjectOutput},
+        put_object::{PutObjectError, PutObjectOutput},
+    },
+    Client, Config,
 };
 
-pub use aws_sdk_s3::types::ByteStream;
+pub use aws_sdk_s3::primitives::ByteStream;
 
 /// S3 driver
 #[derive(Clone)]
@@ -23,15 +26,23 @@ impl S3 {
     pub async fn new() -> Self {
         let config = if let Ok(endpoint) = std::env::var("AWS_CUSTOM_ENDPOINT") {
             // Use custom enpoint if specified in `AWS_CUSTOM_ENDPOINT` environment variable
-            aws_config::from_env()
-                .endpoint_resolver(Endpoint::immutable(&endpoint).unwrap())
-                .load()
+            println!("Setup client with custom endpoint: {endpoint}");
+            aws_config::load_from_env()
                 .await
+                .into_builder()
+                .endpoint_url(&endpoint)
+                .build()
         } else {
-            aws_config::from_env().load().await
+            aws_config::load_from_env().await
         };
 
-        S3::new_with(Client::new(&config)).await
+        // force path style addressing to work with minio
+        let config = Config::from(&config)
+            .to_builder()
+            .force_path_style(true)
+            .build();
+
+        S3::new_with(Client::from_conf(config)).await
     }
 
     pub async fn new_with(client: Client) -> Self {

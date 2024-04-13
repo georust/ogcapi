@@ -76,7 +76,7 @@ pub async fn load(args: Args) -> Result<(), anyhow::Error> {
             .bind(id.to_string())
             .bind(Value::from(properties) as Value)
             .bind(geometry as Vec<u8>)
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await?;
         }
     }
@@ -99,9 +99,9 @@ fn geometry_from_obj(obj: &OsmObj, objs: &BTreeMap<OsmId, OsmObj>) -> Option<Geo
         OsmObj::Relation(rel) => {
             // match type of relation https://wiki.openstreetmap.org/wiki/Types_of_relation
             if let Some(rel_type) = rel.tags.get("type").map(|s| s.as_str()) {
-                if vec!["multipolygon", "boundary"].contains(&rel_type) {
+                if ["multipolygon", "boundary"].contains(&rel_type) {
                     crate::import::boundaries::build_boundary(rel, objs).map(|p| p.into())
-                } else if vec![
+                } else if [
                     "multilinestring",
                     "route",
                     "route_master",
@@ -119,7 +119,7 @@ fn geometry_from_obj(obj: &OsmObj, objs: &BTreeMap<OsmId, OsmObj>) -> Option<Geo
                         })
                         .collect::<Option<Vec<LineString<f64>>>>()
                         .map(|l| MultiLineString(l).into())
-                } else if vec![
+                } else if [
                     "collection",
                     "public_transport",
                     "site",

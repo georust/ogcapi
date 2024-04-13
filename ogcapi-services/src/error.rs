@@ -1,9 +1,9 @@
 use axum::{
-    headers::HeaderMap,
     http::{header::CONTENT_TYPE, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
+use hyper::HeaderMap;
 
 use ogcapi_types::common::{media_type::PROBLEM_JSON, Exception};
 

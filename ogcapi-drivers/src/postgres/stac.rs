@@ -20,7 +20,7 @@ impl StacSeach for Db {
             WHERE collection ->> 'type' = 'Collection'
             "#,
         )
-        .fetch_all(&mut tx)
+        .fetch_all(&mut *tx)
         .await?;
 
         if let Some(collections) = &query.collections {
@@ -130,7 +130,7 @@ impl StacSeach for Db {
             WHERE {conditions}
             "#,
         ))
-        .fetch_one(&mut tx)
+        .fetch_one(&mut *tx)
         .await?;
 
         // FETCH
@@ -158,7 +158,7 @@ impl StacSeach for Db {
                 .map_or_else(|| String::from("NULL"), |l| l.to_string()),
             query.offset.unwrap_or(0)
         ))
-        .fetch_one(&mut tx)
+        .fetch_one(&mut *tx)
         .await?;
 
         tx.commit().await?;

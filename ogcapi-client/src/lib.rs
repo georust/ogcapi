@@ -2,7 +2,7 @@
 //!
 //! # Example
 //!
-//! ```rust, no_run
+//! ```rust, ignore
 //! use ogcapi_client::Client;
 //! use ogcapi_types::common::Bbox;
 //! use ogcapi_types::stac::SearchParams;

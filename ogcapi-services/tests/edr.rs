@@ -3,15 +3,17 @@ mod setup;
 #[cfg(feature = "edr")]
 #[tokio::test]
 async fn edr() -> anyhow::Result<()> {
-    use axum::http::Request;
+    use axum::{body::Body, http::Request};
     use geojson::{Geometry, Value};
+    use http_body_util::BodyExt;
+    use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 
     use ogcapi::import::{self, Args};
     use ogcapi_types::{common::Crs, edr::Query, features::FeatureCollection};
 
     let (addr, database_url) = setup::spawn_app().await?;
 
-    let client = hyper::Client::new();
+    let client = Client::builder(TokioExecutor::new()).build_http();
 
     // load data
     let args = Args::new(
@@ -56,7 +58,7 @@ async fn edr() -> anyhow::Result<()> {
                     addr,
                     serde_qs::to_string(&query)?
                 ))
-                .body(hyper::Body::empty())?,
+                .body(Body::empty())?,
         )
         .await?;
 
@@ -64,7 +66,7 @@ async fn edr() -> anyhow::Result<()> {
 
     assert_eq!(200, parts.status);
 
-    let body = hyper::body::to_bytes(body).await?;
+    let body = body.collect().await.unwrap().to_bytes();
     let fc: FeatureCollection = serde_json::from_slice(&body)?;
 
     assert_eq!(fc.number_matched, Some(1));
@@ -92,13 +94,13 @@ async fn edr() -> anyhow::Result<()> {
                     addr,
                     serde_qs::to_string(&query)?
                 ))
-                .body(hyper::Body::empty())?,
+                .body(Body::empty())?,
         )
         .await?;
 
     assert_eq!(200, res.status());
 
-    let body = hyper::body::to_bytes(res.into_body()).await?;
+    let body = res.into_body().collect().await.unwrap().to_bytes();
     let fc: FeatureCollection = serde_json::from_slice(&body)?;
 
     assert_eq!(fc.number_matched, Some(2));
@@ -127,13 +129,13 @@ async fn edr() -> anyhow::Result<()> {
                     addr,
                     serde_qs::to_string(&query)?
                 ))
-                .body(hyper::Body::empty())?,
+                .body(Body::empty())?,
         )
         .await?;
 
     assert_eq!(200, res.status());
 
-    let body = hyper::body::to_bytes(res.into_body()).await?;
+    let body = res.into_body().collect().await.unwrap().to_bytes();
     let mut fc: FeatureCollection = serde_json::from_slice(&body)?;
 
     for feature in fc.features.iter_mut() {

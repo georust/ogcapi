@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn from() {
         let numbers = [160.6, -55.95, -170.0, -25.89];
-        let _bbox: Bbox = numbers.try_into().unwrap();
+        let _bbox: Bbox = numbers.into();
     }
 
     #[test]

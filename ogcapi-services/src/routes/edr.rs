@@ -1,10 +1,10 @@
 use axum::{
     extract::{Path, State},
-    headers::HeaderMap,
     http::header::CONTENT_TYPE,
     routing::get,
     Json, Router,
 };
+use hyper::HeaderMap;
 
 use ogcapi_types::{
     common::{link_rel::SELF, media_type::GEO_JSON, Link},
