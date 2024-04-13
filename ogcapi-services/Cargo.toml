@@ -1,6 +1,6 @@
 [package]
 name = "ogcapi-services"
-version = "0.1.2"
+version = "0.2.0"
 description = "Server implementation of several OGC API Standards."
 license.workspace = true
 repository.workspace = true

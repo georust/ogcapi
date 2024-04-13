@@ -2,6 +2,19 @@
 
 [OGC API](https://ogcapi.ogc.org/) building blocks implemented in [Rust](https://www.rust-lang.org/)
 
+## Project Outline
+
+The code is organized in four modules, respectively crates:
+
+| Module / Crate    | Description     |
+| ----------------- | --------------- |
+| `ogcapi-types`    | Types as defined in various OGC API standards as well as STAC with `serde` support. |
+| `ogcapi-client`   | Client to access HTTP endpoints of OGC API services as well as STAC wrapping `reqwest` |
+| `ogcapi-services` | Server implementation of various OGC API services based on `axum`. |
+| `ogcapi-drivers`  | Drivers for different data provider backends, currently mainly PostgreSQL with PostGIS through `sqlx`. |
+
+These modules are reexported within the `ogcapi` crate. 
+
 ## Quick Start
 
 This will take a while and use quite some disk space
@@ -74,7 +87,7 @@ Navigate to <http://localhost:8080/teamengine/> to execute the test suite. For d
 
 ## Example Project
 
-STAC enabled OGC API Features: <https://github.com/camptocamp/oapi-poc>
+Based on this project, a STAC enabled OGC API Features service has successfully been setup. You can find the code from the prove of concept [here](https://github.com/camptocamp/oapi-poc)
 
 ## License
 

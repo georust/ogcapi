@@ -2112,7 +2112,7 @@ dependencies = [
 
 [[package]]
 name = "ogcapi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2137,7 +2137,7 @@ dependencies = [
 
 [[package]]
 name = "ogcapi-client"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "geojson",
  "log",
@@ -2153,7 +2153,7 @@ dependencies = [
 
 [[package]]
 name = "ogcapi-drivers"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2170,7 +2170,7 @@ dependencies = [
 
 [[package]]
 name = "ogcapi-services"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -2203,7 +2203,7 @@ dependencies = [
 
 [[package]]
 name = "ogcapi-types"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "geojson",
