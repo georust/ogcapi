@@ -1990,20 +1990,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3135b08af27d103b0a51f2ae0f8632117b7b185ccf931445affa8df530576a41"
-dependencies = [
- "num-bigint",
- "num-complex",
- "num-integer",
- "num-iter",
- "num-rational",
- "num-traits",
-]
-
-[[package]]
 name = "num-bigint"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2030,16 +2016,6 @@ dependencies = [
  "rand",
  "smallvec",
  "zeroize",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23c6602fda94a57c990fe0df199a035d83576b496aa29f4e634a8ac6004e68a6"
-dependencies = [
- "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -2647,14 +2623,17 @@ dependencies = [
 
 [[package]]
 name = "rink-core"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3960c995b8cbb97d77eeac308471d295572160bfb15c1ff9bdc59f358f7bac3f"
+checksum = "d9e9fa5c0ca8683bca2f5d132f59cc2a121d38afe53c04789d821cc029d276c0"
 dependencies = [
  "chrono",
  "chrono-humanize",
  "chrono-tz",
- "num",
+ "indexmap 2.2.6",
+ "num-bigint",
+ "num-rational",
+ "num-traits",
  "serde",
  "serde_derive",
  "strsim 0.10.0",

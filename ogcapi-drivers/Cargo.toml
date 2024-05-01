@@ -19,7 +19,7 @@ aws-config = { version = "1.2.0", optional = true, features = ["behavior-version
 aws-sdk-s3 = { version = "1.23.0", optional = true, features = ["behavior-version-latest"] }
 async-trait = "0.1.80"
 http = "1.1.0"
-rink-core = { version = "0.7.0", optional = true }
+rink-core = { version = "0.8.0", optional = true, features = ["bundle-files"] }
 serde_json = { workspace = true }
 sqlx = { version = "0.7.4", optional = true, features = ["runtime-tokio-rustls", "postgres", "json", "migrate"] }
 tokio = { version = "1.37.0", features = ["full"] }
