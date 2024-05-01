@@ -28,7 +28,6 @@ clap = { version = "4.5.4", features = ["derive", "env"] }
 dyn-clone = { version = "1.0.17", optional = true }
 dotenvy = "0.15.7"
 hyper = { version = "1.2.0", features = ["full"] }
-once_cell = "1.19.0"
 openapiv3 = "2.0.0"
 schemars = { version = "0.8.16", optional = true }
 serde = { workspace = true }
