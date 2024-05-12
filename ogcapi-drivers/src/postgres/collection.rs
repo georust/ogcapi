@@ -23,40 +23,40 @@ impl CollectionTransactions for Db {
             "#,
             collection.id
         ))
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await?;
 
         sqlx::query(&format!(
             r#"CREATE INDEX ON items."{}" USING btree (collection)"#,
             collection.id
         ))
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await?;
 
         sqlx::query(&format!(
             r#"CREATE INDEX ON items."{}" USING gin (properties)"#,
             collection.id
         ))
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await?;
 
         sqlx::query(&format!(
             r#"CREATE INDEX ON items."{}" USING gist (geom)"#,
             collection.id
         ))
-        .execute(&mut tx)
+        .execute(&mut *tx)
         .await?;
 
         sqlx::query("SELECT UpdateGeometrySRID('items', $1, 'geom', $2)")
             .bind(&collection.id)
             .bind(collection.storage_crs.clone().unwrap_or_default().as_srid())
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await?;
 
         sqlx::query("INSERT INTO meta.collections ( id, collection ) VALUES ( $1, $2 )")
             .bind(&collection.id)
             .bind(sqlx::types::Json(collection))
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await?;
 
         tx.commit().await?;
@@ -93,12 +93,12 @@ impl CollectionTransactions for Db {
         let mut tx = self.pool.begin().await?;
 
         sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{}""#, id))
-            .execute(&mut tx)
+            .execute(&mut *tx)
             .await?;
 
         sqlx::query("DELETE FROM meta.collections WHERE id = $1")
             .bind(id)
-            .fetch_optional(&mut tx)
+            .fetch_optional(&mut *tx)
             .await?;
 
         tx.commit().await?;

@@ -52,12 +52,12 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
         // Prepare the origin and destination spatial references objects and coordinate transformation
         let spatial_ref_src = match args.s_srs {
             Some(epsg) => SpatialRef::from_epsg(epsg)?,
-            None => layer.spatial_ref()?,
+            None => layer.spatial_ref().unwrap(),
         };
 
         let spatial_ref_dst = match args.t_srs {
             Some(epsg) => SpatialRef::from_epsg(epsg)?,
-            None => layer.spatial_ref()?,
+            None => layer.spatial_ref().unwrap(),
         };
 
         spatial_ref_src.set_axis_mapping_strategy(0);
@@ -175,7 +175,7 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
                         FieldValue::StringListValue(v) => Value::from(v),
                         FieldValue::RealValue(v) => Value::from(v),
                         FieldValue::RealListValue(v) => Value::from(v),
-                        FieldValue::DateValue(v) => Value::from(v.naive_utc().to_string()),
+                        FieldValue::DateValue(v) => Value::from(v.to_string()),
                         FieldValue::DateTimeValue(v) => Value::from(v.to_rfc3339()),
                     }
                 } else {
@@ -186,9 +186,12 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
             properties.push(Some(sqlx::types::Json(attributes)));
 
             // geometry
-            let geom = feature.geometry();
-            let geom = geom.transform(&transform)?;
-            geoms.push(geom.wkb()?);
+            if let Some(geom) = feature.geometry() {
+                let geom = geom.transform(&transform)?;
+                geoms.push(geom.wkb()?);
+            } else {
+                geoms.push(Vec::new());
+            }
         }
 
         // load

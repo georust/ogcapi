@@ -1,7 +1,4 @@
-use std::{
-    any::Any,
-    net::{SocketAddr, TcpListener},
-};
+use std::{any::Any, net::SocketAddr};
 
 use axum::{
     body::Body,
@@ -13,6 +10,7 @@ use axum::{
     routing::get,
     Router,
 };
+use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
     catch_panic::CatchPanicLayer,
@@ -98,8 +96,9 @@ impl Service {
                 .propagate_x_request_id(),
         );
 
-        let listener =
-            TcpListener::bind((config.host.as_str(), config.port)).expect("create listener");
+        let listener = TcpListener::bind((config.host.as_str(), config.port))
+            .await
+            .expect("create listener");
 
         Service {
             state,
@@ -119,9 +118,7 @@ impl Service {
             self.listener.local_addr().unwrap()
         );
 
-        let builder = axum::Server::from_tcp(self.listener).unwrap();
-        builder
-            .serve(router.into_make_service())
+        axum::serve::serve(self.listener, router)
             .with_graceful_shutdown(shutdown_signal())
             .await
             .unwrap()

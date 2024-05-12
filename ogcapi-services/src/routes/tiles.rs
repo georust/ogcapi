@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::OnceLock};
 
 use axum::{
     extract::{Path, State},
@@ -6,7 +6,6 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use once_cell::sync::OnceCell;
 use serde::Deserialize;
 
 use ogcapi_types::{
@@ -40,8 +39,8 @@ const CONFORMANCE: [&str; 7] = [
 
 const WEB_MERCARTOR_QUAD: &[u8; 8005] = include_bytes!("../../assets/tms/WebMercartorQuad.json");
 
-static TMS: OnceCell<HashMap<String, TileMatrixSet>> = OnceCell::new();
-static TM: OnceCell<HashMap<String, HashMap<String, TileMatrix>>> = OnceCell::new();
+static TMS: OnceLock<HashMap<String, TileMatrixSet>> = OnceLock::new();
+static TM: OnceLock<HashMap<String, HashMap<String, TileMatrix>>> = OnceLock::new();
 
 #[derive(Deserialize, Debug)]
 pub struct TileParams {

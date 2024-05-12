@@ -1,4 +1,5 @@
-use once_cell::sync::OnceCell;
+use std::cell::OnceCell;
+
 use reqwest::{
     blocking::Client as ReqwestClient,
     header::{HeaderMap, HeaderValue, USER_AGENT},
@@ -78,9 +79,12 @@ impl Client {
 
     /// Returns the landing page or the root catalog.
     pub fn root(&self) -> Result<LandingPage, Error> {
-        let root = self
-            .root
-            .get_or_try_init(|| self.fetch::<LandingPage>(self.endpoint.as_ref()))?;
+        let root = if let Some(root) = self.root.get() {
+            root
+        } else {
+            let root = self.fetch::<LandingPage>(self.endpoint.as_ref())?;
+            self.root.get_or_init(|| root)
+        };
         Ok(root.clone())
     }
 

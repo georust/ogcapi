@@ -1,4 +1,4 @@
-use aws_sdk_s3::{error::GetObjectErrorKind, types::SdkError};
+use aws_sdk_s3::{error::SdkError, operation::get_object::GetObjectError};
 
 use ogcapi_types::{
     common::{media_type::GEO_JSON, Crs},
@@ -46,8 +46,8 @@ impl FeatureTransactions for S3 {
                 &r.body.collect().await?.into_bytes(),
             )?)),
             Err(e) => match e {
-                SdkError::ServiceError(err) => match err.err().kind {
-                    GetObjectErrorKind::NoSuchKey(_) => Ok(None),
+                SdkError::ServiceError(err) => match err.err() {
+                    GetObjectError::NoSuchKey(_) => Ok(None),
                     _ => Err(anyhow::Error::new(err.into_err())),
                 },
                 _ => Err(anyhow::Error::new(e)),

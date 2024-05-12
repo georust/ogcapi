@@ -22,10 +22,11 @@ pub(crate) async fn load_asset_from_path(
     let filename = path.file_name().unwrap().to_str().unwrap();
 
     let key = format!("assets/{filename}");
+    let bucket = std::env::var("AWS_S3_BUCKET_NAME")?;
 
     s3.client
         .put_object()
-        .bucket(std::env::var("AWS_S3_BUCKET_NAME")?)
+        .bucket(&bucket)
         .key(&key)
         .body(stream)
         .content_type(GEO_JSON)

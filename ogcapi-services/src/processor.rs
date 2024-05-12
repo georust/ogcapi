@@ -42,6 +42,7 @@ struct GreeterInputs {
 }
 
 /// Outputs for the `greet` process
+#[allow(dead_code)]
 #[derive(JsonSchema)]
 struct GreeterOutputs(String);
 
