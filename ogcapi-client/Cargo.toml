@@ -13,11 +13,11 @@ stac = ["ogcapi-types/stac"]
 [dependencies]
 geojson = { workspace = true }
 log = { workspace = true }
-reqwest = { version = "0.12.3", default-features = false, features = ["json", "blocking", "rustls-tls"] }
+reqwest = { version = "0.12.4", default-features = false, features = ["json", "blocking", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_qs = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 
-ogcapi-types = { path = "../ogcapi-types" }
+ogcapi-types = { path = "../ogcapi-types", version = "0.2" }

@@ -29,13 +29,13 @@ osmpbfreader = { version = "0.16.1", optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 sqlx = { version = "0.7.4", optional = true, features = ["runtime-tokio-rustls", "postgres"] }
-tokio = { version = "1.37.0", features = ["full"] }
+tokio = { version = "1.37", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 url = { workspace = true, optional = true, features = ["serde"] }
 wkb = { version = "0.7.1", optional = true }
 
-ogcapi-types = { path = "../ogcapi-types", optional = true }
-ogcapi-drivers = { path = "../ogcapi-drivers", optional = true }
-ogcapi-services = { path = "../ogcapi-services", optional = true }
-ogcapi-client = { path = "../ogcapi-client", optional = true }
+ogcapi-types = { path = "../ogcapi-types", version = "0.2", optional = true }
+ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.2", optional = true }
+ogcapi-services = { path = "../ogcapi-services", version = "0.2", optional = true }
+ogcapi-client = { path = "../ogcapi-client", version = "0.2", optional = true }
