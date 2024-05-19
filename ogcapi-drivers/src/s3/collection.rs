@@ -93,7 +93,9 @@ impl CollectionTransactions for S3 {
         }
 
         let mut collections = Collections::new(collections);
-        collections.number_matched = collections.number_matched.to_owned();
+        collections
+            .number_returned
+            .clone_into(&mut collections.number_matched);
 
         Ok(collections)
     }

@@ -46,7 +46,7 @@ impl Linked for Links {
         for link in others {
             self.iter_mut()
                 .find(|l| l.rel == link.rel)
-                .map(|l| l.href = link.href.to_owned())
+                .map(|l| link.href.clone_into(&mut l.href))
                 .unwrap_or_else(|| self.push(link.to_owned()));
         }
     }
