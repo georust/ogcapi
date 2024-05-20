@@ -5,6 +5,8 @@ description = "Types as defined by various OGC API Standards."
 license.workspace = true
 repository.workspace = true
 edition.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 [features]
 default = []

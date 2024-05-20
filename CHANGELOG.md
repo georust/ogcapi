@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This change log.
 - Badges for `docs.rs` and `crates.io`.
+- Categories and keywords.
 
 ### Changed
 

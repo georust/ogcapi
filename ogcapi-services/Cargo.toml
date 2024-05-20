@@ -5,6 +5,8 @@ description = "Server implementation of several OGC API Standards."
 license.workspace = true
 repository.workspace = true
 edition.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 include = ["/src", "/assets"]
 
