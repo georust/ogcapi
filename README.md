@@ -1,6 +1,10 @@
 # `ogcapi`
 
-[OGC API](https://ogcapi.ogc.org/) building blocks implemented in [Rust](https://www.rust-lang.org/)
+[![Documentation](https://docs.rs/ogcapi/badge.svg)](https://docs.rs/ogcapi)
+[![Crate](https://img.shields.io/crates/v/ogcapi.svg)](https://crates.io/crates/ogcapi)
+
+The `ogcapi` crate provides various [OGC API](https://ogcapi.ogc.org/) building blocks implemented in [Rust](https://www.rust-lang.org/).
+
 
 ## Project Outline
 
@@ -13,7 +17,7 @@ The code is organized in four modules, respectively crates:
 | `ogcapi-services` | Server implementation of various OGC API services based on `axum`. |
 | `ogcapi-drivers`  | Drivers for different data provider backends, currently mainly PostgreSQL with PostGIS through `sqlx`. |
 
-These modules are reexported within the `ogcapi` crate. 
+These modules are reexported within the `ogcapi` crate.
 
 ## Quick Start
 

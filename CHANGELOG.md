@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - This change log.
+- Badges for `docs.rs` and `crates.io`.
 
 ### Changed
 
