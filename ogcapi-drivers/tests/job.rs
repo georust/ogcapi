@@ -1,4 +1,4 @@
-#[cfg(feature = "postgres")]
+#[cfg(feature = "processes")]
 mod postgres {
     use ogcapi_drivers::{postgres::Db, JobHandler};
     use ogcapi_types::processes::{StatusCode, StatusInfo};

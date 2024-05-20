@@ -12,16 +12,14 @@ include = ["/src", "/assets"]
 
 [features]
 default = ["common"]
-full = ["default", "features", "edr", "processes", "styles", "tiles", "stac"]
 
-common = []
-features = []
-edr = ["ogcapi-types/edr"]
-processes = ["dyn-clone", "schemars"]
-styles = []
-tiles = []
-
-stac = ["ogcapi-types/stac", "ogcapi-drivers/stac", "ogcapi-drivers/s3"]
+common = ["ogcapi-types/common", "ogcapi-drivers/common"]
+features = ["ogcapi-types/features", "ogcapi-drivers/features"]
+edr = ["ogcapi-types/edr", "ogcapi-drivers/edr"]
+processes = ["ogcapi-types/processes", "ogcapi-drivers/processes", "dyn-clone", "schemars"]
+stac = ["ogcapi-types/stac", "ogcapi-drivers/stac"]
+styles = ["ogcapi-types/styles", "ogcapi-drivers/styles"]
+tiles = ["ogcapi-types/tiles", "ogcapi-drivers/tiles"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -54,4 +52,4 @@ hyper-util = { version = "0.1.3", features = ["client"] }
 http-body-util = "0.1.1"
 uuid = { version = "1.8", features = ["serde", "v4"] }
 
-ogcapi = { path = "../ogcapi", version = "<0.3, >=0.1", default_features = false, features = ["import"] }
+ogcapi = { path = "../ogcapi", version = "<0.3, >=0.1", default_features = false, features = ["import", "services", "processes"] }

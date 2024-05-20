@@ -9,9 +9,17 @@ categories.workspace = true
 keywords.workspace = true
 
 [features]
-default = []
-edr = []
-stac = []
+default = ["common"]
+
+# standards
+common = []
+edr = ["common"]
+features = ["common"]
+processes = ["common"]
+stac = ["features"]
+styles = []
+tiles = ["common"]
+coverages = []
 
 [dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }

@@ -3,18 +3,27 @@ pub mod postgres;
 #[cfg(feature = "s3")]
 pub mod s3;
 
+#[cfg(feature = "common")]
+use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
+#[cfg(feature = "edr")]
+use ogcapi_types::edr::{Query as EdrQuery, QueryType};
+#[cfg(feature = "features")]
+use ogcapi_types::{
+    common::Crs,
+    features::{Feature, FeatureCollection, Query as FeatureQuery},
+};
+#[cfg(feature = "processes")]
+use ogcapi_types::processes::{Results, StatusInfo};
 #[cfg(feature = "stac")]
 use ogcapi_types::stac::SearchParams;
-use ogcapi_types::{
-    common::{Collection, Collections, Crs, Query as CollectionQuery},
-    edr::{Query as EdrQuery, QueryType},
-    features::{Feature, FeatureCollection, Query as FeatureQuery},
-    processes::{Results, StatusInfo},
-    styles::Styles,
-    tiles::TileMatrixSet,
-};
+#[cfg(feature = "styles")]
+use ogcapi_types::styles::Styles;
+#[cfg(feature = "tiles")]
+use ogcapi_types::tiles::TileMatrixSet;
+
 
 /// Trait for `Collection` transactions
+#[cfg(feature = "common")]
 #[async_trait::async_trait]
 pub trait CollectionTransactions: Send + Sync {
     async fn create_collection(&self, collection: &Collection) -> anyhow::Result<String>;
@@ -29,6 +38,7 @@ pub trait CollectionTransactions: Send + Sync {
 }
 
 /// Trait for `Feature` transactions
+#[cfg(feature = "features")]
 #[async_trait::async_trait]
 pub trait FeatureTransactions: Send + Sync {
     async fn create_feature(&self, feature: &Feature) -> anyhow::Result<String>;
@@ -58,6 +68,7 @@ pub trait StacSeach: Send + Sync {
 }
 
 /// Trait for `EDR` queries
+#[cfg(feature = "edr")]
 #[async_trait::async_trait]
 pub trait EdrQuerier: Send + Sync {
     async fn query(
@@ -69,6 +80,7 @@ pub trait EdrQuerier: Send + Sync {
 }
 
 /// Trait for `Processes` jobs
+#[cfg(feature = "processes")]
 #[async_trait::async_trait]
 pub trait JobHandler: Send + Sync {
     async fn register(&self, job: &StatusInfo) -> anyhow::Result<String>;
@@ -81,6 +93,7 @@ pub trait JobHandler: Send + Sync {
 }
 
 /// Trait for `Style` transactions
+#[cfg(feature = "styles")]
 #[async_trait::async_trait]
 pub trait StyleTransactions: Send + Sync {
     async fn list_styles(&self) -> anyhow::Result<Styles>;
@@ -89,6 +102,7 @@ pub trait StyleTransactions: Send + Sync {
 }
 
 /// Trait for `Tile` transacions
+#[cfg(feature = "tiles")]
 #[async_trait::async_trait]
 pub trait TileTransactions: Send + Sync {
     async fn tile(

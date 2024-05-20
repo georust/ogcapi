@@ -10,16 +10,47 @@ categories.workspace = true
 keywords.workspace = true
 
 [features]
-default = ["types", "client", "drivers", "services", "import"]
+default = ["common"]
+import = [
+    "drivers",
+    "types",
+    "gdal",
+    "geo",
+    "geojson",
+    "osmpbfreader",
+    "serde",
+    "serde_json",
+    "sqlx",
+    "url",
+    "wkb",
+]
 
+# components
+types = ["ogcapi-types"]
 client = ["ogcapi-client"]
 drivers = ["ogcapi-drivers"]
-services = ["ogcapi-services", "ogcapi-services/full"]
-types = ["ogcapi-types"]
+services = ["ogcapi-services"]
 
-import = ["drivers", "types", "gdal", "geo", "geojson", "osmpbfreader", "serde", "serde_json", "sqlx", "url", "wkb"]
+# standards
+common = ["ogcapi-types?/common"]
+edr = ["ogcapi-types?/edr", "ogcapi-services?/edr"]
+features = ["ogcapi-types?/features", "ogcapi-services?/features"]
+processes = ["ogcapi-types?/processes", "ogcapi-services?/processes"]
+stac = [
+    "ogcapi-types?/stac",
+    "ogcapi-drivers?/stac",
+    "ogcapi-services?/stac",
+    "ogcapi-client?/stac",
+]
+styles = ["ogcapi-types?/styles", "ogcapi-services?/styles"]
+tiles = ["ogcapi-types?/tiles", "ogcapi-services?/tiles"]
 
-stac = ["ogcapi-types?/stac", "ogcapi-drivers?/stac", "ogcapi-drivers?/s3", "ogcapi-services?/stac", "ogcapi-client?/stac"]
+
+# TODO: convert to examples
+[[bin]]
+name = "cli"
+path = "src/main.rs"
+required-features = ["import", "services", "processes"]
 
 [dependencies]
 anyhow = { workspace = true }

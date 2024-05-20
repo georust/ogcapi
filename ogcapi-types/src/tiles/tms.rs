@@ -1,8 +1,10 @@
-use super::{BoundingBox2D, Point2D, TitleDescriptionKeywords};
-use crate::common::{Crs, Links};
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
 use std::num::{NonZeroU16, NonZeroU64};
+
+use crate::common::{Crs, Links};
+
+use super::{BoundingBox2D, Point2D, TitleDescriptionKeywords};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -11,9 +11,18 @@ keywords.workspace = true
 include = ["/src", "/migrations"]
 
 [features]
-s3 = ["aws-config", "aws-sdk-s3"]
-stac = ["ogcapi-types/stac"]
+default = ["postgres"]
 postgres = ["sqlx", "rink-core", "url"]
+s3 = ["aws-config", "aws-sdk-s3"]
+
+# standards
+common = ["ogcapi-types/common"]
+edr = ["ogcapi-types/edr"]
+features = ["ogcapi-types/features"]
+processes = ["ogcapi-types/processes"]
+stac = ["ogcapi-types/stac", "s3"]
+styles = ["ogcapi-types/styles"]
+tiles = ["ogcapi-types/tiles"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -27,4 +36,4 @@ sqlx = { version = "0.7.4", optional = true, features = ["runtime-tokio-rustls",
 tokio = { version = "1.37", features = ["full"] }
 url = { workspace = true, optional = true }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.2"}
+ogcapi-types = { path = "../ogcapi-types", version = "0.2" }

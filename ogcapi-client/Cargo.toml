@@ -9,7 +9,8 @@ categories.workspace = true
 keywords.workspace = true
 
 [features]
-default = []
+default = ["features"]
+features = ["ogcapi-types/features"]
 stac = ["ogcapi-types/stac"]
 
 [dependencies]

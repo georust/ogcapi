@@ -1,10 +1,16 @@
+#[cfg(feature = "common")]
 mod collection;
+#[cfg(feature = "edr")]
 mod edr;
+#[cfg(feature = "features")]
 mod feature;
+#[cfg(feature = "processes")]
 mod job;
 #[cfg(feature = "stac")]
 mod stac;
+#[cfg(feature = "styles")]
 mod style;
+#[cfg(feature = "tiles")]
 mod tile;
 
 use sqlx::{
