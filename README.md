@@ -1,4 +1,4 @@
-# `ogcapi`
+# ogcapi
 
 [![Documentation](https://docs.rs/ogcapi/badge.svg)](https://docs.rs/ogcapi)
 [![Crate](https://img.shields.io/crates/v/ogcapi.svg)](https://crates.io/crates/ogcapi)

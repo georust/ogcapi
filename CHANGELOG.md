@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Use top level `README.md` for `ogcapi` crate.
+
 ## [0.2.0] - 2024-05-19
 
 ### Added
