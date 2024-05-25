@@ -1,17 +1,21 @@
 mod setup;
 
-use axum::{body::Body, http::Request};
-use http_body_util::BodyExt;
-use hyper_util::{client::legacy::Client, rt::TokioExecutor};
-use serde_json::json;
-
-use ogcapi_types::{
-    common::{media_type::JSON, Collection, Crs},
-    features::Feature,
-};
-
+#[cfg(feature = "features")]
 #[tokio::test]
 async fn minimal_feature_crud() -> anyhow::Result<()> {
+    use axum::{
+        body::Body,
+        http::{Method, Request},
+    };
+    use http_body_util::BodyExt;
+    use hyper_util::{client::legacy::Client, rt::TokioExecutor};
+    use serde_json::json;
+
+    use ogcapi_types::{
+        common::{media_type::JSON, Collection, Crs},
+        features::Feature,
+    };
+
     // setup app
     let (addr, _) = setup::spawn_app().await?;
     let client = Client::builder(TokioExecutor::new()).build_http();
@@ -27,7 +31,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let res = client
         .request(
             Request::builder()
-                .method(axum::http::Method::POST)
+                .method(Method::POST)
                 .uri(format!("http://{}/collections", addr))
                 .header("Content-Type", JSON)
                 .body(Body::from(serde_json::to_string(&collection)?))?,
@@ -56,7 +60,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let res = client
         .request(
             Request::builder()
-                .method(axum::http::Method::POST)
+                .method(Method::POST)
                 .uri(format!(
                     "http://{}/collections/{}/items",
                     addr, collection.id
@@ -77,7 +81,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let res = client
         .request(
             Request::builder()
-                .method(axum::http::Method::GET)
+                .method(Method::GET)
                 .uri(
                     format!(
                         "http://{}/collections/{}/items/{}",
@@ -98,7 +102,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let res = client
         .request(
             Request::builder()
-                .method(axum::http::Method::DELETE)
+                .method(Method::DELETE)
                 .uri(
                     format!(
                         "http://{}/collections/{}/items/{}",
@@ -116,7 +120,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let res = client
         .request(
             Request::builder()
-                .method(axum::http::Method::DELETE)
+                .method(Method::DELETE)
                 .uri(format!("http://{}/collections/{}", addr, &collection.id).as_str())
                 .body(Body::empty())?,
         )

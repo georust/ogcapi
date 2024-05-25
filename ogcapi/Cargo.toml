@@ -11,19 +11,6 @@ keywords.workspace = true
 
 [features]
 default = ["common"]
-import = [
-    "drivers",
-    "types",
-    "gdal",
-    "geo",
-    "geojson",
-    "osmpbfreader",
-    "serde",
-    "serde_json",
-    "sqlx",
-    "url",
-    "wkb",
-]
 
 # components
 types = ["ogcapi-types"]
@@ -32,43 +19,43 @@ drivers = ["ogcapi-drivers"]
 services = ["ogcapi-services"]
 
 # standards
-common = ["ogcapi-types?/common"]
-edr = ["ogcapi-types?/edr", "ogcapi-services?/edr"]
-features = ["ogcapi-types?/features", "ogcapi-services?/features"]
-processes = ["ogcapi-types?/processes", "ogcapi-services?/processes"]
+common = [
+    "ogcapi-types?/common",
+    "ogcapi-drivers?/common",
+    "ogcapi-services?/common",
+]
+edr = ["ogcapi-types?/edr", "ogcapi-drivers?/edr", "ogcapi-services?/edr"]
+features = [
+    "ogcapi-types?/features",
+    "ogcapi-drivers?/features",
+    "ogcapi-services?/features",
+]
+processes = [
+    "ogcapi-types?/processes",
+    "ogcapi-drivers?/processes",
+    "ogcapi-services?/processes",
+]
 stac = [
     "ogcapi-types?/stac",
     "ogcapi-drivers?/stac",
     "ogcapi-services?/stac",
     "ogcapi-client?/stac",
 ]
-styles = ["ogcapi-types?/styles", "ogcapi-services?/styles"]
-tiles = ["ogcapi-types?/tiles", "ogcapi-services?/tiles"]
+styles = [
+    "ogcapi-types?/styles",
+    "ogcapi-drivers?/styles",
+    "ogcapi-services?/styles",
+]
+tiles = [
+    "ogcapi-types?/tiles",
+    "ogcapi-drivers?/tiles",
+    "ogcapi-services?/tiles",
+]
 
-
-# TODO: convert to examples
-[[bin]]
-name = "cli"
-path = "src/main.rs"
-required-features = ["import", "services", "processes"]
+# processes
+greeter = ["ogcapi-services/greeter"]
 
 [dependencies]
-anyhow = { workspace = true }
-clap = { version = "4.5.4", features = ["derive", "env"] }
-dotenvy = "0.15.7"
-gdal = { version = "0.16.0", optional = true, features = ["bindgen"] }
-geo = { version = "0.28.0", optional = true }
-geojson = { workspace = true, optional = true, features = ["geo-types"] }
-osmpbfreader = { version = "0.16.1", optional = true }
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
-sqlx = { version = "0.7.4", optional = true, features = ["runtime-tokio-rustls", "postgres"] }
-tokio = { version = "1.37", features = ["full"] }
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-url = { workspace = true, optional = true, features = ["serde"] }
-wkb = { version = "0.7.1", optional = true }
-
 ogcapi-types = { path = "../ogcapi-types", version = "0.2", optional = true }
 ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.2", optional = true }
 ogcapi-services = { path = "../ogcapi-services", version = "0.2", optional = true }

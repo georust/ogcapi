@@ -2,8 +2,10 @@ use std::convert::TryInto;
 
 use geo::Geometry;
 
-use ogcapi_drivers::{postgres::Db, CollectionTransactions};
-use ogcapi_types::common::{Collection, Crs, Extent, SpatialExtent};
+use ogcapi::{
+    drivers::{postgres::Db, CollectionTransactions},
+    types::common::{Collection, Crs, Extent, SpatialExtent},
+};
 
 use super::Args;
 

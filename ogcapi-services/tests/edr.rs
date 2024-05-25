@@ -8,7 +8,7 @@ async fn edr() -> anyhow::Result<()> {
     use http_body_util::BodyExt;
     use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 
-    use ogcapi::import::{self, Args};
+    use data_loader::import::{self, Args};
     use ogcapi_types::{common::Crs, edr::Query, features::FeatureCollection};
 
     let (addr, database_url) = setup::spawn_app().await?;

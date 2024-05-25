@@ -6,8 +6,8 @@ use gdal::{
 };
 use serde_json::{Map, Value};
 
-use ogcapi_drivers::{postgres::Db, CollectionTransactions};
-use ogcapi_types::common::{Bbox, Collection, Crs, Extent, SpatialExtent};
+use ogcapi::drivers::{postgres::Db, CollectionTransactions};
+use ogcapi::types::common::{Bbox, Collection, Crs, Extent, SpatialExtent};
 
 use super::Args;
 

@@ -7,11 +7,6 @@ pub mod s3;
 use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
 #[cfg(feature = "edr")]
 use ogcapi_types::edr::{Query as EdrQuery, QueryType};
-#[cfg(feature = "features")]
-use ogcapi_types::{
-    common::Crs,
-    features::{Feature, FeatureCollection, Query as FeatureQuery},
-};
 #[cfg(feature = "processes")]
 use ogcapi_types::processes::{Results, StatusInfo};
 #[cfg(feature = "stac")]
@@ -20,7 +15,11 @@ use ogcapi_types::stac::SearchParams;
 use ogcapi_types::styles::Styles;
 #[cfg(feature = "tiles")]
 use ogcapi_types::tiles::TileMatrixSet;
-
+#[cfg(feature = "features")]
+use ogcapi_types::{
+    common::Crs,
+    features::{Feature, FeatureCollection, Query as FeatureQuery},
+};
 
 /// Trait for `Collection` transactions
 #[cfg(feature = "common")]

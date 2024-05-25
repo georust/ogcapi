@@ -25,15 +25,13 @@ This will take a while and use quite some disk space
 
 ```bash
 # Setup the database
-docker compose up
+docker compose up --build
 
 # Import administrative bounaries
-docker exec -ti ogcapi cargo run -- import \
-        --input data/ne_110m_admin_0_countries.geojson \
-        --collection countries
+docker exec -ti ogcapi cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
 
 # Run app
-docker exec -ti ogcapi cargo run -- serve
+docker exec -ti ogcapi cargo run -p demo-service
 ```
 
 Open <http://localhost:8484/> were you will find the `Landing Page`.
@@ -58,10 +56,10 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 docker compose up db minio minio-mc -d
 
 # Import administrative bounaries
-cargo run -- import --input data/ne_110m_admin_0_countries.geojson --collection countries
+cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
 
 # Start service 
-cargo run -- serve
+cargo run -p demo-service
 
 # Run tests
 cargo test --workspace --all-features

@@ -1,18 +1,30 @@
 mod args;
+#[cfg(feature = "osm")]
 mod boundaries;
 pub mod geojson;
+#[cfg(feature = "ogr")]
 pub mod ogr;
+#[cfg(feature = "osm")]
 pub mod osm;
 
 pub use args::Args;
 
 #[cfg(feature = "stac")]
+use std::collections::HashMap;
+
+use serde_json::{Map, Value};
+use sqlx::{types::Json, PgPool};
+
+#[cfg(feature = "stac")]
+use ogcapi::{
+    drivers::s3::{ByteStream, S3},
+    types::{common::media_type::GEO_JSON, stac::Asset},
+};
+
+#[cfg(feature = "stac")]
 pub(crate) async fn load_asset_from_path(
     path: &std::path::PathBuf,
-) -> anyhow::Result<std::collections::HashMap<String, ogcapi_types::stac::Asset>> {
-    use ogcapi_drivers::s3::{ByteStream, S3};
-    use ogcapi_types::common::media_type::GEO_JSON;
-
+) -> anyhow::Result<HashMap<String, Asset>> {
     // Setup S3 driver
     let s3 = S3::new().await;
 
@@ -33,22 +45,19 @@ pub(crate) async fn load_asset_from_path(
         .send()
         .await?;
 
-    let asset = ogcapi_types::stac::Asset::new(key);
+    let asset = Asset::new(key);
 
     let file_stem = path.file_stem().unwrap().to_str().unwrap();
 
-    Ok(std::collections::HashMap::from([(
-        file_stem.to_string(),
-        asset,
-    )]))
+    Ok(HashMap::from([(file_stem.to_string(), asset)]))
 }
 
 pub(crate) async fn bulk_load_items(
     collection: &str,
     ids: &[String],
-    properties: &[Option<sqlx::types::Json<serde_json::Map<String, serde_json::Value>>>],
+    properties: &[Option<Json<Map<String, Value>>>],
     geoms: &[Vec<u8>],
-    connection: &sqlx::PgPool,
+    connection: &PgPool,
 ) -> Result<(), sqlx::Error> {
     let batch_size = 10000;
     let total = geoms.len();

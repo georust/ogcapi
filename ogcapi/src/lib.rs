@@ -1,8 +1,5 @@
 #![doc = include_str!("../../README.md")]
 
-#[cfg(feature = "import")]
-pub mod import;
-
 #[cfg(feature = "client")]
 pub mod client {
     pub use ogcapi_client::*;

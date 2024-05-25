@@ -107,15 +107,27 @@ impl CollectionTransactions for Db {
     }
 
     async fn list_collections(&self, _query: &Query) -> anyhow::Result<Collections> {
-        let collections: Option<sqlx::types::Json<Vec<Collection>>> = sqlx::query_scalar(
-            r#"
-            SELECT array_to_json(array_agg(collection))
-            FROM meta.collections
-            WHERE collection ->> 'type' = 'Collection'
-            "#,
-        )
-        .fetch_one(&self.pool)
-        .await?;
+        println!("Query collections");
+        let collections: Option<sqlx::types::Json<Vec<Collection>>> = if cfg!(feature = "stac") {
+            sqlx::query_scalar(
+                r#"
+                SELECT array_to_json(array_agg(collection))
+                FROM meta.collections
+                WHERE collection ->> 'type' = 'Collection'
+                "#,
+            )
+            .fetch_one(&self.pool)
+            .await?
+        } else {
+            sqlx::query_scalar(
+                r#"
+                SELECT array_to_json(array_agg(collection))
+                FROM meta.collections
+                "#,
+            )
+            .fetch_one(&self.pool)
+            .await?
+        };
 
         let collections = collections.map(|c| c.0).unwrap_or_default();
         let mut collections = Collections::new(collections);

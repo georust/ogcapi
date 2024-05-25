@@ -13,7 +13,7 @@ items.id,
 items.collection,
 properties,
 ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb AS geometry,
-links,
+links
 ";
 
 #[cfg(feature = "stac")]

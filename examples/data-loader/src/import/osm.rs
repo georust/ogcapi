@@ -4,8 +4,10 @@ use geo::{Coord, Geometry, GeometryCollection, LineString, MultiLineString, Poin
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 use serde_json::{Map, Value};
 
-use ogcapi_drivers::{postgres::Db, CollectionTransactions};
-use ogcapi_types::common::{Collection, Crs};
+use ogcapi::{
+    drivers::{postgres::Db, CollectionTransactions},
+    types::common::{Collection, Crs},
+};
 
 use super::Args;
 
