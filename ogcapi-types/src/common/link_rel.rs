@@ -55,6 +55,9 @@ pub const LICENSE: &str = "license";
 
 pub const METADATA: &str = "metadata";
 
+/// Identifies a resource that can use used to monitor changes in a resource.
+pub const MONITOR: &str = "monitor";
+
 pub const NEXT: &str = "next";
 
 pub const PARENT: &str = "parent";

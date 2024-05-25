@@ -3,7 +3,7 @@ mod error;
 mod extractors;
 mod openapi;
 #[cfg(feature = "processes")]
-mod processor;
+pub mod processes;
 mod routes;
 mod service;
 mod state;
@@ -16,7 +16,7 @@ pub use service::Service;
 pub use state::AppState;
 
 #[cfg(feature = "processes")]
-pub use processor::{Greeter, Processor};
+pub use processes::Processor;
 
 #[doc(hidden)]
 pub use clap::Parser as ConfigParser;

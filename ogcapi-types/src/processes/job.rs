@@ -1,11 +1,18 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::{formats::SpaceSeparator, StringWithSeparator};
 
-use crate::common::Links;
+use crate::common::{query::LimitOffsetPagination, Links};
 
 use super::execute::InlineOrRefData;
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct JobList {
+    jobs: Vec<StatusInfo>,
+    links: Links,
+}
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct StatusInfo {
@@ -39,8 +46,26 @@ impl Default for StatusCode {
     }
 }
 
+#[serde_with::serde_as]
+#[derive(Deserialize, Debug)]
+pub struct ResultsQuery {
+    #[serde(flatten)]
+    pub pagination: LimitOffsetPagination,
+    #[serde(default)]
+    #[serde_as(as = "Option<StringWithSeparator::<SpaceSeparator, String>>")]
+    pub outputs: Option<Vec<String>>,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Results {
     #[serde(flatten)]
-    results: HashMap<String, InlineOrRefData>,
+    pub results: HashMap<String, InlineOrRefData>,
+}
+
+impl Deref for Results {
+    type Target = HashMap<String, InlineOrRefData>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.results
+    }
 }

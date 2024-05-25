@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
 
 use crate::common::{Bbox, Crs, Datetime};
@@ -16,7 +16,16 @@ pub struct Query {
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub datetime: Option<Datetime>,
-    pub limit: Option<isize>,
-    pub offset: Option<isize>,
+    #[serde(flatten)]
+    pub pagination: LimitOffsetPagination,
     pub f: Option<String>,
+}
+
+/// Query parameters to facilitate pagination with a limit and offset
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct LimitOffsetPagination {
+    /// Amount of items to return
+    pub limit: Option<usize>,
+    /// Offset into the items list
+    pub offset: Option<usize>,
 }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -11,9 +13,13 @@ use ogcapi_types::{
     common::{
         link_rel::{NEXT, PREV, PROCESSES, SELF},
         media_type::JSON,
+        query::LimitOffsetPagination,
         Link,
     },
-    processes::{Execute, Process, ProcessList, ProcessQuery, ProcessSummary},
+    processes::{
+        Execute, InlineOrRefData, JobList, Process, ProcessList, ProcessSummary, Results,
+        ResultsQuery,
+    },
 };
 
 use crate::{extractors::RemoteUrl, AppState, Error, Result};
@@ -32,7 +38,7 @@ const CONFORMANCE: [&str; 4] = [
 async fn processes(
     State(state): State<AppState>,
     RemoteUrl(mut url): RemoteUrl,
-    Query(mut query): Query<ProcessQuery>,
+    Query(mut query): Query<LimitOffsetPagination>,
 ) -> Result<Json<ProcessList>> {
     let limit = query
         .limit
@@ -89,9 +95,9 @@ async fn processes(
 async fn process(
     State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
-    Path(id): Path<String>,
+    Path(process_id): Path<String>,
 ) -> Result<Json<Process>> {
-    match state.processors.read().unwrap().get(&id) {
+    match state.processors.read().unwrap().get(&process_id) {
         Some(processor) => {
             let mut process = processor.process();
 
@@ -101,7 +107,7 @@ async fn process(
         }
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No process with id `{}`", id),
+            format!("No process with id `{}`", process_id),
         )),
     }
 }
@@ -109,30 +115,33 @@ async fn process(
 async fn execution(
     State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
-    Path(id): Path<String>,
+    Path(process_id): Path<String>,
     Json(execute): Json<Execute>,
 ) -> Result<Response> {
     let processors = state.processors.read().unwrap().clone();
-    let processor = processors.get(&id);
+    let processor = processors.get(&process_id);
     match processor {
         Some(processor) => processor.execute(execute, &state, &url).await,
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No process with id `{}`", id),
+            format!("No process with id `{}`", process_id),
         )),
     }
 }
 
-async fn jobs() {
+async fn jobs(
+    State(_state): State<AppState>,
+    RemoteUrl(mut _url): RemoteUrl,
+) -> Result<Json<JobList>> {
     todo!()
 }
 
 async fn status(
     State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
-    Path(id): Path<String>,
+    Path(job_id): Path<String>,
 ) -> Result<Response> {
-    let status = state.drivers.jobs.status(&id).await?;
+    let status = state.drivers.jobs.status(&job_id).await?;
 
     match status {
         Some(mut info) => {
@@ -142,13 +151,13 @@ async fn status(
         }
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No job with id `{}`", id),
+            format!("No job with id `{}`", job_id),
         )),
     }
 }
 
-async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> Result<Response> {
-    let status = state.drivers.jobs.dismiss(&id).await?;
+async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Result<Response> {
+    let status = state.drivers.jobs.dismiss(&job_id).await?;
 
     // TODO: cancel execution
 
@@ -156,21 +165,60 @@ async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> Result
         Some(info) => Ok(Json(info).into_response()),
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No job with id `{}`", id),
+            format!("No job with id `{}`", job_id),
         )),
     }
 }
 
-async fn results(State(state): State<AppState>, Path(id): Path<String>) -> Result<Response> {
-    let results = state.drivers.jobs.results(&id).await?;
+async fn results(
+    State(state): State<AppState>,
+    Path(job_id): Path<String>,
+    Query(query): Query<ResultsQuery>,
+) -> Result<Response> {
+    let results = state.drivers.jobs.results(&job_id).await?;
 
     // TODO: check if job is finished
 
     match results {
-        Some(results) => Ok(Json(results).into_response()),
+        Some(results) => {
+            if let Some(outputs) = query.outputs {
+                let results: HashMap<String, InlineOrRefData> = outputs
+                    .iter()
+                    .filter_map(|output| {
+                        results
+                            .get(output)
+                            .map(|result| (output.to_string(), result.to_owned()))
+                    })
+                    .collect();
+
+                Ok(Json(Results { results }).into_response())
+            } else {
+                Ok(Json(results).into_response())
+            }
+        }
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No job with id `{}`", id),
+            format!("No job with id `{}`", job_id),
+        )),
+    }
+}
+
+async fn result(
+    State(state): State<AppState>,
+    Path((job_id, output_id)): Path<(String, String)>,
+) -> Result<Response> {
+    let results = state.drivers.jobs.results(&job_id).await?;
+
+    // TODO: check if job is finished
+
+    match results {
+        Some(results) => {
+            let result = results.get(&output_id);
+            Ok(Json(result).into_response())
+        }
+        None => Err(Error::Exception(
+            StatusCode::NOT_FOUND,
+            format!("No job with id `{}`", job_id),
         )),
     }
 }
@@ -190,9 +238,10 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
 
     Router::new()
         .route("/processes", get(processes))
-        .route("/processes/:id", get(process))
-        .route("/processes/:id/execution", post(execution))
+        .route("/processes/:process_id", get(process))
+        .route("/processes/:process_id/execution", post(execution))
         .route("/jobs", get(jobs))
-        .route("/jobs/:id", get(status).delete(delete))
-        .route("/jobs/:id/results", get(results))
+        .route("/jobs/:job_id", get(status).delete(delete))
+        .route("/jobs/:job_id/results", get(results))
+        .route("/jobs/:job_id/results/:output_id", get(result))
 }

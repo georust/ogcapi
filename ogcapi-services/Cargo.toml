@@ -21,6 +21,9 @@ stac = ["ogcapi-types/stac", "ogcapi-drivers/stac"]
 styles = ["ogcapi-types/styles", "ogcapi-drivers/styles"]
 tiles = ["ogcapi-types/tiles", "ogcapi-drivers/tiles"]
 
+# processes
+greeter = ["processes"]
+
 [dependencies]
 anyhow = { workspace = true }
 axum = { version = "0.7.5", features = ["multipart"] }

@@ -23,7 +23,7 @@ pub enum Input {
     InlineOrRefDataArray(Vec<InlineOrRefData>),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum InlineOrRefData {
     InputValueNoObject(InputValueNoObject),
@@ -31,7 +31,7 @@ pub enum InlineOrRefData {
     Link(Link),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum InputValueNoObject {
     String(String),
@@ -50,14 +50,14 @@ pub struct BoundingBox {
     pub crs: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct QualifiedInputValue {
     pub value: InputValue,
     #[serde(flatten)]
     pub format: Format,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum InputValue {
     InputValueNoObject(InputValueNoObject),
@@ -72,7 +72,7 @@ pub struct Output {
     pub transmission_mode: TransmissionMode,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Format {
     pub media_type: Option<String>,
@@ -80,7 +80,7 @@ pub struct Format {
     pub schema: Option<Schema>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Schema {
     String(String),

@@ -1,29 +1,17 @@
 use axum::response::{IntoResponse, Response};
-use dyn_clone::DynClone;
 use schemars::{schema_for, JsonSchema};
 use serde::Deserialize;
 use url::Url;
 
 use ogcapi_types::processes::{Execute, Process};
 
-use crate::{AppState, Result};
+use crate::{AppState, Processor, Result};
 
-#[axum::async_trait]
-/// Trait for defining and executing a [Process]
-pub trait Processor: Send + Sync + DynClone {
-    /// Returns the process id (must be unique)
-    fn id(&self) -> String;
-
-    /// Returns the Process description
-    fn process(&self) -> Process;
-
-    /// Executes the Process and returns a response
-    async fn execute(&self, execute: Execute, state: &AppState, url: &Url) -> Result<Response>;
-}
-
-dyn_clone::clone_trait_object!(Processor);
-
-/// Example Processor
+/// Greeter `Processor`
+///
+/// Example processor that takes a name as input and returns a greeting.
+///
+/// # Usage
 ///
 /// ```bash
 /// curl http://localhost:8484/processes/greet/execution \

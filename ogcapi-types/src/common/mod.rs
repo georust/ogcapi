@@ -11,7 +11,7 @@ mod link;
 pub mod link_rel;
 mod links;
 pub mod media_type;
-mod query;
+pub mod query;
 
 pub use bbox::Bbox;
 pub use collection::*;
