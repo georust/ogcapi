@@ -8,7 +8,7 @@ async fn edr() -> anyhow::Result<()> {
     use http_body_util::BodyExt;
     use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 
-    use data_loader::import::{self, Args};
+    use data_loader::Args;
     use ogcapi_types::{common::Crs, edr::Query, features::FeatureCollection};
 
     let (addr, database_url) = setup::spawn_app().await?;
@@ -21,16 +21,16 @@ async fn edr() -> anyhow::Result<()> {
         "countries",
         &database_url,
     );
-    import::geojson::load(args).await?;
+    data_loader::geojson::load(args).await?;
 
     let args = Args::new(
         "../data/ne_110m_populated_places.geojson",
         "places",
         &database_url,
     );
-    import::geojson::load(args).await?;
+    data_loader::geojson::load(args).await?;
 
-    // import::geojson::load(
+    // data_loader::geojson::load(
     //     Args {
     //         input: PathBuf::from_str("../data/ne_10m_railroads_north_america.geojson")?,
     //         collection: "railroads".to_string(),

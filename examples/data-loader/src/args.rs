@@ -16,10 +16,6 @@ pub struct Args {
     #[clap(long)]
     pub s_srs: Option<u32>,
 
-    /// Target storage crs of the collection
-    #[clap(long)]
-    pub t_srs: Option<u32>,
-
     /// Postgres database url
     #[clap(long, env, hide_env_values = true, value_parser)]
     pub database_url: url::Url,
@@ -36,7 +32,6 @@ impl Args {
             collection: collection.to_string(),
             filter: None,
             s_srs: None,
-            t_srs: None,
             database_url: database_url.to_owned(),
         }
     }

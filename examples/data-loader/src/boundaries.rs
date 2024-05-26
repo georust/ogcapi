@@ -1,5 +1,4 @@
-use std::borrow::Borrow;
-use std::collections::BTreeMap;
+use std::{borrow::Borrow, collections::BTreeMap};
 
 use geo::{Coord, LineString, MultiPolygon, Point, Polygon};
 

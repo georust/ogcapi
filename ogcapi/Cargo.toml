@@ -10,7 +10,7 @@ categories.workspace = true
 keywords.workspace = true
 
 [features]
-default = ["common"]
+default = []
 
 # components
 types = ["ogcapi-types"]
@@ -51,6 +51,9 @@ tiles = [
     "ogcapi-drivers?/tiles",
     "ogcapi-services?/tiles",
 ]
+
+# drivers
+postgres = ["ogcapi-drivers/postgres"]
 
 # processes
 greeter = ["ogcapi-services/greeter"]

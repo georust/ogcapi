@@ -11,18 +11,19 @@ keywords.workspace = true
 include = ["/src", "/migrations"]
 
 [features]
-default = ["postgres"]
+default = []
+
 postgres = ["sqlx", "rink-core", "url"]
 s3 = ["aws-config", "aws-sdk-s3"]
 
 # standards
 common = ["ogcapi-types/common"]
-edr = ["ogcapi-types/edr"]
-features = ["ogcapi-types/features"]
-processes = ["ogcapi-types/processes"]
-stac = ["ogcapi-types/stac", "s3"]
+edr = ["common", "ogcapi-types/edr"]
+features = ["common", "ogcapi-types/features"]
+processes = ["common", "ogcapi-types/processes"]
+stac = ["features", "ogcapi-types/stac", "s3"]
 styles = ["ogcapi-types/styles"]
-tiles = ["ogcapi-types/tiles"]
+tiles = ["common", "ogcapi-types/tiles"]
 
 [dependencies]
 anyhow = { workspace = true }
