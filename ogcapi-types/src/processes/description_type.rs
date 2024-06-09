@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
+
+use crate::common::Link;
 
 #[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -10,21 +12,26 @@ pub struct DescriptionType {
     pub keywords: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub metadata: Vec<Metadata>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub parameters: Vec<AdditionalParameter>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum Metadata {
+    LinkedMetadata(LinkedMetadata),
+    ObjectMetadata(ObjectMetadata),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct LinkedMetadata {
+    #[serde(flatten)]
+    pub link: Link,
     pub role: Option<String>,
-    pub href: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AdditionalParameter {
-    pub name: String,
-    pub value: Vec<Value>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Metadata {
+pub struct ObjectMetadata {
+    pub role: Option<String>,
     pub title: Option<String>,
-    pub role: Option<String>,
-    pub href: Option<String>,
+    pub lang: Option<String>,
+    pub value: Option<Map<String, Value>>,
 }

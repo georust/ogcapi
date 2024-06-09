@@ -117,11 +117,11 @@ async fn execution(
     RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
     Json(execute): Json<Execute>,
-) -> Result<Response> {
+) -> Result<impl IntoResponse> {
     let processors = state.processors.read().unwrap().clone();
     let processor = processors.get(&process_id);
     match processor {
-        Some(processor) => processor.execute(execute, &state, &url).await,
+        Some(processor) => Ok(processor.execute(execute, &state, &url).await?),
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
             format!("No process with id `{}`", process_id),

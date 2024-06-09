@@ -9,11 +9,20 @@ use super::DescriptionType;
 pub struct InputDescription {
     #[serde(flatten)]
     pub description_type: DescriptionType,
+    pub value_passing: Vec<ValuePassing>,
     #[serde(default = "min_occurs")]
     pub min_occurs: u64,
     #[serde(default)]
     pub max_occurs: MaxOccurs,
     pub schema: Value,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+#[serde(rename_all = "camelCase")]
+pub enum ValuePassing {
+    ByValue,
+    ByReference,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -12,8 +12,6 @@ pub struct ProcessSummary {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub job_control_options: Vec<JobControlOptions>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub output_transmission: Vec<TransmissionMode>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub links: Links,
     #[serde(flatten)]
     pub description_type: DescriptionType,

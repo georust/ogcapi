@@ -3,7 +3,10 @@ use serde_json::Value;
 
 use crate::common::Links;
 
-use super::{DescriptionType, InputDescription, MaxOccurs, OutputDescription, ProcessSummary};
+use super::{
+    input_description::ValuePassing, DescriptionType, InputDescription, MaxOccurs,
+    OutputDescription, ProcessSummary,
+};
 
 /// Information about the available processes
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -26,12 +29,12 @@ impl Process {
                 id: id.to_string(),
                 version: version.to_string(),
                 job_control_options: Vec::new(),
-                output_transmission: Vec::new(),
                 links: Vec::new(),
                 description_type: DescriptionType::default(),
             },
             inputs: InputDescription {
                 description_type: DescriptionType::default(),
+                value_passing: vec![ValuePassing::ByValue],
                 min_occurs: 1,
                 max_occurs: MaxOccurs::default(),
                 schema: inputs.to_owned(),

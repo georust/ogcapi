@@ -1,4 +1,4 @@
-use axum::response::{IntoResponse, Response};
+use axum::response::IntoResponse;
 use schemars::{schema_for, JsonSchema};
 use serde::Deserialize;
 use url::Url;
@@ -6,6 +6,8 @@ use url::Url;
 use ogcapi_types::processes::{Execute, Process};
 
 use crate::{AppState, Processor, Result};
+
+use super::ProcessOutput;
 
 /// Greeter `Processor`
 ///
@@ -15,9 +17,8 @@ use crate::{AppState, Processor, Result};
 ///
 /// ```bash
 /// curl http://localhost:8484/processes/greet/execution \
-///         -u 'user:password' \
 ///         -H 'Content-Type: application/json' \
-///         -d '{"inputs": { "name": "World" } }'
+///         -d '{ "inputs": { "name": "World" } }'
 /// ```
 #[derive(Clone)]
 pub struct Greeter;
@@ -48,9 +49,16 @@ impl Processor for Greeter {
         )
     }
 
-    async fn execute(&self, execute: Execute, _state: &AppState, _url: &Url) -> Result<Response> {
+    async fn execute(
+        &self,
+        execute: Execute,
+        _state: &AppState,
+        _url: &Url,
+    ) -> Result<ProcessOutput> {
         let value = serde_json::to_value(execute.inputs).unwrap();
         let inputs: GreeterInputs = serde_json::from_value(value).unwrap();
-        Ok(format!("Hello, {}!\n", inputs.name).into_response())
+        Ok(ProcessOutput::Requested(
+            format!("Hello, {}!\n", inputs.name).into_response(),
+        ))
     }
 }

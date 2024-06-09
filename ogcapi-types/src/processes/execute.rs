@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use crate::common::{Bbox, Link};
+use crate::common::{Bbox, Link, OGC_CRS84};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Execute {
@@ -11,8 +11,6 @@ pub struct Execute {
     pub inputs: HashMap<String, Input>,
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub outputs: HashMap<String, Output>,
-    #[serde(default)]
-    pub response: Response,
     pub subscriber: Option<Subscriber>,
 }
 
@@ -41,13 +39,18 @@ pub enum InputValueNoObject {
     Array(Vec<Value>),
     // TODO: requires custom serde implementation
     // BinaryInputValue(String), // Undistinguishable from String(String)
-    // Bbox(BoundingBox), // Bbox is actually an object
+    Bbox(BoundingBox), // bbox is actually an object
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BoundingBox {
     pub bbox: Bbox,
-    pub crs: Option<String>,
+    #[serde(default = "default_crs")]
+    pub crs: String,
+}
+
+fn default_crs() -> String {
+    OGC_CRS84.to_string()
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -68,8 +71,6 @@ pub enum InputValue {
 #[serde(rename_all = "camelCase")]
 pub struct Output {
     pub format: Option<Format>,
-    #[serde(default)]
-    pub transmission_mode: TransmissionMode,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -85,22 +86,6 @@ pub struct Format {
 pub enum Schema {
     String(String),
     Object(Map<String, Value>),
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(rename_all = "lowercase")]
-pub enum TransmissionMode {
-    #[default]
-    Value,
-    Reference,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug)]
-#[serde(rename_all = "lowercase")]
-pub enum Response {
-    #[default]
-    Raw,
-    Document,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
