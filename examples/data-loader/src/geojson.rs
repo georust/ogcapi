@@ -1,8 +1,9 @@
-use std::{convert::TryInto, time::Instant};
+use std::{convert::TryInto, io::Cursor, time::Instant};
 
 use geo::Geometry;
 use geojson::{feature::Id, FeatureCollection};
 use sqlx::types::Json;
+use wkb::Endianness;
 
 use ogcapi::{
     drivers::{postgres::Db, CollectionTransactions},
@@ -72,7 +73,9 @@ pub async fn load(args: Args) -> anyhow::Result<()> {
 
         // geometry
         let geom = Geometry::try_from(feature.geometry.to_owned().unwrap().value)?;
-        geoms.push(wkb::geom_to_wkb::<f64>(&geom).unwrap());
+        let mut wkb = Cursor::new(Vec::new());
+        wkb::writer::write_geometry(&mut wkb, &geom, Endianness::LittleEndian).unwrap();
+        geoms.push(wkb.into_inner());
     }
 
     sqlx::query(&format!(

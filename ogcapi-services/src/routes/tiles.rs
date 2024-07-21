@@ -154,13 +154,13 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
 
     Router::new()
         .route("/tileMatrixSets", get(tile_matrix_sets))
-        .route("/tileMatrixSets/:tms_id", get(tile_matrix_set))
+        .route("/tileMatrixSets/{tms_id}", get(tile_matrix_set))
         .route("/tiles", get(tiles))
-        .route("/tiles/:tms_id", get(tile_matrix_set))
-        .route("/tiles/:tms_id/:matrix/:row/:col", get(tile))
-        // .route("/collections/:collection_id/tiles", get(tiles))
+        .route("/tiles/{tms_id}", get(tile_matrix_set))
+        .route("/tiles/{tms_id}/{matrix}/{row}/{col}", get(tile))
+        // .route("/collections/{collection_id}/tiles", get(tiles))
         .route(
-            "/collections/:collection_id/tiles/:tms_id/:matrix/:row/:col",
+            "/collections/{collection_id}/tiles/{tms_id}/{matrix}/{row}/{col}",
             get(tile),
         )
 }

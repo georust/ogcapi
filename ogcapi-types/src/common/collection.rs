@@ -4,7 +4,7 @@ use serde_with::DisplayFromStr;
 
 use crate::common::{Crs, Extent, Links};
 
-pub const CRS_REF: &str = "#/crs";
+// const CRS_REF: &str = "#/crs";
 
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
 #[serde_with::serde_as]

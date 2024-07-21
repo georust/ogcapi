@@ -9,7 +9,7 @@ pub mod edr;
 /// Types specified in the `OGC API - Features` standard.
 #[cfg(feature = "features")]
 pub mod features;
-/// Types specified in the `OGC API - Processed` standard.
+/// Types specified in the `OGC API - Processes` standard.
 #[cfg(feature = "processes")]
 pub mod processes;
 /// Types from the `SpatioTemporal Asset Catalog` specfication.

@@ -75,7 +75,7 @@ cargo doc --workspace --all-features --no-deps --open
 cargo fmt
 
 # Clippy
-cargo clippy --workspace --all-features --tests
+cargo clippy --workspace --all-features --examples --tests
 ```
 
 ### Teamengine

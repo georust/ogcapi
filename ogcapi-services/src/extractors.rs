@@ -1,8 +1,9 @@
 use anyhow::Context;
 use axum::{
-    extract::{FromRequestParts, Host, OriginalUri},
+    extract::{FromRequestParts, OriginalUri},
     http::{request::Parts, StatusCode},
 };
+use axum_extra::extract::Host;
 use url::Url;
 
 use crate::Error;
@@ -10,7 +11,6 @@ use crate::Error;
 /// Extractor for the remote URL
 pub(crate) struct RemoteUrl(pub Url);
 
-#[axum::async_trait]
 impl<S> FromRequestParts<S> for RemoteUrl
 where
     S: Send + Sync,
@@ -18,9 +18,7 @@ where
     type Rejection = Error;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let uri = OriginalUri::from_request_parts(parts, state)
-            .await
-            .expect("Infalllible, hence this should never fail");
+        let uri = OriginalUri::from_request_parts(parts, state).await.unwrap();
 
         let url = if uri.0.scheme().is_some() {
             uri.0.to_string()
@@ -45,7 +43,6 @@ where
 /// Extractor that deserializes query strings into some type `T` with [`serde_qs`]
 pub(crate) struct Qs<T>(pub(crate) T);
 
-#[axum::async_trait]
 impl<S, T> FromRequestParts<S> for Qs<T>
 where
     S: Send + Sync,

@@ -12,10 +12,9 @@ use ogcapi_types::common::{media_type::PROBLEM_JSON, Exception};
 /// Can be returned in a `Result` from an API handler function.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    /// Automatically return `500 Internal Server Error` on a `sqlx::Error`.
+    // /// Automatically return `500 Internal Server Error` on a `sqlx::Error`.
     // #[error("an error occurred with the database")]
     // Sqlx(#[from] sqlx::Error),
-
     /// Return `404 Not Found`
     #[error("not found")]
     NotFound,

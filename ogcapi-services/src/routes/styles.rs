@@ -23,5 +23,5 @@ async fn read_style(Path(id): Path<String>, State(state): State<AppState>) -> Re
 pub(crate) fn router(_state: &AppState) -> Router<AppState> {
     Router::new()
         .route("/styles", get(styles))
-        .route("/styles/:id", get(read_style))
+        .route("/styles/{id}", get(read_style))
 }

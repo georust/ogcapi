@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 /// Description of the property
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
-
 pub struct ObservedPropertyCollection {
     /// URI linking to an external registry which contains the definitive
     /// definition of the observed property

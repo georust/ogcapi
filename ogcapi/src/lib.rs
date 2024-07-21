@@ -10,6 +10,11 @@ pub mod drivers {
     pub use ogcapi_drivers::*;
 }
 
+#[cfg(feature = "processes")]
+pub mod processes {
+    pub use ogcapi_processes::*;
+}
+
 #[cfg(feature = "services")]
 pub mod services {
     pub use ogcapi_services::*;

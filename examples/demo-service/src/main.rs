@@ -1,7 +1,10 @@
 use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use ogcapi::services::{processes::Greeter, AppState, Config, Service};
+use ogcapi::{
+    processes::{geojson_loader::GeoJsonLoader, greeter::Greeter},
+    services::{AppState, Config, Service},
+};
 
 #[tokio::main]
 async fn main() {
@@ -21,7 +24,7 @@ async fn main() {
     let state = AppState::new_from(&config).await;
 
     // Register processes/processors
-    let state = state.processors(vec![Box::new(Greeter)]);
+    let state = state.processors(vec![Box::new(Greeter), Box::new(GeoJsonLoader)]);
 
     // Build & run with hyper
     Service::new_with(&config, state).await.serve().await;

@@ -22,7 +22,7 @@ use ogcapi_types::{
     },
 };
 
-use crate::{extractors::RemoteUrl, AppState, Error, Result};
+use crate::{extractors::RemoteUrl, processes::ProcessResponse, AppState, Error, Result};
 
 const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
@@ -53,7 +53,7 @@ async fn processes(
         .into_iter()
         .skip(offset)
         .take(limit)
-        .map(|(_id, p)| p.process().summary)
+        .map(|(_id, p)| p.process().unwrap().summary)
         .collect();
 
     let mut links = vec![Link::new(&url, SELF).mediatype(JSON)];
@@ -99,7 +99,7 @@ async fn process(
 ) -> Result<Json<Process>> {
     match state.processors.read().unwrap().get(&process_id) {
         Some(processor) => {
-            let mut process = processor.process();
+            let mut process = processor.process().unwrap();
 
             process.summary.links = vec![Link::new(url, SELF).mediatype(JSON)];
 
@@ -114,14 +114,16 @@ async fn process(
 
 async fn execution(
     State(state): State<AppState>,
-    RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
     Json(execute): Json<Execute>,
 ) -> Result<impl IntoResponse> {
     let processors = state.processors.read().unwrap().clone();
     let processor = processors.get(&process_id);
     match processor {
-        Some(processor) => Ok(processor.execute(execute, &state, &url).await?),
+        Some(processor) => match processor.execute(execute).await {
+            Ok(body) => Ok(ProcessResponse(body)),
+            Err(e) => Err(Error::Anyhow(anyhow::anyhow!(e))),
+        },
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
             format!("No process with id `{}`", process_id),
@@ -238,10 +240,10 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
 
     Router::new()
         .route("/processes", get(processes))
-        .route("/processes/:process_id", get(process))
-        .route("/processes/:process_id/execution", post(execution))
+        .route("/processes/{process_id}", get(process))
+        .route("/processes/{process_id}/execution", post(execution))
         .route("/jobs", get(jobs))
-        .route("/jobs/:job_id", get(status).delete(delete))
-        .route("/jobs/:job_id/results", get(results))
-        .route("/jobs/:job_id/results/:output_id", get(result))
+        .route("/jobs/{job_id}", get(status).delete(delete))
+        .route("/jobs/{job_id}/results", get(results))
+        .route("/jobs/{job_id}/results/{output_id}", get(result))
 }

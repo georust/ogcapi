@@ -5,7 +5,8 @@ use serde_json::{Map, Value};
 
 use crate::common::{Bbox, Link, OGC_CRS84};
 
-#[derive(Serialize, Deserialize, Debug)]
+/// Process execution
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Execute {
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub inputs: HashMap<String, Input>,
@@ -14,7 +15,8 @@ pub struct Execute {
     pub subscriber: Option<Subscriber>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+/// Process execution input
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Input {
     InlineOrRefData(InlineOrRefData),
@@ -67,7 +69,8 @@ pub enum InputValue {
     Object(Map<String, Value>),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+/// Process execution output
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Output {
     pub format: Option<Format>,
@@ -88,7 +91,8 @@ pub enum Schema {
     Object(Map<String, Value>),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+/// Process execution subscriber
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Subscriber {
     pub success_uri: String,

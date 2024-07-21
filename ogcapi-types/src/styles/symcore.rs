@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-/// OGC Symbology Conceptual Model: Core Part
+// OGC Symbology Conceptual Model: Core Part
 
-// type Literal = Value;
+/// Extension type (Literal = Value);
 type Extension = Map<String, Value>;
 
 #[derive(Serialize, Deserialize, Debug)]

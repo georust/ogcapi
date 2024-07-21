@@ -14,7 +14,7 @@ pub struct JobList {
     links: Links,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct StatusInfo {
     #[serde(rename = "processID", alias = "process_id")]
     pub process_id: Option<String>,
@@ -30,7 +30,7 @@ pub struct StatusInfo {
     pub links: Links,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum StatusCode {
     Accepted,
@@ -56,7 +56,7 @@ pub struct ResultsQuery {
     pub outputs: Option<Vec<String>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Results {
     #[serde(flatten)]
     pub results: HashMap<String, InlineOrRefData>,

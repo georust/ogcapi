@@ -183,7 +183,7 @@ pub struct Style {
 }
 
 /// A resource describing useful to create an array that describes the limits
-/// for a tile set [TileMatrixSet] based on the OGC TileSet Metadata Standard
+/// for a tile set [super::TileMatrixSet] based on the OGC TileSet Metadata Standard
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TileMatrixLimits {

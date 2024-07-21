@@ -214,9 +214,12 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
     Router::new()
-        .route("/collections/:collection_id/items", get(items).post(create))
         .route(
-            "/collections/:collection_id/items/:id",
+            "/collections/{collection_id}/items",
+            get(items).post(create),
+        )
+        .route(
+            "/collections/{collection_id}/items/{id}",
             get(read).put(update).delete(remove),
         )
 }

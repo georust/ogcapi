@@ -50,11 +50,11 @@ pub(crate) async fn swagger() -> Result<Html<String>> {
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <meta name="description" content="SwaggerIU" />
             <title>SwaggerUI</title>
-            <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4.11.1/swagger-ui.css" />
+            <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.18.2/swagger-ui.css" />
         </head>
         <body>
             <div id="swagger-ui"></div>
-            <script src="https://unpkg.com/swagger-ui-dist@4.11.1/swagger-ui-bundle.js" crossorigin></script>
+            <script src="https://unpkg.com/swagger-ui-dist@5.18.2/swagger-ui-bundle.js" crossorigin></script>
             <script>
             window.onload = () => {
                 window.ui = SwaggerUIBundle({

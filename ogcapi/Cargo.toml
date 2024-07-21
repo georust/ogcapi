@@ -34,6 +34,7 @@ processes = [
     "ogcapi-types?/processes",
     "ogcapi-drivers?/processes",
     "ogcapi-services?/processes",
+    "ogcapi-processes",
 ]
 stac = [
     "ogcapi-types?/stac",
@@ -56,10 +57,11 @@ tiles = [
 postgres = ["ogcapi-drivers/postgres"]
 
 # processes
-greeter = ["ogcapi-services/greeter"]
+greeter = ["processes"]
 
 [dependencies]
 ogcapi-types = { path = "../ogcapi-types", version = "0.2", optional = true }
 ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.2", optional = true }
+ogcapi-processes = { path = "../ogcapi-processes", version = "0.2", optional = true }
 ogcapi-services = { path = "../ogcapi-services", version = "0.2", optional = true }
 ogcapi-client = { path = "../ogcapi-client", version = "0.2", optional = true }

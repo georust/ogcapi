@@ -76,7 +76,6 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
             Crs::default(),
             storage_crs.clone(),
             Crs::from_epsg(3857),
-            Crs::from_epsg(2056),
         ])),
         extent: layer.try_get_extent()?.map(|e| Extent {
             spatial: Some(SpatialExtent {

@@ -12,10 +12,10 @@ use ogcapi_drivers::StyleTransactions;
 use ogcapi_drivers::TileTransactions;
 
 use ogcapi_drivers::{postgres::Db, CollectionTransactions};
+#[cfg(feature = "processes")]
+use ogcapi_processes::Processor;
 use ogcapi_types::common::{Conformance, LandingPage};
 
-#[cfg(feature = "processes")]
-use crate::Processor;
 use crate::{openapi::OPENAPI, Config, ConfigParser, OpenAPI};
 
 /// Application state
@@ -125,7 +125,10 @@ impl AppState {
     #[cfg(feature = "processes")]
     pub fn processors(self, processors: Vec<Box<dyn Processor>>) -> Self {
         for p in processors {
-            self.processors.write().unwrap().insert(p.id(), p);
+            self.processors
+                .write()
+                .unwrap()
+                .insert(p.id().to_string(), p);
         }
         self
     }

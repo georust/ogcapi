@@ -1,8 +1,9 @@
-use std::{collections::BTreeMap, fs::File};
+use std::{collections::BTreeMap, fs::File, io::Cursor};
 
 use geo::{Coord, Geometry, GeometryCollection, LineString, MultiLineString, Point, Polygon};
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 use serde_json::{Map, Value};
+use wkb::Endianness;
 
 use ogcapi::{
     drivers::{postgres::Db, CollectionTransactions},
@@ -64,9 +65,10 @@ pub async fn load(args: Args) -> Result<(), anyhow::Error> {
         }
 
         // build geometry
-        if let Some(geometry) =
-            geometry_from_obj(&obj, &objs).and_then(|g| wkb::geom_to_wkb(&g).ok())
-        {
+        if let Some(geom) = geometry_from_obj(&obj, &objs) {
+            let mut wkt = Cursor::new(Vec::new());
+            wkb::writer::write_geometry(&mut wkt, &geom, Endianness::LittleEndian).unwrap();
+
             sqlx::query(&format!(
                 r#"INSERT INTO items.{} (
                     id,
@@ -77,7 +79,7 @@ pub async fn load(args: Args) -> Result<(), anyhow::Error> {
             ))
             .bind(id.to_string())
             .bind(Value::from(properties) as Value)
-            .bind(geometry as Vec<u8>)
+            .bind(wkt.into_inner())
             .execute(&mut *tx)
             .await?;
         }
@@ -180,7 +182,7 @@ impl<'a> RefIter<'a> {
     }
 }
 
-impl<'a> Iterator for RefIter<'a> {
+impl Iterator for RefIter<'_> {
     type Item = OsmId;
 
     fn next(&mut self) -> Option<Self::Item> {

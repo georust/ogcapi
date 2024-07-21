@@ -170,7 +170,7 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
     Router::new()
         .route("/collections", get(collections).post(create))
         .route(
-            "/collections/:collection_id",
+            "/collections/{collection_id}",
             get(read).put(update).delete(remove),
         )
 }

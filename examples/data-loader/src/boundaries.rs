@@ -203,7 +203,8 @@ pub fn build_boundary_parts<T: Borrow<osmpbfreader::OsmObj>>(
                 }
             }
             if !added_part {
-                use geo::haversine_distance::HaversineDistance;
+                use geo::{Distance, Haversine};
+
                 let p = |n: &osmpbfreader::Node| {
                     Point(Coord {
                         x: n.lon(),
@@ -212,8 +213,10 @@ pub fn build_boundary_parts<T: Borrow<osmpbfreader::OsmObj>>(
                 };
 
                 if added_nodes.len() > 1 {
-                    let distance = p(added_nodes.first().unwrap())
-                        .haversine_distance(&p(added_nodes.last().unwrap()));
+                    let distance = Haversine::distance(
+                        p(added_nodes.first().unwrap()),
+                        p(added_nodes.last().unwrap()),
+                    );
                     if distance < WARN_UNCLOSED_RING_MAX_DISTANCE {
                         // warn!(
                         //     "boundary: relation/{} ({}): unclosed polygon, dist({:?}, {:?}) = {}",

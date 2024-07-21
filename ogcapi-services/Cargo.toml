@@ -16,7 +16,7 @@ default = ["common"]
 common = ["ogcapi-types/common", "ogcapi-drivers/common"]
 features = ["ogcapi-types/features", "ogcapi-drivers/features"]
 edr = ["ogcapi-types/edr", "ogcapi-drivers/edr"]
-processes = ["ogcapi-types/processes", "ogcapi-drivers/processes", "dyn-clone", "schemars"]
+processes = ["ogcapi-types/processes", "ogcapi-drivers/processes", "dyn-clone", "schemars", "ogcapi-processes"]
 stac = ["ogcapi-types/stac", "ogcapi-drivers/stac"]
 styles = ["ogcapi-types/styles", "ogcapi-drivers/styles"]
 tiles = ["ogcapi-types/tiles", "ogcapi-drivers/tiles"]
@@ -26,11 +26,12 @@ greeter = ["processes"]
 
 [dependencies]
 anyhow = { workspace = true }
-axum = { version = "0.7.5", features = ["multipart"] }
+axum = { version = "0.8.1", features = ["multipart"] }
+axum-extra = { version = "0.10.0" }
 clap = { version = "4.5", features = ["derive", "env"] }
 dyn-clone = { version = "1.0", optional = true }
 dotenvy = "0.15.7"
-hyper = { version = "1.4", features = ["full"] }
+hyper = { version = "1.5", features = ["full"] }
 openapiv3 = "2.0"
 schemars = { version = "0.8.21", optional = true }
 serde = { workspace = true }
@@ -38,21 +39,22 @@ serde_json = { workspace = true }
 serde_yaml = "0.9.33"
 serde_qs = { workspace = true }
 thiserror = { workspace = true }
-tokio = { version = "1.38.0", features = ["full"] }
-tower = "0.4.13"
-tower-http = { version = "0.5.2", features = ["compression-gzip", "catch-panic", "cors", "request-id", "sensitive-headers", "trace", "util"] }
-tracing = "0.1.40"
-tracing-subscriber = { version="0.3.18", features = ["env-filter"] }
+tokio = { version = "1.42", features = ["full"] }
+tower = "0.5.2"
+tower-http = { version = "0.6.2", features = ["compression-gzip", "catch-panic", "cors", "request-id", "sensitive-headers", "trace", "util"] }
+tracing = "0.1.41"
+tracing-subscriber = { version="0.3.19", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
 
 ogcapi-types = { path = "../ogcapi-types", version = "0.2" }
 ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.2", features = ["postgres"] }
+ogcapi-processes = { path = "../ogcapi-processes", version = "0.2", optional = true}
 
 
 [dev-dependencies]
 geojson = { workspace = true }
-hyper-util = { version = "0.1.6", features = ["client"] }
+hyper-util = { version = "0.1.10", features = ["client"] }
 http-body-util = "0.1.2"
-uuid = { version = "1.10.0", features = ["serde", "v4"] }
+uuid = { version = "1.11", features = ["serde", "v4"] }
 
 data-loader = { path = "../examples/data-loader" }
