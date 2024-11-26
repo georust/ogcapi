@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeSeq, ser::Serializer, Deserialize, Serialize};
 use serde_with::DisplayFromStr;
 
 use crate::common::{Bbox, Crs};
@@ -43,7 +43,7 @@ impl Default for SpatialExtent {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct TemporalExtent {
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde_as(as = "Vec<Vec<Option<DisplayFromStr>>>")]
+    #[serde(serialize_with = "serialize_interval")]
     pub interval: Vec<Vec<Option<DateTime<Utc>>>>,
     #[serde(default = "default_trs")]
     pub trs: String,
@@ -56,6 +56,25 @@ impl Default for TemporalExtent {
             trs: default_trs(),
         }
     }
+}
+
+pub fn serialize_interval<S>(
+    interval: &Vec<Vec<Option<DateTime<Utc>>>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut outer_seq = serializer.serialize_seq(Some(interval.len()))?;
+    for inner_vec in interval {
+        let serialized_inner_vec: Vec<_> = inner_vec
+            .iter()
+            .map(|item| item.as_ref().map(|dt| dt.to_rfc3339()))
+            .collect();
+
+        outer_seq.serialize_element(&serialized_inner_vec)?;
+    }
+    outer_seq.end()
 }
 
 fn default_trs() -> String {
