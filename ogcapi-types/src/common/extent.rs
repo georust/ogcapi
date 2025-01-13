@@ -58,7 +58,7 @@ impl Default for TemporalExtent {
     }
 }
 
-pub fn serialize_interval<S>(
+fn serialize_interval<S>(
     interval: &Vec<Vec<Option<DateTime<Utc>>>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
