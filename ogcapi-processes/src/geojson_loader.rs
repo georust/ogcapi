@@ -236,7 +236,7 @@ mod tests {
         );
 
         let input = GeoJsonLoaderInputs {
-            input: "../data/streets.geojson".to_owned(),
+            input: "../data/data/ne_10m_railroads_north_america.geojson".to_owned(),
             collection: "streets".to_string(),
             s_srs: None,
             database_url: "postgresql://postgres:password@localhost:5433/ogcapi".to_string(),

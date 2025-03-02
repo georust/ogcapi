@@ -8,14 +8,14 @@ publish = false
 default = ["geojson"]
 
 geojson = ["dep:geo", "dep:geojson", "dep:wkb"]
-ogr = ["dep:gdal", "dep:arrow"]
+ogr = ["dep:gdal", "dep:arrow", "arrow/ffi"]
 osm = ["dep:geo", "dep:osmpbfreader", "dep:wkb"]
 
 stac = ["ogcapi/stac"]
 
 [dependencies]
 anyhow = { workspace = true }
-arrow = { version = "54.0.0", optional = true, features = ["ffi"] }
+arrow = { version = "54.2.1", optional = true, default-features = false }
 clap = { version = "4.5", features = ["derive", "env"] }
 dotenvy = "0.15.7"
 gdal = { version = "0.17.1", optional = true, features = ["bindgen"] }
@@ -24,7 +24,7 @@ geojson = { workspace = true, optional = true, features = ["geo-types"] }
 osmpbfreader = { version = "0.17.0", optional = true }
 serde_json = { workspace = true }
 sqlx = { version = "0.8.3", features = ["runtime-tokio-rustls", "postgres"] }
-tokio = { version = "1.42.0", features = ["full"] }
+tokio = { version = "1.43.0", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
