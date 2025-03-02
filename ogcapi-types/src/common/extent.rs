@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::{ser::SerializeSeq, ser::Serializer, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeSeq, ser::Serializer};
 use serde_with::DisplayFromStr;
 
 use crate::common::{Bbox, Crs};

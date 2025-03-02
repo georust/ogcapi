@@ -1,20 +1,20 @@
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::header::CONTENT_TYPE,
     routing::get,
-    Json, Router,
 };
 use hyper::HeaderMap;
 
 use ogcapi_types::{
-    common::{link_rel::SELF, media_type::GEO_JSON, Link},
+    common::{Link, link_rel::SELF, media_type::GEO_JSON},
     edr::{Query, QueryType},
     features::FeatureCollection,
 };
 
 use crate::{
-    extractors::{Qs, RemoteUrl},
     AppState, Result,
+    extractors::{Qs, RemoteUrl},
 };
 
 const CONFORMANCE: [&str; 8] = [
@@ -44,14 +44,16 @@ async fn query(
         .await?;
 
     for feature in fc.features.iter_mut() {
-        feature.links = vec![Link::new(
-            url.join(&format!(
-                "items/{}",
-                feature.id.as_ref().expect("Feature should have id")
-            ))?,
-            SELF,
-        )
-        .mediatype(GEO_JSON)]
+        feature.links = vec![
+            Link::new(
+                url.join(&format!(
+                    "items/{}",
+                    feature.id.as_ref().expect("Feature should have id")
+                ))?,
+                SELF,
+            )
+            .mediatype(GEO_JSON),
+        ]
     }
 
     let mut headers = HeaderMap::new();

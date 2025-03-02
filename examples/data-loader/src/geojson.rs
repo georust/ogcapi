@@ -1,12 +1,12 @@
 use std::{convert::TryInto, io::Cursor, time::Instant};
 
 use geo::Geometry;
-use geojson::{feature::Id, FeatureCollection};
+use geojson::{FeatureCollection, feature::Id};
 use sqlx::types::Json;
 use wkb::Endianness;
 
 use ogcapi::{
-    drivers::{postgres::Db, CollectionTransactions},
+    drivers::{CollectionTransactions, postgres::Db},
     types::common::{Collection, Crs, Extent, SpatialExtent},
 };
 
@@ -30,10 +30,11 @@ pub async fn load(args: Args) -> anyhow::Result<()> {
             .bbox
             .map(|bbox| Extent {
                 spatial: Some(SpatialExtent {
-                    bbox: vec![bbox
-                        .as_slice()
-                        .try_into()
-                        .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into())],
+                    bbox: vec![
+                        bbox.as_slice()
+                            .try_into()
+                            .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
+                    ],
                     crs: Crs::default(),
                 }),
                 ..Default::default()

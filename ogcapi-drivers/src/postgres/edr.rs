@@ -61,9 +61,9 @@ impl EdrQuerier for Db {
                     )
                 } else {
                     format!(
-                    "ST_DWithin(ST_Transform(geom, 4326)::geography, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), 4326)::geography, {}, false)",
-                    srid, query.coords, distance
-                )
+                        "ST_DWithin(ST_Transform(geom, 4326)::geography, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), 4326)::geography, {}, false)",
+                        srid, query.coords, distance
+                    )
                 }
             }
             QueryType::Cube => {

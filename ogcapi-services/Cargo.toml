@@ -55,6 +55,6 @@ ogcapi-processes = { path = "../ogcapi-processes", version = "0.2", optional = t
 geojson = { workspace = true }
 hyper-util = { version = "0.1.10", features = ["client-legacy"] }
 http-body-util = "0.1.2"
-uuid = { version = "1.15.1", features = ["serde", "v4"] }
+uuid = { version = "1.15", features = ["serde", "v4"] }
 
 data-loader = { path = "../examples/data-loader" }

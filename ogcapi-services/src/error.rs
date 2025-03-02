@@ -1,11 +1,11 @@
 use axum::{
-    http::{header::CONTENT_TYPE, StatusCode},
-    response::{IntoResponse, Response},
     Json,
+    http::{StatusCode, header::CONTENT_TYPE},
+    response::{IntoResponse, Response},
 };
 use hyper::HeaderMap;
 
-use ogcapi_types::common::{media_type::PROBLEM_JSON, Exception};
+use ogcapi_types::common::{Exception, media_type::PROBLEM_JSON};
 
 /// A common error type that can be used throughout the API.
 ///

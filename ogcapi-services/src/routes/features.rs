@@ -1,26 +1,26 @@
 use anyhow::Context;
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::{
-        header::{CONTENT_TYPE, LOCATION},
         HeaderMap, StatusCode,
+        header::{CONTENT_TYPE, LOCATION},
     },
     routing::get,
-    Json, Router,
 };
 
 use ogcapi_types::{
     common::{
+        Collection, Crs, Link, Linked,
         link_rel::{COLLECTION, NEXT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
-        Collection, Crs, Link, Linked,
     },
     features::{Feature, FeatureCollection, Query},
 };
 
 use crate::{
-    extractors::{Qs, RemoteUrl},
     AppState, Error, Result,
+    extractors::{Qs, RemoteUrl},
 };
 
 const CONFORMANCE: [&str; 4] = [

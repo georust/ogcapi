@@ -16,7 +16,7 @@ default-members = ["ogcapi"]
 [workspace.package]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/georust/ogcapi"
-edition = "2021"
+edition = "2024"
 categories = ["science::geospatial"]
 keywords = ["geography", "geo", "geospatial", "gis", "api"]
 

@@ -11,12 +11,12 @@ use ogcapi_drivers::StyleTransactions;
 #[cfg(feature = "tiles")]
 use ogcapi_drivers::TileTransactions;
 
-use ogcapi_drivers::{postgres::Db, CollectionTransactions};
+use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 #[cfg(feature = "processes")]
 use ogcapi_processes::Processor;
 use ogcapi_types::common::{Conformance, LandingPage};
 
-use crate::{openapi::OPENAPI, Config, ConfigParser, OpenAPI};
+use crate::{Config, ConfigParser, OpenAPI, openapi::OPENAPI};
 
 /// Application state
 #[derive(Clone)]

@@ -1,7 +1,7 @@
 use anyhow::Context;
 use axum::{
     extract::{FromRequestParts, OriginalUri},
-    http::{request::Parts, StatusCode},
+    http::{StatusCode, request::Parts},
 };
 use axum_extra::extract::Host;
 use url::Url;

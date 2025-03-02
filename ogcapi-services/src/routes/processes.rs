@@ -1,20 +1,20 @@
 use std::collections::HashMap;
 
 use axum::{
+    Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
-    Json, Router,
 };
 use url::Position;
 
 use ogcapi_types::{
     common::{
+        Link,
         link_rel::{NEXT, PREV, PROCESSES, SELF},
         media_type::JSON,
         query::LimitOffsetPagination,
-        Link,
     },
     processes::{
         Execute, InlineOrRefData, JobList, Process, ProcessList, ProcessSummary, Results,
@@ -22,7 +22,7 @@ use ogcapi_types::{
     },
 };
 
-use crate::{extractors::RemoteUrl, processes::ProcessResponse, AppState, Error, Result};
+use crate::{AppState, Error, Result, extractors::RemoteUrl, processes::ProcessResponse};
 
 const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",

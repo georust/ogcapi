@@ -1,20 +1,20 @@
 use axum::{
-    extract::{Path, State},
-    http::{header::LOCATION, StatusCode},
     Json,
-    {routing::get, Router},
+    extract::{Path, State},
+    http::{StatusCode, header::LOCATION},
+    {Router, routing::get},
 };
 use hyper::HeaderMap;
 
 use ogcapi_types::common::{
+    Collection, Collections, Crs, Link, Linked, Query,
     link_rel::{DATA, ITEMS, ROOT, SELF},
     media_type::{GEO_JSON, JSON},
-    Collection, Collections, Crs, Link, Linked, Query,
 };
 
 use crate::{
-    extractors::{Qs, RemoteUrl},
     AppState, Error, Result,
+    extractors::{Qs, RemoteUrl},
 };
 
 const CONFORMANCE: [&str; 3] = [

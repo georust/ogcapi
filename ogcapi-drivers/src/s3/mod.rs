@@ -2,13 +2,13 @@ mod collection;
 mod feature;
 
 use aws_sdk_s3::{
+    Client, Config,
     error::SdkError,
     operation::{
         delete_object::{DeleteObjectError, DeleteObjectOutput},
         get_object::{GetObjectError, GetObjectOutput},
         put_object::{PutObjectError, PutObjectOutput},
     },
-    Client, Config,
 };
 
 pub use aws_sdk_s3::primitives::ByteStream;

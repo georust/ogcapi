@@ -4,12 +4,12 @@ use anyhow::Result;
 use geo::Geometry;
 use geojson::FeatureCollection;
 
-use schemars::{schema_for, JsonSchema};
+use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 use sqlx::types::Json;
 use url::Url;
 
-use ogcapi_drivers::{postgres::Db, CollectionTransactions};
+use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_types::{
     common::{Collection, Crs, Exception, Extent, SpatialExtent},
     processes::{Execute, InlineOrRefData, Input, InputValueNoObject, Process},
@@ -135,10 +135,11 @@ impl Processor for GeoJsonLoader {
                 .bbox
                 .map(|bbox| Extent {
                     spatial: Some(SpatialExtent {
-                        bbox: vec![bbox
-                            .as_slice()
-                            .try_into()
-                            .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into())],
+                        bbox: vec![
+                            bbox.as_slice()
+                                .try_into()
+                                .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
+                        ],
                         crs: Crs::default(),
                     }),
                     ..Default::default()
@@ -221,8 +222,8 @@ mod tests {
     use ogcapi_types::processes::Execute;
 
     use crate::{
-        geojson_loader::{GeoJsonLoader, GeoJsonLoaderInputs, GeoJsonLoaderOutputs},
         Processor,
+        geojson_loader::{GeoJsonLoader, GeoJsonLoaderInputs, GeoJsonLoaderOutputs},
     };
 
     #[tokio::test]
