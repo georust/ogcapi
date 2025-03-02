@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use schemars::{schema_for, JsonSchema};
+use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 
 use ogcapi_types::{
@@ -99,8 +99,8 @@ mod tests {
     use ogcapi_types::processes::Execute;
 
     use crate::{
-        greeter::{Greeter, GreeterInputs, GreeterOutputs},
         Processor,
+        greeter::{Greeter, GreeterInputs, GreeterOutputs},
     };
 
     #[tokio::test]

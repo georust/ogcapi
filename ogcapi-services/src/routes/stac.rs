@@ -1,15 +1,15 @@
 use axum::{
+    Json,
     extract::State,
     http::{HeaderMap, StatusCode},
-    Json,
 };
 use hyper::header::CONTENT_TYPE;
 use ogcapi_drivers::StacSeach;
 use ogcapi_types::{
     common::{
+        Bbox, Link, Linked,
         link_rel::{COLLECTION, NEXT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
-        Bbox, Link, Linked,
     },
     features::FeatureCollection,
     stac::{SearchBody, SearchParams},
@@ -17,8 +17,8 @@ use ogcapi_types::{
 use url::Url;
 
 use crate::{
-    extractors::{Qs, RemoteUrl},
     AppState, Error, Result,
+    extractors::{Qs, RemoteUrl},
 };
 
 pub(crate) async fn search_get(

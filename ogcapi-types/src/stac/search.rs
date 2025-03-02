@@ -1,6 +1,6 @@
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
-use serde_with::{formats::CommaSeparator, DisplayFromStr, StringWithSeparator};
+use serde_with::{DisplayFromStr, StringWithSeparator, formats::CommaSeparator};
 
 use crate::common::{Bbox, Datetime};
 

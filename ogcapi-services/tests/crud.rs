@@ -12,7 +12,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     use serde_json::json;
 
     use ogcapi_types::{
-        common::{media_type::JSON, Collection, Crs},
+        common::{Collection, Crs, media_type::JSON},
         features::Feature,
     };
 

@@ -1,25 +1,25 @@
 use std::{collections::HashMap, sync::OnceLock};
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     routing::get,
-    Json, Router,
 };
 use serde::Deserialize;
 
 use ogcapi_types::{
     common::{
+        Link,
         link_rel::{TILESETS_VECTOR, TILING_SCHEME},
         media_type::JSON,
-        Link,
     },
     tiles::{Query, TileMatrix, TileMatrixSet, TileMatrixSetItem, TileMatrixSets, TileSets},
 };
 
 use crate::{
-    extractors::{Qs, RemoteUrl},
     AppState, Error, Result,
+    extractors::{Qs, RemoteUrl},
 };
 
 const CONFORMANCE: [&str; 7] = [

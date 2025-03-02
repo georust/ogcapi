@@ -1,4 +1,4 @@
-use axum::{extract::State, http::header::CONTENT_TYPE, response::Html, Json};
+use axum::{Json, extract::State, http::header::CONTENT_TYPE, response::Html};
 use hyper::HeaderMap;
 use openapiv3::OpenAPI;
 

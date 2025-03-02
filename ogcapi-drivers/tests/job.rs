@@ -1,6 +1,6 @@
 #[cfg(feature = "processes")]
 mod postgres {
-    use ogcapi_drivers::{postgres::Db, JobHandler};
+    use ogcapi_drivers::{JobHandler, postgres::Db};
     use ogcapi_types::processes::{StatusCode, StatusInfo};
 
     #[sqlx::test]

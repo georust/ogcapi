@@ -1,6 +1,6 @@
 use url::Url;
 
-use super::{link_rel::SELF, Link};
+use super::{Link, link_rel::SELF};
 
 #[doc(hidden)]
 pub type Links = Vec<Link>;

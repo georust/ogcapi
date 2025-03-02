@@ -8,11 +8,11 @@ use arrow::{
     json::ArrayWriter,
 };
 use gdal::{
-    cpl::CslStringList, spatial_ref::SpatialRef, vector::LayerAccess, ArrowArrayStream, Dataset,
+    ArrowArrayStream, Dataset, cpl::CslStringList, spatial_ref::SpatialRef, vector::LayerAccess,
 };
 
 use ogcapi::{
-    drivers::{postgres::Db, CollectionTransactions},
+    drivers::{CollectionTransactions, postgres::Db},
     types::common::{Bbox, Collection, Crs, Extent, SpatialExtent},
 };
 

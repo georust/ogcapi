@@ -1,30 +1,30 @@
 use std::{any::Any, net::SocketAddr};
 
 use axum::{
+    Router,
     body::Body,
     http::{
-        header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, PROXY_AUTHORIZATION, SET_COOKIE},
         Response, StatusCode,
+        header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, PROXY_AUTHORIZATION, SET_COOKIE},
     },
     response::IntoResponse,
     routing::get,
-    Router,
 };
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
+    ServiceBuilderExt,
     catch_panic::CatchPanicLayer,
     compression::CompressionLayer,
     cors::CorsLayer,
     request_id::MakeRequestUuid,
     sensitive_headers::SetSensitiveRequestHeadersLayer,
     trace::{DefaultMakeSpan, TraceLayer},
-    ServiceBuilderExt,
 };
 
 use ogcapi_types::common::Exception;
 
-use crate::{routes, AppState, Config, ConfigParser, Error};
+use crate::{AppState, Config, ConfigParser, Error, routes};
 
 /// OGC API Services
 pub struct Service {

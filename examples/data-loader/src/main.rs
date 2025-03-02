@@ -1,5 +1,5 @@
 use clap::Parser;
-use tracing_subscriber::{prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, prelude::*};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -35,7 +35,9 @@ async fn main() -> anyhow::Result<()> {
                 data_loader::ogr::load(args).await?
             }
             x => {
-                tracing::warn!("No loader found for extension `{x:?}`! May need to activate additional features.");
+                tracing::warn!(
+                    "No loader found for extension `{x:?}`! May need to activate additional features."
+                );
             }
         }
     }

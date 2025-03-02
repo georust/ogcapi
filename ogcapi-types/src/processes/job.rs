@@ -2,9 +2,9 @@ use std::{collections::HashMap, ops::Deref};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_with::{formats::SpaceSeparator, StringWithSeparator};
+use serde_with::{StringWithSeparator, formats::SpaceSeparator};
 
-use crate::common::{query::LimitOffsetPagination, Links};
+use crate::common::{Links, query::LimitOffsetPagination};
 
 use super::execute::InlineOrRefData;
 

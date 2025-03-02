@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use wkb::Endianness;
 
 use ogcapi::{
-    drivers::{postgres::Db, CollectionTransactions},
+    drivers::{CollectionTransactions, postgres::Db},
     types::common::{Collection, Crs},
 };
 

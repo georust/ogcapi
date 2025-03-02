@@ -1,7 +1,7 @@
 use aws_sdk_s3::{error::SdkError, operation::get_object::GetObjectError};
 
 use ogcapi_types::{
-    common::{media_type::GEO_JSON, Crs},
+    common::{Crs, media_type::GEO_JSON},
     features::{Feature, FeatureCollection, Query},
 };
 

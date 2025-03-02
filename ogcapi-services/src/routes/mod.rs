@@ -13,17 +13,17 @@ pub(crate) mod styles;
 #[cfg(feature = "tiles")]
 pub(crate) mod tiles;
 
-use axum::{extract::State, Json};
+use axum::{Json, extract::State};
 
 #[cfg(feature = "stac")]
 use ogcapi_types::common::link_rel::SEARCH;
 use ogcapi_types::common::{
+    Conformance, LandingPage, Link, Linked,
     link_rel::{CONFORMANCE, ROOT, SELF, SERVICE_DESC, SERVICE_DOC},
     media_type::{HTML, JSON, OPEN_API_JSON},
-    Conformance, LandingPage, Link, Linked,
 };
 
-use crate::{extractors::RemoteUrl, AppState, Result};
+use crate::{AppState, Result, extractors::RemoteUrl};
 
 pub(crate) async fn root(
     RemoteUrl(url): RemoteUrl,

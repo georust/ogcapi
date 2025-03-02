@@ -13,13 +13,13 @@ use arrow::{
     json::ArrayWriter,
 };
 use gdal::{
-    cpl::CslStringList, spatial_ref::SpatialRef, vector::LayerAccess, ArrowArrayStream, Dataset,
+    ArrowArrayStream, Dataset, cpl::CslStringList, spatial_ref::SpatialRef, vector::LayerAccess,
 };
-use schemars::{schema_for, JsonSchema};
+use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 use url::Url;
 
-use ogcapi_drivers::{postgres::Db, CollectionTransactions};
+use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_types::{
     common::{Bbox, Collection, Crs, Exception, Extent, SpatialExtent},
     processes::{Execute, InlineOrRefData, Input, InputValueNoObject, Process},
@@ -370,8 +370,8 @@ mod tests {
     use ogcapi_types::processes::Execute;
 
     use crate::{
-        gdal_loader::{GdalLoader, GdalLoaderInputs, GdalLoaderOutputs},
         Processor,
+        gdal_loader::{GdalLoader, GdalLoaderInputs, GdalLoaderOutputs},
     };
 
     #[tokio::test]

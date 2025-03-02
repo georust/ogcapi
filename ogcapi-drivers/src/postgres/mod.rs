@@ -14,9 +14,9 @@ mod style;
 mod tile;
 
 use sqlx::{
+    Postgres,
     migrate::MigrateDatabase,
     postgres::{PgConnectOptions, PgPool, PgPoolOptions},
-    Postgres,
 };
 use url::Url;
 

@@ -1,27 +1,27 @@
 use std::cell::OnceCell;
 
 use reqwest::{
+    Url,
     blocking::Client as ReqwestClient,
     header::{HeaderMap, HeaderValue, USER_AGENT},
-    Url,
 };
 
 #[cfg(not(feature = "stac"))]
 use ogcapi_types::features::Feature;
+use ogcapi_types::{
+    common::{
+        Collection, Conformance, LandingPage, Links,
+        link_rel::{CONFORMANCE, DATA, NEXT},
+    },
+    features::FeatureCollection,
+};
 #[cfg(feature = "stac")]
 use ogcapi_types::{
     common::{
-        link_rel::{CHILD, ITEM, SELF},
         Link,
+        link_rel::{CHILD, ITEM, SELF},
     },
     stac::{Catalog, Item as Feature, SearchParams, StacEntity},
-};
-use ogcapi_types::{
-    common::{
-        link_rel::{CONFORMANCE, DATA, NEXT},
-        Collection, Conformance, LandingPage, Links,
-    },
-    features::FeatureCollection,
 };
 
 use crate::Error;

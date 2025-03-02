@@ -1,6 +1,6 @@
 use aws_sdk_s3::{error::SdkError, operation::get_object::GetObjectError};
 
-use ogcapi_types::common::{media_type::JSON, Collection, Collections, Query};
+use ogcapi_types::common::{Collection, Collections, Query, media_type::JSON};
 
 use crate::CollectionTransactions;
 
