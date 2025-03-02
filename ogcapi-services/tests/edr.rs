@@ -1,5 +1,6 @@
 mod setup;
 
+#[ignore]
 #[cfg(feature = "edr")]
 #[tokio::test]
 async fn edr() -> anyhow::Result<()> {

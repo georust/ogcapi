@@ -18,8 +18,11 @@ use ogcapi_types::tiles::TileMatrixSet;
 #[cfg(feature = "features")]
 use ogcapi_types::{
     common::Crs,
-    features::{Feature, FeatureCollection, Query as FeatureQuery},
+    features::{Feature, Query as FeatureQuery},
 };
+
+#[cfg(any(feature = "features", feature = "stac", feature = "edr"))]
+use ogcapi_types::features::FeatureCollection;
 
 /// Trait for `Collection` transactions
 #[cfg(feature = "common")]

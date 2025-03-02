@@ -2,11 +2,7 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,17 +13,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Dependencies
+        run: sudo apt-get install -y build-essential pkg-config libclang-dev libgdal-dev
+      
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup compose
-        run: docker compose up -d
+      - name: Setup
+        run: docker compose up db minio minio-mc -d
+
+      - name: Build
+        run: rustup update stable && rustup default stable && cargo build --workspace --all-targets
 
       - name: Format
-        run: docker exec -i ogcapi cargo fmt --all -- --check
+        run: cargo fmt --all -- --check
       
       - name: Clippy
-        run: docker exec -i ogcapi cargo clippy --workspace --all-features --examples --tests -- -D warnings
+        run: cargo clippy --workspace --all-features --all-targets -- -D warnings
 
       - name: Test
-        run: docker exec -i ogcapi cargo test --workspace --all-features
+        run: cargo test --workspace --all-features --all-targets
