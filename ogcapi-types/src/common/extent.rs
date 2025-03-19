@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize, ser::SerializeSeq, ser::Serializer};
 use serde_with::DisplayFromStr;
 
@@ -69,7 +69,10 @@ where
     for inner_vec in interval {
         let serialized_inner_vec: Vec<_> = inner_vec
             .iter()
-            .map(|item| item.as_ref().map(|dt| dt.to_rfc3339()))
+            .map(|item| {
+                item.as_ref()
+                    .map(|dt| dt.to_rfc3339_opts(SecondsFormat::Secs, true))
+            })
             .collect();
 
         outer_seq.serialize_element(&serialized_inner_vec)?;
