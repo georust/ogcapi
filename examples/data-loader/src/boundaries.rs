@@ -213,7 +213,7 @@ pub fn build_boundary_parts<T: Borrow<osmpbfreader::OsmObj>>(
                 };
 
                 if added_nodes.len() > 1 {
-                    let distance = Haversine::distance(
+                    let distance = Haversine.distance(
                         p(added_nodes.first().unwrap()),
                         p(added_nodes.last().unwrap()),
                     );
