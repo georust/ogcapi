@@ -19,19 +19,19 @@ The code is organized in four modules, respectively crates:
 
 These modules are reexported within the `ogcapi` crate.
 
-## Quick Start
+## Quick Start (Podman/Docker)
 
 This will take a while and use quite some disk space
 
 ```bash
 # Setup the database
-docker compose up --build
+podman compose up --build
 
 # Import administrative bounaries
-docker exec -ti ogcapi cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
+podman exec -ti ogcapi cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
 
 # Run app
-docker exec -ti ogcapi cargo run -p demo-service
+podman exec -ti ogcapi cargo run -p demo-service
 ```
 
 Open <http://localhost:8484/> were you will find the `Landing Page`.
@@ -41,7 +41,7 @@ Open <http://localhost:8484/> were you will find the `Landing Page`.
 ### Prerequisites
 
 - Rust
-- Docker & Docker Compose
+- Podman or Docker
 - GDAL
 
 ```bash
@@ -53,7 +53,7 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 ```bash
 # Run services
-docker compose up db minio minio-mc -d
+podman compose up db minio minio-mc -d
 
 # Import administrative bounaries
 cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
@@ -81,8 +81,8 @@ cargo clippy --workspace --all-features --examples --tests
 ### Teamengine
 
 ```bash
-docker run --network host ogccite/ets-ogcapi-features10
-# docker run --network host ogccite/ets-ogcapi-edr10
+podman run --network host docker.io/ogccite/ets-ogcapi-features10
+# podman run --network host docker.io/ogccite/ets-ogcapi-edr10
 ```
 
 Navigate to <http://localhost:8080/teamengine/> to execute the test suite. For documentation and more info see <https://cite.opengeospatial.org/teamengine/about/ogcapi-features-1.0/1.0/site>.

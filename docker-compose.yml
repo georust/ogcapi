@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgis/postgis
+    image: docker.io/postgis/postgis
     container_name: db
     environment:
       POSTGRES_USER: ${DB_USER}
@@ -48,7 +48,7 @@ services:
       - ${APP_PORT}:${APP_PORT}
 
   minio:
-    image: minio/minio
+    image: docker.io/minio/minio
     container_name: minio
     volumes:
       - ./data/minio:/data
@@ -58,7 +58,7 @@ services:
       - 9001:9001
 
   minio-mc:
-    image: minio/mc
+    image: docker.io/minio/mc
     container_name: minio-mc
     depends_on:
       - minio
