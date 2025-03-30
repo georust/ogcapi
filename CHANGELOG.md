@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- This change log.
+- This changelog.
 - Badges for `docs.rs` and `crates.io`.
 - Categories and keywords.
+
+### Fixed
+
+- Temporal extent serialization by [@jacovdbergh](https://github.com/jacovdbergh).
 
 ### Changed
 
@@ -26,11 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2024-05-19
 
 ### Added
-* Propagated `stac` feature to `ogcapi-client` by [@metasim](https://github.com/metasim) in (#11).
-* Updated client `README.md` to work with latest APIs by [@metasim](https://github.com/metasim) in (#12).
-* Updated workspace manifests to use relative paths to sibling packages by [@metasim](https://github.com/metasim) in (#14).
-* Swap println with log::debug. by [@metasim](https://github.com/metasim) in (#17).
-* Changes for usage in tile-grid by [@pka](https://github.com/pka) in (#18).
+* Propagated `stac` feature to `ogcapi-client` by [@metasim](https://github.com/metasim) in [#11](https://github.com/georust/ogcapi/pull/11).
+* Updated client `README.md` to work with latest APIs by [@metasim](https://github.com/metasim) in [#12](https://github.com/georust/ogcapi/pull/12).
+* Updated workspace manifests to use relative paths to sibling packages by [@metasim](https://github.com/metasim) in [#14](https://github.com/georust/ogcapi/pull/14)
+* Swap println with log::debug. by [@metasim](https://github.com/metasim) in [#17](https://github.com/georust/ogcapi/pull/17).
+* Changes for usage in tile-grid by [@pka](https://github.com/pka) in [#18](https://github.com/georust/ogcapi/pull/18).
 
 
 ### Changed
