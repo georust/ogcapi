@@ -8,7 +8,7 @@ publish = false
 default = ["geojson"]
 
 geojson = ["dep:geo", "dep:geojson", "dep:wkb"]
-ogr = ["dep:gdal", "dep:arrow", "arrow/ffi"]
+ogr = ["dep:gdal", "dep:arrow", "arrow/ffi", "arrow/json"]
 osm = ["dep:geo", "dep:osmpbfreader", "dep:wkb"]
 
 stac = ["ogcapi/stac"]

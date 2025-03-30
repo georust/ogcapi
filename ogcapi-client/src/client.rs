@@ -48,8 +48,8 @@ static UA_STRING: &str = "OGCAPI-CLIENT";
 /// ```
 #[derive(Clone)]
 pub struct Client {
-    client: ReqwestClient,
-    endpoint: Url,
+    pub(crate) client: ReqwestClient,
+    pub(crate) endpoint: Url,
     root: OnceCell<LandingPage>,
 }
 
@@ -435,7 +435,7 @@ fn resolve_relative_links(links: &mut Links, base: &str) {
 
 #[cfg(test)]
 mod tests {
-    use crate::Client;
+    use super::*;
 
     #[test]
     #[cfg(feature = "stac")]

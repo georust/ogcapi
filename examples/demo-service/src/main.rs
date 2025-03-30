@@ -2,7 +2,7 @@ use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ogcapi::{
-    processes::{geojson_loader::GeoJsonLoader, greeter::Greeter},
+    processes::{gdal_loader::GdalLoader, geojson_loader::GeoJsonLoader, greeter::Greeter},
     services::{AppState, Config, Service},
 };
 
@@ -24,7 +24,11 @@ async fn main() {
     let state = AppState::new_from(&config).await;
 
     // Register processes/processors
-    let state = state.processors(vec![Box::new(Greeter), Box::new(GeoJsonLoader)]);
+    let state = state.processors(vec![
+        Box::new(Greeter),
+        Box::new(GeoJsonLoader),
+        Box::new(GdalLoader),
+    ]);
 
     // Build & run with hyper
     Service::new_with(&config, state).await.serve().await;

@@ -16,8 +16,9 @@ impl IntoResponse for ProcessResponse {
                 .header("Content-Type", "application/json")
                 .body(Body::from(serde_json::to_vec(&results).unwrap()))
                 .unwrap(),
-            ProcessResponseBody::Empty => Response::builder()
+            ProcessResponseBody::Empty(link) => Response::builder()
                 .status(StatusCode::NO_CONTENT)
+                .header("Link", link)
                 .body(Body::empty())
                 .unwrap(),
             ProcessResponseBody::StatusInfo(status_info) => Response::builder()

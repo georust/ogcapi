@@ -12,7 +12,10 @@ use url::Url;
 use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_types::{
     common::{Collection, Crs, Exception, Extent, SpatialExtent},
-    processes::{Execute, InlineOrRefData, Input, InputValueNoObject, Process},
+    processes::{
+        Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process,
+        TransmissionMode,
+    },
 };
 use wkb::Endianness;
 
@@ -79,7 +82,23 @@ impl GeoJsonLoaderInputs {
 /// Outputs for the `gdal-loader` process
 #[derive(Clone, Debug, JsonSchema)]
 pub struct GeoJsonLoaderOutputs {
-    pub collection: String,
+    pub collection_id: String,
+}
+
+impl GeoJsonLoaderOutputs {
+    pub fn execute_output() -> HashMap<String, Output> {
+        HashMap::from([(
+            "greeting".to_string(),
+            Output {
+                format: Some(Format {
+                    media_type: Some("text/plain".to_string()),
+                    encoding: Some("utf8".to_string()),
+                    schema: None,
+                }),
+                transmission_mode: TransmissionMode::Value,
+            },
+        )])
+    }
 }
 
 impl TryFrom<ProcessResponseBody> for GeoJsonLoaderOutputs {
@@ -88,7 +107,7 @@ impl TryFrom<ProcessResponseBody> for GeoJsonLoaderOutputs {
     fn try_from(value: ProcessResponseBody) -> Result<Self, Self::Error> {
         if let ProcessResponseBody::Requested(buf) = value {
             Ok(GeoJsonLoaderOutputs {
-                collection: String::from_utf8(buf).unwrap(),
+                collection_id: String::from_utf8(buf).unwrap(),
             })
         } else {
             Err(Exception::new("500"))
@@ -217,8 +236,6 @@ impl Processor for GeoJsonLoader {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, time::Instant};
-
     use ogcapi_types::processes::Execute;
 
     use crate::{
@@ -245,22 +262,11 @@ mod tests {
 
         let execute = Execute {
             inputs: input.execute_input(),
-            outputs: HashMap::new(),
-            subscriber: None,
+            ..Default::default()
         };
-
-        let now = Instant::now();
 
         let output: GeoJsonLoaderOutputs =
             loader.execute(execute).await.unwrap().try_into().unwrap();
-        println!("{}", output.collection);
-
-        // stats
-        let count = 121895;
-        let elapsed = now.elapsed().as_secs_f64();
-        println!(
-            "Loaded {count} features in {elapsed:.3} seconds ({:.2}/s)",
-            count as f64 / elapsed
-        );
+        assert_eq!(output.collection_id, "streets");
     }
 }

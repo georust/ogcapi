@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-/// Errors which can occur when fetching, and decoding STAC entities.
+/// Errors which can occur when fetching, and decoding OGCAPI entities.
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Encountered a request error: {0}")]
@@ -20,4 +20,7 @@ pub enum Error {
 
     #[error("Encountered a client error: {0}")]
     ClientError(String),
+
+    #[error("Encountered a server error: {0}")]
+    ServerError(String),
 }

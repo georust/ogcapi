@@ -29,13 +29,6 @@ pub enum JobControlOptions {
     Dismiss,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum TransmissionMode {
-    Value,
-    Reference,
-}
-
 /// Information about the available processes
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProcessList {

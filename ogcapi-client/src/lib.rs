@@ -32,5 +32,8 @@
 mod client;
 mod error;
 
+#[cfg(feature = "processes")]
+mod processes;
+
 pub use client::Client;
 pub use error::Error;

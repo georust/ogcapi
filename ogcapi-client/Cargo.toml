@@ -12,6 +12,7 @@ keywords.workspace = true
 default = ["features"]
 features = ["ogcapi-types/features"]
 stac = ["ogcapi-types/stac"]
+processes = ["ogcapi-processes"]
 
 [dependencies]
 geojson = { workspace = true }
@@ -24,3 +25,4 @@ thiserror = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 
 ogcapi-types = { path = "../ogcapi-types", version = "0.2" }
+ogcapi-processes = { path = "../ogcapi-processes", version = "0.2", optional = true }

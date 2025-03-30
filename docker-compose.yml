@@ -30,6 +30,7 @@ services:
       AWS_CUSTOM_ENDPOINT: http://minio:9000
       AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
     volumes:
+      - ./data:/data
       - ./ogcapi/src:/app/ogcapi/src:ro
       - ./ogcapi/Cargo.toml:/app/ogcapi/Cargo.toml:ro
       - ./ogcapi-client/src:/app/ogcapi-client/src:ro

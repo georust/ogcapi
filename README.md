@@ -8,14 +8,15 @@ The `ogcapi` crate provides various [OGC API](https://ogcapi.ogc.org/) building 
 
 ## Project Outline
 
-The code is organized in four modules, respectively crates:
+The code is organized in modules, respectively crates:
 
 | Module / Crate    | Description     |
 | ----------------- | --------------- |
-| `ogcapi-types`    | Types as defined in various OGC API standards as well as STAC with `serde` support. |
-| `ogcapi-client`   | Client to access HTTP endpoints of OGC API services as well as STAC wrapping `reqwest` |
-| `ogcapi-services` | Server implementation of various OGC API services based on `axum`. |
-| `ogcapi-drivers`  | Drivers for different data provider backends, currently mainly PostgreSQL with PostGIS through `sqlx`. |
+| `types`    | Types as defined in various OGC API standards as well as STAC with `serde` support. |
+| `client`   | Client to access HTTP endpoints of OGC API services as well as STAC wrapping `reqwest` |
+| `services` | Server implementation of various OGC API services based on `axum`. |
+| `drivers`  | Drivers for different data provider backends, currently mainly PostgreSQL with PostGIS through `sqlx`. |
+| `processes` | `Processor` trait and implementations. |
 
 These modules are reexported within the `ogcapi` crate.
 

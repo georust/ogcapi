@@ -6,7 +6,10 @@ use serde::Deserialize;
 
 use ogcapi_types::{
     common::Exception,
-    processes::{Execute, InlineOrRefData, Input, InputValueNoObject, Process},
+    processes::{
+        Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process,
+        TransmissionMode,
+    },
 };
 
 use crate::{ProcessResponseBody, Processor};
@@ -47,6 +50,22 @@ impl GreeterInputs {
 #[derive(Clone, Debug, JsonSchema)]
 pub struct GreeterOutputs {
     pub greeting: String,
+}
+
+impl GreeterOutputs {
+    pub fn execute_output() -> HashMap<String, Output> {
+        HashMap::from([(
+            "greeting".to_string(),
+            Output {
+                format: Some(Format {
+                    media_type: Some("text/plain".to_string()),
+                    encoding: Some("utf8".to_string()),
+                    schema: None,
+                }),
+                transmission_mode: TransmissionMode::Value,
+            },
+        )])
+    }
 }
 
 impl TryFrom<ProcessResponseBody> for GreeterOutputs {
@@ -94,8 +113,6 @@ impl Processor for Greeter {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use ogcapi_types::processes::Execute;
 
     use crate::{
@@ -119,8 +136,8 @@ mod tests {
 
         let execute = Execute {
             inputs: input.execute_input(),
-            outputs: HashMap::new(),
-            subscriber: None,
+            outputs: GreeterOutputs::execute_output(),
+            ..Default::default()
         };
 
         let output: GreeterOutputs = greeter.execute(execute).await.unwrap().try_into().unwrap();
