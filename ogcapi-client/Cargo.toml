@@ -1,6 +1,6 @@
 [package]
 name = "ogcapi-client"
-version = "0.2.0"
+version = "0.3.0"
 description = "Client to access OGC API Feature and STAC endpoints."
 license.workspace = true
 repository.workspace = true
@@ -24,5 +24,5 @@ serde_qs = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.2" }
-ogcapi-processes = { path = "../ogcapi-processes", version = "0.2", optional = true }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3" }
+ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true }

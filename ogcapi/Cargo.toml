@@ -1,6 +1,6 @@
 [package]
 name = "ogcapi"
-version = "0.2.0"
+version = "0.3.1"
 description = "OGC API building blocks."
 readme = "../README.md"
 license.workspace = true
@@ -60,8 +60,8 @@ postgres = ["ogcapi-drivers/postgres"]
 greeter = ["processes"]
 
 [dependencies]
-ogcapi-types = { path = "../ogcapi-types", version = "0.2", optional = true }
-ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.2", optional = true }
-ogcapi-processes = { path = "../ogcapi-processes", version = "0.2", optional = true }
-ogcapi-services = { path = "../ogcapi-services", version = "0.2", optional = true }
-ogcapi-client = { path = "../ogcapi-client", version = "0.2", optional = true }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3", optional = true }
+ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", optional = true }
+ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true }
+ogcapi-services = { path = "../ogcapi-services", version = "0.3", optional = true }
+ogcapi-client = { path = "../ogcapi-client", version = "0.3", optional = true }

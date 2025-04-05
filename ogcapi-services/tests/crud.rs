@@ -75,7 +75,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let location = res.headers().get("Location").unwrap().to_str()?;
     println!("{}", location);
 
-    let id = location.split('/').last().unwrap();
+    let id = location.split('/').next_back().unwrap();
 
     // read feauture
     let res = client

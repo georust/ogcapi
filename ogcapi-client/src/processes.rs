@@ -57,12 +57,13 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    // use ogcapi_processes::gdal_loader::GdalLoaderOutputs;
+    use ogcapi_processes::gdal_loader::GdalLoaderOutputs;
     use ogcapi_types::processes::Execute;
 
     use super::*;
 
     #[test]
+    #[ignore = "needs running demo service"]
     fn execute_greeter() {
         use ogcapi_processes::{
             Processor,
@@ -88,33 +89,34 @@ mod tests {
         assert_eq!(output.greeting, "Hello, client!\n")
     }
 
-    // #[test]
-    // fn execute_gdal_loader() {
-    //     use ogcapi_processes::{
-    //         Processor,
-    //         gdal_loader::{GdalLoader, GdalLoaderInputs},
-    //     };
+    #[test]
+    #[ignore = "needs running demo service"]
+    fn execute_gdal_loader() {
+        use ogcapi_processes::{
+            Processor,
+            gdal_loader::{GdalLoader, GdalLoaderInputs},
+        };
 
-    //     let endpoint = "http://0.0.0.0:8484/";
-    //     let client = Client::new(endpoint).unwrap();
+        let endpoint = "http://0.0.0.0:8484/";
+        let client = Client::new(endpoint).unwrap();
 
-    //     let input = GdalLoaderInputs {
-    //         input: "/data/ne_10m_railroads_north_america.geojson".to_owned(),
-    //         collection: "streets".to_string(),
-    //         filter: None,
-    //         s_srs: None,
-    //         database_url: "postgresql://postgres:password@db:5432/ogcapi".to_string(),
-    //     };
+        let input = GdalLoaderInputs {
+            input: "/data/ne_10m_railroads_north_america.geojson".to_owned(),
+            collection: "streets".to_string(),
+            filter: None,
+            s_srs: None,
+            database_url: "postgresql://postgres:password@db:5432/ogcapi".to_string(),
+        };
 
-    //     let execute = Execute {
-    //         inputs: input.execute_input(),
-    //         outputs: GdalLoaderOutputs::execute_output(),
-    //         ..Default::default()
-    //     };
+        let execute = Execute {
+            inputs: input.execute_input(),
+            outputs: GdalLoaderOutputs::execute_output(),
+            ..Default::default()
+        };
 
-    //     let response = client.execute(GdalLoader {}.id(), &execute).unwrap();
+        let response = client.execute(GdalLoader {}.id(), &execute).unwrap();
 
-    //     let output: GdalLoaderOutputs = response.try_into().unwrap();
-    //     dbg!(output);
-    // }
+        let output: GdalLoaderOutputs = response.try_into().unwrap();
+        dbg!(output);
+    }
 }

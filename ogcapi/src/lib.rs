@@ -1,4 +1,12 @@
-#![doc = include_str!("../../README.md")]
+//! The `ogcapi` crate is organized in several modules:
+//!
+//! | Module / Crate    | Description     |
+//! | ----------------- | --------------- |
+//! | `types`    | Types as defined in various OGC API standards as well as STAC with `serde` support. |
+//! | `client`   | Client to access HTTP endpoints of OGC API services as well as STAC wrapping `reqwest` |
+//! | `services` | Server implementation of various OGC API services based on `axum`. |
+//! | `drivers`  | Drivers for different data provider backends, currently mainly PostgreSQL with PostGIS through `sqlx`. |
+//! | `processes` | `Processor` trait and implementations. |
 
 #[cfg(feature = "client")]
 pub mod client {

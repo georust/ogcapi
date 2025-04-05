@@ -255,7 +255,7 @@ mod tests {
 
         let input = GeoJsonLoaderInputs {
             input: "../data/ne_10m_railroads_north_america.geojson".to_owned(),
-            collection: "streets".to_string(),
+            collection: "streets-geojson".to_string(),
             s_srs: None,
             database_url: "postgresql://postgres:password@localhost:5433/ogcapi".to_string(),
         };
@@ -267,6 +267,6 @@ mod tests {
 
         let output: GeoJsonLoaderOutputs =
             loader.execute(execute).await.unwrap().try_into().unwrap();
-        assert_eq!(output.collection_id, "streets");
+        assert_eq!(output.collection_id, "streets-geojson");
     }
 }

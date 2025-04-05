@@ -1,6 +1,6 @@
 [package]
 name = "ogcapi-services"
-version = "0.2.0"
+version = "0.3.0"
 description = "Server implementation of several OGC API Standards."
 license.workspace = true
 repository.workspace = true
@@ -46,9 +46,9 @@ tracing = "0.1.41"
 tracing-subscriber = { version="0.3.19", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.2" }
-ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.2", features = ["postgres"] }
-ogcapi-processes = { path = "../ogcapi-processes", version = "0.2", optional = true}
+ogcapi-types = { path = "../ogcapi-types", version = "0.3" }
+ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", features = ["postgres"] }
+ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true}
 
 
 [dev-dependencies]

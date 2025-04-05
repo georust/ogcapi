@@ -366,8 +366,6 @@ impl Processor for GdalLoader {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
-
     use ogcapi_types::processes::Execute;
 
     use crate::{
@@ -387,7 +385,7 @@ mod tests {
 
         let input = GdalLoaderInputs {
             input: "../data/ne_10m_railroads_north_america.geojson".to_owned(),
-            collection: "streets".to_string(),
+            collection: "streets-gdal".to_string(),
             filter: None,
             s_srs: None,
             database_url: "postgresql://postgres:password@localhost:5433/ogcapi".to_string(),
@@ -398,17 +396,7 @@ mod tests {
             ..Default::default()
         };
 
-        let now = Instant::now();
-
         let output: GdalLoaderOutputs = loader.execute(execute).await.unwrap().try_into().unwrap();
-        println!("{}", output.collection);
-
-        // stats
-        let count = 121895;
-        let elapsed = now.elapsed().as_secs_f64();
-        println!(
-            "Loaded {count} features in {elapsed:.3} seconds ({:.2}/s)",
-            count as f64 / elapsed
-        );
+        assert_eq!(output.collection, "streets-gdal");
     }
 }

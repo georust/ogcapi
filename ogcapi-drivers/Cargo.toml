@@ -1,6 +1,6 @@
 [package]
 name = "ogcapi-drivers"
-version = "0.2.0"
+version = "0.3.0"
 description = "Driver traits and implementations"
 license.workspace = true
 repository.workspace = true
@@ -45,4 +45,4 @@ sqlx = { version = "0.8.3", optional = true, features = [
 ] }
 url = { workspace = true, optional = true }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.2" }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3" }

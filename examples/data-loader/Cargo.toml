@@ -21,7 +21,7 @@ dotenvy = "0.15.7"
 gdal = { version = "0.18.0", optional = true, features = ["bindgen"] }
 geo = { version = "0.30.0", optional = true }
 geojson = { workspace = true, optional = true, features = ["geo-types"] }
-osmpbfreader = { version = "0.17.0", optional = true }
+osmpbfreader = { version = "0.18.0", optional = true }
 serde_json = { workspace = true }
 sqlx = { version = "0.8.3", features = ["runtime-tokio-rustls", "postgres"] }
 tokio = { version = "1.44", features = ["full"] }
@@ -31,7 +31,7 @@ url = { workspace = true, features = ["serde"] }
 wkb = { version = "0.8.0", optional = true }
 
 
-ogcapi = { path = "../../ogcapi", version = "0.2", features = [
+ogcapi = { path = "../../ogcapi", version = "0.3", features = [
     "common",
     "types",
     "drivers",

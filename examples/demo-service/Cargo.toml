@@ -14,7 +14,7 @@ tokio = { version = "1.44", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 
-ogcapi = { path = "../../ogcapi", version = "0.2", features = [
+ogcapi = { path = "../../ogcapi", version = "0.3", features = [
     "services",
     "common",
     "features",

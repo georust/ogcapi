@@ -63,7 +63,7 @@ cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --col
 cargo run -p demo-service
 
 # Run tests
-cargo test --workspace --all-features
+cargo test --workspace --all-features --all-targets
 
 # Open Documentation
 cargo doc --workspace --all-features --no-deps --open
@@ -76,7 +76,7 @@ cargo doc --workspace --all-features --no-deps --open
 cargo fmt
 
 # Clippy
-cargo clippy --workspace --all-features --examples --tests
+cargo clippy --workspace --all-features --all-targets
 ```
 
 ### Teamengine

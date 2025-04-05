@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 
 members = [
     "ogcapi",
@@ -17,7 +17,7 @@ default-members = ["ogcapi"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/georust/ogcapi"
 edition = "2024"
-categories = ["science::geospatial"]
+categories = ["science::geo"]
 keywords = ["geography", "geo", "geospatial", "gis", "api"]
 
 [workspace.dependencies]
