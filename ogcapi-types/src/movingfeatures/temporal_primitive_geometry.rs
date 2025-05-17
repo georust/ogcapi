@@ -5,9 +5,7 @@ use serde::{
     de::{self, Error},
 };
 
-use crate::common::Crs;
-
-use super::{json_utils, trs::Trs};
+use super::{json_utils, trs::Trs, crs::Crs};
 
 /// TemporalPrimitiveGeometry Object
 ///
@@ -21,7 +19,6 @@ pub struct TemporalPrimitiveGeometry {
     pub value: Value,
     #[serde(default)]
     pub interpolation: Interpolation,
-    // FIXME apparently specification of moving features CRS and TRS is different to common::CRS ?!
     pub crs: Option<Crs>,
     pub trs: Option<Trs>,
     pub foreign_members: Option<JsonObject>,

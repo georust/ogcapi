@@ -1,35 +1,56 @@
 use serde::{Deserialize, Serialize};
 
-// TODO enforce variants linkedTRS vs namedCRS
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct Trs {
-    r#type: String,
-    properties: TrsProperties,
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(tag = "type")]
+pub enum Trs {
+    Name { properties: NamedTrs }, // r#type: String,
+    Link { properties: LinkedTrs }, // r#type: String,
+                                 // properties: TrsProperties,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct TrsProperties {
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NamedTrs{
+    name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct LinkedTrs{
     r#type: Option<String>,
-    name: Option<String>,
-    href: Option<String>,
+    href: String
 }
 
 impl Default for Trs {
     fn default() -> Self {
+        Self::Name { properties: Default::default() }
+    }
+}
+
+impl Default for NamedTrs {
+    fn default() -> Self {
         Self {
-            r#type: "Name".to_string(),
-            properties: Default::default(),
+            name: "urn:ogc:data:time:iso8601".to_string(),
         }
     }
 }
 
-impl Default for TrsProperties {
-    fn default() -> Self {
-        Self {
-            r#type: None,
-            name: Some("urn:ogc:data:time:iso8601".to_string()),
-            href: None,
-        }
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn serde_json(){
+
+        // TODO this contradicts example from https://developer.ogc.org/api/movingfeatures/index.html#tag/MovingFeatures/operation/retrieveMovingFeatures
+        // Example from https://docs.ogc.org/is/19-045r3/19-045r3.html#_7_2_3_1_named_crs
+        let trs: Trs = serde_json::from_str(r#"
+            {
+                "type": "Name",
+                "properties": {"name": "urn:ogc:data:time:iso8601"}
+            }
+        "#).expect("Failed to parse Trs");
+        let expected_trs = Trs::default();
+        assert_eq!(trs, expected_trs);
+
     }
 }
