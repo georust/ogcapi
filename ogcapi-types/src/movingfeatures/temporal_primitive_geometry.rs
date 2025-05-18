@@ -184,15 +184,12 @@ pub struct Base {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Orientation {
     ///The "scales" member has a array value of numbers along the x, y and z axis in order as three scale factors.
-    scales: ScaleType,
+    scales: [f64; 3],
     ///the "angles" member has a JSON array value of numbers along the x, y and z axis in order as Euler angles in degree.
     ///Angles are defined according to the right-hand rule; a positive value represents a rotation that appears clockwise
     ///when looking in the positive direction of the axis and a negative value represents a counter-clockwise rotation.
-    angles: AngleType,
+    angles: [f64; 3],
 }
-type ScaleType = Vec<f64>;
-type AngleType = Vec<f64>;
-
 #[cfg(test)]
 mod tests {
 
@@ -275,16 +272,16 @@ mod tests {
         let mut datetimes = vec![];
         let orientations = vec![
             Orientation {
-                scales: vec![1.0, 1.0, 1.0],
-                angles: vec![0.0, 0.0, 0.0],
+                scales: [1.0, 1.0, 1.0],
+                angles: [0.0, 0.0, 0.0],
             },
             Orientation {
-                scales: vec![1.0, 1.0, 1.0],
-                angles: vec![0.0, 355.0, 0.0],
+                scales: [1.0, 1.0, 1.0],
+                angles: [0.0, 355.0, 0.0],
             },
             Orientation {
-                scales: vec![1.0, 1.0, 1.0],
-                angles: vec![0.0, 0.0, 330.0],
+                scales: [1.0, 1.0, 1.0],
+                angles: [0.0, 0.0, 330.0],
             },
         ];
         for i in 0..3 {
