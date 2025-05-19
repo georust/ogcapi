@@ -89,6 +89,14 @@ pub enum Value {
     },
 }
 
+impl TryFrom<(Vec<chrono::DateTime<Utc>>, Vec<PointType>)> for Value {
+    type Error = String;
+    fn try_from(value: (Vec<chrono::DateTime<Utc>>, Vec<PointType>)) -> Result<Self, Self::Error> {
+        let dt_coords = SameLengthDateTimeCoordinatesVecs::try_new(value.0, value.1)?;
+        Ok(Self::MovingPoint { dt_coords, base_representation: None })
+    }
+}
+
 #[derive(Deserialize)]
 struct SameLengthDateTimeCoordinatesVecsUnchecked<A, B> {
     datetimes: Vec<A>,
