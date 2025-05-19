@@ -1,35 +1,16 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(tag = "type")]
+#[serde(tag = "type", content = "properties")]
 pub enum Trs {
-    Name { properties: NamedTrs }, // r#type: String,
-    Link { properties: LinkedTrs }, // r#type: String,
+    Name { name: String }, // r#type: String,
+    Link { r#type: Option<String>, href: String }, // r#type: String,
                                  // properties: TrsProperties,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct NamedTrs{
-    name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct LinkedTrs{
-    r#type: Option<String>,
-    href: String
 }
 
 impl Default for Trs {
     fn default() -> Self {
-        Self::Name { properties: Default::default() }
-    }
-}
-
-impl Default for NamedTrs {
-    fn default() -> Self {
-        Self {
-            name: "urn:ogc:data:time:iso8601".to_string(),
-        }
+        Self::Name { name: "urn:ogc:data:time:iso8601".to_string() }
     }
 }
 
