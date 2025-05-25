@@ -17,9 +17,9 @@ use super::temporal_property::Interpolation;
 // TODO enforce same length of datetimes and values
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MFJsonTemporalProperties {
-    datetimes: Vec<DateTime<Utc>>,
+    pub datetimes: Vec<DateTime<Utc>>,
     #[serde(flatten)]
-    values: HashMap<String, ParametricValues>,
+    pub values: HashMap<String, ParametricValues>,
 }
 
 /// A ParametricValues object is a JSON object that represents a collection of parametric values of dynamic non-spatial 
@@ -53,10 +53,76 @@ pub enum ParametricValues {
     },
     /// The "values" member contains Base64 strings converted from images or URLs to address images.
     Image {
-        values: String,
+        values: Vec<String>,
         /// Allowed Interpolations: Discrete, Step
         // TODO enforce?
         interpolation: Option<Interpolation>,
         description: Option<String>,
     },
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*; 
+
+    #[test]
+    fn serde_mfjson_temporal_properties() {
+
+        // https://developer.ogc.org/api/movingfeatures/index.html#tag/TemporalProperty/operation/insertTemporalProperty
+        let tp_json = r#"[
+          {
+            "datetimes": [
+              "2011-07-14T22:01:01.450Z",
+              "2011-07-14T23:01:01.450Z",
+              "2011-07-15T00:01:01.450Z"
+            ],
+            "length": {
+              "type": "Measure",
+              "form": "http://qudt.org/vocab/quantitykind/Length",
+              "values": [
+                1,
+                2.4,
+                1
+              ],
+              "interpolation": "Linear"
+            },
+            "discharge": {
+              "type": "Measure",
+              "form": "MQS",
+              "values": [
+                3,
+                4,
+                5
+              ],
+              "interpolation": "Step"
+            }
+          },
+          {
+            "datetimes": [
+              "2011-07-14T22:01:01.450Z",
+              "2011-07-14T23:01:01.450Z"
+            ],
+            "camera": {
+              "type": "Image",
+              "values": [
+                "http://www.opengis.net/spec/movingfeatures/json/1.0/prism/example/image1",
+                "iVBORw0KGgoAAAANSUhEU......"
+              ],
+              "interpolation": "Discrete"
+            },
+            "labels": {
+              "type": "Text",
+              "values": [
+                "car",
+                "human"
+              ],
+              "interpolation": "Discrete"
+            }
+          }
+        ]"#;
+
+        let _: Vec<MFJsonTemporalProperties> = serde_json::from_str(tp_json).expect("Failed to parse MF-JSON Temporal Properties");
+
+    }
 }
