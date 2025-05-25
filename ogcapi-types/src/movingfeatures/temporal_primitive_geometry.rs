@@ -12,6 +12,7 @@ use super::{crs::Crs, trs::Trs};
 /// three-dimensional spatial coordinate system.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TemporalPrimitiveGeometry {
+    pub id: Option<String>,
     #[serde(flatten)]
     pub value: Value,
     #[serde(default)]
@@ -24,6 +25,7 @@ pub struct TemporalPrimitiveGeometry {
 impl TemporalPrimitiveGeometry {
     pub fn new(value: Value) -> Self {
         Self {
+            id: None,
             value,
             interpolation: Interpolation::default(),
             crs: Default::default(),
