@@ -7,7 +7,7 @@ use super::{
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(untagged)]
-enum TemporalGeometry {
+pub enum TemporalGeometry {
     Primitive(TemporalPrimitiveGeometry),
     Complex(TemporalComplexGeometry),
 }
@@ -29,10 +29,10 @@ mod tests {
         }
         let primitive_geometry =
             TemporalPrimitiveGeometry::new((datetimes, coordinates).try_into().unwrap());
-        let geometry = TemporalGeometry::Complex(TemporalComplexGeometry::try_from(vec![
-            primitive_geometry.clone(),
-            primitive_geometry,
-        ]).unwrap());
+        let geometry = TemporalGeometry::Complex(
+            TemporalComplexGeometry::try_from(vec![primitive_geometry.clone(), primitive_geometry])
+                .unwrap(),
+        );
         let deserialized_geometry: TemporalGeometry = serde_json::from_str(
             r#"{
                 "type": "MovingGeometryCollection",
