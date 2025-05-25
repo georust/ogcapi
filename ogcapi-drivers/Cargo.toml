@@ -25,6 +25,7 @@ processes = ["common", "ogcapi-types/processes"]
 stac = ["features", "ogcapi-types/stac", "s3"]
 styles = ["ogcapi-types/styles"]
 tiles = ["common", "ogcapi-types/tiles"]
+movingfeatures = ["common", "features"]
 
 [dependencies]
 anyhow = { workspace = true }
