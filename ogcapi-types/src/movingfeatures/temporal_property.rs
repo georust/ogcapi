@@ -6,7 +6,7 @@ use crate::common::Links;
 
 /// A temporal property object is a collection of dynamic non-spatial attributes and their temporal values with time. 
 /// An abbreviated copy of this information is returned for each TemporalProperty in the 
-/// [{root}/collections/{collectionId}/items/{mFeatureId}/tproperties](TemporalProperties) response.
+/// [{root}/collections/{collectionId}/items/{mFeatureId}/tproperties](super::temporal_properties::TemporalProperties) response.
 /// The schema for the temporal property object presented in this clause is an extension of the [ParametricValues Object](https://docs.opengeospatial.org/is/19-045r3/19-045r3.html#tproperties) defined in [MF-JSON](https://docs.ogc.org/is/22-003r3/22-003r3.html#OGC_19-045r3).
 ///
 /// See [8.9. TemporalProperty](https://docs.ogc.org/is/22-003r3/22-003r3.html#resource-temporalProperty-section)
@@ -76,7 +76,7 @@ pub enum Interpolation {
     /// the whole values corresponding to the all elements in "datetimes".
     Regression,
     /// For a URL, this standard refers to the [InterpolationCode Codelist](http://docs.opengeospatial.org/is/15-042r3/15-042r3.html#75) defined in [OGC TimeseriesML 1.0](http://docs.opengeospatial.org/is/15-042r3/15-042r3.html)[OGC 15-042r3] 
-    /// between neighboring points in a timeseries, e.g., "http://www.opengis.net/def/timeseries/InterpolationCode/Continuous", 
-    /// "http://www.opengis.net/def/timeseries/InterpolationCode/Discontinuous", and etc.
+    /// between neighboring points in a timeseries, e.g., "<http://www.opengis.net/def/timeseries/InterpolationCode/Continuous>", 
+    /// "<http://www.opengis.net/def/timeseries/InterpolationCode/Discontinuous>", and etc.
     Url(String),
 }

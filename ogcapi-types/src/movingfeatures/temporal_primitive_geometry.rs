@@ -138,7 +138,7 @@ impl<A, B> TryFrom<SameLengthDateTimeCoordinatesVecsUnchecked<A, B>>
 ///MF-JSON Prism separates out translational motion and rotational motion. The "interpolation" member is default and
 ///represents the translational motion of the geometry described by the "coordinates" value. Its value is a MotionCurve
 ///object described by one of predefined five motion curves (i.e., "Discrete", "Step", "Linear", "Quadratic", and
-///"Cubic") or a URL (e.g., "http://www.opengis.net/spec/movingfeatures/json/1.0/prism/example/motioncurve")
+///"Cubic") or a URL (e.g., "<http://www.opengis.net/spec/movingfeatures/json/1.0/prism/example/motioncurve>")
 ///
 ///See [7.2.10 MotionCurve Objects](https://docs.ogc.org/is/19-045r3/19-045r3.html#interpolation)
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
