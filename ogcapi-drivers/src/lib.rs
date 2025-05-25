@@ -2,6 +2,8 @@
 pub mod postgres;
 #[cfg(feature = "s3")]
 pub mod s3;
+#[cfg(feature = "blanket")]
+pub mod blanket;
 
 #[cfg(feature = "common")]
 use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
@@ -128,12 +130,12 @@ pub trait TemporalGeometryTransactions: Send + Sync {
         collection: &str,
         m_feature_id: &str,
         temporal_geometry: &TemporalPrimitiveGeometry
-    );
+    ) -> anyhow::Result<String>;
     async fn read_temporal_geometry(
         &self,
         collection: &str,
         m_feature_id: &str,
-    ) -> anyhow::Result<TemporalGeometry>;
+    ) -> anyhow::Result<Option<TemporalGeometry>>;
     async fn delete_temporal_geometry(
         &self,
         collection: &str,
@@ -150,12 +152,12 @@ pub trait TemporalPropertyTransactions: Send + Sync {
         collection: &str,
         m_feature_id: &str,
         temporal_geometry: &TemporalPrimitiveGeometry
-    );
+    ) -> anyhow::Result<String>;
     async fn read_temporal_property(
         &self,
         collection: &str,
         m_feature_id: &str,
-    ) -> anyhow::Result<TemporalProperties>;
+    ) -> anyhow::Result<Option<TemporalProperties>>;
     async fn delete_temporal_property(
         &self,
         collection: &str,

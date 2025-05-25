@@ -97,7 +97,7 @@ pub struct Collection {
     #[cfg(feature = "movingfeatures")]
     #[serde(rename = "updateFrequency")]
     /// A time interval of sampling location. The time unit of this property is millisecond.
-    update_frequency: Option<i64>,
+    pub update_frequency: Option<i64>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
 }
