@@ -26,7 +26,7 @@ pub struct TemporalProperty {
 /// A predefined temporal property type.
 ///
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(tag = "type", content = "valueSequence" )]
+#[serde(tag = "type", content = "valueSequence")]
 pub enum TemporalPropertyValue {
     TBoolean(Vec<TemporalPrimitiveValue<bool>>),
     TText(Vec<TemporalPrimitiveValue<String>>),
@@ -42,7 +42,7 @@ pub enum TemporalPropertyValue {
 /// See [8.10. TemporalPrimitiveValue](https://docs.ogc.org/is/22-003r3/22-003r3.html#resource-temporalPrimitiveValue-section)
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct TemporalPrimitiveValue<T> {
-    /// A unique identifier to the temporal primitive value. 
+    /// A unique identifier to the temporal primitive value.
     // TODO mandatory according to https://docs.ogc.org/is/22-003r3/22-003r3.html#_overview_13
     // but missing in response sample at https://developer.ogc.org/api/movingfeatures/index.html#tag/TemporalProperty/operation/retrieveTemporalProperty
     pub id: Option<String>,

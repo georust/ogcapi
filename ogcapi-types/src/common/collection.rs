@@ -26,7 +26,14 @@ pub struct Collection {
     pub attribution: Option<String>,
     pub extent: Option<Extent>,
     /// An indicator about the type of the items in the collection.
+    #[cfg(not(feature = "movingfeatures"))]
     pub item_type: Option<String>,
+    #[cfg(feature = "movingfeatures")]
+    // TODO not sure if this is the best way to solve the requirement by moving features
+    // to make itemType mandatory and still allowing to produce collections with other
+    // itemTypes
+    #[serde(flatten)]
+    pub item_type: ItemType,
     /// The list of coordinate reference systems supported by the API; the first item is the default coordinate reference system.
     #[serde(default)]
     #[serde_as(as = "Vec<DisplayFromStr>")]
@@ -87,6 +94,10 @@ pub struct Collection {
     #[cfg(feature = "stac")]
     #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub assets: std::collections::HashMap<String, crate::stac::Asset>,
+    #[cfg(feature = "movingfeatures")]
+    #[serde(rename = "updateFrequency")]
+    /// A time interval of sampling location. The time unit of this property is millisecond.
+    update_frequency: Option<i64>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
 }
@@ -94,6 +105,15 @@ pub struct Collection {
 #[cfg(feature = "stac")]
 fn collection() -> String {
     "Collection".to_string()
+}
+
+#[cfg(feature = "movingfeatures")]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[serde(untagged)]
+pub enum ItemType {
+    #[default]
+    MovingFeature,
+    Other(Option<String>)
 }
 
 #[allow(clippy::derivable_impls)]
@@ -131,6 +151,8 @@ impl Default for Collection {
             summaries: Default::default(),
             #[cfg(feature = "stac")]
             assets: Default::default(),
+            #[cfg(feature = "movingfeatures")]
+            update_frequency: Default::default(),
             additional_properties: Default::default(),
         }
     }

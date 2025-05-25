@@ -4,6 +4,16 @@ use std::fmt::Display;
 
 #[cfg(feature = "stac")]
 use crate::common::Bbox;
+
+#[cfg(feature = "movingfeatures")]
+use crate::movingfeatures::{
+    crs::Crs, temporal_geometry::TemporalGeometry, temporal_properties::TemporalProperties,
+    trs::Trs,
+};
+
+#[cfg(feature = "movingfeatures")]
+use chrono::{DateTime, Utc};
+
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -40,7 +50,12 @@ pub fn geometry() -> Schema {
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
 #[serde_with::skip_serializing_none]
+<<<<<<< HEAD
 #[derive(Deserialize, Serialize, ToSchema, Debug, Clone, PartialEq)]
+=======
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(rename = "camelCase")]
+>>>>>>> ba7e7ad (Integrate with moving features with collection, feature collection and features)
 pub struct Feature {
     #[serde(default)]
     pub id: Option<FeatureId>,
@@ -69,6 +84,21 @@ pub struct Feature {
     #[cfg(feature = "stac")]
     #[serde(default)]
     pub assets: HashMap<String, crate::stac::Asset>,
+    #[cfg(feature = "movingfeatures")]
+    #[serde(serialize_with = "crate::common::serialize_interval")]
+    /// Life span information for the moving feature.
+    /// See [MF-Json 7.2.3 LifeSpan](https://docs.ogc.org/is/19-045r3/19-045r3.html#time)
+    pub time: Vec<Vec<Option<DateTime<Utc>>>>,
+    #[cfg(feature = "movingfeatures")]
+    // TODO should this be #[serde(default)] instead of option?
+    pub crs: Option<Crs>,
+    #[cfg(feature = "movingfeatures")]
+    // TODO should this be #[serde(default)] instead of option?
+    pub trs: Option<Trs>,
+    #[cfg(feature = "movingfeatures")]
+    pub temporal_geometry: Option<TemporalGeometry>,
+    #[cfg(feature = "movingfeatures")]
+    pub temporal_properties: Option<TemporalProperties>,
 }
 
 impl Feature {
