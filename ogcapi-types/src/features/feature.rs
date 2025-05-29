@@ -96,8 +96,10 @@ pub struct Feature {
     // TODO should this be #[serde(default)] instead of option?
     pub trs: Option<Trs>,
     #[cfg(feature = "movingfeatures")]
+    #[serde(rename = "temporalGeometry")]
     pub temporal_geometry: Option<TemporalGeometry>,
     #[cfg(feature = "movingfeatures")]
+    #[serde(rename = "temporalProperties")]
     pub temporal_properties: Option<TemporalProperties>,
 }
 
