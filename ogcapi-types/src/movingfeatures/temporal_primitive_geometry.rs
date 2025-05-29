@@ -113,7 +113,7 @@ pub struct SameLengthDateTimeCoordinatesVecs<A, B> {
 }
 
 impl<A, B> SameLengthDateTimeCoordinatesVecs<A, B> {
-    fn try_new(datetimes: Vec<A>, coordinates: Vec<B>) -> Result<Self, String> {
+    pub fn try_new(datetimes: Vec<A>, coordinates: Vec<B>) -> Result<Self, String> {
         if coordinates.len() != datetimes.len() {
             Err("coordinates and datetimes must be of same length!".to_string())
         } else {
@@ -122,6 +122,11 @@ impl<A, B> SameLengthDateTimeCoordinatesVecs<A, B> {
                 coordinates,
             })
         }
+    }
+
+    pub fn append(&mut self, other: &mut SameLengthDateTimeCoordinatesVecs<A, B>)  {
+            self.datetimes.append(&mut other.datetimes);
+            self.coordinates.append(&mut other.coordinates);
     }
 }
 
