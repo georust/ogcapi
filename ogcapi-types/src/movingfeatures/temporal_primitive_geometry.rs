@@ -128,6 +128,15 @@ impl<A, B> SameLengthDateTimeCoordinatesVecs<A, B> {
             self.datetimes.append(&mut other.datetimes);
             self.coordinates.append(&mut other.coordinates);
     }
+
+    pub fn datetimes(&self) -> &[A] {
+        self.datetimes.as_slice()
+    }
+    
+    pub fn coordinates(&self) -> &[B] {
+        self.coordinates.as_slice()
+    }
+
 }
 
 impl<A, B> TryFrom<SameLengthDateTimeCoordinatesVecsUnchecked<A, B>>
