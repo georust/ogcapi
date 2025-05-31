@@ -57,6 +57,14 @@ impl Prisms {
             Err("Prisms must have at least one value. Try to delete the whole prism.")
         }
     }
+
+    pub fn inner(&self) -> &[TemporalPrimitiveGeometry] {
+        self.0.as_slice()
+    }
+
+    pub fn into_inner(self) -> Vec<TemporalPrimitiveGeometry> {
+        self.0
+    }
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
