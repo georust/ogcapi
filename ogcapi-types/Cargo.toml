@@ -20,6 +20,7 @@ stac = ["features"]
 styles = []
 tiles = ["common"]
 coverages = []
+movingfeatures = ["common", "features"]
 
 [dependencies]
 chrono = { version = "0.4.40", features = ["serde"] }
