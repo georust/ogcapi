@@ -11,8 +11,9 @@ keywords.workspace = true
 include = ["/src", "/migrations"]
 
 [features]
-default = []
+default = ["common", "edr", "features", "processes", "tiles"]
 
+# drivers
 postgres = ["sqlx", "rink-core", "url"]
 s3 = ["aws-config", "aws-sdk-s3"]
 
@@ -45,4 +46,4 @@ sqlx = { version = "0.8.3", optional = true, features = [
 ] }
 url = { workspace = true, optional = true }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.3" }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
