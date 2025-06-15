@@ -1,32 +1,37 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize, ser::SerializeSeq, ser::Serializer};
 use serde_with::DisplayFromStr;
+use utoipa::ToSchema;
 
 use crate::common::{Bbox, Crs};
 
-#[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+/// The extent of the features in the collection. In the Core only spatial and
+/// temporal extents are specified. Extensions may add additional members to
+/// represent other extents, for example, thermal or pressure ranges.
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug, PartialEq, Clone)]
 pub struct Extent {
-    pub spatial: Option<SpatialExtent>,
-    pub temporal: Option<TemporalExtent>,
+    pub spatial: SpatialExtent,
+    pub temporal: TemporalExtent,
 }
 
-impl Default for Extent {
-    fn default() -> Self {
-        Self {
-            spatial: Some(SpatialExtent::default()),
-            temporal: Some(TemporalExtent::default()),
-        }
-    }
-}
-
+/// The spatial extent of the features in the collection.
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
 pub struct SpatialExtent {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    /// One or more bounding boxes that describe the spatial extent of the
+    /// dataset. In the Core only a single bounding box is supported. Extensions
+    /// may support additional areas. If multiple areas are provided, the union
+    /// of the bounding boxes describes the spatial extent.
+    #[serde(default)]
     pub bbox: Vec<Bbox>,
+    /// Coordinate reference system of the coordinates in the spatial extent
+    /// (property `bbox`). The default reference system is WGS 84 longitude/latitude.
+    /// In the Core this is the only supported coordinate reference system.
+    /// Extensions may support additional coordinate reference systems and add
+    /// additional enum values.
     #[serde(default)]
     #[serde_as(as = "DisplayFromStr")]
+    #[schema(value_type = String)]
     pub crs: Crs,
 }
 
@@ -39,12 +44,22 @@ impl Default for SpatialExtent {
     }
 }
 
+/// The temporal extent of the features in the collection.
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
 pub struct TemporalExtent {
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    /// One or more time intervals that describe the temporal extent of the
+    /// dataset. The value `null` is supported and indicates an unbounded
+    /// interval end. In the Core only a single time interval is supported.
+    /// Extensions may support multiple intervals. If multiple intervals are
+    /// provided, the union of the intervals describes the temporal extent.
     #[serde(serialize_with = "serialize_interval")]
-    pub interval: Vec<Vec<Option<DateTime<Utc>>>>,
+    pub interval: Vec<[Option<DateTime<Utc>>; 2]>,
+    /// Coordinate reference system of the coordinates in the temporal extent
+    /// (property `interval`). The default reference system is the Gregorian
+    /// calendar. In the Core this is the only supported temporal coordinate
+    /// reference system. Extensions may support additional temporal coordinate
+    /// reference systems and add additional enum values.
     #[serde(default = "default_trs")]
     pub trs: String,
 }
@@ -52,14 +67,14 @@ pub struct TemporalExtent {
 impl Default for TemporalExtent {
     fn default() -> Self {
         Self {
-            interval: vec![vec![None, None]],
+            interval: vec![[None, None]],
             trs: default_trs(),
         }
     }
 }
 
 fn serialize_interval<S>(
-    interval: &Vec<Vec<Option<DateTime<Utc>>>>,
+    interval: &Vec<[Option<DateTime<Utc>>; 2]>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where

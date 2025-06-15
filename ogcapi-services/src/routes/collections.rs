@@ -2,12 +2,12 @@ use axum::{
     Json,
     extract::{Path, State},
     http::{StatusCode, header::LOCATION},
-    {Router, routing::get},
 };
 use hyper::HeaderMap;
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::common::{
-    Collection, Collections, Crs, Link, Linked, Query,
+    Collection, Collections, Crs, Exception, Link, Linked, Query,
     link_rel::{DATA, ITEMS, ROOT, SELF},
     media_type::{GEO_JSON, JSON},
 };
@@ -17,16 +17,38 @@ use crate::{
     extractors::{Qs, RemoteUrl},
 };
 
-const CONFORMANCE: [&str; 3] = [
+const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
-    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
+    // "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
+    // "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
     "http://www.opengis.net/spec/ogcapi_common-2/1.0/conf/json",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
 ];
 
 /// Create new collection metadata
+#[utoipa::path(post, path = "/collections", tag = "Collections", 
+    request_body = Collection,
+    responses(
+        (
+            status = 201, description = "Created.", 
+            headers(
+                ("Location", description = "URI of the newly added resource.")
+            )
+        ),
+        (
+            status = 409, description = "Already exists.", 
+            body = Exception, example = json!(Exception::new_from_status(409))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn create(
-    State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
+    State(state): State<AppState>,
     Json(collection): Json<Collection>,
 ) -> Result<(StatusCode, HeaderMap)> {
     if state
@@ -57,10 +79,49 @@ async fn create(
 }
 
 /// Get collection metadata
+///
+/// Describe the feature collection with id `collectionId`
+#[utoipa::path(get, path = "/collections/{collectionId}", tag = "Collections", 
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection")
+    ),
+    responses(
+        (
+            status = 200,
+            description = "Information about the feature collection with id \
+                `collectionId`. \
+                \n\nThe response contains a link to the items in the collection \
+                (path `/collections/{collectionId}/items`, link relation `items`) \
+                as well as key information about the collection. This \
+                information includes: \
+                \n* A local identifier for the collection that is unique for \
+                the dataset; \
+                \n* A list of coordinate reference systems (CRS) in which \
+                geometries may be returned by the server. The first CRS is \
+                the default coordinate reference system (the default is always \
+                WGS 84 with axis order longitude/latitude); \
+                \n* An optional title and description for the collection; \
+                \n* An optional extent that can be used to provide an indication \
+                of the spatial and temporal extent of the collection - typically \
+                derived from the data; \
+                \n* An optional indicator about the type of the items in the \
+                collection (the default value, if the indicator is not provided, \
+                is 'feature').", 
+            body = Collection),
+        (
+            status = 400, description = "General HTTP error response.", 
+            body = Exception, example = json!(Exception::new_from_status(400))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn read(
+    RemoteUrl(url): RemoteUrl,
     State(state): State<AppState>,
     Path(collection_id): Path<String>,
-    RemoteUrl(url): RemoteUrl,
 ) -> Result<Json<Collection>> {
     let mut collection = state
         .drivers
@@ -96,6 +157,22 @@ async fn read(
 }
 
 /// Update collection metadata
+#[utoipa::path(put, path = "/collections/{collectionId}", tag = "Collections",
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection")
+    ),
+    responses(
+        (status = 204, description = "Successfuly updataed, no content."),
+        (
+            status = 400, description = "General HTTP error response.", 
+            body = Exception, example = json!(Exception::new_from_status(400))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn update(
     State(state): State<AppState>,
     Path(collection_id): Path<String>,
@@ -113,6 +190,23 @@ async fn update(
 }
 
 /// Delete collection metadata
+#[utoipa::path(delete, path = "/collections/{collectionId}", tag = "Collections",
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection")
+    ),
+    request_body = Collection,
+    responses(
+        (status = 204, description = "Successfuly deleted, no content."),
+        (
+            status = 400, description = "General HTTP error response.", 
+            body = Exception, example = json!(Exception::new_from_status(400))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn remove(
     Path(collection_id): Path<String>,
     State(state): State<AppState>,
@@ -126,6 +220,45 @@ async fn remove(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// The feature collections in the dataset.
+#[utoipa::path(get, path = "/collections", tag = "Capabilities", 
+    responses(
+        (
+            status = 200,
+            description = "The feature collections shared by this API. \
+            \n\nThe dataset is organized as one or more feature collections. \
+            This resource provides information about and access to the \
+            collections. \
+            \n\nThe response contains the list of collections. For each \
+            collection, a link to the items in the collection (path \
+            `/collections/{collectionId}/items`, link relation `items`) as \
+            well as key information about the collection. This information \
+            includes: \
+            \n* A local identifier for the collection that is unique for \
+            the dataset; \
+            \n* A list of coordinate reference systems (CRS) in which \
+            geometries may be returned by the server. The first CRS is the \
+            default coordinate reference system (the default is always WGS 84 \
+            with axis order longitude/latitude); \
+            \n* An optional title and description for the collection; \
+            \n* An optional extent that can be used to provide an indication \
+            of the spatial and temporal extent of the collection - typically \
+            derived from the data; \
+            \n* An optional indicator about the type of the items in the \
+            collection (the default value, if the indicator is not provided, \
+            is 'feature').", 
+            body = Collections
+        ),
+        (
+            status = 400, description = "General HTTP error response.", 
+            body = Exception, example = json!(Exception::new_from_status(400))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn collections(
     Qs(query): Qs<Query>,
     RemoteUrl(url): RemoteUrl,
@@ -157,7 +290,7 @@ async fn collections(
     Ok(Json(collections))
 }
 
-pub(crate) fn router(state: &AppState) -> Router<AppState> {
+pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
     let mut root = state.root.write().unwrap();
     root.links.push(
         Link::new("collections", DATA)
@@ -167,10 +300,7 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
 
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::new()
-        .route("/collections", get(collections).post(create))
-        .route(
-            "/collections/{collection_id}",
-            get(read).put(update).delete(remove),
-        )
+    OpenApiRouter::new()
+        .routes(routes!(collections, create))
+        .routes(routes!(read, update, remove))
 }

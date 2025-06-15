@@ -16,14 +16,13 @@ use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_processes::Processor;
 use ogcapi_types::common::{Conformance, LandingPage};
 
-use crate::{Config, ConfigParser, OpenAPI, openapi::OPENAPI};
+use crate::{Config, ConfigParser};
 
 /// Application state
 #[derive(Clone)]
 pub struct AppState {
     pub root: Arc<RwLock<LandingPage>>,
     pub conformance: Arc<RwLock<Conformance>>,
-    pub openapi: OpenAPI,
     pub drivers: Arc<Drivers>,
     pub db: Db,
     #[cfg(feature = "stac")]
@@ -54,18 +53,11 @@ impl AppState {
     }
 
     pub async fn new_from(config: &Config) -> Self {
-        let openapi = if let Some(path) = &config.openapi {
-            OpenAPI::from_path(path).unwrap()
-        } else {
-            OpenAPI::from_slice(OPENAPI)
-        };
-
         let db = Db::setup(&config.database_url).await.unwrap();
-
-        AppState::new_with(db, openapi).await
+        AppState::new_with(db).await
     }
 
-    pub async fn new_with(db: Db, openapi: OpenAPI) -> Self {
+    pub async fn new_with(db: Db) -> Self {
         // conformance
         #[allow(unused_mut)]
         let mut conformace = Conformance::default();
@@ -96,7 +88,6 @@ impl AppState {
         AppState {
             root: Arc::new(RwLock::new(LandingPage::new("root").description("root"))),
             conformance: Arc::new(RwLock::new(conformace)),
-            openapi,
             drivers: Arc::new(drivers),
             db,
             #[cfg(feature = "stac")]
@@ -108,11 +99,6 @@ impl AppState {
 
     pub fn root(mut self, root: LandingPage) -> Self {
         self.root = Arc::new(RwLock::new(root));
-        self
-    }
-
-    pub fn openapi(mut self, openapi: OpenAPI) -> Self {
-        self.openapi = openapi;
         self
     }
 

@@ -11,7 +11,7 @@ pub mod telemetry;
 
 pub use config::Config;
 pub use error::Error;
-pub use openapi::OpenAPI;
+pub use openapi::ApiDoc;
 pub use service::Service;
 pub use state::AppState;
 

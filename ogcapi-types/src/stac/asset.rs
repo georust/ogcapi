@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use utoipa::ToSchema;
 
 /// An asset is an object that contains a link to data associated
 /// with the Item that can be downloaded or streamed. It is allowed
 /// to add additional fields.
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Asset {
     /// URI to the asset object. Relative and absolute URI are both allowed.
@@ -20,7 +21,7 @@ pub struct Asset {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub roles: Vec<String>,
     /// Additional fields on the asset.
-    #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
+    #[serde(flatten, default)]
     pub additional_properties: Map<String, Value>,
 }
 

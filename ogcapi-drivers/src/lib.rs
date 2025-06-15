@@ -109,7 +109,7 @@ pub trait StyleTransactions: Send + Sync {
 pub trait TileTransactions: Send + Sync {
     async fn tile(
         &self,
-        collections: &str,
+        collections: &[String],
         tms: &TileMatrixSet,
         matrix: &str,
         row: u32,
