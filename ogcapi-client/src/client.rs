@@ -489,7 +489,7 @@ mod tests {
             .with_collections(["ch.swisstopo.swissalti3d"]);
         let mut items = client.search(params).unwrap();
         let item = items.next().unwrap().unwrap();
-        assert_eq!(Some("swissalti3d_2019_2600-1199".to_string()), item.id);
+        assert_eq!("swissalti3d_2019_2600-1199", item.id.unwrap().to_string());
         assert_eq!(
             Some("ch.swisstopo.swissalti3d".to_string()),
             item.collection

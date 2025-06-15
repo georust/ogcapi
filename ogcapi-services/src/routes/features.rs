@@ -15,7 +15,7 @@ use ogcapi_types::{
         link_rel::{COLLECTION, NEXT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
     },
-    features::{Feature, FeatureCollection, Query},
+    features::{Feature, FeatureCollection, FeatureId, Query},
 };
 
 use crate::{
@@ -95,7 +95,11 @@ async fn update(
     Path((collection_id, id)): Path<(String, String)>,
     Json(mut feature): Json<Feature>,
 ) -> Result<StatusCode> {
-    feature.id = Some(id);
+    match feature.id {
+        Some(ref fid) => assert_eq!(id, fid.to_string()),
+        None => feature.id = Some(FeatureId::String(id)),
+    }
+
     feature.collection = Some(collection_id);
 
     state.drivers.features.update_feature(&feature).await?;
