@@ -11,8 +11,9 @@ keywords.workspace = true
 include = ["/src", "/assets"]
 
 [features]
-default = ["common"]
+default = ["common", "edr", "features", "processes", "tiles"]
 
+# standads
 common = ["ogcapi-types/common", "ogcapi-drivers/common"]
 features = ["ogcapi-types/features", "ogcapi-drivers/features"]
 edr = ["ogcapi-types/edr", "ogcapi-drivers/edr"]
@@ -46,10 +47,9 @@ tracing = "0.1.41"
 tracing-subscriber = { version="0.3.19", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.3" }
-ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", features = ["postgres"] }
-ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true}
-
+ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
+ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", default-features = false, features = ["postgres"] }
+ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
 
 [dev-dependencies]
 geojson = { workspace = true }

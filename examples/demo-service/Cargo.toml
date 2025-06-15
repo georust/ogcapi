@@ -19,7 +19,8 @@ ogcapi = { path = "../../ogcapi", version = "0.3", features = [
     "common",
     "features",
     "processes",
-    "greeter",
     "tiles",
-    "styles",
+    "greeter",
+    "geojson-loader",
+    "gdal-loader",
 ] }

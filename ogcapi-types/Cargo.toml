@@ -9,7 +9,7 @@ categories.workspace = true
 keywords.workspace = true
 
 [features]
-default = ["common"]
+default = ["common", "edr", "features", "processes", "tiles"]
 
 # standards
 common = []

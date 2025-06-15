@@ -10,6 +10,8 @@ keywords.workspace = true
 
 [features]
 default = ["greeter", "geojson-loader", "gdal-loader"]
+
+# processes
 greeter = []
 geojson-loader = ["dep:geojson", "dep:geo", "dep:wkb", "dep:sqlx", "dep:ogcapi-drivers"]
 gdal-loader = ["dep:arrow", "arrow/ffi", "arrow/json", "dep:gdal", "dep:geo", "dep:wkb", "dep:sqlx", "dep:ogcapi-drivers"]
@@ -32,5 +34,5 @@ url = { workspace = true }
 sqlx = { version = "0.8.3", optional = true }
 wkb = { version = "0.8.0", optional = true }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.3", features = ["processes"] }
-ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", optional = true, features = ["postgres", "common"] }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false, features = ["processes"] }
+ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", optional = true, default-features = false, features = ["postgres", "common"] }
