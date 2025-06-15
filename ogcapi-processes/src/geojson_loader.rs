@@ -3,11 +3,11 @@ use std::{collections::HashMap, io::Cursor};
 use anyhow::Result;
 use geo::Geometry;
 use geojson::FeatureCollection;
-
 use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 use sqlx::types::Json;
 use url::Url;
+use wkb::{Endianness, writer::WriteOptions};
 
 use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_types::{
@@ -17,7 +17,6 @@ use ogcapi_types::{
         TransmissionMode,
     },
 };
-use wkb::{Endianness, writer::WriteOptions};
 
 use crate::{ProcessResponseBody, Processor};
 
@@ -153,14 +152,14 @@ impl Processor for GeoJsonLoader {
             extent: geojson
                 .bbox
                 .map(|bbox| Extent {
-                    spatial: Some(SpatialExtent {
+                    spatial: SpatialExtent {
                         bbox: vec![
                             bbox.as_slice()
                                 .try_into()
                                 .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
                         ],
                         crs: Crs::default(),
-                    }),
+                    },
                     ..Default::default()
                 })
                 .or_else(|| Some(Extent::default())),

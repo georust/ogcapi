@@ -4,23 +4,50 @@ use axum::{
     http::{HeaderMap, StatusCode},
 };
 use hyper::header::CONTENT_TYPE;
+use url::Url;
+use utoipa_axum::{router::OpenApiRouter, routes};
+
 use ogcapi_drivers::StacSeach;
 use ogcapi_types::{
     common::{
-        Bbox, Link, Linked,
+        Bbox, Exception, Link, Linked,
         link_rel::{COLLECTION, NEXT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
     },
     features::FeatureCollection,
     stac::{SearchBody, SearchParams},
 };
-use url::Url;
 
 use crate::{
     AppState, Error, Result,
     extractors::{Qs, RemoteUrl},
 };
 
+/// Search STAC items with simple filtering.
+///
+/// Retrieve Items matching filters. Intended as a shorthand API for simple
+/// queries.
+///
+/// This method is required to implement.
+///
+/// If this endpoint is implemented on a server, it is required to add a
+/// link referring to this endpoint with `rel` set to `search` to the
+/// `links` array in `GET /`. As `GET` is the default method, the `method`
+/// may not be set explicitly in the link.
+#[utoipa::path(get, path = "/search", tag = "Item Search", 
+    params(SearchParams),
+    responses(
+        (
+            status = 200,
+            description = "A feature collection.", 
+            body = FeatureCollection
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 pub(crate) async fn search_get(
     State(state): State<AppState>,
     Qs(params): Qs<SearchParams>,
@@ -29,6 +56,30 @@ pub(crate) async fn search_get(
     search(params, url, state).await
 }
 
+/// Search STAC items with full-featured filtering.
+///
+/// Retrieve Items matching filters. Intended as the standard, full-featured
+/// query API.
+///
+/// This method is optional to implement, but recommended.
+///
+/// If this endpoint is implemented on a server, it is required to add a
+/// link referring to this endpoint with `rel` set to `search` and `method`
+/// set to `POST` to the `links` array in `GET /`.
+#[utoipa::path(post, path = "/search", tag = "Item Search", 
+    request_body = SearchBody,
+    responses(
+        (
+            status = 200,
+            description = "A feature collection.", 
+            body = FeatureCollection
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 pub(crate) async fn search_post(
     State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
@@ -132,4 +183,8 @@ pub(crate) async fn search(
     headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(fc)))
+}
+
+pub(crate) fn router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new().routes(routes!(search_get, search_post))
 }

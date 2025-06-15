@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::common::{Crs, Datetime};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum QueryType {
     Position,
@@ -12,13 +13,13 @@ pub enum QueryType {
     Cube,
     Trajectory,
     Corridor,
-    // Items,
+    Items,
     Locations,
-    // Instances,
+    Instances,
 }
 
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, IntoParams, Default, Debug)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
     /// Well Known Text (WKT) of representation geometry. The representation
@@ -27,10 +28,12 @@ pub struct Query {
     pub coords: String,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
+    #[param(value_type = String)]
     pub datetime: Option<Datetime>,
     pub parameter_name: Option<String>,
     #[serde(default)]
     #[serde_as(as = "DisplayFromStr")]
+    #[param(value_type = String)]
     pub crs: Crs,
     pub f: Option<String>,
     pub z: Option<Vec<String>>,

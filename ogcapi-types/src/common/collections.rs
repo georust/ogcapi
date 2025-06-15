@@ -1,24 +1,24 @@
 use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
+use utoipa::ToSchema;
 
-use crate::common::{Crs, Links};
-
-use super::Collection;
+use super::{Collection, Crs, Link};
 
 #[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Collections {
     #[serde(default)]
-    pub links: Links,
+    pub links: Vec<Link>,
     pub time_stamp: Option<String>,
     pub number_matched: Option<u64>,
     pub number_returned: Option<u64>,
     pub collections: Vec<Collection>,
     #[serde(default)]
     #[serde_as(as = "Vec<DisplayFromStr>")]
+    #[schema(value_type = String)]
     pub crs: Vec<Crs>,
 }
 

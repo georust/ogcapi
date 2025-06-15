@@ -1,22 +1,23 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use serde_with::DisplayFromStr;
+use utoipa::ToSchema;
 
-use crate::common::{Crs, Extent, Links};
+use super::{Crs, Extent, Link};
 
 // const CRS_REF: &str = "#/crs";
 
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
 #[serde_with::serde_as]
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Collection {
+    pub id: String,
     /// Must be set to `Collection` to be a valid Collection.
     #[cfg(feature = "stac")]
     #[serde(default = "collection")]
     pub r#type: String,
-    pub id: String,
     pub title: Option<String>,
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -29,13 +30,15 @@ pub struct Collection {
     /// The list of coordinate reference systems supported by the API; the first item is the default coordinate reference system.
     #[serde(default)]
     #[serde_as(as = "Vec<DisplayFromStr>")]
+    #[schema(value_type = Vec<String>)]
     pub crs: Vec<Crs>,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
+    #[schema(value_type = String)]
     pub storage_crs: Option<Crs>,
     pub storage_crs_coordinate_epoch: Option<f32>,
     #[serde(default)]
-    pub links: Links,
+    pub links: Vec<Link>,
     /// Detailed information relevant to individual query types
     #[cfg(feature = "edr")]
     #[serde(rename = "data_queries")]

@@ -1,8 +1,9 @@
+use sqlx::types::Json;
+
 use ogcapi_types::{
     edr::{Query, QueryType},
     features::{Feature, FeatureCollection},
 };
-use sqlx::types::Json;
 
 use crate::{CollectionTransactions, EdrQuerier};
 
@@ -89,7 +90,7 @@ impl EdrQuerier for Db {
                     )
                 }
             }
-            QueryType::Corridor | QueryType::Locations => unimplemented!(),
+            qt => unimplemented!("{qt:?}"),
         };
 
         let properties = if let Some(parameters) = &query.parameter_name {

@@ -6,22 +6,20 @@ use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
 };
 
+use ogcapi_types::common::Link;
 #[cfg(not(feature = "stac"))]
 use ogcapi_types::features::Feature;
+#[cfg(feature = "stac")]
+use ogcapi_types::{
+    common::link_rel::{CHILD, ITEM, SELF},
+    stac::{Catalog, Item as Feature, SearchParams, StacEntity},
+};
 use ogcapi_types::{
     common::{
-        Collection, Conformance, LandingPage, Links,
+        Collection, Conformance, LandingPage,
         link_rel::{CONFORMANCE, DATA, NEXT},
     },
     features::FeatureCollection,
-};
-#[cfg(feature = "stac")]
-use ogcapi_types::{
-    common::{
-        Link,
-        link_rel::{CHILD, ITEM, SELF},
-    },
-    stac::{Catalog, Item as Feature, SearchParams, StacEntity},
 };
 
 use crate::Error;
@@ -192,25 +190,25 @@ impl Client {
 pub struct StacEntities {
     client: Client,
     // entities: <Vec<StacEntity> as IntoIterator>::IntoIter,
-    links: Links,
+    links: Vec<Link>,
 }
 
 #[cfg(feature = "stac")]
 pub struct Catalogs {
     client: Client,
-    links: Links,
+    links: Vec<Link>,
 }
 
 pub struct Collections {
     client: Client,
     collections: <Vec<Collection> as IntoIterator>::IntoIter,
-    links: Links,
+    links: Vec<Link>,
 }
 
 pub struct Items {
     client: Client,
     items: <Vec<Feature> as IntoIterator>::IntoIter,
-    links: Links,
+    links: Vec<Link>,
 }
 
 trait Pagination<T> {
@@ -421,7 +419,7 @@ impl Iterator for Catalogs {
 }
 
 #[cfg(feature = "stac")]
-fn resolve_relative_links(links: &mut Links, base: &str) {
+fn resolve_relative_links(links: &mut [Link], base: &str) {
     let base_url = Url::parse(base).expect("Parse base url from string");
 
     links.iter_mut().for_each(|l| match Url::parse(&l.href) {

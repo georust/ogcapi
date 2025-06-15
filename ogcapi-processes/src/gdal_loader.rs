@@ -211,11 +211,11 @@ impl Processor for GdalLoader {
                     Crs::from_epsg(3857),
                 ])),
                 extent: layer.try_get_extent().unwrap().map(|e| Extent {
-                    spatial: Some(SpatialExtent {
+                    spatial: SpatialExtent {
                         bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
                         crs: storage_crs.to_owned(),
-                    }),
-                    temporal: None,
+                    },
+                    ..Default::default()
                 }),
                 storage_crs: Some(storage_crs.to_owned()),
                 ..Default::default()
@@ -310,7 +310,6 @@ impl Processor for GdalLoader {
 
         for result in arrow_stream_reader {
             let mut batch = result?;
-            println!("Got some batch with {} features", batch.num_rows());
 
             // Get the id column
             let fid_column = batch.remove_column(fid_column_index);

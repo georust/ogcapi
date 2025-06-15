@@ -1,24 +1,24 @@
 use std::collections::HashMap;
 
 use axum::{
-    Json, Router,
+    Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
 };
 use url::Position;
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
     common::{
-        Link,
+        Exception, Link,
         link_rel::{NEXT, PREV, PROCESSES, SELF},
         media_type::JSON,
         query::LimitOffsetPagination,
     },
     processes::{
         Execute, InlineOrRefData, JobList, Process, ProcessList, ProcessSummary, Results,
-        ResultsQuery,
+        ResultsQuery, StatusInfo,
     },
 };
 
@@ -35,6 +35,25 @@ const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/dismiss",
 ];
 
+/// Retrieve the list of available processes
+///
+/// The list of processes contains a summary of each process the OGC API - Processes
+/// offers, including the link to a more detailed description of the process.
+///
+/// For more information, see [Section 7.9](https://docs.ogc.org/is/18-062/18-062.html#sc_process_list).
+#[utoipa::path(get, path = "/processes", tag = "Processes",
+    responses(
+        (
+            status = 200,
+            description = "Information about the available processe",
+            body = ProcessList
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn processes(
     State(state): State<AppState>,
     RemoteUrl(mut url): RemoteUrl,
@@ -92,6 +111,29 @@ async fn processes(
     Ok(Json(process_list))
 }
 
+/// Retrieve a processes description
+///
+/// The process description contains information about inputs and outputs and
+/// a link to the execution-endpoint for the process. The Core does not
+/// mandate the use of a specific process description to specify the interface
+/// of a process. That said, the Core requirements class makes the following recommendation:
+///
+/// Implementations SHOULD consider supporting the OGC process description.
+///
+/// For more information, see Section 7.10.
+#[utoipa::path(get, path = "/processes/{processID}", tag = "Processes",
+    responses(
+        (
+            status = 200,
+            description = "A process description",
+            body = Process
+        ),
+        (
+            status = 404, description = "The requested URI was not found.", 
+            body = Exception, example = json!(Exception::new_from_status(404))
+        )
+    )
+)]
 async fn process(
     State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
@@ -112,6 +154,25 @@ async fn process(
     }
 }
 
+/// Execute a process
+///
+/// Create a new job.
+///
+/// For more information, see [Section 7.11](https://docs.ogc.org/is/18-062/18-062.html#sc_create_job).
+#[utoipa::path(post, path = "/processes/{processID}/execution", tag = "Processes",
+    request_body = Execute,
+    responses(
+        (
+            status = 200,
+            description = "Result of synchronous execution",
+            body = Results
+        ),
+        (
+            status = 404, description = "The requested URI was not found.", 
+            body = Exception, example = json!(Exception::new_from_status(404))
+        )
+    )
+)]
 async fn execution(
     State(state): State<AppState>,
     Path(process_id): Path<String>,
@@ -131,6 +192,22 @@ async fn execution(
     }
 }
 
+/// Retrieve the list of jobs
+///
+/// For more information, see [Section 11](https://docs.ogc.org/is/18-062/18-062.html#sc_job_list).
+#[utoipa::path(get, path = "/jobs", tag = "Processes",
+    responses(
+        (
+            status = 200,
+            description = "A list of jobs for this process.",
+            body = JobList
+        ),
+        (
+            status = 404, description = "The requested URI was not found.", 
+            body = Exception, example = json!(Exception::new_from_status(404))
+        )
+    )
+)]
 async fn jobs(
     State(_state): State<AppState>,
     RemoteUrl(mut _url): RemoteUrl,
@@ -138,6 +215,24 @@ async fn jobs(
     todo!()
 }
 
+/// Retrieve the status of a job
+///
+/// Shows the status of a job.
+///
+/// For more information, see [Section 7.12](https://docs.ogc.org/is/18-062/18-062.html#sc_retrieve_status_info).
+#[utoipa::path(get, path = "/jobs/{jobId}", tag = "Processes",
+    responses(
+        (
+            status = 200,
+            description = "The status of a job",
+            body = StatusInfo
+        ),
+        (
+            status = 404, description = "The requested URI was not found.", 
+            body = Exception, example = json!(Exception::new_from_status(404))
+        )
+    )
+)]
 async fn status(
     State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
@@ -158,6 +253,24 @@ async fn status(
     }
 }
 
+/// Cancel a job execution, remove finished job
+///
+/// Cancel a job execution and remove it from the jobs list.
+///
+/// For more information, see [Section 13](https://docs.ogc.org/is/18-062/18-062.html#Dismiss).
+#[utoipa::path(delete, path = "/jobs/{jobId}", tag = "Processes",
+    responses(
+        (
+            status = 200,
+            description = "The status of a job",
+            body = StatusInfo
+        ),
+        (
+            status = 404, description = "The requested URI was not found.", 
+            body = Exception, example = json!(Exception::new_from_status(404))
+        )
+    )
+)]
 async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Result<Response> {
     let status = state.drivers.jobs.dismiss(&job_id).await?;
 
@@ -172,6 +285,24 @@ async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
     }
 }
 
+/// Retrieve the result(s) of a job
+///
+/// Lists available results of a job. In case of a failure, lists exceptions instead.
+///
+/// For more information, see [Section 7.13](https://docs.ogc.org/is/18-062/18-062.html#sc_retrieve_job_results).
+#[utoipa::path(get, path = "/jobs/{jobId}/results", tag = "Processes",
+    responses(
+        (
+            status = 200,
+            description = "The results of a job",
+            body = Results
+        ),
+        (
+            status = 404, description = "The requested URI was not found.", 
+            body = Exception, example = json!(Exception::new_from_status(404))
+        )
+    )
+)]
 async fn results(
     State(state): State<AppState>,
     Path(job_id): Path<String>,
@@ -205,27 +336,7 @@ async fn results(
     }
 }
 
-async fn result(
-    State(state): State<AppState>,
-    Path((job_id, output_id)): Path<(String, String)>,
-) -> Result<Response> {
-    let results = state.drivers.jobs.results(&job_id).await?;
-
-    // TODO: check if job is finished
-
-    match results {
-        Some(results) => {
-            let result = results.get(&output_id);
-            Ok(Json(result).into_response())
-        }
-        None => Err(Error::Exception(
-            StatusCode::NOT_FOUND,
-            format!("No job with id `{job_id}`"),
-        )),
-    }
-}
-
-pub(crate) fn router(state: &AppState) -> Router<AppState> {
+pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
     let mut root = state.root.write().unwrap();
     root.links.append(&mut vec![
         Link::new("processes", PROCESSES)
@@ -238,12 +349,11 @@ pub(crate) fn router(state: &AppState) -> Router<AppState> {
 
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::new()
-        .route("/processes", get(processes))
-        .route("/processes/{process_id}", get(process))
-        .route("/processes/{process_id}/execution", post(execution))
-        .route("/jobs", get(jobs))
-        .route("/jobs/{job_id}", get(status).delete(delete))
-        .route("/jobs/{job_id}/results", get(results))
-        .route("/jobs/{job_id}/results/{output_id}", get(result))
+    OpenApiRouter::new()
+        .routes(routes!(processes))
+        .routes(routes!(process))
+        .routes(routes!(execution))
+        .routes(routes!(jobs))
+        .routes(routes!(status, delete))
+        .routes(routes!(results))
 }

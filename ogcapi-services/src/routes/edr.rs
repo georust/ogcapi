@@ -1,13 +1,13 @@
 use axum::{
-    Json, Router,
+    Json,
     extract::{Path, State},
     http::header::CONTENT_TYPE,
-    routing::get,
 };
 use hyper::HeaderMap;
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
-    common::{Link, link_rel::SELF, media_type::GEO_JSON},
+    common::{Exception, Link, link_rel::SELF, media_type::GEO_JSON},
     edr::{Query, QueryType},
     features::FeatureCollection,
 };
@@ -17,18 +17,53 @@ use crate::{
     extractors::{Qs, RemoteUrl},
 };
 
-const CONFORMANCE: [&str; 8] = [
-    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/core",
-    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/collections",
-    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/json",
-    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/geojson",
-    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/edr-geojson",
-    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/covjson",
+const CONFORMANCE: [&str; 5] = [
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/core",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/collections",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/json",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/geojson",
+    // "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/edr-geojson",
+    // "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/covjson",
     // "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/html",
-    "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/oas30",
+    // "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/queries",
 ];
 
+/// Retrieve data according to the query pattern from a collection with the unique
+/// identifier `collectionId`
+#[utoipa::path(get, path = "/collections/{collectionId}/{queryType}", tag = "Collection data queries", 
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection"),
+        (
+            "queryType" = QueryType, Path, 
+            description = "an identifier for a specific query pattern to retrieve \
+            data from a specific collection of data"
+        ),
+        Query,
+    ),
+    responses(
+        (
+            status = 200,
+            description = "Data ranges required to construct valid queries for \
+            the choosen data collection", 
+            body = FeatureCollection
+        ),
+        (
+            status = 202, description = "Data request still being processed"
+        ),
+        (
+            status = 308, description = "Request will take a significant time to process"
+        ),
+        (
+            status = 400, description = "General HTTP error response.", 
+            body = Exception, example = json!(Exception::new_from_status(400))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn query(
     Path((collection_id, query_type)): Path<(String, QueryType)>,
     Qs(query): Qs<Query>,
@@ -67,10 +102,10 @@ async fn query(
 
 // async fn instance() {}
 
-pub(crate) fn router(state: &AppState) -> Router<AppState> {
+pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::new().route("/collections/{collection_id}/{query_type}", get(query))
+    OpenApiRouter::new().routes(routes!(query))
     // .route("/collections/{collection_id}/instances", get(instances))
     // .route("/collections/{collection_id}/instances/{instance_id}", get(instance))
     // .route("/collections/{collection_id}/instances/{instance_id}/{query_type}", get(instance))
