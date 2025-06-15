@@ -2,7 +2,7 @@ mod feature;
 mod feature_collection;
 mod query;
 
-pub use feature::Feature;
+pub use feature::{Feature, geometry};
 pub use feature_collection::FeatureCollection;
 pub use query::Query;
 

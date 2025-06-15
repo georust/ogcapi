@@ -1,6 +1,7 @@
 mod collection;
 mod feature;
 
+use aws_config::BehaviorVersion;
 use aws_sdk_s3::{
     Client, Config,
     error::SdkError,
@@ -24,16 +25,12 @@ pub struct S3 {
 
 impl S3 {
     pub async fn new() -> Self {
-        let config = if let Ok(endpoint) = std::env::var("AWS_CUSTOM_ENDPOINT") {
-            // Use custom enpoint if specified in `AWS_CUSTOM_ENDPOINT` environment variable
+        let mut config = aws_config::load_defaults(BehaviorVersion::latest()).await;
+
+        // Use custom enpoint if specified in `AWS_CUSTOM_ENDPOINT` environment variable
+        if let Ok(endpoint) = std::env::var("AWS_CUSTOM_ENDPOINT") {
             println!("Setup client with custom endpoint: {endpoint}");
-            aws_config::load_from_env()
-                .await
-                .into_builder()
-                .endpoint_url(&endpoint)
-                .build()
-        } else {
-            aws_config::load_from_env().await
+            config = config.into_builder().endpoint_url(&endpoint).build()
         };
 
         // force path style addressing to work with minio

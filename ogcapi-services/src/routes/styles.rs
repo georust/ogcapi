@@ -1,9 +1,10 @@
 use axum::{
-    Json, Router,
+    Json,
     extract::{Path, State},
     routing::get,
 };
 use serde_json::Value;
+use utoipa_axum::router::OpenApiRouter;
 
 use ogcapi_types::styles::Styles;
 
@@ -20,8 +21,8 @@ async fn read_style(Path(id): Path<String>, State(state): State<AppState>) -> Re
     style.map(Json).ok_or(Error::NotFound)
 }
 
-pub(crate) fn router(_state: &AppState) -> Router<AppState> {
-    Router::new()
+pub(crate) fn router(_state: &AppState) -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
         .route("/styles", get(styles))
         .route("/styles/{id}", get(read_style))
 }

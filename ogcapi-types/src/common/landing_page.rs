@@ -1,22 +1,20 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use utoipa::ToSchema;
 
 #[cfg(feature = "edr")]
 use crate::edr::{Contact, Provider};
 
-use super::Links;
+use super::Link;
 
-/// The Landing page is the entry point of a OGC API
+/// The Landing page is the entry point of a OGC API.
 ///
 /// The Landing page provides links to:
-///
 /// * the API definition (link relations `service-desc` and `service-doc`),
-///
 /// * the Conformance declaration (path `/conformance`, link relation `conformance`), and
-///
 /// * the Collections (path `/collections`, link relation `data`).
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
 pub struct LandingPage {
     /// Set to `Catalog` if this Catalog only implements the Catalog spec.
     #[cfg(feature = "stac")]
@@ -33,18 +31,15 @@ pub struct LandingPage {
     /// Identifier for the Catalog.
     #[cfg(feature = "stac")]
     pub id: String,
-    /// The title of the API
+    /// The title of the API.
     pub title: Option<String>,
-    /// A textual description of the API
+    /// A textual description of the API.
     pub description: Option<String>,
-    /// The `attribution` should be short and intended for presentation to a
-    /// user, for example, in a corner of a map. Parts of the text can be links
-    /// to other resources if additional information is needed. The string can
-    /// include HTML markup.
+    /// Attribution for the API.
     pub attribution: Option<String>,
     /// Links to the resources exposed through this API
     #[serde(default)]
-    pub links: Links,
+    pub links: Vec<Link>,
     #[cfg(feature = "edr")]
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keywords: Vec<String>,
@@ -112,7 +107,7 @@ impl LandingPage {
         self
     }
 
-    pub fn links(mut self, links: Links) -> Self {
+    pub fn links(mut self, links: Vec<Link>) -> Self {
         self.links = links;
         self
     }

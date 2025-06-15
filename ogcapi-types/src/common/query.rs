@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
+use utoipa::ToSchema;
 
 use crate::common::{Bbox, Crs, Datetime};
 
 #[serde_with::serde_as]
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, ToSchema, Debug, Clone)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
     #[serde(default)]
@@ -12,9 +13,11 @@ pub struct Query {
     pub bbox: Option<Bbox>,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
+    #[schema(value_type = String)]
     pub bbox_crs: Option<Crs>,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
+    #[schema(value_type = String)]
     pub datetime: Option<Datetime>,
     #[serde(flatten)]
     pub pagination: LimitOffsetPagination,
@@ -22,7 +25,7 @@ pub struct Query {
 }
 
 /// Query parameters to facilitate pagination with a limit and offset
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
 pub struct LimitOffsetPagination {
     /// Amount of items to return
     pub limit: Option<usize>,

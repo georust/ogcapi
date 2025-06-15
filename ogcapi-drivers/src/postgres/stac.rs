@@ -23,12 +23,8 @@ impl StacSeach for Db {
         .fetch_all(&mut *tx)
         .await?;
 
-        if let Some(collections) = &query.collections {
-            collection_ids = collections
-                .iter()
-                .filter(|c| collection_ids.contains(c))
-                .map(|c| c.to_owned())
-                .collect();
+        if !query.collections.is_empty() {
+            collection_ids.retain(|id| query.collections.contains(id));
         }
 
         let union_all_items = collection_ids
@@ -111,8 +107,8 @@ impl StacSeach for Db {
         }
 
         // ids
-        if let Some(ids) = query.ids.as_ref() {
-            where_conditions.push(format!("id IN ('{}')", ids.join("','")))
+        if !query.ids.is_empty() {
+            where_conditions.push(format!("id IN ('{}')", query.ids.join("','")))
         }
 
         // intersects

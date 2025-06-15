@@ -23,5 +23,5 @@ pub use exception::Exception;
 pub use extent::*;
 pub use landing_page::LandingPage;
 pub use link::Link;
-pub use links::{Linked, Links};
+pub use links::Linked;
 pub use query::Query;

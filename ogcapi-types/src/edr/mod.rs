@@ -11,8 +11,9 @@ pub use query::{Query, QueryType};
 pub use units::Units;
 
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug, PartialEq, Eq, Clone)]
 pub struct Provider {
     /// Name of organization providing the service
     name: Option<String>,
@@ -20,7 +21,7 @@ pub struct Provider {
     url: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Contact {
     /// Email address of service provider

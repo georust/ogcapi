@@ -3,11 +3,11 @@ use std::{collections::HashMap, io::Cursor};
 use anyhow::Result;
 use geo::Geometry;
 use geojson::FeatureCollection;
-
 use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 use sqlx::types::Json;
 use url::Url;
+use wkb::{Endianness, writer::WriteOptions};
 
 use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_types::{
@@ -17,7 +17,6 @@ use ogcapi_types::{
         TransmissionMode,
     },
 };
-use wkb::Endianness;
 
 use crate::{ProcessResponseBody, Processor};
 
@@ -129,8 +128,8 @@ impl Processor for GeoJsonLoader {
         Process::try_new(
             self.id(),
             self.version(),
-            &schema_for!(GeoJsonLoaderInputs).schema,
-            &schema_for!(GeoJsonLoaderOutputs).schema,
+            &schema_for!(GeoJsonLoaderInputs),
+            &schema_for!(GeoJsonLoaderOutputs),
         )
         .map_err(Into::into)
     }
@@ -153,14 +152,14 @@ impl Processor for GeoJsonLoader {
             extent: geojson
                 .bbox
                 .map(|bbox| Extent {
-                    spatial: Some(SpatialExtent {
+                    spatial: SpatialExtent {
                         bbox: vec![
                             bbox.as_slice()
                                 .try_into()
                                 .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
                         ],
                         crs: Crs::default(),
-                    }),
+                    },
                     ..Default::default()
                 })
                 .or_else(|| Some(Extent::default())),
@@ -206,7 +205,14 @@ impl Processor for GeoJsonLoader {
                         Geometry::try_from(feature.geometry.to_owned().unwrap().value).unwrap();
 
                     let mut wkb = Cursor::new(Vec::new());
-                    wkb::writer::write_geometry(&mut wkb, &geom, Endianness::LittleEndian).unwrap();
+                    wkb::writer::write_geometry(
+                        &mut wkb,
+                        &geom,
+                        &WriteOptions {
+                            endianness: Endianness::LittleEndian,
+                        },
+                    )
+                    .unwrap();
                     geoms.push(wkb.into_inner());
                 }
 

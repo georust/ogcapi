@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fs::File, io::Cursor};
 use geo::{Coord, Geometry, GeometryCollection, LineString, MultiLineString, Point, Polygon};
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader};
 use serde_json::{Map, Value};
-use wkb::Endianness;
+use wkb::{Endianness, writer::WriteOptions};
 
 use ogcapi::{
     drivers::{CollectionTransactions, postgres::Db},
@@ -67,7 +67,14 @@ pub async fn load(args: Args) -> Result<(), anyhow::Error> {
         // build geometry
         if let Some(geom) = geometry_from_obj(&obj, &objs) {
             let mut wkt = Cursor::new(Vec::new());
-            wkb::writer::write_geometry(&mut wkt, &geom, Endianness::LittleEndian).unwrap();
+            wkb::writer::write_geometry(
+                &mut wkt,
+                &geom,
+                &WriteOptions {
+                    endianness: Endianness::LittleEndian,
+                },
+            )
+            .unwrap();
 
             sqlx::query(&format!(
                 r#"INSERT INTO items.{} (

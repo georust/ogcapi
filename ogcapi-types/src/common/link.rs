@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// Hyperlink to enable Hypermedia Access
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
 pub struct Link {
     /// Supplies the URI to a remote resource (or resource fragment).
     pub href: String,
@@ -10,13 +11,17 @@ pub struct Link {
     pub rel: String,
     /// A hint indicating what the media type of the result of dereferencing
     /// the link should be.
+    #[schema(nullable = false)]
     pub r#type: Option<String>,
     /// A hint indicating what the language of the result of dereferencing the
     /// link should be.
+    #[schema(nullable = false)]
     pub hreflang: Option<String>,
     /// Used to label the destination of a link such that it can be used as a
     /// human-readable identifier.
+    #[schema(nullable = false)]
     pub title: Option<String>,
+    #[schema(nullable = false)]
     pub length: Option<i64>,
 }
 
