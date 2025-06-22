@@ -17,76 +17,21 @@ pub enum Type {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TemporalComplexGeometry {
     pub r#type: Type,
-    pub prisms: Prisms,
+    pub prisms: Vec<TemporalPrimitiveGeometry>,
     pub crs: Option<Crs>,
     pub trs: Option<Trs>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(try_from = "PrismsUnchecked")]
-pub struct Prisms(Vec<TemporalPrimitiveGeometry>);
 
-impl Prisms {
-    pub fn new(value: Vec<TemporalPrimitiveGeometry>) -> Result<Self, &'static str> {
-        if !value.is_empty() {
-            Ok(Self(value))
-        } else {
-            Err("Prisms must have at least one value")
-        }
-    }
+impl From<Vec<TemporalPrimitiveGeometry>> for TemporalComplexGeometry {
 
-    pub fn push(&mut self, value: TemporalPrimitiveGeometry) {
-        self.0.push(value)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        // this should never be true
-        self.0.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn try_remove(&mut self, id: &str) -> Result<TemporalPrimitiveGeometry, &'static str> {
-        if self.len() > 2 {
-            self.0
-                .pop_if(|tg| tg.id.as_ref().is_some_and(|tg_id| tg_id == id))
-                .ok_or("Temporal Geometry not found.")
-        } else {
-            Err("Prisms must have at least one value. Try to delete the whole prism.")
-        }
-    }
-
-    pub fn inner(&self) -> &[TemporalPrimitiveGeometry] {
-        self.0.as_slice()
-    }
-
-    pub fn into_inner(self) -> Vec<TemporalPrimitiveGeometry> {
-        self.0
-    }
-}
-
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-struct PrismsUnchecked(Vec<TemporalPrimitiveGeometry>);
-
-impl TryFrom<Vec<TemporalPrimitiveGeometry>> for TemporalComplexGeometry {
-    type Error = &'static str;
-
-    fn try_from(value: Vec<TemporalPrimitiveGeometry>) -> Result<Self, Self::Error> {
-        Ok(Self {
+    fn from(value: Vec<TemporalPrimitiveGeometry>) -> Self {
+        debug_assert!(!value.is_empty());
+        Self {
             r#type: Default::default(),
-            prisms: PrismsUnchecked(value).try_into()?,
+            prisms: value,
             crs: Default::default(),
             trs: Default::default(),
-        })
-    }
-}
-
-impl TryFrom<PrismsUnchecked> for Prisms {
-    type Error = &'static str;
-
-    fn try_from(value: PrismsUnchecked) -> Result<Self, Self::Error> {
-        Self::new(value.0)
+        }
     }
 }
