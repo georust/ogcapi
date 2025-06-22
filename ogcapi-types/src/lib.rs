@@ -23,7 +23,8 @@ pub mod styles;
 pub mod tiles;
 
 /// Types specified in the `OGC API - Moving Features` standard.
-#[cfg(feature = "movingfeatures")]
+// FIXME
+// #[cfg(feature = "movingfeatures")]
 pub mod movingfeatures;
 
 #[cfg(feature = "coverages")]

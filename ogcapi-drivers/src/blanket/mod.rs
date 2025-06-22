@@ -2,7 +2,7 @@ use anyhow::anyhow;
 
 #[cfg(feature = "movingfeatures")]
 use ogcapi_types::movingfeatures::{
-    temporal_complex_geometry::Prisms, temporal_complex_geometry::TemporalComplexGeometry,
+    temporal_complex_geometry::TemporalComplexGeometry,
     temporal_geometry::TemporalGeometry, temporal_primitive_geometry::TemporalPrimitiveGeometry,
 };
 
@@ -43,10 +43,7 @@ where
                 temporal_geometry.id = Some(1.to_string());
                 feature.temporal_geometry =
                     Some(TemporalGeometry::Complex(TemporalComplexGeometry {
-                        prisms: Prisms::new(vec![tg, temporal_geometry.clone()])
-                            // TODO should errors returned from ogcapi_types be std::Errors to
-                            // avoid the map_err?
-                            .map_err(|e| anyhow!(e))?,
+                        prisms: vec![tg, temporal_geometry.clone()],
                         r#type: Default::default(),
                         crs: Default::default(),
                         trs: Default::default(),
@@ -91,8 +88,14 @@ where
                 Ok(())
             }
             Some(TemporalGeometry::Complex(ref mut tg)) => {
-                tg.prisms.try_remove(t_geometry_id).map_err(|e| anyhow!(e))?;
-                Ok(())
+                if tg.prisms.len() > 2 {
+                    tg.prisms
+                        .pop_if(|tg| tg.id.as_ref().is_some_and(|tg_id| tg_id == t_geometry_id))
+                        .ok_or(anyhow!("Temporal Geometry not found."))?;
+                    Ok(())
+                } else {
+                    Err(anyhow!("Prisms must have at least one value. Try to delete the whole prism."))
+                }
             }
             _ => Err(anyhow!(format!("TemporalGeometry with id {t_geometry_id} not found"))),
         }
