@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{ser, Deserialize, Serialize, Serializer};
+use serde_json::json;
 
 use crate::common::Links;
 
@@ -40,7 +41,8 @@ pub enum TemporalPropertyValue {
 /// {root}/collections/{collectionId}/items/{mFeatureId}/tproperties/{tPropertyName} response.
 ///
 /// See [8.10. TemporalPrimitiveValue](https://docs.ogc.org/is/22-003r3/22-003r3.html#resource-temporalPrimitiveValue-section)
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[derive(Deserialize, Debug, Default, Clone, PartialEq)]
+#[serde(try_from = "TemporalPrimitiveValueUnchecked<T>")]
 pub struct TemporalPrimitiveValue<T> {
     /// A unique identifier to the temporal primitive value.
     // TODO mandatory according to https://docs.ogc.org/is/22-003r3/22-003r3.html#_overview_13
@@ -53,6 +55,46 @@ pub struct TemporalPrimitiveValue<T> {
     pub values: Vec<T>,
     /// A predefined type for a dynamic value (i.e., one of ‘Discrete’, ‘Step’, ‘Linear’, or ‘Regression’).
     pub interpolation: Interpolation,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+struct TemporalPrimitiveValueUnchecked<T> {
+    id: Option<String>,
+    datetimes: Vec<DateTime<Utc>>,
+    values: Vec<T>,
+    interpolation: Interpolation,
+}
+
+impl<T> TryFrom<TemporalPrimitiveValueUnchecked<T>> for TemporalPrimitiveValue<T>{
+    type Error = &'static str;
+
+    fn try_from(value: TemporalPrimitiveValueUnchecked<T>) -> Result<Self, Self::Error> {
+        if value.values.len() != value.datetimes.len() {
+            Err("values and datetimes must be of same length")
+        }else{
+            Ok(Self{
+                id: value.id,
+                interpolation: value.interpolation,
+                datetimes: value.datetimes, 
+                values: value.values
+            })
+        }
+    }
+}
+
+impl<T> Serialize for TemporalPrimitiveValue<T>{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.values.len() != self.datetimes.len() {
+             Err(ser::Error::custom("values and datetimes must be of same length"))
+        }else{
+            let value = json!(self);
+            value.serialize(serializer) 
+        }
+        
+    }
 }
 
 /// See [ParametricValues Object -> "interpolation"](https://docs.opengeospatial.org/is/19-045r3/19-045r3.html#tproperties)

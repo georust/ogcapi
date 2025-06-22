@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use geojson::{JsonObject, LineStringType, PointType, PolygonType};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer, ser};
+use serde_json::json;
 
 use super::{crs::Crs, trs::Trs};
 
@@ -58,7 +59,7 @@ pub enum Value {
     ///TemporalPrimitiveGeometry object with the "MovingPoint" type.
     MovingPoint {
         #[serde(flatten)]
-        dt_coords: SameLengthDateTimeCoordinatesVecs<DateTime<Utc>, PointType>,
+        dt_coords: DateTimeCoords<DateTime<Utc>, PointType>,
         #[serde(flatten)]
         base_representation: Option<BaseRepresentation>,
     },
@@ -69,7 +70,7 @@ pub enum Value {
     ///TemporalPrimitiveGeometry object with the "MovingLineString" type.
     MovingLineString {
         #[serde(flatten)]
-        dt_coords: SameLengthDateTimeCoordinatesVecs<DateTime<Utc>, LineStringType>,
+        dt_coords: DateTimeCoords<DateTime<Utc>, LineStringType>,
     },
     ///The type represents the prism of a time-parameterized 2-dimensional (2D) geometric primitive (Polygon), whose
     ///leaf geometry at a time position is a 2D polygonal object in a particular period. The list of points are in
@@ -78,7 +79,7 @@ pub enum Value {
     ///air pollution can be shared as a TemporalPrimitiveGeometry object with the "MovingPolygon" type.
     MovingPolygon {
         #[serde(flatten)]
-        dt_coords: SameLengthDateTimeCoordinatesVecs<DateTime<Utc>, PolygonType>,
+        dt_coords: DateTimeCoords<DateTime<Utc>, PolygonType>,
     },
     ///The type represents the prism of a time-parameterized point cloud whose leaf geometry at a time position is a
     ///set of points in a particular period. Intuitively a temporal geometry of a continuous movement of point set
@@ -87,67 +88,78 @@ pub enum Value {
     ///type.
     MovingPointCloud {
         #[serde(flatten)]
-        dt_coords: SameLengthDateTimeCoordinatesVecs<DateTime<Utc>, Vec<PointType>>,
+        dt_coords: DateTimeCoords<DateTime<Utc>, Vec<PointType>>,
     },
 }
 
 impl TryFrom<(Vec<chrono::DateTime<Utc>>, Vec<PointType>)> for Value {
     type Error = String;
     fn try_from(value: (Vec<chrono::DateTime<Utc>>, Vec<PointType>)) -> Result<Self, Self::Error> {
-        let dt_coords = SameLengthDateTimeCoordinatesVecs::try_new(value.0, value.1)?;
+        let dt_coords = DateTimeCoordsUnchecked{
+            datetimes: value.0, 
+            coordinates: value.1
+        }.try_into()?;
         Ok(Self::MovingPoint { dt_coords, base_representation: None })
     }
 }
 
+impl<A, B> TryFrom<(Vec<A>, Vec<B>)> for DateTimeCoords<A, B>{
+    type Error = &'static str;
+    fn try_from(value: (Vec<A>, Vec<B>)) -> Result<Self, Self::Error> {
+        // TODO does it make sense to keep this check as
+        // attributes are now pub anyways and same length is now checked
+        // at serialization? Maybe this should be just From?
+        DateTimeCoordsUnchecked{
+            datetimes: value.0, 
+            coordinates: value.1
+        }.try_into()
+    }
+}
+
 #[derive(Deserialize)]
-struct SameLengthDateTimeCoordinatesVecsUnchecked<A, B> {
+struct DateTimeCoordsUnchecked<A, B> {
     datetimes: Vec<A>,
     coordinates: Vec<B>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
-#[serde(try_from = "SameLengthDateTimeCoordinatesVecsUnchecked<A,B>")]
-pub struct SameLengthDateTimeCoordinatesVecs<A, B> {
-    datetimes: Vec<A>,
-    coordinates: Vec<B>,
+#[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
+#[serde(try_from = "DateTimeCoordsUnchecked<A,B>")]
+pub struct DateTimeCoords<A, B> {
+    pub datetimes: Vec<A>,
+    pub coordinates: Vec<B>,
 }
 
-impl<A, B> SameLengthDateTimeCoordinatesVecs<A, B> {
-    pub fn try_new(datetimes: Vec<A>, coordinates: Vec<B>) -> Result<Self, String> {
-        if coordinates.len() != datetimes.len() {
-            Err("coordinates and datetimes must be of same length!".to_string())
-        } else {
-            Ok(Self {
-                datetimes,
-                coordinates,
-            })
+impl<A,B> Serialize for DateTimeCoords<A, B>{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.coordinates.len() != self.datetimes.len() {
+             Err(ser::Error::custom("coordinates and datetimes must be of same length"))
+        }else{
+            let value = json!(self);
+            value.serialize(serializer) 
         }
+        
     }
-
-    pub fn append(&mut self, other: &mut SameLengthDateTimeCoordinatesVecs<A, B>)  {
-            self.datetimes.append(&mut other.datetimes);
-            self.coordinates.append(&mut other.coordinates);
-    }
-
-    pub fn datetimes(&self) -> &[A] {
-        self.datetimes.as_slice()
-    }
-    
-    pub fn coordinates(&self) -> &[B] {
-        self.coordinates.as_slice()
-    }
-
 }
 
-impl<A, B> TryFrom<SameLengthDateTimeCoordinatesVecsUnchecked<A, B>>
-    for SameLengthDateTimeCoordinatesVecs<A, B>
+impl<A, B> TryFrom<DateTimeCoordsUnchecked<A, B>>
+    for DateTimeCoords<A, B>
 {
-    type Error = String;
+    type Error = &'static str;
 
     fn try_from(
-        value: SameLengthDateTimeCoordinatesVecsUnchecked<A, B>,
+        value: DateTimeCoordsUnchecked<A, B>,
     ) -> Result<Self, Self::Error> {
-        Self::try_new(value.datetimes, value.coordinates)
+        if value.coordinates.len() != value.datetimes.len() {
+            Err("coordinates and datetimes must be of same length")
+        }else{
+            Ok(Self{
+                datetimes: value.datetimes, 
+                coordinates: value.coordinates
+            })
+        }
     }
 }
 
@@ -228,7 +240,7 @@ mod tests {
             datetimes.push(DateTime::from_timestamp(i, 0).unwrap());
         }
         let moving_point = Value::MovingPoint {
-            dt_coords: SameLengthDateTimeCoordinatesVecs::try_new(datetimes, coordinates).unwrap(),
+            dt_coords: (datetimes, coordinates).try_into().unwrap(),
             base_representation: None,
         };
         let jo: JsonObject = serde_json::from_str(
@@ -252,9 +264,8 @@ mod tests {
         }
         let geometry: TemporalPrimitiveGeometry =
             TemporalPrimitiveGeometry::new(Value::MovingPoint {
-                dt_coords: SameLengthDateTimeCoordinatesVecs::try_new(datetimes, coordinates)
-                    .unwrap(),
-                base_representation: None,
+            dt_coords: (datetimes, coordinates).try_into().unwrap(),
+            base_representation: None,
             });
         let deserialized_geometry: TemporalPrimitiveGeometry = serde_json::from_str(
             r#"{
@@ -314,7 +325,7 @@ mod tests {
         }
         let geometry: TemporalPrimitiveGeometry = TemporalPrimitiveGeometry::new(
             Value::MovingPoint{
-                dt_coords: SameLengthDateTimeCoordinatesVecs::try_new(datetimes, coordinates).unwrap(),
+                dt_coords: (datetimes, coordinates).try_into().unwrap(),
                 base_representation: Some(BaseRepresentation{
                     base: Base{
                         r#type: "glTF".to_string(), 
