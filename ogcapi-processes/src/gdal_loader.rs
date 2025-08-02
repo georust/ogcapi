@@ -146,8 +146,8 @@ impl Processor for GdalLoader {
         Process::try_new(
             self.id(),
             self.version(),
-            &schema_for!(GdalLoaderInputs).schema,
-            &schema_for!(GdalLoaderOutputs).schema,
+            &schema_for!(GdalLoaderInputs),
+            &schema_for!(GdalLoaderOutputs),
         )
         .map_err(Into::into)
     }
