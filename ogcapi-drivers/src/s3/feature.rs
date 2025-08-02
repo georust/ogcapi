@@ -36,7 +36,7 @@ impl FeatureTransactions for S3 {
         id: &str,
         _crs: &Crs,
     ) -> anyhow::Result<Option<Feature>> {
-        let key = format!("collections/{}/items/{}.json", collection, id);
+        let key = format!("collections/{collection}/items/{id}.json");
 
         match self
             .get_object(self.bucket.clone().unwrap_or_default(), &key)
@@ -74,7 +74,7 @@ impl FeatureTransactions for S3 {
     }
 
     async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()> {
-        let key = format!("collections/{}/items/{}.json", collection, id);
+        let key = format!("collections/{collection}/items/{id}.json");
 
         self.delete_object(self.bucket.clone().unwrap_or_default(), &key)
             .await?;

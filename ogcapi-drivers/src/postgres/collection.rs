@@ -92,7 +92,7 @@ impl CollectionTransactions for Db {
     async fn delete_collection(&self, id: &str) -> anyhow::Result<()> {
         let mut tx = self.pool.begin().await?;
 
-        sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{}""#, id))
+        sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{id}""#))
             .execute(&mut *tx)
             .await?;
 

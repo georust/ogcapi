@@ -40,7 +40,7 @@ async fn create(
 
     let id = state.drivers.features.create_feature(&feature).await?;
 
-    let location = url.join(&format!("items/{}", id))?;
+    let location = url.join(&format!("items/{id}"))?;
 
     let mut headers = HeaderMap::new();
     headers.insert(LOCATION, location.as_str().parse().unwrap());
@@ -72,7 +72,7 @@ async fn read(
     feature.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
         Link::new(url.join("../../..")?, ROOT).mediatype(JSON),
-        Link::new(url.join(&format!("../../{}", collection_id))?, COLLECTION).mediatype(JSON),
+        Link::new(url.join(&format!("../../{collection_id}"))?, COLLECTION).mediatype(JSON),
     ]);
     feature.links.resolve_relative_links();
 
@@ -209,7 +209,7 @@ async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Erro
     } else {
         Err(Error::Exception(
             StatusCode::BAD_REQUEST,
-            format!("Unsuported CRS `{}`", crs),
+            format!("Unsuported CRS `{crs}`"),
         ))
     }
 }

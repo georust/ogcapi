@@ -337,7 +337,7 @@ impl Processor for GdalLoader {
                 tokio::runtime::Handle::current().block_on(
                     sqlx::query(&format!(
                         r#"
-                INSERT INTO items."{}" (id, properties, geom)
+                INSERT INTO items."{id}" (id, properties, geom)
                 SELECT * FROM UNNEST(
                     $1::text[],
                     (SELECT
@@ -347,8 +347,7 @@ impl Processor for GdalLoader {
                     )),
                     $3::bytea[]
                 )
-                "#,
-                        id
+                "#
                     ))
                     .bind(fid_vec)
                     .bind(properties)

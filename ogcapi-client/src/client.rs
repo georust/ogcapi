@@ -67,7 +67,7 @@ impl Client {
         let endpoint = if endpoint.ends_with('/') {
             endpoint.parse::<Url>()?
         } else {
-            format!("{}/", endpoint).parse::<Url>()?
+            format!("{endpoint}/").parse::<Url>()?
         };
 
         Ok(Self {
@@ -135,13 +135,13 @@ impl Client {
     }
 
     pub fn collection(&self, id: &str) -> Result<Collection, Error> {
-        let url = self.endpoint.join(&format!("collections/{}", id))?;
+        let url = self.endpoint.join(&format!("collections/{id}"))?;
 
         self.fetch::<Collection>(url.as_str())
     }
 
     pub fn items(&self, id: &str) -> Result<Items, Error> {
-        let url = self.endpoint.join(&format!("collections/{}/items", id))?;
+        let url = self.endpoint.join(&format!("collections/{id}/items"))?;
 
         self.fetch::<FeatureCollection>(url.as_str())
             .map(|i| Items {
@@ -177,7 +177,7 @@ impl Client {
     where
         T: serde::de::DeserializeOwned,
     {
-        log::debug!("Fetching {}", url);
+        log::debug!("Fetching {url}");
 
         self.client
             .get(url)
@@ -429,7 +429,7 @@ fn resolve_relative_links(links: &mut Links, base: &str) {
         Err(url::ParseError::RelativeUrlWithoutBase) => {
             l.href = base_url.join(&l.href).unwrap().to_string();
         }
-        Err(e) => log::error!("{}", e),
+        Err(e) => log::error!("{e}"),
     });
 }
 
@@ -450,7 +450,7 @@ mod tests {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
         let conformance = client.conformance().unwrap();
-        println!("{:#?}", conformance);
+        println!("{conformance:#?}");
         assert!(!conformance.conforms_to.is_empty());
     }
 

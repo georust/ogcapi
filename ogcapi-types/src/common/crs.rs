@@ -60,7 +60,7 @@ impl Crs {
         match self.authority {
             Authority::OGC => match self.code.as_str() {
                 "CRS84h" => Some(4979),
-                _ => panic!("Unable to extract epsg code from `{}`", self),
+                _ => panic!("Unable to extract epsg code from `{self}`"),
             },
             Authority::EPSG => self.code.parse().ok(),
         }
@@ -71,7 +71,7 @@ impl Crs {
             Authority::OGC => match self.code.as_str() {
                 "CRS84" => 4326,
                 "CRS84h" => 4979,
-                _ => panic!("Unable to extract epsg code from `{}`", self),
+                _ => panic!("Unable to extract epsg code from `{self}`"),
             },
             Authority::EPSG => self.code.parse().unwrap(),
         }
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn parse_crs() {
         let crs = Crs::from_str(OGC_CRS84).unwrap();
-        assert_eq!(format!("{:#}", crs), OGC_CRS84)
+        assert_eq!(format!("{crs:#}"), OGC_CRS84)
     }
 
     #[test]

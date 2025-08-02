@@ -33,8 +33,7 @@ impl Exception {
 
     pub fn new_from_status(status: u16) -> Self {
         let exception = Exception::new(format!(
-            "https://httpwg.org/specs/rfc7231.html#status.{}",
-            status
+            "https://httpwg.org/specs/rfc7231.html#status.{status}"
         ));
         exception.status(status)
     }
@@ -75,7 +74,7 @@ mod tests {
     #[test]
     fn exception() {
         let e = Exception::new_from_status(500);
-        println!("{:#?}", e);
+        println!("{e:#?}");
         println!("{}", serde_json::to_string_pretty(&e).unwrap());
     }
 }

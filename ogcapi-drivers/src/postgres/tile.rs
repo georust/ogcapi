@@ -22,17 +22,16 @@ impl TileTransactions for Db {
 
                 sql.push(format!(
                     r#"
-                    SELECT ST_AsMVT(mvtgeom, '{0}', 4096, 'geom')
+                    SELECT ST_AsMVT(mvtgeom, '{collection}', 4096, 'geom')
                     FROM (
                         SELECT
                             ST_AsMVTGeom(ST_Transform(ST_Force2D(geom), 3857), ST_TileEnvelope($1, $3, $2), 4096, 64, TRUE) AS geom,
-                            '{0}' as collection,
+                            '{collection}' as collection,
                             properties
-                        FROM items.{0}
-                        WHERE geom && ST_Transform(ST_TileEnvelope($1, $3, $2, margin => (64.0 / 4096)), {1})
+                        FROM items.{collection}
+                        WHERE geom && ST_Transform(ST_TileEnvelope($1, $3, $2, margin => (64.0 / 4096)), {storage_srid})
                     ) AS mvtgeom
-                    "#,
-                    collection,storage_srid
+                    "#
                 ));
             };
         }
