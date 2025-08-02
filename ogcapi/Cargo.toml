@@ -79,3 +79,6 @@ ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", optional = true,
 ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
 ogcapi-services = { path = "../ogcapi-services", version = "0.3", optional = true, default-features = false }
 ogcapi-client = { path = "../ogcapi-client", version = "0.3", optional = true, default-features = false }
+
+[package.metadata.docs.rs]
+all-features = true

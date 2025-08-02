@@ -36,3 +36,6 @@ wkb = { version = "0.8.0", optional = true }
 
 ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false, features = ["processes"] }
 ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", optional = true, default-features = false, features = ["postgres", "common"] }
+
+[package.metadata.docs.rs]
+all-features = true

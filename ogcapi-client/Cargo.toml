@@ -28,3 +28,6 @@ url = { workspace = true, features = ["serde"] }
 
 ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
 ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
+
+[package.metadata.docs.rs]
+all-features = true

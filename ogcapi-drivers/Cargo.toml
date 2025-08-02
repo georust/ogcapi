@@ -47,3 +47,6 @@ sqlx = { version = "0.8.3", optional = true, features = [
 url = { workspace = true, optional = true }
 
 ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
+
+[package.metadata.docs.rs]
+all-features = true
