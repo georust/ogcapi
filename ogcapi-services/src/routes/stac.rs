@@ -124,11 +124,7 @@ pub(crate) async fn search(
             )
             .mediatype(GEO_JSON),
             Link::new(url.join(".")?, ROOT).mediatype(JSON),
-            Link::new(
-                url.join(&format!("collections/{}", collection))?,
-                COLLECTION,
-            )
-            .mediatype(JSON),
+            Link::new(url.join(&format!("collections/{collection}"))?, COLLECTION).mediatype(JSON),
         ])
     }
 

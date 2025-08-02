@@ -9,7 +9,7 @@ categories.workspace = true
 keywords.workspace = true
 
 [features]
-default = ["common"]
+default = ["common", "edr", "features", "processes", "tiles"]
 
 # standards
 common = []
@@ -22,11 +22,14 @@ tiles = ["common"]
 coverages = []
 
 [dependencies]
-chrono = { version = "0.4.40", features = ["serde"] }
+chrono = { version = "0.4.41", features = ["serde"] }
 geojson = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_repr = "0.1.20"
-serde_with = { version = "3.12", features = ["json"] }
+serde_with = { version = "3.14", features = ["json"] }
 url = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true

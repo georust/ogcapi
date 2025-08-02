@@ -10,7 +10,19 @@ categories.workspace = true
 keywords.workspace = true
 
 [features]
-default = []
+default = [
+    # components
+    "client",
+    "drivers",
+    "services",
+    "types",
+    # standards
+    "common",
+    "edr",
+    "features",
+    "processes",
+    "tiles",
+]
 
 # components
 types = ["ogcapi-types"]
@@ -57,11 +69,16 @@ tiles = [
 postgres = ["ogcapi-drivers/postgres"]
 
 # processes
-greeter = ["processes"]
+greeter = ["processes", "ogcapi-processes/greeter"]
+geojson-loader = ["processes", "ogcapi-processes/geojson-loader"]
+gdal-loader = ["processes", "ogcapi-processes/gdal-loader"]
 
 [dependencies]
-ogcapi-types = { path = "../ogcapi-types", version = "0.3", optional = true }
-ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", optional = true }
-ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true }
-ogcapi-services = { path = "../ogcapi-services", version = "0.3", optional = true }
-ogcapi-client = { path = "../ogcapi-client", version = "0.3", optional = true }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3", optional = true, default-features = false }
+ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", optional = true, default-features = false }
+ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
+ogcapi-services = { path = "../ogcapi-services", version = "0.3", optional = true, default-features = false }
+ogcapi-client = { path = "../ogcapi-client", version = "0.3", optional = true, default-features = false }
+
+[package.metadata.docs.rs]
+all-features = true

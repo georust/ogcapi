@@ -122,8 +122,7 @@ impl FeatureTransactions for Db {
 
     async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()> {
         sqlx::query(&format!(
-            r#"DELETE FROM items."{}" WHERE id = $1"#,
-            collection
+            r#"DELETE FROM items."{collection}" WHERE id = $1"#
         ))
         .bind(id)
         .execute(&self.pool)
@@ -161,10 +160,7 @@ impl FeatureTransactions for Db {
                     bbox[0], bbox[1], bbox[3], bbox[4], bbox_srid
                 ),
             };
-            where_conditions.push(format!(
-                "geom && ST_Transform({}, {})",
-                envelope, storage_srid
-            ));
+            where_conditions.push(format!("geom && ST_Transform({envelope}, {storage_srid})"));
         }
 
         // datetime

@@ -9,20 +9,25 @@ categories.workspace = true
 keywords.workspace = true
 
 [features]
-default = ["features"]
+default = ["features", "processes"]
+
 features = ["ogcapi-types/features"]
-stac = ["ogcapi-types/stac"]
 processes = ["ogcapi-processes"]
+
+stac = ["ogcapi-types/stac"]
 
 [dependencies]
 geojson = { workspace = true }
 log = { workspace = true }
-reqwest = { version = "0.12.15", default-features = false, features = ["json", "blocking", "rustls-tls"] }
+reqwest = { version = "0.12.22", default-features = false, features = ["json", "blocking", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_qs = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.3" }
-ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
+ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
+
+[package.metadata.docs.rs]
+all-features = true

@@ -47,7 +47,7 @@ impl fmt::Display for Datetime {
             Datetime::Datetime(datetime) => {
                 write!(f, "{}", datetime.to_rfc3339_opts(SecondsFormat::Secs, true))
             }
-            Datetime::Interval { from, to } => write!(f, "{}/{}", from, to),
+            Datetime::Interval { from, to } => write!(f, "{from}/{to}"),
         }
     }
 }
@@ -90,21 +90,21 @@ mod tests {
     fn parse_datetime() {
         let datetime_str = "2018-02-12T23:20:52Z";
         let datetime = Datetime::from_str(datetime_str).unwrap();
-        assert_eq!(format!("{:#}", datetime), datetime_str)
+        assert_eq!(format!("{datetime:#}"), datetime_str)
     }
 
     #[test]
     fn parse_intervals() {
         let interval_str = "2018-02-12T00:00:00Z/2018-03-18T12:31:12Z";
         let datetime = Datetime::from_str(interval_str).unwrap();
-        assert_eq!(format!("{:#}", datetime), interval_str);
+        assert_eq!(format!("{datetime:#}"), interval_str);
 
         let interval_str = "2018-02-12T00:00:00Z/..";
         let datetime = Datetime::from_str(interval_str).unwrap();
-        assert_eq!(format!("{:#}", datetime), interval_str);
+        assert_eq!(format!("{datetime:#}"), interval_str);
 
         let interval_str = "../2018-03-18T12:31:12Z";
         let datetime = Datetime::from_str(interval_str).unwrap();
-        assert_eq!(format!("{:#}", datetime), interval_str)
+        assert_eq!(format!("{datetime:#}"), interval_str)
     }
 }

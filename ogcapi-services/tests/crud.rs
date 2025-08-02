@@ -32,7 +32,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
         .request(
             Request::builder()
                 .method(Method::POST)
-                .uri(format!("http://{}/collections", addr))
+                .uri(format!("http://{addr}/collections"))
                 .header("Content-Type", JSON)
                 .body(Body::from(serde_json::to_string(&collection)?))?,
         )
@@ -73,7 +73,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     assert_eq!(201, res.status());
 
     let location = res.headers().get("Location").unwrap().to_str()?;
-    println!("{}", location);
+    println!("{location}");
 
     let id = location.split('/').next_back().unwrap();
 

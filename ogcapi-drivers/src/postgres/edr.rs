@@ -98,8 +98,7 @@ impl EdrQuerier for Db {
                 parameters
                     .split(',')
                     .map(|s| format!(
-                        "('{{\"{0}\":' || (properties -> '{0}')::text || '}}')::jsonb",
-                        s
+                        "('{{\"{s}\":' || (properties -> '{s}')::text || '}}')::jsonb"
                     ))
                     .collect::<Vec<String>>()
                     .join("||")
@@ -112,15 +111,14 @@ impl EdrQuerier for Db {
             r#"
             SELECT
                 id,
-                {1},
+                {properties},
                 ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
                 links,
-                '{0}' as collection,
+                '{collection_id}' as collection,
                 assets
-            FROM items."{0}"
-            WHERE {2}
-            "#,
-            collection_id, properties, spatial_predicate
+            FROM items."{collection_id}"
+            WHERE {spatial_predicate}
+            "#
         );
 
         let number_matched = sqlx::query(&sql)
@@ -132,9 +130,8 @@ impl EdrQuerier for Db {
         let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
             r#"
             SELECT array_to_json(array_agg(row_to_json(t)))
-            FROM ( {} ) t
-            "#,
-            sql
+            FROM ( {sql} ) t
+            "#
         ))
         .bind(srid)
         .fetch_one(&self.pool)

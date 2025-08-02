@@ -107,7 +107,7 @@ async fn process(
         }
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No process with id `{}`", process_id),
+            format!("No process with id `{process_id}`"),
         )),
     }
 }
@@ -126,7 +126,7 @@ async fn execution(
         },
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No process with id `{}`", process_id),
+            format!("No process with id `{process_id}`"),
         )),
     }
 }
@@ -153,7 +153,7 @@ async fn status(
         }
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No job with id `{}`", job_id),
+            format!("No job with id `{job_id}`"),
         )),
     }
 }
@@ -167,7 +167,7 @@ async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
         Some(info) => Ok(Json(info).into_response()),
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No job with id `{}`", job_id),
+            format!("No job with id `{job_id}`"),
         )),
     }
 }
@@ -200,7 +200,7 @@ async fn results(
         }
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No job with id `{}`", job_id),
+            format!("No job with id `{job_id}`"),
         )),
     }
 }
@@ -220,7 +220,7 @@ async fn result(
         }
         None => Err(Error::Exception(
             StatusCode::NOT_FOUND,
-            format!("No job with id `{}`", job_id),
+            format!("No job with id `{job_id}`"),
         )),
     }
 }

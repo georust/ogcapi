@@ -58,7 +58,7 @@ impl StacSeach for Db {
                     bbox[0], bbox[1], bbox[3], bbox[4]
                 ),
             };
-            where_conditions.push(format!("geom && {}", envelope));
+            where_conditions.push(format!("geom && {envelope}"));
         }
 
         // datetime
@@ -117,7 +117,7 @@ impl StacSeach for Db {
 
         // intersects
         if let Some(intersects) = query.intersects.as_ref() {
-            where_conditions.push(format!("geom && ST_GeomFromGeoJSON('{}')", intersects));
+            where_conditions.push(format!("geom && ST_GeomFromGeoJSON('{intersects}')"));
         }
 
         let conditions = where_conditions.join(" AND ");

@@ -17,7 +17,7 @@ use ogcapi_types::{
         TransmissionMode,
     },
 };
-use wkb::Endianness;
+use wkb::{Endianness, writer::WriteOptions};
 
 use crate::{ProcessResponseBody, Processor};
 
@@ -129,8 +129,8 @@ impl Processor for GeoJsonLoader {
         Process::try_new(
             self.id(),
             self.version(),
-            &schema_for!(GeoJsonLoaderInputs).schema,
-            &schema_for!(GeoJsonLoaderOutputs).schema,
+            &schema_for!(GeoJsonLoaderInputs),
+            &schema_for!(GeoJsonLoaderOutputs),
         )
         .map_err(Into::into)
     }
@@ -206,7 +206,14 @@ impl Processor for GeoJsonLoader {
                         Geometry::try_from(feature.geometry.to_owned().unwrap().value).unwrap();
 
                     let mut wkb = Cursor::new(Vec::new());
-                    wkb::writer::write_geometry(&mut wkb, &geom, Endianness::LittleEndian).unwrap();
+                    wkb::writer::write_geometry(
+                        &mut wkb,
+                        &geom,
+                        &WriteOptions {
+                            endianness: Endianness::LittleEndian,
+                        },
+                    )
+                    .unwrap();
                     geoms.push(wkb.into_inner());
                 }
 

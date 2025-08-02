@@ -25,7 +25,7 @@ impl CollectionTransactions for S3 {
 
     async fn read_collection(&self, id: &str) -> Result<Option<Collection>, anyhow::Error> {
         // TODO: cache
-        let key = format!("collections/{}/collection.json", id);
+        let key = format!("collections/{id}/collection.json");
 
         match self
             .get_object(self.bucket.clone().unwrap_or_default(), &key)
@@ -60,7 +60,7 @@ impl CollectionTransactions for S3 {
     }
 
     async fn delete_collection(&self, id: &str) -> Result<(), anyhow::Error> {
-        let key = format!("collections/{}", id);
+        let key = format!("collections/{id}");
 
         self.delete_object(self.bucket.clone().unwrap_or_default(), &key)
             .await?;

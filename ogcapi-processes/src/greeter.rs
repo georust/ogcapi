@@ -96,8 +96,8 @@ impl Processor for Greeter {
         Process::try_new(
             self.id(),
             self.version(),
-            &schema_for!(GreeterInputs).schema,
-            &schema_for!(GreeterOutputs).schema,
+            &schema_for!(GreeterInputs),
+            &schema_for!(GreeterOutputs),
         )
         .map_err(Into::into)
     }

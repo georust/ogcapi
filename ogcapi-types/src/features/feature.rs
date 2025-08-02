@@ -1,5 +1,6 @@
 #[cfg(feature = "stac")]
 use std::collections::HashMap;
+use std::fmt::Display;
 
 #[cfg(feature = "stac")]
 use crate::common::Bbox;
@@ -15,11 +16,28 @@ pub enum Type {
     Feature,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum FeatureId {
+    String(String),
+    Integer(isize),
+}
+
+impl Display for FeatureId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FeatureId::String(s) => f.write_str(s),
+            FeatureId::Integer(i) => f.write_fmt(format_args!("{i}")),
+        }
+    }
+}
+
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
 #[serde_with::skip_serializing_none]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct Feature {
-    pub id: Option<String>,
+    #[serde(default)]
+    pub id: Option<FeatureId>,
     pub collection: Option<String>,
     #[serde(default)]
     pub r#type: Type,
@@ -42,6 +60,7 @@ pub struct Feature {
     pub assets: HashMap<String, crate::stac::Asset>,
     /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
     #[cfg(feature = "stac")]
+    #[serde(default)]
     pub bbox: Option<Bbox>,
 }
 
