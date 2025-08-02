@@ -1,28 +1,32 @@
-use std::{fs, path::Path, str::FromStr};
+use utoipa::OpenApi;
 
-#[doc(hidden)]
-pub static OPENAPI: &[u8; 29696] = include_bytes!("../assets/openapi/openapi.yaml");
+/// TODO: remove once Open API 3.1 is supported
+#[cfg(all(feature = "features", not(feature = "edr")))]
+pub(crate) static OPENAPI: &[u8; 29696] = include_bytes!("../assets/openapi/openapi.yaml");
+
+/// TODO: remove once Open API 3.1 is supported
+#[cfg(feature = "edr")]
+pub(crate) static OPENAPI: &[u8; 122244] = include_bytes!("../assets/openapi/openapi-edr.yaml");
 
 #[derive(Default, Clone)]
-pub struct OpenAPI(pub openapiv3::OpenAPI);
-
-impl FromStr for OpenAPI {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let openapi: openapiv3::OpenAPI = serde_yaml::from_str(s)?;
-        Ok(OpenAPI(openapi))
-    }
-}
+pub(crate) struct OpenAPI(pub(crate) openapiv3::OpenAPI);
 
 impl OpenAPI {
-    pub fn from_slice(api: &[u8]) -> Self {
+    pub(crate) fn from_slice(api: &[u8]) -> Self {
         let openapi: openapiv3::OpenAPI = serde_yaml::from_slice(api).unwrap();
         OpenAPI(openapi)
     }
-
-    pub fn from_path(path: &Path) -> anyhow::Result<OpenAPI> {
-        let api = fs::read_to_string(path)?;
-        OpenAPI::from_str(&api)
-    }
 }
+
+/// Open API documentation
+#[derive(OpenApi)]
+#[openapi(
+    // paths(openapi),
+    info(
+        contact(
+            name = "GeoRust `ogcapi` project on GitHub",
+            url = "https://github.com/georust/ogcapi",
+        )
+    )
+)]
+pub struct ApiDoc;

@@ -8,7 +8,7 @@ use super::Db;
 impl TileTransactions for Db {
     async fn tile(
         &self,
-        collections: &str,
+        collections: &[String],
         _tms: &TileMatrixSet,
         matrix: &str,
         row: u32,
@@ -16,7 +16,7 @@ impl TileTransactions for Db {
     ) -> anyhow::Result<Vec<u8>> {
         let mut sql: Vec<String> = Vec::new();
 
-        for collection in collections.split(',') {
+        for collection in collections {
             if let Some(c) = self.read_collection(collection).await? {
                 let storage_srid = c.storage_crs.unwrap_or_default().as_srid();
 

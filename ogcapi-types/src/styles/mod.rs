@@ -4,7 +4,7 @@ mod symcore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::common::Links;
+use crate::common::Link;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Styles {
@@ -15,7 +15,7 @@ pub struct Styles {
 pub struct Style {
     pub id: String,
     pub title: Option<String>,
-    pub links: Links,
+    pub links: Vec<Link>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

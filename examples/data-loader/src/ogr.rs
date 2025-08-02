@@ -78,11 +78,11 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
             Crs::from_epsg(3857),
         ])),
         extent: layer.try_get_extent()?.map(|e| Extent {
-            spatial: Some(SpatialExtent {
+            spatial: SpatialExtent {
                 bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
                 crs: storage_crs.to_owned(),
-            }),
-            temporal: None,
+            },
+            ..Default::default()
         }),
         storage_crs: Some(storage_crs.to_owned()),
         #[cfg(feature = "stac")]

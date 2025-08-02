@@ -1,14 +1,13 @@
-use std::{any::Any, net::SocketAddr};
+use std::{any::Any, net::SocketAddr, sync::Arc};
 
 use axum::{
-    Router,
+    Extension, Router,
     body::Body,
     http::{
         Response, StatusCode,
         header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, PROXY_AUTHORIZATION, SET_COOKIE},
     },
     response::IntoResponse,
-    routing::get,
 };
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
@@ -23,8 +22,11 @@ use tower_http::{
 };
 
 use ogcapi_types::common::Exception;
+use utoipa::OpenApi;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{AppState, Config, ConfigParser, Error, routes};
+use crate::{ApiDoc, AppState, Config, ConfigParser, Error, routes};
 
 /// OGC API Services
 pub struct Service {
@@ -46,23 +48,16 @@ impl Service {
 
     pub async fn new_with(config: &Config, state: AppState) -> Self {
         // router
-        let router = Router::new()
-            .route("/", get(routes::root))
-            .route("/api", get(routes::api::api))
-            .route("/redoc", get(routes::api::redoc))
-            .route("/swagger", get(routes::api::swagger))
-            .route("/conformance", get(routes::conformance));
+        let router = OpenApiRouter::<AppState>::with_openapi(ApiDoc::openapi());
 
+        let router = router.merge(routes::common::router());
         let router = router.merge(routes::collections::router(&state));
-
-        #[cfg(feature = "stac")]
-        let router = router.route(
-            "/search",
-            get(routes::stac::search_get).post(routes::stac::search_post),
-        );
 
         #[cfg(feature = "features")]
         let router = router.merge(routes::features::router(&state));
+
+        #[cfg(feature = "stac")]
+        let router = router.merge(routes::stac::router());
 
         #[cfg(feature = "edr")]
         let router = router.merge(routes::edr::router(&state));
@@ -75,6 +70,12 @@ impl Service {
 
         #[cfg(feature = "processes")]
         let router = router.merge(routes::processes::router(&state));
+
+        // api documentation
+        let (router, api) = router.split_for_parts();
+
+        let router = router.merge(SwaggerUi::new("/swagger").url("/api_v3.1", api.clone()));
+        let router = router.layer(Extension(Arc::new(api)));
 
         // add a fallback service for handling routes to unknown paths
         let router = router.fallback(handler_404);
@@ -96,6 +97,7 @@ impl Service {
                 .propagate_x_request_id(),
         );
 
+        // listener
         let listener = TcpListener::bind((config.host.as_str(), config.port))
             .await
             .expect("create listener");

@@ -8,6 +8,8 @@ edition.workspace = true
 categories.workspace = true
 keywords.workspace = true
 
+include = ["/src", "/assets"]
+
 [features]
 default = ["common", "edr", "features", "processes", "tiles"]
 
@@ -29,7 +31,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_repr = "0.1.20"
 serde_with = { version = "3.14", features = ["json"] }
+serde_qs = { workspace = true }
 url = { workspace = true }
+utoipa = { workspace = true, features = ["preserve_order", "chrono", "url", "repr"] }
 
 [package.metadata.docs.rs]
 all-features = true

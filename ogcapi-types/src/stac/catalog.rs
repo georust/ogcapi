@@ -1,12 +1,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use utoipa::ToSchema;
 
-use crate::common::Links;
+use crate::common::Link;
 
 /// A STAC Catalog object represents a logical group of other `Catalog`,
 /// `Collection`, and `Item` objects.
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
 pub struct Catalog {
     /// Set to `Catalog` if this Catalog only implements the Catalog spec.
     #[serde(default = "crate::stac::catalog")]
@@ -27,7 +28,7 @@ pub struct Catalog {
     pub description: String,
     /// A list of references to other documents.
     #[serde(default)]
-    pub links: Links,
+    pub links: Vec<Link>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
 }
@@ -51,7 +52,7 @@ impl Catalog {
         self
     }
 
-    pub fn links(mut self, links: Links) -> Self {
+    pub fn links(mut self, links: Vec<Link>) -> Self {
         self.links = links;
         self
     }

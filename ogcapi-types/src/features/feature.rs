@@ -7,16 +7,17 @@ use crate::common::Bbox;
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use utoipa::{ToSchema, openapi::Schema};
 
-use crate::common::Links;
+use crate::common::Link;
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
     #[default]
     Feature,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum FeatureId {
     String(String),
@@ -32,20 +33,30 @@ impl Display for FeatureId {
     }
 }
 
+/// Geometry schema.
+pub fn geometry() -> Schema {
+    serde_json::from_str(include_str!("../../assets/schema/Geometry.json")).unwrap()
+}
+
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
 #[serde_with::skip_serializing_none]
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, ToSchema, Debug, Clone, PartialEq)]
 pub struct Feature {
     #[serde(default)]
     pub id: Option<FeatureId>,
     pub collection: Option<String>,
     #[serde(default)]
+    #[schema(inline = true)]
     pub r#type: Type,
     #[serialize_always]
     pub properties: Option<Map<String, Value>>,
+    #[schema(schema_with = geometry)]
     pub geometry: Geometry,
+    /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
+    #[cfg(feature = "stac")]
+    pub bbox: Option<Bbox>,
     #[serde(default)]
-    pub links: Links,
+    pub links: Vec<Link>,
     /// The STAC version the Item implements.
     #[cfg(feature = "stac")]
     #[serde(default = "crate::stac::stac_version")]
@@ -58,10 +69,6 @@ pub struct Feature {
     #[cfg(feature = "stac")]
     #[serde(default)]
     pub assets: HashMap<String, crate::stac::Asset>,
-    /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
-    #[cfg(feature = "stac")]
-    #[serde(default)]
-    pub bbox: Option<Bbox>,
 }
 
 impl Feature {

@@ -1,17 +1,17 @@
 use anyhow::Context;
 use axum::{
-    Json, Router,
+    Json,
     extract::{Path, State},
     http::{
         HeaderMap, StatusCode,
         header::{CONTENT_TYPE, LOCATION},
     },
-    routing::get,
 };
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
     common::{
-        Collection, Crs, Link, Linked,
+        Collection, Crs, Exception, Link, Linked,
         link_rel::{COLLECTION, NEXT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
     },
@@ -23,13 +23,36 @@ use crate::{
     extractors::{Qs, RemoteUrl},
 };
 
-const CONFORMANCE: [&str; 4] = [
+const CONFORMANCE: [&str; 3] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+    // "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
     "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
 ];
 
+/// Create new item
+#[utoipa::path(post, path = "/collections/{collectionId}/items", tag = "Data",
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection")
+    ),
+    request_body = Feature,
+    responses(
+        (
+            status = 201, description = "Created.", 
+            headers(
+                ("Location", description = "URI of the newly added resource.")
+            )
+        ),
+        (
+            status = 409, description = "Already exists.", 
+            body = Exception, example = json!(Exception::new_from_status(409))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn create(
     State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
@@ -48,6 +71,32 @@ async fn create(
     Ok((StatusCode::CREATED, headers))
 }
 
+/// Fetch a single feature
+///
+/// Fetch the feature with id `featureId` in the feature collection with id
+/// `collectionId`.
+#[utoipa::path(get, path = "/collections/{collectionId}/items/{featureId}", tag = "Data", 
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection"),
+        ("featureId" = String, Path, description = "local identifier of a feature")
+    ),
+    responses(
+        (
+            status = 200,
+            description = "fetch the feature with id `featureId` in the feature \
+            collection with id `collectionId`", 
+            body = Feature),
+        (
+            status = 404, description = "The requested resource does not exist \
+            on the server. For example, a path parameter had an incorrect value.", 
+            body = Exception, example = json!(Exception::new_from_status(404))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn read(
     State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
@@ -90,6 +139,25 @@ async fn read(
     Ok((headers, Json(feature)))
 }
 
+/// Update collection item
+#[utoipa::path(put, path = "/collections/{collectionId}/items/{featureId}", tag = "Data",
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection"),
+        ("featureId" = String, Path, description = "local identifier of a feature")
+    ),
+    request_body = Feature,
+    responses(
+        (status = 204, description = "Successfuly updataed, no content."),
+        (
+            status = 400, description = "General HTTP error response.", 
+            body = Exception, example = json!(Exception::new_from_status(400))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn update(
     State(state): State<AppState>,
     Path((collection_id, id)): Path<(String, String)>,
@@ -107,6 +175,24 @@ async fn update(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Delete collection item
+#[utoipa::path(delete, path = "/collections/{collectionId}/items/{featureId}", tag = "Data",
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection"),
+        ("featureId" = String, Path, description = "local identifier of a feature")
+    ),
+    responses(
+        (status = 204, description = "Successfuly deleted, no content."),
+        (
+            status = 400, description = "General HTTP error response.", 
+            body = Exception, example = json!(Exception::new_from_status(400))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn remove(
     State(state): State<AppState>,
     Path((collection_id, id)): Path<(String, String)>,
@@ -120,6 +206,51 @@ async fn remove(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// Fetch features
+///
+/// Fetch features of the feature collection with id `collectionId`.
+///
+/// Every feature in a dataset belongs to a collection. A dataset may consist
+/// of multiple feature collections. A feature collection is often a collection
+/// of features of a similar type, based on a common schema.
+#[utoipa::path(get, path = "/collections/{collectionId}/items", tag = "Data", 
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection"),
+        Query,
+    ),
+    responses(
+        (
+            status = 200,
+            description = "The response is a document consisting of features \
+            in the collection. The features included in the response are \
+            determined by the server based on the query parameters of the \
+            request. To support access to larger collections without \
+            overloading the client, the API supports paged access with links \
+            to the next page, if more features are selected that the page size. \
+            \n \
+            The `bbox` and `datetime` parameter can be used to select only a \
+            subset of the features in the collection (the features that are in \
+            the bounding box or time interval). The `bbox` parameter matches \
+            all features in the collection that are not associated with a \
+            location, too. The `datetime` parameter matches all features in the \
+            collection that are not associated with a time stamp or interval, too. \
+            \n \
+            The `limit` parameter may be used to control the subset of the selected \
+            features that should be returned in the response, the page size. Each \
+            page may include information about the number of selected and returned \
+            features (`numberMatched` and `numberReturned`) as well as links to \
+            support paging (link relation next).", 
+            body = FeatureCollection),
+        (
+            status = 400, description = "General HTTP error response.", 
+            body = Exception, example = json!(Exception::new_from_status(400))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
 async fn items(
     State(state): State<AppState>,
     RemoteUrl(mut url): RemoteUrl,
@@ -214,16 +345,10 @@ async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Erro
     }
 }
 
-pub(crate) fn router(state: &AppState) -> Router<AppState> {
+pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
     state.conformance.write().unwrap().extend(&CONFORMANCE);
 
-    Router::new()
-        .route(
-            "/collections/{collection_id}/items",
-            get(items).post(create),
-        )
-        .route(
-            "/collections/{collection_id}/items/{id}",
-            get(read).put(update).delete(remove),
-        )
+    OpenApiRouter::new()
+        .routes(routes!(items, create))
+        .routes(routes!(read, update, remove))
 }

@@ -1,50 +1,58 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
-
-use crate::common::Link;
+use serde_json::Value;
+use utoipa::ToSchema;
 
 /// Basic description type
-#[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct DescriptionType {
+    #[schema(nullable = false)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[schema(nullable = false)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keywords: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub metadata: Vec<Metadata>,
+    #[schema(nullable = false)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub additional_parameters: Option<AdditionalParameters>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(untagged)]
-pub enum Metadata {
-    LinkedMetadata(LinkedMetadata),
-    ObjectMetadata(ObjectMetadata),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct LinkedMetadata {
-    #[serde(flatten)]
-    pub link: Link,
-    pub role: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ObjectMetadata {
-    pub role: Option<String>,
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+pub struct Metadata {
+    #[schema(nullable = false)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
-    pub lang: Option<String>,
-    pub value: Option<Map<String, Value>>,
+    #[schema(nullable = false)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    #[schema(nullable = false)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub href: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+pub struct AdditionalParameters {
+    #[serde(default, flatten)]
+    pub metadata: Metadata,
+    pub parameters: Vec<AdditionalParameter>,
+}
+
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+pub struct AdditionalParameter {
+    pub name: String,
+    pub value: Vec<Value>,
 }
 
 /// Process input description
-#[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct InputDescription {
     #[serde(flatten)]
     pub description_type: DescriptionType,
-    pub value_passing: Vec<ValuePassing>,
     #[serde(default = "min_occurs")]
     pub min_occurs: u64,
     #[serde(default)]
@@ -52,15 +60,14 @@ pub struct InputDescription {
     pub schema: Value,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum ValuePassing {
     ByValue,
     ByReference,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
 #[serde(untagged)]
 pub enum MaxOccurs {
     Integer(u64),
@@ -77,8 +84,7 @@ fn min_occurs() -> u64 {
 }
 
 /// Process output description
-#[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputDescription {
     #[serde(flatten)]

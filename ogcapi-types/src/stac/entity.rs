@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::common::{Collection, Links};
+use crate::common::{Collection, Link};
 use crate::features::Feature as Item;
 
 use super::Catalog;
@@ -15,7 +15,7 @@ pub enum StacEntity {
 }
 
 impl StacEntity {
-    pub fn get_links_mut(&mut self) -> &mut Links {
+    pub fn get_links_mut(&mut self) -> &mut Vec<Link> {
         match self {
             StacEntity::Catalog(c) => &mut c.links,
             StacEntity::Collection(c) => &mut c.links,
