@@ -2,15 +2,11 @@
 pub mod postgres;
 #[cfg(feature = "s3")]
 pub mod s3;
-#[cfg(feature = "blanket")]
-pub mod blanket;
 
 #[cfg(feature = "common")]
 use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
 #[cfg(feature = "edr")]
 use ogcapi_types::edr::{Query as EdrQuery, QueryType};
-#[cfg(feature = "movingfeatures")]
-use ogcapi_types::movingfeatures::{temporal_geometry::TemporalGeometry, temporal_properties::TemporalProperties, temporal_primitive_geometry::TemporalPrimitiveGeometry};
 #[cfg(feature = "processes")]
 use ogcapi_types::processes::{Results, StatusInfo};
 #[cfg(feature = "stac")]
@@ -119,49 +115,4 @@ pub trait TileTransactions: Send + Sync {
         row: u32,
         col: u32,
     ) -> anyhow::Result<Vec<u8>>;
-}
-
-
-#[cfg(feature = "movingfeatures")]
-#[async_trait::async_trait]
-pub trait TemporalGeometryTransactions: Send + Sync {
-    async fn create_temporal_geometry(
-        &self,
-        collection: &str,
-        m_feature_id: &str,
-        temporal_geometry: &TemporalPrimitiveGeometry
-    ) -> anyhow::Result<String>;
-    async fn read_temporal_geometry(
-        &self,
-        collection: &str,
-        m_feature_id: &str,
-    ) -> anyhow::Result<Option<TemporalGeometry>>;
-    async fn delete_temporal_geometry(
-        &self,
-        collection: &str,
-        m_feature_id: &str,
-        t_geometry_id: &str
-    ) -> anyhow::Result<()>;
-}
-
-#[cfg(feature = "movingfeatures")]
-#[async_trait::async_trait]
-pub trait TemporalPropertyTransactions: Send + Sync {
-    async fn create_temporal_property(
-        &self,
-        collection: &str,
-        m_feature_id: &str,
-        temporal_geometry: &TemporalPrimitiveGeometry
-    ) -> anyhow::Result<String>;
-    async fn read_temporal_property(
-        &self,
-        collection: &str,
-        m_feature_id: &str,
-    ) -> anyhow::Result<Option<TemporalProperties>>;
-    async fn delete_temporal_property(
-        &self,
-        collection: &str,
-        m_feature_id: &str,
-        t_properties_name: &str
-    ) -> anyhow::Result<()>;
 }

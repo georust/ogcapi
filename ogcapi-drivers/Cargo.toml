@@ -16,7 +16,6 @@ default = ["common", "edr", "features", "processes", "tiles"]
 # drivers
 postgres = ["sqlx", "rink-core", "url"]
 s3 = ["aws-config", "aws-sdk-s3"]
-blanket = []
 
 # standards
 common = ["ogcapi-types/common"]
@@ -26,7 +25,6 @@ processes = ["common", "ogcapi-types/processes"]
 stac = ["features", "ogcapi-types/stac", "s3"]
 styles = ["ogcapi-types/styles"]
 tiles = ["common", "ogcapi-types/tiles"]
-movingfeatures = ["common", "features", "ogcapi-types/movingfeatures"]
 
 [dependencies]
 anyhow = { workspace = true }
