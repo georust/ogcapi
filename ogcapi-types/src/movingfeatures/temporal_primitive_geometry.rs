@@ -104,9 +104,6 @@ impl TryFrom<(Vec<chrono::DateTime<Utc>>, Vec<PointType>)> for Value {
 impl<A, B> TryFrom<(Vec<A>, Vec<B>)> for DateTimeCoords<A, B>{
     type Error = &'static str;
     fn try_from(value: (Vec<A>, Vec<B>)) -> Result<Self, Self::Error> {
-        // TODO does it make sense to keep this check as
-        // attributes are now pub anyways and same length is now checked
-        // at serialization? Maybe this should be just From?
         DateTimeCoordsUnchecked{
             datetimes: value.0, 
             coordinates: value.1
@@ -123,8 +120,23 @@ struct DateTimeCoordsUnchecked<A, B> {
 #[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
 #[serde(try_from = "DateTimeCoordsUnchecked<A,B>")]
 pub struct DateTimeCoords<A, B> {
-    pub datetimes: Vec<A>,
-    pub coordinates: Vec<B>,
+    datetimes: Vec<A>,
+    coordinates: Vec<B>,
+}
+
+impl<A,B> DateTimeCoords<A, B> {
+    pub fn append(&mut self, other: &mut Self)  {
+            self.datetimes.append(&mut other.datetimes);
+            self.coordinates.append(&mut other.coordinates);
+    }
+
+    pub fn datetimes(&self) -> &[A] {
+        self.datetimes.as_slice()
+    }
+
+    pub fn coordinates(&self) -> &[B] {
+        self.coordinates.as_slice()
+    }
 }
 
 impl<A,B> Serialize for DateTimeCoords<A, B>{
