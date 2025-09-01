@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use geojson::{JsonObject, LineStringType, PointType, PolygonType};
+use geojson::{LineStringType, PointType, PolygonType};
 use serde::{Deserialize, Serialize, Serializer, ser};
 use serde_json::json;
 
@@ -20,7 +20,6 @@ pub struct TemporalPrimitiveGeometry {
     pub interpolation: Interpolation,
     pub crs: Option<Crs>,
     pub trs: Option<Trs>,
-    pub foreign_members: Option<JsonObject>,
 }
 
 impl TemporalPrimitiveGeometry {
@@ -31,7 +30,6 @@ impl TemporalPrimitiveGeometry {
             interpolation: Interpolation::default(),
             crs: Default::default(),
             trs: Default::default(),
-            foreign_members: Default::default(),
         }
     }
 }
@@ -228,6 +226,8 @@ pub struct Orientation {
 }
 #[cfg(test)]
 mod tests {
+
+    use geojson::JsonObject;
 
     use super::*;
 
