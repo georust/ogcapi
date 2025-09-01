@@ -85,10 +85,9 @@ pub struct Feature {
     #[serde(default)]
     pub assets: HashMap<String, crate::stac::Asset>,
     #[cfg(feature = "movingfeatures")]
-    #[serde(serialize_with = "crate::common::serialize_interval")]
     /// Life span information for the moving feature.
     /// See [MF-Json 7.2.3 LifeSpan](https://docs.ogc.org/is/19-045r3/19-045r3.html#time)
-    pub time: Vec<Vec<Option<DateTime<Utc>>>>,
+    pub time: [Option<DateTime<Utc>>; 2],
     #[cfg(feature = "movingfeatures")]
     // TODO should this be #[serde(default)] instead of option?
     pub crs: Option<Crs>,
