@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use std::str::FromStr;
 
 use crate::common;
@@ -6,7 +7,7 @@ use crate::common;
 /// MF-JSON uses a CRS as described in in (GeoJSON:2008)[https://geojson.org/geojson-spec#coordinate-reference-system-objects]
 /// See (7.2.3 CoordinateReferenceSystem Object)[https://docs.ogc.org/is/19-045r3/19-045r3.html#crs]
 /// See (6. Overview of Moving features JSON Encodings)[https://docs.ogc.org/is/19-045r3/19-045r3.html#_overview_of_moving_features_json_encodings_informative]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(tag = "type", content = "properties")]
 pub enum Crs {
     /// A Named CRS object indicates a coordinate reference system by name. In this case, the value of its "type" member

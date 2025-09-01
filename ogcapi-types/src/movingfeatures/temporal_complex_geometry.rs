@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use super::{crs::Crs, temporal_primitive_geometry::TemporalPrimitiveGeometry, trs::Trs};
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub enum Type {
     #[default]
     MovingGeometryCollection,
@@ -14,7 +15,7 @@ pub enum Type {
 /// JSON array of a set of TemporalPrimitiveGeometry instances having at least one element in the array.
 ///
 /// See [7.2.1.2. TemporalComplexGeometry Object](https://docs.ogc.org/is/19-045r3/19-045r3.html#tcomplex)
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
 pub struct TemporalComplexGeometry {
     pub r#type: Type,
     pub prisms: Vec<TemporalPrimitiveGeometry>,

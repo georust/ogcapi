@@ -50,12 +50,7 @@ pub fn geometry() -> Schema {
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
 #[serde_with::skip_serializing_none]
-<<<<<<< HEAD
 #[derive(Deserialize, Serialize, ToSchema, Debug, Clone, PartialEq)]
-=======
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
-#[serde(rename = "camelCase")]
->>>>>>> ba7e7ad (Integrate with moving features with collection, feature collection and features)
 pub struct Feature {
     #[serde(default)]
     pub id: Option<FeatureId>,
@@ -85,9 +80,10 @@ pub struct Feature {
     #[serde(default)]
     pub assets: HashMap<String, crate::stac::Asset>,
     #[cfg(feature = "movingfeatures")]
+    #[serde(serialize_with="crate::common::serialize_interval")]
     /// Life span information for the moving feature.
     /// See [MF-Json 7.2.3 LifeSpan](https://docs.ogc.org/is/19-045r3/19-045r3.html#time)
-    pub time: [Option<DateTime<Utc>>; 2],
+    pub time: Vec<[Option<DateTime<Utc>>; 2]>,
     #[cfg(feature = "movingfeatures")]
     // TODO should this be #[serde(default)] instead of option?
     pub crs: Option<Crs>,

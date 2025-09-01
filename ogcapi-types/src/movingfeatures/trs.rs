@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(tag = "type", content = "properties")]
 pub enum Trs {
     Name { name: String }, // r#type: String,
