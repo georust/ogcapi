@@ -88,7 +88,7 @@ pub struct Collection {
     #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub assets: std::collections::HashMap<String, crate::stac::Asset>,
     #[cfg(feature = "movingfeatures")]
-    #[serde(rename = "updateFrequency")]
+    #[serde(default, rename = "updateFrequency", skip_serializing_if = "Option::is_none")]
     /// A time interval of sampling location. The time unit of this property is millisecond.
     pub update_frequency: Option<i64>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]

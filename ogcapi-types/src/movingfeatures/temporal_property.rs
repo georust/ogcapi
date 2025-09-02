@@ -52,7 +52,6 @@ pub struct TemporalPrimitiveValue<T> {
     /// A sequence of monotonic increasing instants.
     pub datetimes: Vec<DateTime<Utc>>,
     /// A sequence of dynamic values having the same number of elements as “datetimes”.
-    // TODO enforce length
     pub values: Vec<T>,
     /// A predefined type for a dynamic value (i.e., one of ‘Discrete’, ‘Step’, ‘Linear’, or ‘Regression’).
     pub interpolation: Interpolation,

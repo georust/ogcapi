@@ -32,7 +32,7 @@ pub enum Crs {
 impl Default for Crs {
     fn default() -> Self {
         Self::Name {
-            name: "urn:ogc:def:crs:OGC:1.3:CRS84".to_string(),
+            name: common::Crs::default().to_urn(),
         }
     }
 }
