@@ -86,10 +86,10 @@ pub struct Feature {
     pub time: Vec<[Option<DateTime<Utc>>; 2]>,
     #[cfg(feature = "movingfeatures")]
     #[serde(default)]
-    pub crs: Option<Crs>,
+    pub crs: Crs,
     #[cfg(feature = "movingfeatures")]
     #[serde(default)]
-    pub trs: Option<Trs>,
+    pub trs: Trs,
     #[cfg(feature = "movingfeatures")]
     #[serde(default, rename = "temporalGeometry")]
     pub temporal_geometry: Option<TemporalGeometry>,

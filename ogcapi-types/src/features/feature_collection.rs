@@ -31,10 +31,10 @@ pub struct FeatureCollection {
     pub number_returned: Option<u64>,
     #[cfg(feature = "movingfeatures")]
     #[serde(default)]
-    pub crs: Option<crate::movingfeatures::crs::Crs>,
+    pub crs: crate::movingfeatures::crs::Crs,
     #[cfg(feature = "movingfeatures")]
     #[serde(default)]
-    pub trs: Option<crate::movingfeatures::trs::Trs>,
+    pub trs: crate::movingfeatures::trs::Trs,
     #[cfg(feature = "movingfeatures")]
     #[serde(default)]
     pub bbox: Option<Bbox>,
