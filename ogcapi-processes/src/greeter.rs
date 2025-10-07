@@ -4,12 +4,9 @@ use anyhow::Result;
 use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 
-use ogcapi_types::{
-    common::Exception,
-    processes::{
-        Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process,
-        TransmissionMode,
-    },
+use ogcapi_types::processes::{
+    Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process, Response,
+    Results, TransmissionMode,
 };
 
 use crate::{ProcessResponseBody, Processor};
@@ -68,20 +65,6 @@ impl GreeterOutputs {
     }
 }
 
-impl TryFrom<ProcessResponseBody> for GreeterOutputs {
-    type Error = Exception;
-
-    fn try_from(value: ProcessResponseBody) -> Result<Self, Self::Error> {
-        if let ProcessResponseBody::Requested(buf) = value {
-            Ok(GreeterOutputs {
-                greeting: String::from_utf8(buf).unwrap(),
-            })
-        } else {
-            Err(Exception::new("500"))
-        }
-    }
-}
-
 #[async_trait::async_trait]
 impl Processor for Greeter {
     fn id(&self) -> &'static str {
@@ -105,9 +88,19 @@ impl Processor for Greeter {
     async fn execute(&self, execute: Execute) -> Result<ProcessResponseBody> {
         let value = serde_json::to_value(execute.inputs).unwrap();
         let inputs: GreeterInputs = serde_json::from_value(value).unwrap();
-        Ok(ProcessResponseBody::Requested(
-            format!("Hello, {}!\n", inputs.name).as_bytes().to_owned(),
-        ))
+        let greeting = format!("Hello, {}!\n", inputs.name);
+        match execute.response {
+            Response::Raw => Ok(ProcessResponseBody::Requested {
+                outputs: GreeterOutputs::execute_output(),
+                parts: vec![greeting.as_bytes().to_owned()],
+            }),
+            Response::Document => Ok(ProcessResponseBody::Results(Results {
+                results: HashMap::from([(
+                    "greeting".to_owned(),
+                    InlineOrRefData::InputValueNoObject(InputValueNoObject::String(greeting)),
+                )]),
+            })),
+        }
     }
 }
 
@@ -116,7 +109,7 @@ mod tests {
     use ogcapi_types::processes::Execute;
 
     use crate::{
-        Processor,
+        ProcessResponseBody, Processor,
         greeter::{Greeter, GreeterInputs, GreeterOutputs},
     };
 
@@ -140,7 +133,19 @@ mod tests {
             ..Default::default()
         };
 
-        let output: GreeterOutputs = greeter.execute(execute).await.unwrap().try_into().unwrap();
-        assert_eq!(output.greeting, "Hello, Greeter!\n");
+        let output = greeter.execute(execute).await.unwrap();
+
+        let ProcessResponseBody::Requested {
+            outputs: _outputs,
+            parts,
+        } = output
+        else {
+            panic!()
+        };
+
+        assert_eq!(
+            String::from_utf8(parts[0].clone()).unwrap(),
+            "Hello, Greeter!\n"
+        );
     }
 }
