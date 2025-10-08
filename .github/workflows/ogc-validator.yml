@@ -1,0 +1,35 @@
+name: OGC API Validator
+
+on:
+  pull_request:
+  merge_group:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ogc-api-processes-validator:
+    name: Validate OGC API - Processes compliance
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+            sudo apt-get install -y \
+              build-essential \
+              pkg-config \
+              libclang-dev \
+              libgdal-dev \
+              python3-dotenv
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup
+        run: docker compose up db -d
+
+      - name: Validate service
+        run: python3 .github/workflows/ogc_validator.py

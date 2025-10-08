@@ -212,7 +212,11 @@ async fn jobs(
     State(_state): State<AppState>,
     RemoteUrl(mut _url): RemoteUrl,
 ) -> Result<Json<JobList>> {
-    todo!()
+    // TODO: implement job listing
+    Err(Error::Exception(
+        StatusCode::NOT_IMPLEMENTED,
+        "Job listing is not implemented yet".to_string(),
+    ))
 }
 
 /// Retrieve the status of a job
