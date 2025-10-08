@@ -7,6 +7,7 @@ use serde::Deserialize;
 use ogcapi_types::processes::{
     Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process, Response,
     Results, TransmissionMode,
+    description::{DescriptionType, InputDescription, MaxOccurs, OutputDescription},
 };
 
 use crate::{ProcessResponseBody, Processor};
@@ -76,11 +77,25 @@ impl Processor for Greeter {
     }
 
     fn process(&self) -> Result<Process> {
-        Process::try_new(
+        Process::new(
             self.id(),
             self.version(),
-            &schema_for!(GreeterInputs),
-            &schema_for!(GreeterOutputs),
+            HashMap::from([(
+                "name".to_string(),
+                InputDescription {
+                    description_type: DescriptionType::default(),
+                    min_occurs: 1,
+                    max_occurs: MaxOccurs::default(),
+                    schema: schema_for!(GreeterInputs).to_value(),
+                },
+            )]),
+            HashMap::from([(
+                "greeting".to_string(),
+                OutputDescription {
+                    description_type: DescriptionType::default(),
+                    schema: schema_for!(GreeterOutputs).to_value(),
+                },
+            )]),
         )
         .map_err(Into::into)
     }

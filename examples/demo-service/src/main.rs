@@ -3,7 +3,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ogcapi::{
     processes::{
-        echo::Echo, gdal_loader::GdalLoader, geojson_loader::GeoJsonLoader, greeter::Greeter,
+        // echo::Echo, gdal_loader::GdalLoader, geojson_loader::GeoJsonLoader,
+        greeter::Greeter,
     },
     services::{AppState, Config, Service},
 };
@@ -28,9 +29,9 @@ async fn main() {
     // Register processes/processors
     let state = state.processors(vec![
         Box::new(Greeter),
-        Box::new(GeoJsonLoader),
-        Box::new(GdalLoader),
-        Box::new(Echo),
+        // Box::new(GeoJsonLoader),
+        // Box::new(GdalLoader),
+        // Box::new(Echo),
     ]);
 
     // Build & run with hyper
