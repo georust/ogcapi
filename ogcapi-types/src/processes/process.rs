@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Error;
 use utoipa::ToSchema;
 
 use crate::common::Link;
@@ -49,25 +48,4 @@ pub struct Process {
     pub inputs: HashMap<String, InputDescription>,
     #[schema(required = false)]
     pub outputs: HashMap<String, OutputDescription>,
-}
-
-impl Process {
-    pub fn new(
-        id: impl ToString,
-        version: impl ToString,
-        inputs: HashMap<String, InputDescription>,
-        outputs: HashMap<String, OutputDescription>,
-    ) -> Result<Self, Error> {
-        Ok(Process {
-            summary: ProcessSummary {
-                id: id.to_string(),
-                version: version.to_string(),
-                job_control_options: Vec::new(),
-                output_transmission: Vec::new(),
-                links: Vec::new(),
-            },
-            inputs,
-            outputs,
-        })
-    }
 }

@@ -5,9 +5,9 @@ use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 
 use ogcapi_types::processes::{
-    Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process, Response,
-    Results, TransmissionMode,
-    description::{DescriptionType, InputDescription, MaxOccurs, OutputDescription},
+    Execute, Format, InlineOrRefData, Input, InputValueNoObject, JobControlOptions, Output,
+    Process, ProcessSummary, Response, Results, TransmissionMode,
+    description::{DescriptionType, InputDescription, OutputDescription},
 };
 
 use crate::{ProcessResponseBody, Processor};
@@ -77,27 +77,34 @@ impl Processor for Greeter {
     }
 
     fn process(&self) -> Result<Process> {
-        Process::new(
-            self.id(),
-            self.version(),
-            HashMap::from([(
+        Ok(Process {
+            summary: ProcessSummary {
+                id: self.id().to_string(),
+                version: self.version().to_string(),
+                job_control_options: vec![
+                    JobControlOptions::SyncExecute,
+                    JobControlOptions::AsyncExecute,
+                    JobControlOptions::Dismiss,
+                ],
+                output_transmission: vec![TransmissionMode::Value, TransmissionMode::Reference],
+                links: Vec::new(),
+            },
+            inputs: HashMap::from([(
                 "name".to_string(),
                 InputDescription {
                     description_type: DescriptionType::default(),
-                    min_occurs: 1,
-                    max_occurs: MaxOccurs::default(),
                     schema: schema_for!(GreeterInputs).to_value(),
+                    ..Default::default()
                 },
             )]),
-            HashMap::from([(
+            outputs: HashMap::from([(
                 "greeting".to_string(),
                 OutputDescription {
                     description_type: DescriptionType::default(),
                     schema: schema_for!(GreeterOutputs).to_value(),
                 },
             )]),
-        )
-        .map_err(Into::into)
+        })
     }
 
     async fn execute(&self, execute: Execute) -> Result<ProcessResponseBody> {

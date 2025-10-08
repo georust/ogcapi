@@ -7,7 +7,7 @@ pub mod greeter;
 // #[cfg(feature = "geojson-loader")]
 // pub mod geojson_loader;
 
-// pub mod echo;
+pub mod echo;
 
 mod processor;
 pub use processor::*;

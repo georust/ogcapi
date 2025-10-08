@@ -143,7 +143,12 @@ async fn process(
         Some(processor) => {
             let mut process = processor.process().unwrap();
 
-            process.summary.links = vec![Link::new(url, SELF).mediatype(JSON)];
+            let self_link = Link::new(url.clone(), SELF).mediatype(JSON);
+            if let Some(link) = process.summary.links.iter_mut().find(|l| l.rel == SELF) {
+                *link = Link::new(url.clone(), SELF).mediatype(JSON);
+            } else {
+                process.summary.links.insert(0, self_link);
+            }
 
             Ok(Json(process))
         }

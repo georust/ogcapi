@@ -48,15 +48,15 @@ pub struct AdditionalParameter {
 }
 
 /// Process input description
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct InputDescription {
     #[serde(flatten)]
     pub description_type: DescriptionType,
-    #[serde(default = "min_occurs")]
-    pub min_occurs: u64,
-    #[serde(default)]
-    pub max_occurs: MaxOccurs,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_occurs: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_occurs: Option<MaxOccurs>,
     pub schema: Value,
 }
 
@@ -71,17 +71,13 @@ pub enum ValuePassing {
 #[serde(untagged)]
 pub enum MaxOccurs {
     Integer(u64),
-    Unbounded(String),
+    Unbounded(String), // FIXME: type string , enum "unbounded"
 }
 
 impl Default for MaxOccurs {
     fn default() -> Self {
         Self::Integer(1)
     }
-}
-
-fn min_occurs() -> u64 {
-    1
 }
 
 /// Process output description
