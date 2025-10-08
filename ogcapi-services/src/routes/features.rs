@@ -304,13 +304,13 @@ async fn items(
                 fc.links.insert_or_update(&[previous]);
             }
 
-            if let Some(number_matched) = fc.number_matched {
-                if number_matched > (offset + limit) as u64 {
-                    query.offset = Some(offset + limit);
-                    url.set_query(serde_qs::to_string(&query).ok().as_deref());
-                    let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
-                    fc.links.insert_or_update(&[next]);
-                }
+            if let Some(number_matched) = fc.number_matched
+                && number_matched > (offset + limit) as u64
+            {
+                query.offset = Some(offset + limit);
+                url.set_query(serde_qs::to_string(&query).ok().as_deref());
+                let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
+                fc.links.insert_or_update(&[next]);
             }
         }
     }

@@ -28,9 +28,10 @@ impl Client {
                     if execute.outputs.len() == 1 {
                         let (_k, v) = execute.outputs.iter().next().unwrap();
                         match v.transmission_mode {
-                            TransmissionMode::Value => {
-                                Ok(ProcessResponseBody::Requested(response.bytes()?.to_vec()))
-                            }
+                            TransmissionMode::Value => Ok(ProcessResponseBody::Requested {
+                                outputs: execute.outputs.clone(),
+                                parts: vec![response.bytes()?.to_vec()],
+                            }),
                             TransmissionMode::Reference => todo!(),
                         }
                     } else {
@@ -85,8 +86,18 @@ mod tests {
 
         let response = client.execute(Greeter {}.id(), &execute).unwrap();
 
-        let output: GreeterOutputs = response.try_into().unwrap();
-        assert_eq!(output.greeting, "Hello, client!\n")
+        let ProcessResponseBody::Requested {
+            outputs: _outputs,
+            parts,
+        } = response
+        else {
+            panic!()
+        };
+
+        assert_eq!(
+            String::from_utf8(parts[0].clone()).unwrap(),
+            "Hello, client!\n"
+        )
     }
 
     #[test]
@@ -116,7 +127,14 @@ mod tests {
 
         let response = client.execute(GdalLoader {}.id(), &execute).unwrap();
 
-        let output: GdalLoaderOutputs = response.try_into().unwrap();
-        dbg!(output);
+        let ProcessResponseBody::Requested {
+            outputs: _outputs,
+            parts,
+        } = response
+        else {
+            panic!()
+        };
+
+        assert_eq!(String::from_utf8(parts[0].clone()).unwrap(), "streets");
     }
 }

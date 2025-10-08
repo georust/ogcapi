@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dynamic OpenAPI definition extration.
 
+### Fixed
+
+- Respect process execution `response` parameter
+
 ### Changed
 
 - Make features opt-out rather than opt-in for released standards.
