@@ -79,6 +79,7 @@ impl Default for MaxOccurs {
         Self::Integer(1)
     }
 }
+
 fn min_occurs() -> u64 {
     1
 }

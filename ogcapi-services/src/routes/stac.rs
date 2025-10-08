@@ -151,13 +151,13 @@ pub(crate) async fn search(
                 fc.links.insert_or_update(&[previous]);
             }
 
-            if let Some(number_matched) = fc.number_matched {
-                if number_matched > offset + limit {
-                    params.offset = Some(offset + limit);
-                    url.set_query(serde_qs::to_string(&params).ok().as_deref());
-                    let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
-                    fc.links.insert_or_update(&[next]);
-                }
+            if let Some(number_matched) = fc.number_matched
+                && number_matched > offset + limit
+            {
+                params.offset = Some(offset + limit);
+                url.set_query(serde_qs::to_string(&params).ok().as_deref());
+                let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
+                fc.links.insert_or_update(&[next]);
             }
         }
     }

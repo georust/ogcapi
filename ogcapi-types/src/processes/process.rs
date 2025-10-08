@@ -21,8 +21,6 @@ pub struct ProcessSummary {
     pub output_transmission: TransmissionMode,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub links: Vec<Link>,
-    #[serde(flatten)]
-    pub description_type: DescriptionType,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
@@ -65,7 +63,6 @@ impl Process {
                 job_control_options: Vec::new(),
                 output_transmission: TransmissionMode::default(),
                 links: Vec::new(),
-                description_type: DescriptionType::default(),
             },
             inputs: InputDescription {
                 description_type: DescriptionType::default(),

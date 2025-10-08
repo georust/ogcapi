@@ -22,5 +22,5 @@ pub mod styles;
 #[cfg(feature = "tiles")]
 pub mod tiles;
 
-#[cfg(feature = "coverages")]
-mod coverages;
+// #[cfg(feature = "coverages")]
+// mod coverages;

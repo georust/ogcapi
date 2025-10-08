@@ -72,29 +72,29 @@ pub fn build_boundary<T: Borrow<osmpbfreader::OsmObj>>(
     let mut outer_polys = build_boundary_parts(relation, objects, vec!["outer", "enclave", ""]);
     let inner_polys = build_boundary_parts(relation, objects, vec!["inner"]);
 
-    if let Some(ref mut outers) = outer_polys {
-        if let Some(inners) = inner_polys {
-            inners.into_iter().for_each(|inner| {
-                /*
-                    It's assumed here that the 'inner' ring is contained into
-                    exactly ONE outer ring. To find it among all 'outers', all
-                    we need is to find a candidate 'outer' area that shares a point
-                    point with (i.e 'intersects') all 'inner' segments.
-                    Using 'contains' is not suitable here, as 'inner' may touch its outer
-                    ring at a single point.
+    if let Some(ref mut outers) = outer_polys
+        && let Some(inners) = inner_polys
+    {
+        inners.into_iter().for_each(|inner| {
+            /*
+                It's assumed here that the 'inner' ring is contained into
+                exactly ONE outer ring. To find it among all 'outers', all
+                we need is to find a candidate 'outer' area that shares a point
+                point with (i.e 'intersects') all 'inner' segments.
+                Using 'contains' is not suitable here, as 'inner' may touch its outer
+                ring at a single point.
 
-                    NB: this algorithm cannot handle "donut inside donut" boundaries
-                    (where 'inner' would be contained into multiple concentric outer rings).
-                */
-                let (exterior, _) = inner.into_inner();
-                for ref mut outer in outers.0.iter_mut() {
-                    if exterior.lines().all(|line| outer.intersects(&line)) {
-                        outer.interiors_push(exterior);
-                        break;
-                    }
+                NB: this algorithm cannot handle "donut inside donut" boundaries
+                (where 'inner' would be contained into multiple concentric outer rings).
+            */
+            let (exterior, _) = inner.into_inner();
+            for ref mut outer in outers.0.iter_mut() {
+                if exterior.lines().all(|line| outer.intersects(&line)) {
+                    outer.interiors_push(exterior);
+                    break;
                 }
-            })
-        }
+            }
+        })
     }
     outer_polys
 }

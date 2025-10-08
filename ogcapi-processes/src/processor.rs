@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use dyn_clone::DynClone;
 
-use ogcapi_types::processes::{Execute, Process, Results, StatusInfo};
+use ogcapi_types::processes::{Execute, Output, Process, Results, StatusInfo};
 use serde::{Deserialize, Serialize};
 
 /// Trait for defining and executing a [Process]
@@ -24,7 +26,10 @@ dyn_clone::clone_trait_object!(Processor);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ProcessResponseBody {
-    Requested(Vec<u8>),
+    Requested {
+        outputs: HashMap<String, Output>,
+        parts: Vec<Vec<u8>>,
+    },
     Results(Results),
     Empty(String),
     StatusInfo(StatusInfo),

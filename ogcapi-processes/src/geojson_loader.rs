@@ -11,7 +11,7 @@ use wkb::{Endianness, writer::WriteOptions};
 
 use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_types::{
-    common::{Collection, Crs, Exception, Extent, SpatialExtent},
+    common::{Collection, Crs, Extent, SpatialExtent},
     processes::{
         Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process,
         TransmissionMode,
@@ -97,20 +97,6 @@ impl GeoJsonLoaderOutputs {
                 transmission_mode: TransmissionMode::Value,
             },
         )])
-    }
-}
-
-impl TryFrom<ProcessResponseBody> for GeoJsonLoaderOutputs {
-    type Error = Exception;
-
-    fn try_from(value: ProcessResponseBody) -> Result<Self, Self::Error> {
-        if let ProcessResponseBody::Requested(buf) = value {
-            Ok(GeoJsonLoaderOutputs {
-                collection_id: String::from_utf8(buf).unwrap(),
-            })
-        } else {
-            Err(Exception::new("500"))
-        }
     }
 }
 
@@ -234,9 +220,10 @@ impl Processor for GeoJsonLoader {
             .execute(&db.pool)
             .await?;
         }
-        Ok(ProcessResponseBody::Requested(
-            inputs.collection.as_bytes().to_owned(),
-        ))
+        Ok(ProcessResponseBody::Requested {
+            outputs: GeoJsonLoaderOutputs::execute_output(),
+            parts: vec![inputs.collection.as_bytes().to_owned()],
+        })
     }
 }
 
@@ -244,10 +231,9 @@ impl Processor for GeoJsonLoader {
 mod tests {
     use ogcapi_types::processes::Execute;
 
-    use crate::{
-        Processor,
-        geojson_loader::{GeoJsonLoader, GeoJsonLoaderInputs, GeoJsonLoaderOutputs},
-    };
+    use crate::Processor;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_loader() {
@@ -271,8 +257,19 @@ mod tests {
             ..Default::default()
         };
 
-        let output: GeoJsonLoaderOutputs =
-            loader.execute(execute).await.unwrap().try_into().unwrap();
-        assert_eq!(output.collection_id, "streets-geojson");
+        let output = loader.execute(execute).await.unwrap();
+
+        let ProcessResponseBody::Requested {
+            outputs: _outputs,
+            parts,
+        } = output
+        else {
+            panic!()
+        };
+
+        assert_eq!(
+            String::from_utf8(parts[0].clone()).unwrap(),
+            "streets-geojson"
+        );
     }
 }
