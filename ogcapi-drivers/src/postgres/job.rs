@@ -24,6 +24,24 @@ impl JobHandler for Db {
         Ok(id)
     }
 
+    async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>> {
+        let status_list: Vec<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
+            r#"
+            SELECT row_to_json(jobs) as "status_info!" 
+            FROM meta.jobs
+            ORDER BY created DESC
+            OFFSET $1
+            LIMIT $2
+            "#,
+        )
+        .bind(offset as i64)
+        .bind(limit as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(status_list.into_iter().map(|s| s.0).collect())
+    }
+
     async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>> {
         let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
             r#"

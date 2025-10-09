@@ -87,6 +87,8 @@ pub trait EdrQuerier: Send + Sync {
 pub trait JobHandler: Send + Sync {
     async fn register(&self, job: &StatusInfo) -> anyhow::Result<String>;
 
+    async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>>;
+
     async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
     async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;

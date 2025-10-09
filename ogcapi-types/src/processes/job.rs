@@ -11,8 +11,8 @@ use super::execute::InlineOrRefData;
 
 #[derive(Serialize, Deserialize, ToSchema, Debug, Default)]
 pub struct JobList {
-    jobs: Vec<StatusInfo>,
-    links: Vec<Link>,
+    pub jobs: Vec<StatusInfo>,
+    pub links: Vec<Link>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone, Default)]

@@ -195,6 +195,8 @@ async fn execution(
             format!("No process with id `{process_id}`"),
         )),
     }
+
+    // TODO: add to job list (if async?)
 }
 
 /// Retrieve the list of jobs
@@ -214,14 +216,28 @@ async fn execution(
     )
 )]
 async fn jobs(
-    State(_state): State<AppState>,
-    RemoteUrl(mut _url): RemoteUrl,
+    State(state): State<AppState>,
+    RemoteUrl(url): RemoteUrl,
+    Query(query): Query<LimitOffsetPagination>,
 ) -> Result<Json<JobList>> {
-    // TODO: implement job listing
-    Err(Error::Exception(
-        StatusCode::NOT_IMPLEMENTED,
-        "Job listing is not implemented yet".to_string(),
-    ))
+    const DEFAULT_LIMIT: usize = 10;
+    const MAX_LIMIT: usize = 100;
+
+    let offset = query.offset.unwrap_or_default();
+    let limit = query.limit.unwrap_or(DEFAULT_LIMIT).max(MAX_LIMIT);
+
+    let jobs = state.drivers.jobs.status_list(offset, limit).await?;
+
+    let mut links = vec![Link::new(&url, SELF).mediatype(JSON)];
+
+    if jobs.len() >= limit {
+        let mut next_url = url.clone();
+        let next_offset = offset + limit;
+        next_url.set_query(Some(&format!("limit={}&offset={}", limit, next_offset)));
+        links.push(Link::new(&next_url, NEXT).mediatype(JSON));
+    }
+
+    Ok(Json(JobList { jobs, links }))
 }
 
 /// Retrieve the status of a job

@@ -23,19 +23,19 @@ pub struct Echo;
 #[derive(Deserialize, Serialize, Debug, JsonSchema)]
 pub struct StringInput(String);
 
-// #[derive(Deserialize, Debug, JsonSchema)]
-// pub struct EchoInputs {
-//     pub string_input: Option<String>,
-//     pub measure_input: Option<MeasureInput>,
-//     pub date_input: Option<String>,
-//     pub double_input: Option<f64>,
-//     pub array_input: Option<Vec<i32>>,
-//     pub complex_object_input: Option<ComplexObjectInput>,
-//     pub geometry_input: Option<Vec<String>>,
-//     pub bounding_box_input: Option<BoundingBoxInput>,
-//     pub images_input: Option<Vec<String>>,
-//     pub feature_collection_input: Option<String>,
-// }
+#[derive(Deserialize, Serialize, Debug, JsonSchema)]
+pub struct EchoInputs {
+    pub string_input: Option<String>,
+    // pub measure_input: Option<MeasureInput>,
+    // pub date_input: Option<String>,
+    // pub double_input: Option<f64>,
+    // pub array_input: Option<Vec<i32>>,
+    // pub complex_object_input: Option<ComplexObjectInput>,
+    // pub geometry_input: Option<Vec<String>>,
+    // pub bounding_box_input: Option<BoundingBoxInput>,
+    // pub images_input: Option<Vec<String>>,
+    // pub feature_collection_input: Option<String>,
+}
 
 // #[derive(Clone, Deserialize, Serialize, Debug, JsonSchema)]
 // pub struct MeasureInput {
@@ -190,7 +190,7 @@ impl Processor for Echo {
 
     async fn execute(&self, execute: Execute) -> Result<ProcessResponseBody> {
         let value = serde_json::to_value(execute.inputs).unwrap();
-        let inputs: StringInput = serde_json::from_value(value).unwrap();
+        let inputs: EchoInputs = serde_json::from_value(value).unwrap();
 
         // let outputs = EchoOutputs {
         //     string_input: inputs.string_input,
@@ -225,7 +225,9 @@ impl Processor for Echo {
             Response::Document => Ok(ProcessResponseBody::Results(Results {
                 results: HashMap::from([(
                     "stringOutput".to_owned(),
-                    InlineOrRefData::InputValueNoObject(InputValueNoObject::String(inputs.0)),
+                    InlineOrRefData::InputValueNoObject(InputValueNoObject::String(
+                        inputs.string_input.unwrap_or_default(),
+                    )),
                 )]),
             })),
         }
