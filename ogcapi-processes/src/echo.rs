@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{ProcessResponseBody, Processor};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ogcapi_types::{
     common::Link,
     processes::{
@@ -24,6 +24,7 @@ pub struct Echo;
 pub struct StringInput(String);
 
 #[derive(Deserialize, Serialize, Debug, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct EchoInputs {
     pub string_input: Option<String>,
     // pub measure_input: Option<MeasureInput>,
@@ -152,13 +153,17 @@ impl Processor for Echo {
                 version: self.version().to_string(),
                 job_control_options: vec![
                     JobControlOptions::SyncExecute,
-                    JobControlOptions::AsyncExecute,
-                    JobControlOptions::Dismiss,
+                    // JobControlOptions::AsyncExecute, // TODO: implement async execution
+                    // JobControlOptions::Dismiss, // TODO: implement "dismiss extension"
                 ],
-                output_transmission: vec![TransmissionMode::Value, TransmissionMode::Reference],
+                output_transmission: vec![
+                    TransmissionMode::Value,
+                    // TODO: implement reference mode
+                    // TransmissionMode::Reference,
+                ],
                 links: vec![
                     Link::new(
-                        "./execute",
+                        format!("./{}/execution", self.id()),
                         "http://www.opengis.net/def/rel/ogc/1.0/execute",
                     )
                     .title("Execution endpoint"),
@@ -182,7 +187,7 @@ impl Processor for Echo {
                 "stringOutput".to_string(),
                 OutputDescription {
                     description_type: DescriptionType::default(),
-                    schema: generator.root_schema_for::<StringOutput>().to_value(),
+                    schema: generator.root_schema_for::<StringInput>().to_value(),
                 },
             )]),
         })
@@ -190,7 +195,13 @@ impl Processor for Echo {
 
     async fn execute(&self, execute: Execute) -> Result<ProcessResponseBody> {
         let value = serde_json::to_value(execute.inputs).unwrap();
+        dbg!(&value);
         let inputs: EchoInputs = serde_json::from_value(value).unwrap();
+
+        dbg!(&inputs);
+
+        // TODO: implement for other types
+        let string_input = inputs.string_input.context("stringInput is required")?;
 
         // let outputs = EchoOutputs {
         //     string_input: inputs.string_input,
@@ -220,14 +231,12 @@ impl Processor for Echo {
                         transmission_mode: TransmissionMode::Value,
                     },
                 )]),
-                parts: vec![serde_json::to_vec(&inputs).unwrap()],
+                parts: vec![string_input.into()],
             }),
             Response::Document => Ok(ProcessResponseBody::Results(Results {
                 results: HashMap::from([(
                     "stringOutput".to_owned(),
-                    InlineOrRefData::InputValueNoObject(InputValueNoObject::String(
-                        inputs.string_input.unwrap_or_default(),
-                    )),
+                    InlineOrRefData::InputValueNoObject(InputValueNoObject::String(string_input)),
                 )]),
             })),
         }
