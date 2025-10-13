@@ -31,5 +31,19 @@ jobs:
       - name: Setup
         run: docker compose up db -d
 
+      - name: Start service
+        run: cargo run -p demo-service &
+
       - name: Validate service
-        run: python3 .github/workflows/ogc_validator.py
+        uses: geo-engine/ogc-validator@v1
+        with:
+          service-url: http://localhost:8484/
+          ogc-api-processes: true
+          ogc-api-processes-version: 1.3-teamengine-6.0.0-RC2
+          echoprocessid: echo
+          ogc-api-processes-ignore: |-
+            testJobCreationOp
+            testJobCreationInputValidation
+            testJobCreationRequest
+            testJobCreationInputRef
+            testJobList
