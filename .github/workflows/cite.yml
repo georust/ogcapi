@@ -26,6 +26,10 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+      # cite:
+      #   image: docker.io/ogccite/ets-ogcapi-features10
+      #   ports:
+      #     - 8080:8080
 
     steps:
       - name: Checkout
@@ -44,7 +48,6 @@ jobs:
           DATABASE_URL: "postgresql://postgres:password@localhost:5432/ogcapi"
 
       - name: Check running service
-        # run: curl --retry 20 --retry-delay 5 -s -o /dev/null http://localhost:8484
         run: |
           until [ \
             "$(curl -s -w '%{http_code}' -o /dev/null "http://localhost:8484/")" \
@@ -53,8 +56,14 @@ jobs:
             sleep 5
           done
 
+      - name: Downgrade click
+        run: pip install ogc-cite-runner "click<8.2.0"
+
       - name: Validate
-        uses: OSGEO/ogc-cite-runner@v0.3.0
-        with:
-          test_suite_identifier: ogcapi-features-1.0
-          test_session_arguments: iut=http://host.docker.internal:8484
+        run: docker run -d --network host docker.io/ogccite/ets-ogcapi-features10 && sleep 20 && ogc-cite-runner execute-test-suite http://localhost:8080/teamengine ogcapi-features-1.0 --suite-input iut http://host.docker.internal:8484
+      #   uses: OSGEO/ogc-cite-runner@v0.3.0
+      #   with:
+      #     test_suite_identifier: ogcapi-features-1.0
+      #     test_session_arguments: >-
+      #       iut=http://host.docker.internal:8484
+

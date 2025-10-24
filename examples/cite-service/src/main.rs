@@ -7,10 +7,12 @@ use ogcapi::services::{AppState, Config, Service};
 async fn main() {
     // setup env
     dotenvy::dotenv().ok();
-    
+
     // setup tracing
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new("cite_service=debug,ogcapi=debug,sqlx=warn"))
+        .with(tracing_subscriber::EnvFilter::new(
+            "cite_service=debug,ogcapi=debug,sqlx=warn",
+        ))
         .with(tracing_subscriber::fmt::layer().pretty())
         .init();
 
