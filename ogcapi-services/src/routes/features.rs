@@ -128,9 +128,7 @@ async fn read(
     let mut headers = HeaderMap::new();
     headers.insert(
         "Content-Crs",
-        query
-            .crs
-            .to_string()
+        format!("<{}>", query.crs)
             .parse()
             .context("Unable to parse `Content-Crs` header value")?,
     );
@@ -328,7 +326,7 @@ async fn items(
     }
 
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Crs", query.crs.to_string().parse().unwrap());
+    headers.insert("Content-Crs", format!("<{}>", query.crs).parse().unwrap());
     headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(fc)))
