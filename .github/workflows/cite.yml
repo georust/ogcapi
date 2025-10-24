@@ -13,9 +13,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libclang-dev libgdal-dev
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -26,10 +23,10 @@ jobs:
         run: docker ps -a
 
       - name: Build
-        run: docker exec -ti ogcapi cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
+        run: docker exec ogcapi cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
 
       - name: Run
-        run: docker exec -idt ogcapi cargo run -p demo-service
+        run: docker exec -d ogcapi cargo run -p cite-service
 
       - name: Validate
         uses: OSGEO/ogc-cite-runner@v0.3.0
