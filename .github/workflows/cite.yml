@@ -12,21 +12,47 @@ jobs:
     name: OGC Cite Validation (Features)
     runs-on: ubuntu-latest
 
+    services:
+      db:
+        image: docker.io/postgis/postgis
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: ogcapi
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup
-        run: docker compose up --build -d
-
-      - name: Check running containers
-        run: docker ps -a
-
-      - name: Build
-        run: docker exec ogcapi cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
+      - name: Load
+        run: cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
+        env:
+          DATABASE_URL: "postgresql://postgres:password@localhost:5432/ogcapi"
 
       - name: Run
-        run: docker exec -d ogcapi cargo run -p cite-service
+        run: RUNNER_TRACKING_ID="" && cargo run -p cite-service &
+        env:
+          APP_HOST: "0.0.0.0"
+          APP_PORT: "8484"
+          DATABASE_URL: "postgresql://postgres:password@localhost:5432/ogcapi"
+
+      - name: Check running service
+        # run: curl --retry 20 --retry-delay 5 -s -o /dev/null http://localhost:8484
+        run: |
+          until [ \
+            "$(curl -s -w '%{http_code}' -o /dev/null "http://localhost:8484/")" \
+            -eq 200 ]
+          do
+            sleep 5
+          done
+
 
       - name: Validate
         uses: OSGEO/ogc-cite-runner@v0.3.0

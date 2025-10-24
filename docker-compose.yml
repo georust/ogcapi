@@ -47,6 +47,8 @@ services:
     command: tail -f /dev/null
     ports:
       - ${APP_PORT}:${APP_PORT}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   minio:
     image: docker.io/minio/minio

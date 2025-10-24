@@ -4,12 +4,9 @@ version = "0.1.0"
 edition.workspace = true
 publish = false
 
-[features]
-stac = []
 
 [dependencies]
 clap = { version = "4.5", features = ["derive", "env"] }
-dotenvy = "0.15.7"
 tokio = { version = "1.47", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
@@ -18,6 +15,4 @@ ogcapi = { path = "../../ogcapi", version = "0.3", features = [
     "services",
     "common",
     "features",
-    "greeter",
-    "geojson-loader",
 ] }
