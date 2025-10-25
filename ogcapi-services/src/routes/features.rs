@@ -15,7 +15,7 @@ use ogcapi_types::{
         link_rel::{COLLECTION, NEXT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
     },
-    features::{Feature, FeatureCollection, FeatureId, Query},
+    features::{Feature, FeatureCollection, FeatureId, Query, Queryables},
 };
 
 use crate::{
@@ -274,7 +274,18 @@ async fn items(
         .ok_or(Error::NotFound)?;
     is_supported_crs(&collection, &query.crs).await?;
 
-    // TODO: validate additional parameters
+    // validate additional parameters
+    let queryables = state.drivers.features.queryables(&collection_id).await?;
+    if !queryables.additional_properties {
+        for prop in query.additional_parameters.keys() {
+            if !queryables.queryables.contains_key(prop) {
+                return Err(Error::Exception(
+                    StatusCode::BAD_REQUEST,
+                    format!("Property {prop} is not queryable!"),
+                ));
+            }
+        }
+    }
 
     let mut fc = state
         .drivers
