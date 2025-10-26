@@ -23,9 +23,9 @@ use crate::{
     extractors::{Qs, RemoteUrl},
 };
 
-const CONFORMANCE: [&str; 3] = [
+const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-    // "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
     "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
 ];
@@ -259,11 +259,15 @@ async fn items(
 
     // Limit
     if let Some(limit) = query.limit {
+        // TODO: sync with opanapi specification
         if limit > 10000 {
             query.limit = Some(10000);
         }
+        if limit == 0 {
+            query.limit = Some(1)
+        }
     } else {
-        query.limit = Some(100);
+        query.limit = Some(10);
     }
 
     let collection = state
@@ -341,6 +345,39 @@ async fn items(
     headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(fc)))
+}
+
+/// Fetch queriables of a collection
+///
+/// Fetch the feature with id `featureId` in the feature collection with id
+/// `collectionId`.
+#[utoipa::path(get, path = "/collections/{collectionId}/queryables", tag = "Schema", 
+    params(
+        ("collectionId" = String, Path, description = "local identifier of a collection")
+    ),
+    responses(
+        (
+            status = 200,
+            description = "Fetch the queryable properties of the collection with id `collectionId`", 
+            body = Queryables),
+        (
+            status = 404, description = "The requested resource does not exist \
+            on the server. For example, a path parameter had an incorrect value.", 
+            body = Exception, example = json!(Exception::new_from_status(404))
+        ),
+        (
+            status = 500, description = "A server error occurred.", 
+            body = Exception, example = json!(Exception::new_from_status(500))
+        )
+    )
+)]
+async fn queryables(
+    State(state): State<AppState>,
+    Path(collection_id): Path<String>,
+) -> Result<Json<Queryables>> {
+    let queryables = state.drivers.features.queryables(&collection_id).await?;
+
+    Ok(Json(queryables))
 }
 
 async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Error> {

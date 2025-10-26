@@ -153,6 +153,7 @@ impl FeatureTransactions for Db {
                 .unwrap_or_default()
                 .as_srid();
 
+            // TODO: handle antimeridian (lower > upper on axis 1)
             let intersection = match bbox {
                 Bbox::Bbox2D(bbox) => format!(
                     "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}, {}, {}, {}), {storage_srid}))",

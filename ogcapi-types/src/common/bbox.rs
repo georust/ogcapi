@@ -3,9 +3,6 @@ use std::{fmt, str};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-type Bbox2D = [f64; 4];
-type Bbox3D = [f64; 6];
-
 /// Each bounding box is provided as four or six numbers, depending on
 /// whether the coordinate reference system includes a vertical axis
 /// (height or depth):
@@ -41,9 +38,9 @@ type Bbox3D = [f64; 6];
 #[serde(untagged)]
 pub enum Bbox {
     #[schema(value_type = Vec<f64>)]
-    Bbox2D(Bbox2D),
+    Bbox2D([f64; 4]),
     #[schema(value_type = Vec<f64>)]
-    Bbox3D(Bbox3D),
+    Bbox3D([f64; 6]),
 }
 
 impl fmt::Display for Bbox {
@@ -79,9 +76,27 @@ impl str::FromStr for Bbox {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let numbers: Vec<f64> = s
             .split(',')
-            .map(|d| d.trim().parse::<f64>())
+            .map(|d| d.trim().trim_matches(&['[', ']']).parse::<f64>())
             .collect::<Result<Vec<f64>, std::num::ParseFloatError>>()
             .map_err(|_| "Unable to convert bbox coordinates to float")?;
+
+        let n = numbers.len();
+
+        // check number of coordinates
+        if !(n == 4 || n == 6) {
+            return Err("Expected 4 or 6 numbers");
+        }
+
+        // // check lower <= upper on axis 2
+        // if (n == 4 && numbers[1] > numbers[3]) || (n == 6 && numbers[1] > numbers[4]) {
+        //     // TODO: ensure this assumption is correct
+        //     return Err("Lower value of coordinate axis 2 must be larger than upper value!");
+        // }
+
+        // check lower <= upper on axis 3
+        if n == 6 && numbers[2] > numbers[5] {
+            return Err("Lower value of coordinate axis 3 must be larger than upper value!");
+        }
 
         match numbers.len() {
             4 => Ok(Bbox::Bbox2D([

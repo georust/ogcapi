@@ -29,23 +29,19 @@ jobs:
       # cite:
       #   image: docker.io/ogccite/ets-ogcapi-features10
       #   ports:
-      #     - 8080:8080
+      #     - 9080:8080
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Load
-        run: cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
-        env:
-          DATABASE_URL: "postgresql://postgres:password@localhost:5432/ogcapi"
+        run: cargo run -p data-loader -- --input data/ne_110m_populated_places.geojson --collection places
 
       - name: Run
         run: RUNNER_TRACKING_ID="" && cargo run -p cite-service &
-        env:
-          APP_HOST: "0.0.0.0"
-          APP_PORT: "8484"
-          DATABASE_URL: "postgresql://postgres:password@localhost:5432/ogcapi"
+        # env:
+        #   PUBLIC_URL: "http://host.docker.internal:8484"
 
       - name: Check running service
         run: |
@@ -55,15 +51,36 @@ jobs:
           do
             sleep 5
           done
+          curl -v http://localhost:8484/collections | jq
 
       - name: Downgrade click
         run: pip install ogc-cite-runner "click<8.2.0"
 
-      - name: Validate
-        run: docker run -d --network host docker.io/ogccite/ets-ogcapi-features10 && sleep 20 && ogc-cite-runner execute-test-suite http://localhost:8080/teamengine ogcapi-features-1.0 --suite-input iut http://host.docker.internal:8484
-      #   uses: OSGEO/ogc-cite-runner@v0.3.0
-      #   with:
-      #     test_suite_identifier: ogcapi-features-1.0
-      #     test_session_arguments: >-
-      #       iut=http://host.docker.internal:8484
+      - name: Cite container
+        run: docker run --detach --rm --name teamengine --add-host=host.docker.internal:host-gateway --publish 9080:8080 ogccite/teamengine-production:1.0-SNAPSHOT
 
+      - name: Check running container
+        run: |
+          until [ \
+            "$(curl -s -w '%{http_code}' -o /dev/null "http://localhost:9080/teamengine")" \
+            -eq 200 ]
+            echo $http_code
+          do
+            sleep 5
+          done
+
+      - name: Docker
+        run: docker network ls && docker ps
+
+      - name: Validate
+        run: ogc-cite-runner execute-test-suite --with-passed --with-failed http://localhost:9080/teamengine ogcapi-features-1.0 --suite-input iut http://localhost:8484
+        # uses: OSGEO/ogc-cite-runner@v0.3.0
+        # with:
+        #   test_suite_identifier: ogcapi-features-1.0
+        #   test_session_arguments: iut=http://host.docker.internal:8484
+        #   teamengine_url: "http://localhost:9080/teamengine"
+        #   teamengine_username: "ogctest"
+        #   teamengine_password: "ogctest"
+        #   with_failed: "true"
+        #   with_skipped: "true"
+        #   exit_with_error: "false"
