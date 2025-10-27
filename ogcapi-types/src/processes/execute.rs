@@ -8,6 +8,7 @@ use crate::common::{Bbox, Link, OGC_CRS84};
 
 /// Process execution
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Execute {
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub inputs: HashMap<String, Input>,

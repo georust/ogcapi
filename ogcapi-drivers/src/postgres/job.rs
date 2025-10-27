@@ -13,8 +13,6 @@ use super::Db;
 #[async_trait::async_trait]
 impl JobHandler for Db {
     async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String> {
-        eprintln!("{}", serde_json::to_string_pretty(job).unwrap());
-        eprintln!("{}", serde_json::to_string_pretty(&response_mode).unwrap());
         let (id,): (String,) = sqlx::query_as(
             r#"
             INSERT INTO meta.jobs(
@@ -150,24 +148,23 @@ impl JobHandler for Db {
     }
 
     async fn results(&self, id: &str) -> anyhow::Result<ProcessResult> {
-        let results: Option<(
-            Option<sqlx::types::Json<HashMap<String, ExecuteResult>>>,
-            sqlx::types::Json<Response>,
-        )> = sqlx::query_as(
-            r#"
+        let results: Option<(Json<Option<HashMap<String, ExecuteResult>>>, Json<Response>)> = dbg!(
+            sqlx::query_as(
+                r#"
             SELECT results, to_jsonb(response)
             FROM meta.jobs
             WHERE job_id = $1
             "#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+            )
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+        )?;
 
         Ok(match results {
             None => ProcessResult::NoSuchJob,
-            Some((None, _)) => ProcessResult::NotReady,
-            Some((Some(Json(results)), Json(response_mode))) => ProcessResult::Results {
+            Some((Json(None), _)) => ProcessResult::NotReady,
+            Some((Json(Some(results)), Json(response_mode))) => ProcessResult::Results {
                 results,
                 response_mode,
             },

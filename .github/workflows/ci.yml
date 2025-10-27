@@ -66,15 +66,18 @@ jobs:
           npx wait-on http://localhost:8484/
 
       - name: Validate service
-        uses: geo-engine/ogc-validator@v1
+        uses: geo-engine/ogc-validator@v2
         with:
           service-url: http://localhost:8484/
           ogc-api-processes: true
-          ogc-api-processes-version: 1.3-teamengine-6.0.0-RC2
+          ogc-api-processes-container-tag: 1.3-teamengine-6.0.0-RC2
           echoprocessid: echo
+          # cf. <https://github.com/opengeospatial/ets-ogcapi-processes10/issues/106>
           ogc-api-processes-ignore: |-
-            testJobCreationOp
             testJobCreationInputValidation
-            testJobCreationRequest
             testJobCreationInputRef
-            testJobList
+          ogc-api-features: true
+          ogc-api-features-container-tag: 1.9-teamengine-6.0.0-RC2
+          ogc-api-features-ignore: |-
+            featureOperation
+            validateFeatureResponse

@@ -1,6 +1,8 @@
+use crate::Error;
 use axum::{
     Json,
     body::Body,
+    extract::{FromRequest, Request},
     http::{HeaderValue, StatusCode},
     response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
@@ -10,7 +12,7 @@ use mail_builder::headers::content_type::ContentType;
 use mail_builder::headers::text::Text;
 use mail_builder::mime::{BodyPart, MimePart};
 use ogcapi_types::{
-    common::Link,
+    common::{Exception, Link},
     processes::{ExecuteResult, InlineOrRefData, StatusInfo},
 };
 use std::borrow::Cow;
@@ -407,6 +409,38 @@ fn qualified_input_value_to_binary(
             BinaryData {
                 data: serde_json::to_vec(&object).unwrap_or_default(),
                 content_type: "application/json".to_string(),
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+#[must_use]
+pub struct ValidParams<T>(pub T);
+
+impl<T, S> FromRequest<S> for ValidParams<T>
+where
+    T: FromRequest<S>,
+    T::Rejection: std::fmt::Display,
+    S: Send + Sync,
+{
+    type Rejection = Error;
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        let json = T::from_request(req, state).await;
+
+        match json {
+            Ok(value) => Ok(ValidParams(value)),
+            Err(rejection) => {
+                // let response_body = rejection.body_text();
+                Err(Error::OgcApiException(
+                    Exception::new("InvalidParameterValue")
+                        .status(404)
+                        .title("InvalidParameterValue")
+                        .detail(format!(
+                            "The following parameters are not recognized: {rejection}",
+                        )),
+                ))
             }
         }
     }

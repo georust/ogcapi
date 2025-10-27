@@ -8,6 +8,7 @@ use futures::TryFutureExt;
 use hyper::HeaderMap;
 use ogcapi_drivers::ProcessResult;
 use tokio::spawn;
+use tracing::error;
 use url::Position;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
@@ -26,8 +27,9 @@ use ogcapi_types::{
 
 use crate::{
     AppState, Error, Result,
+    error::{read_lock, write_lock},
     extractors::RemoteUrl,
-    processes::{ProcessExecuteResponse, ProcessResultsResponse},
+    processes::{ProcessExecuteResponse, ProcessResultsResponse, ValidParams},
 };
 
 const CONFORMANCE: [&str; 5] = [
@@ -65,20 +67,20 @@ async fn processes(
     RemoteUrl(mut url): RemoteUrl,
     Query(mut query): Query<LimitOffsetPagination>,
 ) -> Result<Json<ProcessList>> {
-    let limit = query
-        .limit
-        .unwrap_or_else(|| state.processors.read().unwrap().len());
+    let processors = read_lock(&state.processors);
+    let limit = query.limit.unwrap_or_else(|| processors.len());
     let offset = query.offset.unwrap_or(0);
 
-    let mut summaries: Vec<ProcessSummary> = state
-        .processors
-        .read()
-        .unwrap()
-        .clone()
-        .into_iter()
+    let mut summaries: Vec<ProcessSummary> = processors
+        .iter()
         .skip(offset)
         .take(limit)
-        .map(|(_id, p)| p.process().unwrap().summary)
+        .filter_map(|(_id, p)| {
+            p.process()
+                .map(|p| p.summary)
+                .inspect_err(|e| error!("Error when accessing process: {e}"))
+                .ok()
+        })
         .collect();
 
     let mut links = vec![Link::new(&url, SELF).mediatype(JSON)];
@@ -145,10 +147,11 @@ async fn process(
     RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
 ) -> Result<Json<Process>> {
-    match state.processors.read().unwrap().get(&process_id) {
-        Some(processor) => {
-            let mut process = processor.process().unwrap();
-
+    match read_lock(&state.processors)
+        .get(&process_id)
+        .and_then(|processor| processor.process().ok())
+    {
+        Some(mut process) => {
             let self_link = Link::new(url.clone(), SELF).mediatype(JSON);
             if let Some(link) = process.summary.links.iter_mut().find(|l| l.rel == SELF) {
                 *link = Link::new(url.clone(), SELF).mediatype(JSON);
@@ -189,22 +192,9 @@ async fn execution(
     RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
     headers: HeaderMap,
-    Json(execute): Json<Execute>,
+    ValidParams(Json(execute)): ValidParams<Json<Execute>>,
 ) -> Result<ProcessExecuteResponse> {
-    if !execute.extra_fields.is_empty() {
-        return Err(Error::OgcApiException(
-            Exception::new("InvalidParameterValue")
-                .status(404)
-                .title("InvalidParameterValue")
-                .detail(format!(
-                    "The following parameters are not recognized: {:?}",
-                    execute.extra_fields.keys()
-                )),
-        ));
-    }
-
-    let processors = state.processors.read().unwrap().clone();
-    let Some(processor) = processors.get(&process_id).cloned() else {
+    let Some(processor) = read_lock(&state.processors).get(&process_id).cloned() else {
         return Err(Error::Exception(
             StatusCode::NOT_FOUND,
             format!("No process with id `{process_id}`"),
@@ -229,7 +219,6 @@ async fn execution(
     }
 
     let base_url = url[..url::Position::BeforePath].to_string();
-    dbg!(&base_url);
 
     let mut status_info = StatusInfo {
         process_id: Some(process_id),
@@ -269,8 +258,6 @@ async fn execution(
                     status_info.message = None;
                     status_info.progress = Some(100);
 
-                    dbg!(&res);
-
                     if let Ok(results_link) =
                         url.join(&format!("/jobs/{}/results", status_info.job_id))
                     {
@@ -287,19 +274,17 @@ async fn execution(
                 }
             };
 
-            let _ = dbg!(
-                state
-                    .drivers
-                    .jobs
-                    .finish(
-                        &status_info.job_id,
-                        &status_info.status,
-                        status_info.message.clone(),
-                        status_info.links.clone(),
-                        results,
-                    )
-                    .await
-            );
+            let _ = state
+                .drivers
+                .jobs
+                .finish(
+                    &status_info.job_id,
+                    &status_info.status,
+                    status_info.message.clone(),
+                    status_info.links.clone(),
+                    results,
+                )
+                .await;
         });
     }
 
@@ -569,7 +554,7 @@ async fn results(
 }
 
 pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
-    let mut root = state.root.write().unwrap();
+    let mut root = write_lock(&state.root);
     root.links.append(&mut vec![
         Link::new("processes", PROCESSES)
             .mediatype(JSON)
@@ -579,7 +564,7 @@ pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
         //     .title("The endpoint for job monitoring"),
     ]);
 
-    state.conformance.write().unwrap().extend(&CONFORMANCE);
+    write_lock(&state.conformance).extend(&CONFORMANCE);
 
     OpenApiRouter::new()
         .routes(routes!(processes))

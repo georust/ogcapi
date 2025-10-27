@@ -36,6 +36,7 @@ pub struct EchoInputs {
     // pub bounding_box_input: Option<BoundingBoxInput>,
     // pub images_input: Option<Vec<String>>,
     // pub feature_collection_input: Option<String>,
+    pub pause: Option<u64>,
 }
 
 #[derive(Deserialize, Serialize, Debug, JsonSchema)]
@@ -174,20 +175,50 @@ impl Processor for Echo {
                     .title("Execution endpoint"),
                 ],
             },
-            inputs: HashMap::from([(
-                "stringInput".to_string(),
-                InputDescription {
-                    description_type: DescriptionType {
-                        title: Some("String Literal Input Example".to_string()),
-                        description: Some(
-                            "This is an example of a STRING literal input.".to_string(),
-                        ),
+            inputs: HashMap::from([
+                (
+                    "stringInput".to_string(),
+                    InputDescription {
+                        description_type: DescriptionType {
+                            title: Some("String Literal Input Example".to_string()),
+                            description: Some(
+                                "This is an example of a STRING literal input.".to_string(),
+                            ),
+                            ..Default::default()
+                        },
+                        schema: generator.root_schema_for::<StringInput>().to_value(),
                         ..Default::default()
                     },
-                    schema: generator.root_schema_for::<StringInput>().to_value(),
-                    ..Default::default()
-                },
-            )]),
+                ),
+                (
+                    "doubleInput".to_string(),
+                    InputDescription {
+                        description_type: DescriptionType {
+                            title: Some("Double Literal Input Example".to_string()),
+                            description: Some(
+                                "This is an example of a DOUBLE literal input.".to_string(),
+                            ),
+                            ..Default::default()
+                        },
+                        schema: generator.root_schema_for::<f64>().to_value(),
+                        ..Default::default()
+                    },
+                ),
+                (
+                    "pause".to_string(),
+                    InputDescription {
+                        description_type: DescriptionType {
+                            title: Some("Pause Duration".to_string()),
+                            description: Some(
+                                "Optional pause duration in seconds before responding.".to_string(),
+                            ),
+                            ..Default::default()
+                        },
+                        schema: generator.root_schema_for::<u64>().to_value(),
+                        ..Default::default()
+                    },
+                ),
+            ]),
             outputs: HashMap::from([(
                 "stringOutput".to_string(),
                 OutputDescription {
@@ -201,6 +232,10 @@ impl Processor for Echo {
     async fn execute(&self, execute: Execute) -> Result<HashMap<String, ExecuteResult>> {
         let value = serde_json::to_value(execute.inputs)?;
         let inputs: EchoInputs = serde_json::from_value(value)?;
+
+        if let Some(pause_duration) = inputs.pause {
+            tokio::time::sleep(std::time::Duration::from_secs(pause_duration)).await;
+        }
 
         let output_values = EchoOutputs {
             string_output: inputs.string_input,

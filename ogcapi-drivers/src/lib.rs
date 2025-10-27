@@ -110,6 +110,7 @@ pub trait JobHandler: Send + Sync {
 }
 
 #[cfg(feature = "processes")]
+#[derive(Debug)]
 pub enum ProcessResult {
     NoSuchJob,
     NotReady,
