@@ -14,6 +14,7 @@ pub struct Execute {
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub outputs: HashMap<String, Output>,
     #[serde(default)]
+    // pub response: Option<Response>,
     pub response: Response,
     #[schema(nullable = false)]
     #[serde(default)]
@@ -28,7 +29,7 @@ pub enum Input {
     InlineOrRefDataArray(Vec<InlineOrRefData>),
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum InlineOrRefData {
     InputValueNoObject(InputValueNoObject),
@@ -36,7 +37,7 @@ pub enum InlineOrRefData {
     Link(Link),
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum InputValueNoObject {
     String(String),
@@ -49,7 +50,7 @@ pub enum InputValueNoObject {
     Bbox(BoundingBox), // bbox is actually an object
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 pub struct BoundingBox {
     pub bbox: Bbox,
     #[serde(default = "default_crs")]
@@ -60,14 +61,14 @@ fn default_crs() -> String {
     OGC_CRS84.to_string()
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 pub struct QualifiedInputValue {
     pub value: InputValue,
     #[serde(flatten)]
     pub format: Format,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum InputValue {
     InputValueNoObject(InputValueNoObject),
@@ -85,7 +86,7 @@ pub struct Output {
     pub transmission_mode: TransmissionMode,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Format {
     #[schema(nullable = false)]
@@ -99,7 +100,7 @@ pub struct Format {
     pub schema: Option<Schema>,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum Schema {
     String(String),
@@ -144,4 +145,10 @@ pub struct Subscriber {
     #[schema(nullable = false, format = Uri)]
     #[serde(default)]
     pub failed_uri: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+pub struct ExecuteResult {
+    pub output: Output,
+    pub data: InlineOrRefData,
 }

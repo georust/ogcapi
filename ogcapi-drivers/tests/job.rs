@@ -1,7 +1,7 @@
 #[cfg(feature = "processes")]
 mod postgres {
     use ogcapi_drivers::{JobHandler, postgres::Db};
-    use ogcapi_types::processes::{StatusCode, StatusInfo};
+    use ogcapi_types::processes::{Response, StatusCode, StatusInfo};
 
     #[sqlx::test]
     async fn job_handling(pool: sqlx::PgPool) -> () {
@@ -13,7 +13,7 @@ mod postgres {
         };
 
         // register
-        let job_id = db.register(&job).await.unwrap();
+        let job_id = db.register(&job, Response::default()).await.unwrap();
 
         assert_eq!(job_id, job.job_id);
 

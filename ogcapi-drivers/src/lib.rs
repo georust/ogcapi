@@ -3,12 +3,14 @@ pub mod postgres;
 #[cfg(feature = "s3")]
 pub mod s3;
 
+use std::collections::HashMap;
+
 #[cfg(feature = "common")]
-use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
+use ogcapi_types::common::{Collection, Collections, Link, Query as CollectionQuery};
 #[cfg(feature = "edr")]
 use ogcapi_types::edr::{Query as EdrQuery, QueryType};
 #[cfg(feature = "processes")]
-use ogcapi_types::processes::{Results, StatusInfo};
+use ogcapi_types::processes::{ExecuteResult, Response, StatusCode, StatusInfo};
 #[cfg(feature = "stac")]
 use ogcapi_types::stac::SearchParams;
 #[cfg(feature = "styles")]
@@ -85,15 +87,36 @@ pub trait EdrQuerier: Send + Sync {
 #[cfg(feature = "processes")]
 #[async_trait::async_trait]
 pub trait JobHandler: Send + Sync {
-    async fn register(&self, job: &StatusInfo) -> anyhow::Result<String>;
+    async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String>;
+
+    async fn update(&self, job: &StatusInfo) -> anyhow::Result<()>;
 
     async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>>;
 
     async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
+    async fn finish(
+        &self,
+        job_id: &str,
+        status: &StatusCode,
+        message: Option<String>,
+        links: Vec<Link>,
+        results: Option<HashMap<String, ExecuteResult>>,
+    ) -> anyhow::Result<()>;
+
     async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
-    async fn results(&self, id: &str) -> anyhow::Result<Option<Results>>;
+    async fn results(&self, id: &str) -> anyhow::Result<ProcessResult>;
+}
+
+#[cfg(feature = "processes")]
+pub enum ProcessResult {
+    NoSuchJob,
+    NotReady,
+    Results {
+        results: HashMap<String, ExecuteResult>,
+        response_mode: Response,
+    },
 }
 
 /// Trait for `Style` transactions

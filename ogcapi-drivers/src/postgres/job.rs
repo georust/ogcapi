@@ -1,27 +1,102 @@
-use ogcapi_types::processes::{Results, StatusCode, StatusInfo};
+use std::collections::HashMap;
 
-use crate::JobHandler;
+use ogcapi_types::{
+    common::Link,
+    processes::{ExecuteResult, Response, StatusCode, StatusInfo},
+};
+use sqlx::types::Json;
+
+use crate::{JobHandler, ProcessResult};
 
 use super::Db;
 
 #[async_trait::async_trait]
 impl JobHandler for Db {
-    async fn register(&self, job: &StatusInfo) -> anyhow::Result<String> {
+    async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String> {
+        eprintln!("{}", serde_json::to_string_pretty(job).unwrap());
+        eprintln!("{}", serde_json::to_string_pretty(&response_mode).unwrap());
         let (id,): (String,) = sqlx::query_as(
             r#"
             INSERT INTO meta.jobs(
-                job_id, process_id, status, created, updated, links
+                job_id,
+                process_id,
+                status,
+                created,
+                updated,
+                links,
+                progress,
+                message,
+                response
             )
             VALUES (
-                $1 ->> 'jobID', $1 ->> 'processID', $1 -> 'status', NOW(), NOW(), $1 -> 'links'
+                CASE WHEN(($1 ->> 'jobID') <> '') THEN $1 ->> 'jobID' ELSE gen_random_uuid()::text END,
+                $1 ->> 'processID',
+                $1 -> 'status',
+                NOW(),
+                NOW(),
+                $1 -> 'links',
+                COALESCE(($1 ->> 'progress')::smallint, 0),
+                COALESCE($1 ->> 'message', ''),
+                ($2 #>> '{}')::response_type
             )
             RETURNING job_id
             "#,
         )
         .bind(sqlx::types::Json(job))
+        .bind(sqlx::types::Json(response_mode))
         .fetch_one(&self.pool)
         .await?;
         Ok(id)
+    }
+
+    async fn update(&self, job: &StatusInfo) -> anyhow::Result<()> {
+        sqlx::query(
+            r#"
+            UPDATE meta.jobs
+            SET status = $1 -> 'status',
+                message = $1 -> 'message',
+                finished = NOW(), -- TODO: only set if status is successful or failed
+                updated = NOW(),
+                progress = ($1 -> 'progress')::smallint,
+                links = $1 -> 'links'
+            WHERE job_id = $1 ->> 'jobID'
+            "#,
+        )
+        .bind(sqlx::types::Json(job))
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    async fn finish(
+        &self,
+        job_id: &str,
+        status: &StatusCode,
+        message: Option<String>,
+        links: Vec<Link>,
+        results: Option<HashMap<String, ExecuteResult>>,
+    ) -> anyhow::Result<()> {
+        sqlx::query(
+            r#"
+            UPDATE meta.jobs
+            SET status = $2,
+                message = COALESCE($3, ''),
+                links = $4,
+                results = $5,
+                finished = NOW(),
+                updated = NOW(),
+                progress = 100
+            WHERE job_id = $1
+            "#,
+        )
+        .bind(job_id)
+        .bind(sqlx::types::Json(status))
+        .bind(message)
+        .bind(sqlx::types::Json(links))
+        .bind(sqlx::types::Json(results))
+        .execute(&self.pool)
+        .await?;
+        Ok(())
     }
 
     async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>> {
@@ -74,10 +149,13 @@ impl JobHandler for Db {
         Ok(status.map(|s| s.0))
     }
 
-    async fn results(&self, id: &str) -> anyhow::Result<Option<Results>> {
-        let results: Option<sqlx::types::Json<Results>> = sqlx::query_scalar(
+    async fn results(&self, id: &str) -> anyhow::Result<ProcessResult> {
+        let results: Option<(
+            Option<sqlx::types::Json<HashMap<String, ExecuteResult>>>,
+            sqlx::types::Json<Response>,
+        )> = sqlx::query_as(
             r#"
-            SELECT results as "results!"
+            SELECT results, to_jsonb(response)
             FROM meta.jobs
             WHERE job_id = $1
             "#,
@@ -86,6 +164,13 @@ impl JobHandler for Db {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(results.map(|r| r.0))
+        Ok(match results {
+            None => ProcessResult::NoSuchJob,
+            Some((None, _)) => ProcessResult::NotReady,
+            Some((Some(Json(results)), Json(response_mode))) => ProcessResult::Results {
+                results,
+                response_mode,
+            },
+        })
     }
 }

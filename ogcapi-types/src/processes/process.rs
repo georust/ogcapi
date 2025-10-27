@@ -24,7 +24,7 @@ pub struct ProcessSummary {
     pub links: Vec<Link>,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum JobControlOptions {
     SyncExecute,

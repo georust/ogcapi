@@ -1,38 +1,44 @@
-use std::collections::HashMap;
-
 use axum::{
     Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use futures::TryFutureExt;
+use hyper::HeaderMap;
+use ogcapi_drivers::ProcessResult;
+use tokio::spawn;
 use url::Position;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
     common::{
         Exception, Link,
-        link_rel::{NEXT, PREV, PROCESSES, SELF},
+        link_rel::{NEXT, PREV, PROCESSES, RESULTS, SELF, STATUS},
         media_type::JSON,
         query::LimitOffsetPagination,
     },
     processes::{
-        Execute, InlineOrRefData, JobList, Process, ProcessList, ProcessSummary, Results,
+        Execute, JobControlOptions, JobList, Process, ProcessList, ProcessSummary, Results,
         ResultsQuery, StatusInfo,
     },
 };
 
-use crate::{AppState, Error, Result, extractors::RemoteUrl, processes::ProcessResponse};
+use crate::{
+    AppState, Error, Result,
+    extractors::RemoteUrl,
+    processes::{ProcessExecuteResponse, ProcessResultsResponse},
+};
 
-const CONFORMANCE: [&str; 4] = [
+const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/core",
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/ogc-process-description",
     "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/json",
     // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/html",
-    // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/oas30",
-    // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/job-list",
+    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/job-list",
     // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/callback",
-    "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/dismiss",
+    // "http://www.opengis.net/spec/ogcapi-processes-1/1.0/conf/dismiss",
 ];
 
 /// Retrieve the list of available processes
@@ -180,23 +186,215 @@ async fn process(
 )]
 async fn execution(
     State(state): State<AppState>,
+    RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
+    headers: HeaderMap,
     Json(execute): Json<Execute>,
-) -> Result<impl IntoResponse> {
-    let processors = state.processors.read().unwrap().clone();
-    let processor = processors.get(&process_id);
-    match processor {
-        Some(processor) => match processor.execute(execute).await {
-            Ok(body) => Ok(ProcessResponse(body)),
-            Err(e) => Err(Error::Anyhow(anyhow::anyhow!(e))),
-        },
-        None => Err(Error::Exception(
-            StatusCode::NOT_FOUND,
-            format!("No process with id `{process_id}`"),
-        )),
+) -> Result<ProcessExecuteResponse> {
+    if !execute.extra_fields.is_empty() {
+        return Err(Error::OgcApiException(
+            Exception::new("InvalidParameterValue")
+                .status(404)
+                .title("InvalidParameterValue")
+                .detail(format!(
+                    "The following parameters are not recognized: {:?}",
+                    execute.extra_fields.keys()
+                )),
+        ));
     }
 
-    // TODO: add to job list (if async?)
+    let processors = state.processors.read().unwrap().clone();
+    let Some(processor) = processors.get(&process_id).cloned() else {
+        return Err(Error::Exception(
+            StatusCode::NOT_FOUND,
+            format!("No process with id `{process_id}`"),
+        ));
+    };
+
+    let process_description = processor.process()?;
+
+    let response_mode = execute.response.clone();
+    let negotiated_execution_mode =
+        negotiate_execution_mode(&headers, &process_description.summary.job_control_options);
+
+    if negotiated_execution_mode.is_sync() {
+        let results = processor.execute(execute).await?;
+        return Ok(ProcessExecuteResponse::Synchronous {
+            results: ProcessResultsResponse {
+                results,
+                response_mode,
+            },
+            was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
+        });
+    }
+
+    let base_url = url[..url::Position::BeforePath].to_string();
+    dbg!(&base_url);
+
+    let mut status_info = StatusInfo {
+        process_id: Some(process_id),
+        status: ogcapi_types::processes::StatusCode::Accepted,
+        ..Default::default()
+    };
+
+    let job_id = state
+        .drivers
+        .jobs
+        .register(&status_info, response_mode)
+        .await?;
+
+    status_info.job_id = job_id;
+    status_info.links.push(
+        Link::new(format!("{base_url}/jobs/{}", status_info.job_id), STATUS)
+            .title("Job status")
+            .mediatype(JSON),
+    );
+
+    {
+        let mut status_info = status_info.clone();
+        spawn(async move {
+            status_info.status = ogcapi_types::processes::StatusCode::Running;
+
+            let result = state
+                .drivers
+                .jobs
+                .update(&status_info)
+                .and_then(|_| processor.execute(execute))
+                .await;
+            let mut results = None;
+
+            match result {
+                Ok(res) => {
+                    status_info.status = ogcapi_types::processes::StatusCode::Successful;
+                    status_info.message = None;
+                    status_info.progress = Some(100);
+
+                    dbg!(&res);
+
+                    if let Ok(results_link) =
+                        url.join(&format!("/jobs/{}/results", status_info.job_id))
+                    {
+                        status_info
+                            .links
+                            .push(Link::new(results_link, RESULTS).title("Job result"));
+                    }
+
+                    results = Some(res);
+                }
+                Err(e) => {
+                    status_info.status = ogcapi_types::processes::StatusCode::Failed;
+                    status_info.message = e.to_string().into();
+                }
+            };
+
+            let _ = dbg!(
+                state
+                    .drivers
+                    .jobs
+                    .finish(
+                        &status_info.job_id,
+                        &status_info.status,
+                        status_info.message.clone(),
+                        status_info.links.clone(),
+                        results,
+                    )
+                    .await
+            );
+        });
+    }
+
+    Ok(ProcessExecuteResponse::Asynchronous {
+        status_info,
+        was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
+        base_url,
+    })
+}
+
+/// Determine whether the client prefers synchronous execution
+/// by inspecting the "Prefer" header.
+fn client_execute_preference(headers: &HeaderMap) -> ClientExecutionModePreference {
+    let prefer = headers
+        .get("Prefer")
+        .and_then(|s| s.to_str().ok())
+        .unwrap_or_default();
+
+    if prefer.contains("respond-sync") {
+        ClientExecutionModePreference::Sync
+    } else if prefer.contains("respond-async") {
+        ClientExecutionModePreference::Async
+    } else {
+        ClientExecutionModePreference::None
+    }
+}
+
+enum ClientExecutionModePreference {
+    Sync,
+    Async,
+    None,
+}
+
+enum NegotiatedExecutionMode {
+    Sync { was_preferred: bool },
+    Async { was_preferred: bool },
+}
+
+impl NegotiatedExecutionMode {
+    fn is_sync(&self) -> bool {
+        matches!(self, NegotiatedExecutionMode::Sync { .. })
+    }
+
+    fn was_preferred(&self) -> bool {
+        match self {
+            NegotiatedExecutionMode::Sync { was_preferred } => *was_preferred,
+            NegotiatedExecutionMode::Async { was_preferred } => *was_preferred,
+        }
+    }
+}
+
+/// Determine whether the execution should be synchronous or asynchronous.
+///
+/// Requirements:
+/// - `req/core/process-execute-default-execution-mode`: If the execute request is not accompanied with a preference:
+///     - If the process supports only synchronous execution, execute synchronously.
+///     - If the process supports only asynchronous execution, execute asynchronously.
+///     - If the process supports both synchronous and asynchronous execution, execute synchronously.
+/// - `/req/core/process-execute-auto-execution-mode`: If the execute request is accompanied with the preference `respond-async`:
+///     - If the process supports only asynchronous execution, execute asynchronously.
+///     - If the process supports only synchronous execution, execute synchronously.
+///     - If the process supports both synchronous and asynchronous execution, execute asynchronously (or synchronously).
+/// - `/rec/core/process-execute-preference-applied`: If the execute request is executed as preferred by the client, indicate this in the response (`Preference-Applied`).
+///
+fn negotiate_execution_mode(
+    headers: &HeaderMap,
+    job_control_options: &[JobControlOptions],
+) -> NegotiatedExecutionMode {
+    let client_preference = client_execute_preference(headers);
+    let (can_be_executed_sync, can_be_executed_async) =
+        job_control_options
+            .iter()
+            .fold((false, false), |(sync, async_), option| match option {
+                JobControlOptions::SyncExecute => (true, async_),
+                JobControlOptions::AsyncExecute => (sync, true),
+                _ => (sync, async_),
+            });
+    match client_preference {
+        ClientExecutionModePreference::Sync if can_be_executed_sync => {
+            NegotiatedExecutionMode::Sync {
+                was_preferred: true,
+            }
+        }
+        ClientExecutionModePreference::Async if can_be_executed_async => {
+            NegotiatedExecutionMode::Async {
+                was_preferred: true,
+            }
+        }
+        _ if can_be_executed_sync => NegotiatedExecutionMode::Sync {
+            was_preferred: false,
+        },
+        _ => NegotiatedExecutionMode::Async {
+            was_preferred: false,
+        },
+    }
 }
 
 /// Retrieve the list of jobs
@@ -258,24 +456,21 @@ async fn jobs(
         )
     )
 )]
-async fn status(
-    State(state): State<AppState>,
-    RemoteUrl(url): RemoteUrl,
-    Path(job_id): Path<String>,
-) -> Result<Response> {
+async fn status(State(state): State<AppState>, Path(job_id): Path<String>) -> Result<Response> {
     let status = state.drivers.jobs.status(&job_id).await?;
 
-    match status {
-        Some(mut info) => {
-            info.links = vec![Link::new(url, SELF).mediatype(JSON)];
+    let Some(info) = status else {
+        return Err(Error::OgcApiException(
+            Exception::new(
+                "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job",
+            )
+            .status(StatusCode::NOT_FOUND.as_u16())
+            .title("NoSuchJob")
+            .detail(format!("No job with id `{job_id}`")),
+        ));
+    };
 
-            Ok(Json(info).into_response())
-        }
-        None => Err(Error::Exception(
-            StatusCode::NOT_FOUND,
-            format!("No job with id `{job_id}`"),
-        )),
-    }
+    Ok(Json(info).into_response())
 }
 
 /// Cancel a job execution, remove finished job
@@ -314,7 +509,10 @@ async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
 ///
 /// Lists available results of a job. In case of a failure, lists exceptions instead.
 ///
-/// For more information, see [Section 7.13](https://docs.ogc.org/is/18-062/18-062.html#sc_retrieve_job_results).
+/// For more information, see [Section 7.13](https://docs.ogc.org/is/18-062r2/18-062r2.html#sc_retrieve_job_results).
+///
+// On success, cf. `/req/core/job-results`
+// On failure, cf. `/req/core/job-results-failed`.
 #[utoipa::path(get, path = "/jobs/{jobId}/results", tag = "Processes",
     responses(
         (
@@ -331,33 +529,42 @@ async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
 async fn results(
     State(state): State<AppState>,
     Path(job_id): Path<String>,
-    Query(query): Query<ResultsQuery>,
-) -> Result<Response> {
+    Query(_query): Query<ResultsQuery>,
+) -> Result<ProcessResultsResponse> {
     let results = state.drivers.jobs.results(&job_id).await?;
 
-    // TODO: check if job is finished
+    // TODO: use pagination, etc. from `_query`
 
     match results {
-        Some(results) => {
-            if let Some(outputs) = query.outputs {
-                let results: HashMap<String, InlineOrRefData> = outputs
-                    .iter()
-                    .filter_map(|output| {
-                        results
-                            .get(output)
-                            .map(|result| (output.to_string(), result.to_owned()))
-                    })
-                    .collect();
-
-                Ok(Json(Results { results }).into_response())
-            } else {
-                Ok(Json(results).into_response())
-            }
+        ProcessResult::NoSuchJob => {
+            // `/req/core/job-results-exception/no-such-job`
+            Err(Error::OgcApiException(
+                Exception::new(
+                    "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job",
+                )
+                .status(404)
+                .title("NoSuchJob")
+                .detail(format!("No job with id `{job_id}`")),
+            ))
         }
-        None => Err(Error::Exception(
-            StatusCode::NOT_FOUND,
-            format!("No job with id `{job_id}`"),
-        )),
+        ProcessResult::NotReady => {
+            // `/req/core/job-results-exception/results-not-ready`
+            Err(Error::OgcApiException(
+                Exception::new(
+                    "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/result-not-ready",
+                )
+                .status(404)
+                .title("NotReady")
+                .detail(format!("Results for job `{job_id}` are not ready yet")),
+            ))
+        }
+        ProcessResult::Results {
+            results,
+            response_mode,
+        } => Ok(ProcessResultsResponse {
+            results,
+            response_mode,
+        }),
     }
 }
 
