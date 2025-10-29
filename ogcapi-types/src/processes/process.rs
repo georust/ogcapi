@@ -1,14 +1,11 @@
-use std::collections::HashMap;
-
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-
-use crate::common::Link;
-
 use super::{
     TransmissionMode,
     description::{InputDescription, OutputDescription},
 };
+use crate::common::Link;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use utoipa::ToSchema;
 
 /// Process summary
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]

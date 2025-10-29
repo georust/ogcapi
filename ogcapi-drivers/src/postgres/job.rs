@@ -118,8 +118,19 @@ impl JobHandler for Db {
     async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>> {
         let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
             r#"
-            SELECT row_to_json(jobs) as "status_info!" 
-            FROM meta.jobs WHERE job_id = $1
+            SELECT json_object(
+                'process_id': process_id,
+                'job_id': job_id,
+                'status': status,
+                'message': message,
+                'created': created,
+                'finished': finished,
+                'updated': updated,
+                'progress': progress,
+                'links': COALESCE(links, '[]'::jsonb)
+            ) as "status_info!"
+            FROM meta.jobs
+            WHERE job_id = $1
             "#,
         )
         .bind(id)
@@ -136,7 +147,17 @@ impl JobHandler for Db {
             SET status = $2,
                 message = 'Job dismissed'
             WHERE job_id = $1 AND status <@ '["accepted", "running"]'::jsonb
-            RETURNING row_to_json(jobs) as "status_info!"
+            RETURNING json_object(
+                'process_id': process_id,
+                'job_id': job_id,
+                'status': status,
+                'message': message,
+                'created': created,
+                'finished': finished,
+                'updated': updated,
+                'progress': progress,
+                'links': COALESCE(links, '[]'::jsonb)
+            ) as "status_info!"
             "#,
         )
         .bind(id)

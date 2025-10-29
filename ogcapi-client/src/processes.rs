@@ -1,7 +1,6 @@
 use crate::{Client, Error};
-
-use ogcapi_processes::ProcessResponseBody;
-use ogcapi_types::processes::{Execute, Response, Results, StatusInfo, TransmissionMode};
+use ogcapi_types::processes::{Execute, Output, Response, Results, StatusInfo, TransmissionMode};
+use std::collections::HashMap;
 
 impl Client {
     #[cfg(feature = "processes")]
@@ -54,6 +53,17 @@ impl Client {
             )),
         }
     }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub enum ProcessResponseBody {
+    Requested {
+        outputs: HashMap<String, Output>,
+        parts: Vec<Vec<u8>>,
+    },
+    Results(Results),
+    Empty(String),
+    StatusInfo(StatusInfo),
 }
 
 #[cfg(test)]

@@ -448,11 +448,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
-    use ogcapi_types::processes::Output;
 
     use super::*;
+    use ogcapi_types::processes::Output;
 
     #[test]
     fn it_creates_link_headers() {

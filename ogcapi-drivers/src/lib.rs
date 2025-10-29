@@ -3,8 +3,6 @@ pub mod postgres;
 #[cfg(feature = "s3")]
 pub mod s3;
 
-use std::collections::HashMap;
-
 #[cfg(feature = "common")]
 use ogcapi_types::common::{Collection, Collections, Link, Query as CollectionQuery};
 #[cfg(feature = "edr")]
@@ -101,7 +99,7 @@ pub trait JobHandler: Send + Sync {
         status: &StatusCode,
         message: Option<String>,
         links: Vec<Link>,
-        results: Option<HashMap<String, ExecuteResult>>,
+        results: Option<std::collections::HashMap<String, ExecuteResult>>,
     ) -> anyhow::Result<()>;
 
     async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
@@ -115,7 +113,7 @@ pub enum ProcessResult {
     NoSuchJob,
     NotReady,
     Results {
-        results: HashMap<String, ExecuteResult>,
+        results: std::collections::HashMap<String, ExecuteResult>,
         response_mode: Response,
     },
 }
