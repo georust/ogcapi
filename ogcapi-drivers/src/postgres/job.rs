@@ -10,6 +10,8 @@ use crate::{JobHandler, ProcessResult};
 
 use super::Db;
 
+type Results = HashMap<String, ExecuteResult>;
+
 #[async_trait::async_trait]
 impl JobHandler for Db {
     async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String> {
@@ -72,7 +74,7 @@ impl JobHandler for Db {
         status: &StatusCode,
         message: Option<String>,
         links: Vec<Link>,
-        results: Option<HashMap<String, ExecuteResult>>,
+        results: Option<Results>,
     ) -> anyhow::Result<()> {
         sqlx::query(
             r#"
@@ -88,10 +90,10 @@ impl JobHandler for Db {
             "#,
         )
         .bind(job_id)
-        .bind(sqlx::types::Json(status))
+        .bind(Json(status))
         .bind(message)
-        .bind(sqlx::types::Json(links))
-        .bind(sqlx::types::Json(results))
+        .bind(Json(links))
+        .bind(results.map(Json))
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -169,23 +171,21 @@ impl JobHandler for Db {
     }
 
     async fn results(&self, id: &str) -> anyhow::Result<ProcessResult> {
-        let results: Option<(Json<Option<HashMap<String, ExecuteResult>>>, Json<Response>)> = dbg!(
-            sqlx::query_as(
-                r#"
+        let results: Option<(Option<Json<Results>>, Json<Response>)> = sqlx::query_as(
+            r#"
             SELECT results, to_jsonb(response)
             FROM meta.jobs
             WHERE job_id = $1
             "#,
-            )
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await
-        )?;
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
 
         Ok(match results {
             None => ProcessResult::NoSuchJob,
-            Some((Json(None), _)) => ProcessResult::NotReady,
-            Some((Json(Some(results)), Json(response_mode))) => ProcessResult::Results {
+            Some((None, _)) => ProcessResult::NotReady,
+            Some((Some(Json(results)), Json(response_mode))) => ProcessResult::Results {
                 results,
                 response_mode,
             },
