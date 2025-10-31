@@ -57,20 +57,15 @@ pub enum JobType {
     Process,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum StatusCode {
+    #[default]
     Accepted,
     Running,
     Successful,
     Failed,
     Dismissed,
-}
-
-impl Default for StatusCode {
-    fn default() -> Self {
-        Self::Accepted
-    }
 }
 
 #[serde_with::serde_as]
