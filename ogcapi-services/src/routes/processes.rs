@@ -160,9 +160,12 @@ async fn process(
 
             Ok(Json(process))
         }
-        None => Err(Error::Exception(
-            StatusCode::NOT_FOUND,
-            format!("No process with id `{process_id}`"),
+        None => Err(Error::ApiException(
+            (
+                StatusCode::NOT_FOUND,
+                format!("No process with id `{process_id}`"),
+            )
+                .into(),
         )),
     }
 }
@@ -194,9 +197,12 @@ async fn execution(
     ValidParams(Json(execute)): ValidParams<Json<Execute>>,
 ) -> Result<ProcessExecuteResponse> {
     let Some(processor) = read_lock(&state.processors).get(&process_id).cloned() else {
-        return Err(Error::Exception(
-            StatusCode::NOT_FOUND,
-            format!("No process with id `{process_id}`"),
+        return Err(Error::ApiException(
+            (
+                StatusCode::NOT_FOUND,
+                format!("No process with id `{process_id}`"),
+            )
+                .into(),
         ));
     };
 
@@ -444,7 +450,7 @@ async fn status(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
     let status = state.drivers.jobs.status(&job_id).await?;
 
     let Some(info) = status else {
-        return Err(Error::OgcApiException(
+        return Err(Error::ApiException(
             Exception::new(
                 "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job",
             )
@@ -482,9 +488,8 @@ async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
 
     match status {
         Some(info) => Ok(Json(info).into_response()),
-        None => Err(Error::Exception(
-            StatusCode::NOT_FOUND,
-            format!("No job with id `{job_id}`"),
+        None => Err(Error::ApiException(
+            (StatusCode::NOT_FOUND, format!("No job with id `{job_id}`")).into(),
         )),
     }
 }
@@ -522,7 +527,7 @@ async fn results(
     match results {
         ProcessResult::NoSuchJob => {
             // `/req/core/job-results-exception/no-such-job`
-            Err(Error::OgcApiException(
+            Err(Error::ApiException(
                 Exception::new(
                     "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job",
                 )
@@ -533,7 +538,7 @@ async fn results(
         }
         ProcessResult::NotReady => {
             // `/req/core/job-results-exception/results-not-ready`
-            Err(Error::OgcApiException(
+            Err(Error::ApiException(
                 Exception::new(
                     "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/result-not-ready",
                 )

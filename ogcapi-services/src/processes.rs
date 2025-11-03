@@ -433,7 +433,7 @@ where
             Ok(value) => Ok(ValidParams(value)),
             Err(rejection) => {
                 // let response_body = rejection.body_text();
-                Err(Error::OgcApiException(
+                Err(Error::ApiException(
                     Exception::new("InvalidParameterValue")
                         .status(404)
                         .title("InvalidParameterValue")

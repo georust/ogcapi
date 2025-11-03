@@ -33,19 +33,15 @@ pub enum Error {
     Qs(#[from] serde_qs::Error),
 
     /// Custom Exception
-    #[error("an ogcapi exception occurred")]
-    Exception(StatusCode, String),
-
     #[error("an OGC API exception occurred")]
-    OgcApiException(#[from] Exception),
+    ApiException(#[from] Exception),
 }
 
 impl Error {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::NotFound => StatusCode::NOT_FOUND,
-            Self::Exception(status, _) => *status,
-            Self::OgcApiException(exception) => exception
+            Self::ApiException(exception) => exception
                 .status
                 .and_then(|status| StatusCode::from_u16(status).ok())
                 .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
@@ -91,11 +87,8 @@ impl From<Error> for Exception {
                 tracing::error!("Query string error: {:?}", e);
                 (value.status_code(), e.to_string())
             }
-            Error::Exception(status, message) => {
-                tracing::debug!("OGCAPI exception: {}", message);
-                (status, message)
-            }
-            Error::OgcApiException(exception) => {
+            Error::ApiException(exception) => {
+                tracing::debug!("OGCAPI exception: {exception}");
                 return exception;
             }
         };
