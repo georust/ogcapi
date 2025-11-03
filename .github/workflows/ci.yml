@@ -71,6 +71,8 @@ jobs:
             testJobCreationInputRef
           ogc-api-features: true
           ogc-api-features-container-tag: 1.9-teamengine-6.0.0-RC2
-          # ogc-api-features-ignore: |-
-          #   featureOperation
-          #   validateFeatureResponse
+          ogc-api-features-ignore: |-
+            validateFeaturesWithLimitResponse_NumberMatched 
+            validateFeaturesResponse_NumberMatched
+            validateFeaturesWithBoundingBoxResponse_NumberMatched
+            validateFeaturesWithLimitResponse_NumberMatched

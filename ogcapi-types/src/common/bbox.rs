@@ -76,7 +76,7 @@ impl str::FromStr for Bbox {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let numbers: Vec<f64> = s
             .split(',')
-            .map(|d| d.trim().trim_matches(&['[', ']']).parse::<f64>())
+            .map(|d| d.trim().trim_matches(['[', ']']).parse::<f64>())
             .collect::<Result<Vec<f64>, std::num::ParseFloatError>>()
             .map_err(|_| "Unable to convert bbox coordinates to float")?;
 
