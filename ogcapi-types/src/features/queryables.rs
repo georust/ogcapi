@@ -15,10 +15,7 @@ pub struct Queryables {
 pub struct Queryable {
     title: Option<String>,
     description: Option<String>,
-    // language: Option<String>, // default en
     r#type: String,
-    // #[serde(rename = "type-ref")]
-    // type_ref: String,
 }
 
 fn default_true() -> bool {
