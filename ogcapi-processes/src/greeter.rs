@@ -5,8 +5,8 @@ use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 
 use ogcapi_types::processes::{
-    Execute, ExecuteResult, Format, InlineOrRefData, Input, InputValueNoObject, JobControlOptions,
-    Output, Process, ProcessSummary, TransmissionMode,
+    Execute, ExecuteResult, ExecuteResults, Format, InlineOrRefData, Input, InputValueNoObject,
+    JobControlOptions, Output, Process, ProcessSummary, TransmissionMode,
     description::{DescriptionType, InputDescription, OutputDescription},
 };
 
@@ -107,7 +107,7 @@ impl Processor for Greeter {
         })
     }
 
-    async fn execute(&self, execute: Execute) -> Result<HashMap<String, ExecuteResult>> {
+    async fn execute(&self, execute: Execute) -> Result<ExecuteResults> {
         let value = serde_json::to_value(execute.inputs).unwrap();
         let inputs: GreeterInputs = serde_json::from_value(value).unwrap();
         let greeting = format!("Hello, {}!\n", inputs.name);

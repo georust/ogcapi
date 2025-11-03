@@ -13,14 +13,14 @@ use mail_builder::headers::text::Text;
 use mail_builder::mime::{BodyPart, MimePart};
 use ogcapi_types::{
     common::{Exception, Link},
-    processes::{ExecuteResult, InlineOrRefData, StatusInfo},
+    processes::{ExecuteResult, ExecuteResults, InlineOrRefData, StatusInfo},
 };
 use std::borrow::Cow;
+use std::convert::Infallible;
 use std::fmt::Write;
-use std::{collections::HashMap, convert::Infallible};
 
 pub(crate) struct ProcessResultsResponse {
-    pub results: HashMap<String, ExecuteResult>,
+    pub results: ExecuteResults,
     pub response_mode: ogcapi_types::processes::Response,
 }
 
@@ -243,11 +243,11 @@ impl IntoResponseParts for LinkHeader {
 }
 
 struct MultipartResponse {
-    parts: HashMap<String, ExecuteResult>,
+    parts: ExecuteResults,
     boundary: Option<String>,
 }
 impl MultipartResponse {
-    fn new(parts: HashMap<String, ExecuteResult>) -> Self {
+    fn new(parts: ExecuteResults) -> Self {
         Self {
             parts,
             boundary: None,
@@ -255,7 +255,7 @@ impl MultipartResponse {
     }
 
     #[cfg(test)]
-    fn new_with_boundary(parts: HashMap<String, ExecuteResult>, boundary: String) -> Self {
+    fn new_with_boundary(parts: ExecuteResults, boundary: String) -> Self {
         Self {
             parts,
             boundary: Some(boundary),
@@ -451,6 +451,7 @@ mod tests {
 
     use super::*;
     use ogcapi_types::processes::Output;
+    use std::collections::HashMap;
 
     #[test]
     fn it_creates_link_headers() {

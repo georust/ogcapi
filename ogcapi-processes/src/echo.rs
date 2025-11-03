@@ -5,8 +5,8 @@ use anyhow::Result;
 use ogcapi_types::{
     common::Link,
     processes::{
-        Execute, ExecuteResult, Format, InlineOrRefData, InputValueNoObject, JobControlOptions,
-        Output, Process, ProcessSummary, TransmissionMode,
+        Execute, ExecuteResult, ExecuteResults, Format, InlineOrRefData, InputValueNoObject,
+        JobControlOptions, Output, Process, ProcessSummary, TransmissionMode,
         description::{DescriptionType, InputDescription, OutputDescription},
     },
 };
@@ -99,10 +99,7 @@ impl EchoOutputs {
         outputs
     }
 
-    fn to_execute_results(
-        &self,
-        outputs: &HashMap<String, Output>,
-    ) -> HashMap<String, ExecuteResult> {
+    fn to_execute_results(&self, outputs: &HashMap<String, Output>) -> ExecuteResults {
         let mut execute_results = HashMap::with_capacity(outputs.len());
 
         if let Some(string_output) = &self.string_output
@@ -229,7 +226,7 @@ impl Processor for Echo {
         })
     }
 
-    async fn execute(&self, execute: Execute) -> Result<HashMap<String, ExecuteResult>> {
+    async fn execute(&self, execute: Execute) -> Result<ExecuteResults> {
         let value = serde_json::to_value(execute.inputs)?;
         let inputs: EchoInputs = serde_json::from_value(value)?;
 

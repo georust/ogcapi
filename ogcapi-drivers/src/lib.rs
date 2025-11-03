@@ -8,7 +8,7 @@ use ogcapi_types::common::{Collection, Collections, Link, Query as CollectionQue
 #[cfg(feature = "edr")]
 use ogcapi_types::edr::{Query as EdrQuery, QueryType};
 #[cfg(feature = "processes")]
-use ogcapi_types::processes::{ExecuteResult, Response, StatusCode, StatusInfo};
+use ogcapi_types::processes::{Response, StatusCode, StatusInfo};
 #[cfg(feature = "stac")]
 use ogcapi_types::stac::SearchParams;
 #[cfg(feature = "styles")]
@@ -99,7 +99,7 @@ pub trait JobHandler: Send + Sync {
         status: &StatusCode,
         message: Option<String>,
         links: Vec<Link>,
-        results: Option<std::collections::HashMap<String, ExecuteResult>>,
+        results: Option<ogcapi_types::processes::ExecuteResults>,
     ) -> anyhow::Result<()>;
 
     async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
@@ -113,7 +113,7 @@ pub enum ProcessResult {
     NoSuchJob,
     NotReady,
     Results {
-        results: std::collections::HashMap<String, ExecuteResult>,
+        results: ogcapi_types::processes::ExecuteResults,
         response_mode: Response,
     },
 }

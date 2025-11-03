@@ -148,6 +148,8 @@ pub struct Subscriber {
     pub failed_uri: Option<String>,
 }
 
+pub type ExecuteResults = HashMap<String, ExecuteResult>;
+
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
 pub struct ExecuteResult {
     pub output: Output,

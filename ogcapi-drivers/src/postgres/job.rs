@@ -1,16 +1,12 @@
-use std::collections::HashMap;
-
 use ogcapi_types::{
     common::Link,
-    processes::{ExecuteResult, Response, StatusCode, StatusInfo},
+    processes::{ExecuteResults, Response, StatusCode, StatusInfo},
 };
 use sqlx::types::Json;
 
 use crate::{JobHandler, ProcessResult};
 
 use super::Db;
-
-type Results = HashMap<String, ExecuteResult>;
 
 #[async_trait::async_trait]
 impl JobHandler for Db {
@@ -74,7 +70,7 @@ impl JobHandler for Db {
         status: &StatusCode,
         message: Option<String>,
         links: Vec<Link>,
-        results: Option<Results>,
+        results: Option<ExecuteResults>,
     ) -> anyhow::Result<()> {
         sqlx::query(
             r#"
@@ -171,7 +167,7 @@ impl JobHandler for Db {
     }
 
     async fn results(&self, id: &str) -> anyhow::Result<ProcessResult> {
-        let results: Option<(Option<Json<Results>>, Json<Response>)> = sqlx::query_as(
+        let results: Option<(Option<Json<ExecuteResults>>, Json<Response>)> = sqlx::query_as(
             r#"
             SELECT results, to_jsonb(response)
             FROM meta.jobs
