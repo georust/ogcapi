@@ -15,7 +15,6 @@ pub struct Execute {
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub outputs: HashMap<String, Output>,
     #[serde(default)]
-    // pub response: Option<Response>,
     pub response: Response,
     #[schema(nullable = false)]
     #[serde(default)]

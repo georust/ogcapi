@@ -16,4 +16,5 @@ ogcapi = { path = "../../ogcapi", version = "0.3", default-features = false, fea
     "services",
     "common",
     "features",
+    "processes",
 ] }

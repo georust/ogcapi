@@ -15,7 +15,7 @@ use ogcapi_types::{
         link_rel::{COLLECTION, NEXT, PREV, ROOT, SELF},
         media_type::{GEO_JSON, JSON},
     },
-    features::{Feature, FeatureCollection, FeatureId, Query, Queryables},
+    features::{Feature, FeatureCollection, FeatureId, Query},
 };
 
 use crate::{
@@ -283,9 +283,9 @@ async fn items(
     if !queryables.additional_properties {
         for prop in query.additional_parameters.keys() {
             if !queryables.queryables.contains_key(prop) {
-                return Err(Error::Exception(
-                    StatusCode::BAD_REQUEST,
-                    format!("Property {prop} is not queryable!"),
+                return Err(Error::ApiException(
+                    Exception::new_from_status(StatusCode::BAD_REQUEST.as_u16())
+                        .detail(format!("Property {prop} is not queryable!")),
                 ));
             }
         }
@@ -347,38 +347,38 @@ async fn items(
     Ok((headers, Json(fc)))
 }
 
-/// Fetch queriables of a collection
-///
-/// Fetch the feature with id `featureId` in the feature collection with id
-/// `collectionId`.
-#[utoipa::path(get, path = "/collections/{collectionId}/queryables", tag = "Schema", 
-    params(
-        ("collectionId" = String, Path, description = "local identifier of a collection")
-    ),
-    responses(
-        (
-            status = 200,
-            description = "Fetch the queryable properties of the collection with id `collectionId`", 
-            body = Queryables),
-        (
-            status = 404, description = "The requested resource does not exist \
-            on the server. For example, a path parameter had an incorrect value.", 
-            body = Exception, example = json!(Exception::new_from_status(404))
-        ),
-        (
-            status = 500, description = "A server error occurred.", 
-            body = Exception, example = json!(Exception::new_from_status(500))
-        )
-    )
-)]
-async fn queryables(
-    State(state): State<AppState>,
-    Path(collection_id): Path<String>,
-) -> Result<Json<Queryables>> {
-    let queryables = state.drivers.features.queryables(&collection_id).await?;
+// /// Fetch queriables of a collection
+// ///
+// /// Fetch the feature with id `featureId` in the feature collection with id
+// /// `collectionId`.
+// #[utoipa::path(get, path = "/collections/{collectionId}/queryables", tag = "Schema",
+//     params(
+//         ("collectionId" = String, Path, description = "local identifier of a collection")
+//     ),
+//     responses(
+//         (
+//             status = 200,
+//             description = "Fetch the queryable properties of the collection with id `collectionId`",
+//             body = Queryables),
+//         (
+//             status = 404, description = "The requested resource does not exist \
+//             on the server. For example, a path parameter had an incorrect value.",
+//             body = Exception, example = json!(Exception::new_from_status(404))
+//         ),
+//         (
+//             status = 500, description = "A server error occurred.",
+//             body = Exception, example = json!(Exception::new_from_status(500))
+//         )
+//     )
+// )]
+// async fn queryables(
+//     State(state): State<AppState>,
+//     Path(collection_id): Path<String>,
+// ) -> Result<Json<Queryables>> {
+//     let queryables = state.drivers.features.queryables(&collection_id).await?;
 
-    Ok(Json(queryables))
-}
+//     Ok(Json(queryables))
+// }
 
 async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Error> {
     if collection.crs.contains(crs) {

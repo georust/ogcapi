@@ -6,8 +6,8 @@ info:
     This is an OpenAPI definition of various OGC API specifications as well as
     the SpatioTemporal Asset Catalog (STAC) API specification.
   contact:
-    name: Balthasar Teuscher
-    email: balthasar.teuscher@gmail.com
+    name: "GeoRust `ogcapi` project on GitHub"
+    url: "https://github.com/georust/ogcapi"
   license:
     name: CC-BY 4.0 license
     url: https://creativecommons.org/licenses/by/4.0/
@@ -20,6 +20,10 @@ tags:
     description: essential characteristics of this API
   - name: Data
     description: access to data (features)
+  - name: Processes
+    description: OGC API Processes.
+  - name: Jobs
+    description: OGC API Processes (Jobs).
 paths:
   /:
     get:
@@ -31,9 +35,9 @@ paths:
         200:
           $ref: "#/components/responses/LandingPage"
         400:
-          $ref: "#/components/responses/400"
+          $ref: "#/components/responses/BadRequest"
         500:
-          $ref: "#/components/responses/500"
+          $ref: "#/components/responses/ServerError"
       summary: Landing page
       tags:
         - server
@@ -42,11 +46,11 @@ paths:
       description: This document
       responses:
         200:
-          $ref: "#/components/responses/200"
+          $ref: "#/components/responses/Success"
         400:
-          $ref: "#/components/responses/400"
+          $ref: "#/components/responses/BadRequest"
         default:
-          $ref: "#/components/responses/500"
+          $ref: "#/components/responses/ServerError"
       summary: This document
       tags:
         - server
@@ -60,9 +64,9 @@ paths:
         200:
           $ref: "#/components/responses/ConformanceDeclaration"
         400:
-          $ref: "#/components/responses/400"
+          $ref: "#/components/responses/BadRequest"
         500:
-          $ref: "#/components/responses/500"
+          $ref: "#/components/responses/ServerError"
       summary: API conformance definition
       tags:
         - server
@@ -76,7 +80,7 @@ paths:
         200:
           $ref: "#/components/schemas/collections"
         500:
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/ServerError"
   /collections/{collectionId}:
     get:
       tags:
@@ -89,9 +93,9 @@ paths:
         200:
           $ref: "#/components/schemas/collectionDesc"
         404:
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/NotFound"
         500:
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/ServerError"
   /collections/{collectionId}/items:
     get:
       tags:
@@ -117,11 +121,11 @@ paths:
         200:
           $ref: "#/components/responses/FeatureCollection"
         400:
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/BadRequest"
         404:
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/NotFound"
         500:
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/ServerError"
   /collections/{collectionId}/items/{featureId}:
     get:
       tags:
@@ -141,9 +145,176 @@ paths:
         200:
           $ref: "#/components/responses/Feature"
         404:
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/NotFound"
         500:
-          $ref: "#/components/schemas/exception"
+          $ref: "#/components/responses/ServerError"
+
+  # OGC API - Processes - Part 1: Core
+  /processes:
+    get:
+      summary: retrieve the list of available processes
+      description: |
+        The list of processes contains a summary of each process the OGC API - Processes offers, including the link to a more detailed description of the process.
+
+        For more information, see [Section 7.7]https://docs.ogc.org/is/18-062r2/18-062r2.html#sc_process_list).
+      operationId: getProcesses
+      tags:
+        - Processes
+      responses:
+        200:
+          $ref: "#/components/responses/ProcessList"
+
+  /processes/{processID}:
+    get:
+      summary: retrieve a process description
+      description: |
+        The process description contains information about inputs and outputs and a link to the execution-endpoint for the process. The Core does not mandate the use of a specific process description to specify the interface of a process. That said, the Core requirements class makes the following recommendation:
+
+        Implementations SHOULD consider supporting the OGC process description.
+
+        For more information, see [Section 7.8](https://docs.ogc.org/is/18-062r2/18-062r2.html#sc_process_description).
+      operationId: getProcessDescription
+      tags:
+        - Processes
+      parameters:
+        - $ref: "#/components/parameters/processID-path"
+      responses:
+        200:
+          $ref: "#/components/responses/ProcessDescription"
+        404:
+          $ref: "#/components/responses/NotFound"
+
+  /processes/{processID}/execution:
+    post:
+      summary: execute a process.
+      description: |
+        Executes a process (this may result in the creation of a job resource e.g., for _asynchronous execution_).
+
+        For more information, see [Section 7.9](https://docs.ogc.org/is/18-062r2/18-062r2.html#sc_create_job).
+      operationId: execute
+      tags:
+        - Processes
+      parameters:
+        - $ref: "#/components/parameters/processID-path"
+        - $ref: "#/components/parameters/prefer-header-execution"
+      requestBody:
+        description: |-
+          An execution request specifying any inputs for the process to execute, and optionally to select specific outputs.
+          With support for _Part 3: Workflows and chaining_, this execution request may specify a complex processing workflow
+          e.g., including nested processes and OGC API collections as inputs.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/execute"
+      responses:
+        200:
+          $ref: "#/components/responses/ExecuteSync"
+        201:
+          $ref: "#/components/responses/ExecuteAsync"
+        204:
+          $ref: "#/components/responses/Empty"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/ServerError"
+      # callbacks:
+      #   jobCompleted:
+      #     "{$request.body#/subscriber/successUri}":
+      #       post:
+      #         requestBody:
+      #           content:
+      #             application/json:
+      #               schema:
+      #                 $ref: "../../schemas/processes-core/results.yaml"
+      #         responses:
+      #           200:
+      #             description: Results received successfully
+
+  # OGC API - Processes - Part 1: Core (Jobs, required for Async execution)
+  /jobs:
+    get:
+      summary: retrieve the list of jobs.
+      description: |
+        Lists available jobs.
+
+        For more information, see [Section 12](https://docs.ogc.org/is/18-062r2/18-062r2.html#Job_list).
+      operationId: getJobs
+      tags:
+        - Jobs
+      parameters:
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/type"
+        - $ref: "#/components/parameters/processID-query"
+        - $ref: "#/components/parameters/status"
+        - $ref: "#/components/parameters/datetime"
+        - $ref: "#/components/parameters/minDuration"
+        - $ref: "#/components/parameters/maxDuration"
+      responses:
+        200:
+          $ref: "#/components/responses/JobList"
+        404:
+          $ref: "#/components/responses/NotFound"
+
+  /jobs/{jobID}:
+    get:
+      summary: retrieve the status of a job
+      description: |
+        Shows the status of a job.
+
+          For more information, see [Section 7.10](https://docs.ogc.org/is/18-062r2/18-062r2.html#sc_retrieve_status_info).
+      operationId: getStatus
+      tags:
+        - Jobs
+      parameters:
+        - $ref: "#/components/parameters/jobID"
+      responses:
+        200:
+          $ref: "#/components/responses/Status"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/ServerError"
+    delete:
+      summary: cancel a job execution, remove a finished job
+      description: |
+        Cancel a job execution and remove it from the jobs list.
+
+        For more information, see [Section 14]https://docs.ogc.org/is/18-062r2/18-062r2.html#Dismiss).
+      operationId: dismiss
+      tags:
+        - Jobs
+      parameters:
+        - $ref: "#/components/parameters/jobID"
+      responses:
+        200:
+          $ref: "#/components/responses/Status"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/ServerError"
+
+  /jobs/{jobID}/results:
+    get:
+      summary: retrieve the result(s) of a job
+      description: |
+        Lists available results of a job. In case of a failure, lists exceptions instead.
+
+        For more information, see [Section 7.11](https://docs.ogc.org/is/18-062r2/18-062r2.html#sc_retrieve_job_results).
+      operationId: getResult
+      tags:
+        - Jobs
+      parameters:
+        - $ref: "#/components/parameters/jobID"
+        - $ref: "#/components/parameters/prefer-header-results"
+      responses:
+        200:
+          $ref: "#/components/responses/Results"
+        404:
+          $ref: "#/components/responses/NotFound"
+        500:
+          $ref: "#/components/responses/ServerError"
+
 components:
   headers:
     Content-Crs:
@@ -280,7 +451,89 @@ components:
         default: 10
       style: form
       explode: false
+    processID-path:
+      name: processID
+      in: path
+      required: true
+      schema:
+        type: string
+    prefer-header-execution:
+      in: header
+      description: |-
+        Indicates client preferences, including whether the client is capable of asynchronous processing.
+        A `respond-async` preference indicates a preference for asynchronous processing.
+        A `wait: <x>s` preference indicates that the client prefers to wait up to x seconds to receive a reponse synchronously before the server falls back to asynchronous processing.
+      name: Prefer
+      schema:
+        type: string
+    processID-query:
+      name: processID
+      in: query
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+    type:
+      name: type
+      in: query
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - process
+    status:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/statusCode"
+    minDuration:
+      name: minDuration
+      in: query
+      required: false
+      schema:
+        type: integer
+    maxDuration:
+      name: maxDuration
+      in: query
+      required: false
+      schema:
+        type: integer
+    jobID:
+      name: jobID
+      in: path
+      description: local identifier of a job
+      required: true
+      schema:
+          type: string
+    prefer-header-results:
+      in: header
+      description: |-
+        Indicates client preferences, such as whether the client wishes a self-contained or minimal response.
+        A `return=minimal` preference indicates that the client would prefer that links be returned to larger object to minimize the response payload.
+        A `return=representation` indicates that the client would prefer if the server can return a self-contained response.
+      name: Prefer
+      schema:
+        type: string
   responses:
+    LandingPage:
+      description: |-
+        The landing page provides links to the API definition
+        (link relations `service-desc` and `service-doc`),
+        and the Conformance declaration (path `/conformance`,
+        link relation `conformance`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/landingPage"
+        text/html:
+          schema:
+            type: string
     ConformanceDeclaration:
       description: |-
         The URIs of all conformance classes supported by the server.
@@ -320,21 +573,93 @@ components:
         application/geo+json:
           schema:
             $ref: "#/components/schemas/featureGeoJSON"
-    LandingPage:
-      description: |-
-        The landing page provides links to the API definition
-        (link relations `service-desc` and `service-doc`),
-        and the Conformance declaration (path `/conformance`,
-        link relation `conformance`).
+    ProcessList:
+      description: Information about the available processes
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/landingPage"
-        text/html:
+            $ref: "#/components/schemas/processList"
+    ProcessDescription:
+      description: A process description.
+      content:
+        application/json:
+          schema:
+            $ref: "../../schemas/processes-core/process.yaml"
+    ExecuteSync:
+      description: Result of synchronous execution
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: string
+              - type: number
+              - type: integer
+              - type: object
+                nullable: true
+              - type: array
+                items: {}
+              - type: boolean
+              - type: string
+                format: binary
+              - $ref: "../../schemas/processes-core/results.yaml"
+        image/png:
           schema:
             type: string
-    exception:
-      description: An error occurred.
+            format: binary
+        image/jpeg:
+          schema:
+            type: string
+            format: binary
+        image/tiff; application=geotiff:
+          schema:
+            type: string
+            format: binary
+        application/geo+json:
+          schema:
+            allOf:
+              - format: geojson-feature-collection
+              # JSON Schema not supported in OpenAPI 3.0
+              # - $ref: https://geojson.org/schema/FeatureCollection.json
+              - $ref: "../../schemas/geojson/FeatureCollection.yaml"
+    ExecuteAsync:
+      description: Started asynchronous execution. Created job.
+      headers:
+        Location:
+          schema:
+            type: string
+          description: URL to check the status of the execution/job.
+        Preference-Applied:
+          schema:
+            type: string
+          description: The preference applied to execute the process asynchronously (see. RFC 2740).
+      content:
+        application/json:
+          schema:
+            $ref: "../../schemas/processes-core/statusInfo.yaml"
+    Empty:
+      description: successful operation (no response body)
+    JobList:
+      description: A list of jobs for this process.
+      content:
+        application/json:
+          schema:
+            $ref: "../../schemas/processes-core/jobList.yaml"
+    Status:
+      description: The status of a job.
+      content:
+        application/json:
+          schema:
+            $ref: "../../schemas/processes-core/statusInfo.yaml"
+    Results:
+      description: The processing results of a job.
+      content:
+        application/json:
+          schema:
+            $ref: "../../schemas/processes-core/results.yaml"
+    Success:
+      description: General Success response.
+    BadRequest:
+      description: Bad Request.
       content:
         application/json:
           schema:
@@ -342,12 +667,8 @@ components:
         text/html:
           schema:
             type: string
-    200:
-      description: |-
-        General Success response.
-    400:
-      description: |-
-        General HTTP error response.
+    NotFound:
+      description: The requested resource does not exist on the server. For example, a path parameter had an incorrect value.
       content:
         application/json:
           schema:
@@ -355,9 +676,8 @@ components:
         text/html:
           schema:
             type: string
-    500:
-      description: |-
-        A server error occurred.
+    ServerError:
+      description: A server error occurred.
       content:
         application/json:
           schema:
@@ -876,3 +1196,204 @@ components:
       type: string
       format: date-time
       example: "2017-08-17T08:05:32Z"
+    processList:
+      type: object
+      required:
+        - processes
+        - links
+      properties:
+        processes:
+          type: array
+          items:
+            $ref: "#/components/schemas/processSummary"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/link"
+    processSummary:
+      allOf:
+        - $ref: "#/components/schemas/descriptionType"
+        - type: object
+          required:
+            - id
+            - version
+          properties:
+            id:
+              type: string
+            version:
+              type: string
+            jobControlOptions:
+              type: array
+              items:
+                $ref: "#/components/schemas/jobControlOptions"
+            links:
+              type: array
+              items:
+                $ref: "#/components/schemas/link"
+    descriptionType:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: array
+          items:
+            $ref: "#/components/schemas/metadata"
+    jobControlOptions:
+      type: string
+      enum:
+        - sync-execute
+        - async-execute
+        - dismiss
+    metadata:
+      oneOf:
+        - allOf:
+            - $ref: "#/components/schemas/link"
+            - type: object
+              properties:
+                role:
+                  type: string
+        - type: object
+          properties:
+            role:
+              type: string
+            title:
+              type: string
+            lang:
+              type: string
+            value:
+              oneOf:
+                - type: string
+                - type: object
+    execute:
+      type: object
+      properties:
+        processID:
+          type: string
+          format: uri
+        inputs:
+          additionalProperties:
+            $ref: "#/components/schemas/input"
+        outputs:
+          additionalProperties:
+            $ref: "#/components/schemas/output"
+        subscriber:
+          $ref: "#/components/schemas/subscriber"
+    input:
+      oneOf:
+        - $ref: "#/components/schemas/inlineOrRefValue"
+        - type: array
+          items:
+            $ref: "#/components/schemas/inlineOrRefValue"
+    inlineOrRefValue:
+      oneOf:
+        - $ref: "#/components/schemas/valueNoObject"
+        - $ref: "#/components/schemas/qualifiedValue"
+        - $ref: "#/components/schemas/link"
+    valueNoObject:
+      anyOf:
+        - type: string
+        - type: number
+        - type: integer
+        - type: boolean
+        - type: array
+          items:
+            oneOf:
+              - $ref: "#/components/schemas/inputValue"
+              - $ref: "#/components/schemas/qualifiedValue"
+        - $ref: "#/components/schemas/binaryValue"
+        - $ref: "#/components/schemas/bbox"
+      # - $ref: "collectionValue.yaml"
+    qualifiedValue:
+      allOf:
+        - $ref: "#/components/schemas/format"
+        - type: object
+          required:
+            - value
+          properties:
+            value:
+              $ref: "#/components/schemas/inputValue"
+    format:
+      type: object
+      properties:
+        mediaType:
+          type: string
+        encoding:
+          type: string
+        schema:
+          oneOf:
+            - type: string
+              format: url
+            - type: object
+    inputValue:
+      anyOf:
+        - $ref: "#/components/schemas/valueNoObject"
+        - type: object
+    binaryValue:
+      type: string
+      format: byte
+    bbox:
+      type: object
+      required:
+        - bbox
+      properties:
+        bbox:
+          type: array
+          oneOf:
+            - minItems: 4
+              maxItems: 4
+            - minItems: 6
+              maxItems: 6
+          items:
+            type: number
+        crs:
+          $ref: "#/components/schemas/bbox-def-crs"
+    bbox-def-crs:
+      anyOf:
+        - type: string
+          format: uri
+          enum:
+            - "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+            - "http://www.opengis.net/def/crs/OGC/0/CRS84h"
+          default: "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+        - type: string
+          format: uri
+          default: "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+    output:
+      type: object
+      properties:
+        format:
+          $ref: "#/components/schemas/format"
+    subscriber:
+      description: |-
+        Optional URIs for callbacks for this job.
+
+        Support for this parameter is not required and the parameter may be
+        removed from the API definition, if conformance class **'callback'**
+        is not listed in the conformance declaration under `/conformance`.
+      type: object
+      properties:
+        successUri:
+          type: string
+          format: uri
+        inProgressUri:
+          type: string
+          format: uri
+        failedUri:
+          type: string
+          format: uri
+    statusCode:
+      type: string
+      nullable: false
+      enum:
+        - accepted
+        - running
+        - successful
+        - failed
+        - dismissed
