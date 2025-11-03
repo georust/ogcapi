@@ -27,7 +27,6 @@ use ogcapi_types::{
 
 use crate::{
     AppState, Error, Result,
-    error::{read_lock, write_lock},
     extractors::RemoteUrl,
     processes::{ProcessExecuteResponse, ProcessResultsResponse, ValidParams},
 };
@@ -550,6 +549,28 @@ async fn results(
             results,
             response_mode,
         }),
+    }
+}
+
+/// Helper function to read-lock a RwLock, recovering from poisoning if necessary.
+fn read_lock<T>(mutex: &std::sync::RwLock<T>) -> std::sync::RwLockReadGuard<'_, T> {
+    match mutex.read() {
+        Ok(guard) => guard,
+        Err(poisoned) => {
+            error!("Mutex was poisoned, attempting to recover.");
+            poisoned.into_inner()
+        }
+    }
+}
+
+/// Helper function to write-lock a RwLock, recovering from poisoning if necessary.
+fn write_lock<T>(mutex: &std::sync::RwLock<T>) -> std::sync::RwLockWriteGuard<'_, T> {
+    match mutex.write() {
+        Ok(guard) => guard,
+        Err(poisoned) => {
+            error!("Mutex was poisoned, attempting to recover.");
+            poisoned.into_inner()
+        }
     }
 }
 
