@@ -40,7 +40,7 @@ pub async fn load(args: Args) -> anyhow::Result<()> {
                 ..Default::default()
             })
             .or_else(|| Some(Extent::default())),
-        crs: vec![Crs::default(), Crs::from_epsg(3857), Crs::from_epsg(2056)],
+        crs: vec![Crs::default(), Crs::from_epsg(3857)],
         storage_crs: Some(Crs::default()),
         #[cfg(feature = "stac")]
         assets: crate::asset::load_asset_from_path(&args.input).await?,

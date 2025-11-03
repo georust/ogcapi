@@ -372,7 +372,7 @@ mod tests {
             collection: "streets-gdal".to_string(),
             filter: None,
             s_srs: None,
-            database_url: "postgresql://postgres:password@localhost:5433/ogcapi".to_string(),
+            database_url: "postgresql://postgres:password@localhost:5432/ogcapi".to_string(),
         };
 
         let execute = Execute {

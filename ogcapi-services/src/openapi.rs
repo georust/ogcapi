@@ -1,13 +1,12 @@
 use utoipa::OpenApi;
 
 /// TODO: remove once Open API 3.1 is supported
-#[cfg(all(feature = "features", not(feature = "edr")))]
-pub(crate) static OPENAPI: &[u8; 29696] = include_bytes!("../assets/openapi/openapi.yaml");
+#[cfg(all(any(feature = "features", feature = "processes"), not(feature = "edr")))]
+pub(crate) static OPENAPI: &[u8; 45786] = include_bytes!("../assets/openapi/openapi.yaml");
 
 /// TODO: remove once Open API 3.1 is supported
 #[cfg(feature = "edr")]
-pub(crate) static OPENAPI: &[u8; 764046] =
-    include_bytes!("../assets/openapi/openapi-processes.yaml");
+pub(crate) static OPENAPI: &[u8; 122244] = include_bytes!("../assets/openapi/openapi-edr.yaml");
 
 #[derive(Default, Clone)]
 pub(crate) struct OpenAPI(pub(crate) openapiv3::OpenAPI);
