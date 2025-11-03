@@ -338,9 +338,8 @@ async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Erro
     if collection.crs.contains(crs) {
         Ok(())
     } else {
-        Err(Error::Exception(
-            StatusCode::BAD_REQUEST,
-            format!("Unsuported CRS `{crs}`"),
+        Err(Error::ApiException(
+            (StatusCode::BAD_REQUEST, format!("Unsuported CRS `{crs}`")).into(),
         ))
     }
 }

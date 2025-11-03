@@ -5,11 +5,12 @@ use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 
 use ogcapi_types::processes::{
-    Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process, Response,
-    Results, TransmissionMode,
+    Execute, ExecuteResult, ExecuteResults, Format, InlineOrRefData, Input, InputValueNoObject,
+    JobControlOptions, Output, Process, ProcessSummary, TransmissionMode,
+    description::{DescriptionType, InputDescription, OutputDescription},
 };
 
-use crate::{ProcessResponseBody, Processor};
+use crate::Processor;
 
 /// Greeter `Processor`
 ///
@@ -76,42 +77,63 @@ impl Processor for Greeter {
     }
 
     fn process(&self) -> Result<Process> {
-        Process::try_new(
-            self.id(),
-            self.version(),
-            &schema_for!(GreeterInputs),
-            &schema_for!(GreeterOutputs),
-        )
-        .map_err(Into::into)
+        Ok(Process {
+            summary: ProcessSummary {
+                id: self.id().to_string(),
+                version: self.version().to_string(),
+                job_control_options: vec![
+                    JobControlOptions::SyncExecute,
+                    JobControlOptions::AsyncExecute,
+                    JobControlOptions::Dismiss,
+                ],
+                output_transmission: vec![TransmissionMode::Value, TransmissionMode::Reference],
+                links: Vec::new(),
+            },
+            inputs: HashMap::from([(
+                "name".to_string(),
+                InputDescription {
+                    description_type: DescriptionType::default(),
+                    schema: schema_for!(GreeterInputs).to_value(),
+                    ..Default::default()
+                },
+            )]),
+            outputs: HashMap::from([(
+                "greeting".to_string(),
+                OutputDescription {
+                    description_type: DescriptionType::default(),
+                    schema: schema_for!(GreeterOutputs).to_value(),
+                },
+            )]),
+        })
     }
 
-    async fn execute(&self, execute: Execute) -> Result<ProcessResponseBody> {
+    async fn execute(&self, execute: Execute) -> Result<ExecuteResults> {
         let value = serde_json::to_value(execute.inputs).unwrap();
         let inputs: GreeterInputs = serde_json::from_value(value).unwrap();
         let greeting = format!("Hello, {}!\n", inputs.name);
-        match execute.response {
-            Response::Raw => Ok(ProcessResponseBody::Requested {
-                outputs: GreeterOutputs::execute_output(),
-                parts: vec![greeting.as_bytes().to_owned()],
-            }),
-            Response::Document => Ok(ProcessResponseBody::Results(Results {
-                results: HashMap::from([(
-                    "greeting".to_owned(),
-                    InlineOrRefData::InputValueNoObject(InputValueNoObject::String(greeting)),
-                )]),
-            })),
-        }
+
+        Ok(HashMap::from([(
+            "greeting".to_string(),
+            ExecuteResult {
+                data: InlineOrRefData::InputValueNoObject(InputValueNoObject::String(greeting)),
+                output: Output {
+                    format: Some(Format {
+                        media_type: Some("text/plain".to_string()),
+                        encoding: Some("utf8".to_string()),
+                        schema: None,
+                    }),
+                    transmission_mode: TransmissionMode::Value,
+                },
+            },
+        )]))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use ogcapi_types::processes::Execute;
-
-    use crate::{
-        ProcessResponseBody, Processor,
-        greeter::{Greeter, GreeterInputs, GreeterOutputs},
-    };
+    use super::*;
+    use crate::Processor;
+    use ogcapi_types::processes::{Execute, ExecuteResult, InlineOrRefData, InputValueNoObject};
 
     #[tokio::test]
     async fn test_greeter() {
@@ -135,17 +157,11 @@ mod tests {
 
         let output = greeter.execute(execute).await.unwrap();
 
-        let ProcessResponseBody::Requested {
-            outputs: _outputs,
-            parts,
-        } = output
-        else {
-            panic!()
+        let ExecuteResult { data, output: _ } = output.get("greeting").unwrap();
+        let InlineOrRefData::InputValueNoObject(InputValueNoObject::String(greeting)) = data else {
+            panic!("Unexpected output data type");
         };
 
-        assert_eq!(
-            String::from_utf8(parts[0].clone()).unwrap(),
-            "Hello, Greeter!\n"
-        );
+        assert_eq!(greeting, "Hello, Greeter!\n");
     }
 }

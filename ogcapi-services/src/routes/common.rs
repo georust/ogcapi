@@ -90,11 +90,23 @@ pub async fn root(
         )
     )
 )]
-pub(crate) async fn api() -> (HeaderMap, Json<openapiv3::OpenAPI>) {
+pub(crate) async fn api(RemoteUrl(url): RemoteUrl) -> (HeaderMap, Json<openapiv3::OpenAPI>) {
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, OPEN_API_JSON.parse().unwrap());
 
-    (headers, Json(OpenAPI::from_slice(OPENAPI).0))
+    let mut open_api = OpenAPI::from_slice(OPENAPI).0;
+
+    let base_url = url[..url::Position::BeforePath].to_string();
+
+    // replace servers with relative server
+    open_api.servers = vec![openapiv3::Server {
+        url: base_url,
+        description: None,
+        variables: None,
+        extensions: Default::default(),
+    }];
+
+    (headers, Json(open_api))
 }
 
 /// API conformance definition

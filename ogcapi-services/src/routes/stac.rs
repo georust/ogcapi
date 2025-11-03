@@ -98,9 +98,12 @@ pub(crate) async fn search(
     // Limit
     if let Some(limit) = params.limit {
         if !(1..10001).contains(&limit) {
-            return Err(Error::Exception(
-                StatusCode::BAD_REQUEST,
-                "query parameter `limit` not in range 1 to 10000".to_string(),
+            return Err(Error::ApiException(
+                (
+                    StatusCode::BAD_REQUEST,
+                    "query parameter `limit` not in range 1 to 10000".to_string(),
+                )
+                    .into(),
             ));
         }
     } else {
@@ -113,17 +116,23 @@ pub(crate) async fn search(
         match bbox {
             Bbox::Bbox2D(bbox) => {
                 if bbox[0] > bbox[2] || bbox[1] > bbox[3] {
-                    return Err(Error::Exception(
-                        StatusCode::BAD_REQUEST,
-                        "query parameter `bbox` not valid".to_string(),
+                    return Err(Error::ApiException(
+                        (
+                            StatusCode::BAD_REQUEST,
+                            "query parameter `bbox` not valid".to_string(),
+                        )
+                            .into(),
                     ));
                 }
             }
             Bbox::Bbox3D(bbox) => {
                 if bbox[0] > bbox[3] || bbox[1] > bbox[4] || bbox[2] > bbox[5] {
-                    return Err(Error::Exception(
-                        StatusCode::BAD_REQUEST,
-                        "query parameter `bbox` not valid".to_string(),
+                    return Err(Error::ApiException(
+                        (
+                            StatusCode::BAD_REQUEST,
+                            "query parameter `bbox` not valid".to_string(),
+                        )
+                            .into(),
                     ));
                 }
             }

@@ -74,7 +74,7 @@ pub const RELATED: &str = "related";
 /// The target URI points to the results of a job.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/results>
-pub const RESULTS: &str = "results";
+pub const RESULTS: &str = "http://www.opengis.net/def/rel/ogc/1.0/results";
 
 pub const ROOT: &str = "root";
 

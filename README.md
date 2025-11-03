@@ -84,6 +84,7 @@ cargo clippy --workspace --all-features --all-targets
 ```bash
 podman run --network host docker.io/ogccite/ets-ogcapi-features10
 # podman run --network host docker.io/ogccite/ets-ogcapi-edr10
+# podman run --network host docker.io/ogccite/ets-ogcapi-processes10
 ```
 
 Navigate to <http://localhost:8080/teamengine/> to execute the test suite. For documentation and more info see <https://cite.opengeospatial.org/teamengine/about/ogcapi-features-1.0/1.0/site>.

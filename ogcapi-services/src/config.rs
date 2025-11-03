@@ -6,7 +6,7 @@ pub struct Config {
     /// Listening port of the server
     #[clap(long, env("APP_PORT"), default_value = "8484")]
     pub port: u16,
-    /// istening host address of the server
+    /// listening host address of the server
     #[clap(long, env("APP_HOST"), default_value = "0.0.0.0")]
     pub host: String,
     /// Postgres database url
