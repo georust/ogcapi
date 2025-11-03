@@ -9,17 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Dynamic OpenAPI definition extration.
+- Dynamic OpenAPI definition extraction.
+- Async OGC API - Processes execution (jobs).
+- Multipart/related response support for raw OGC API - Processes results with multiple outputs.
+- Echo process for testing.
 
 ### Fixed
 
 - Respect process execution `response` parameter
+- Service URL for OGC API - Features
 
 ### Changed
 
 - Make features opt-out rather than opt-in for released standards.
 - Allow integers for feature id.
 - Build documentation for all features.
+- Output type for OGC API - Processes trait (execute).
+- Changed fields to status database model for OGC API - Processes.
 
 ## [0.3.0] - 2025-04-05
 
