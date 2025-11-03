@@ -44,16 +44,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Dependencies
-        run: |
-          sudo apt-get update
-            sudo apt-get install -y \
-              build-essential \
-              pkg-config \
-              libclang-dev \
-              libgdal-dev \
-              python3-dotenv
-
       - name: Checkout
         uses: actions/checkout@v4
 
