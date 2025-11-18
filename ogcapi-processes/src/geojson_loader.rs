@@ -249,7 +249,7 @@ mod tests {
             input: "../data/ne_10m_railroads_north_america.geojson".to_owned(),
             collection: "streets-geojson".to_string(),
             s_srs: None,
-            database_url: "postgresql://postgres:password@localhost:5433/ogcapi".to_string(),
+            database_url: "postgresql://postgres:password@localhost:5432/ogcapi".to_string(),
         };
 
         let execute = Execute {

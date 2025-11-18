@@ -18,7 +18,7 @@ use ogcapi_types::tiles::TileMatrixSet;
 #[cfg(feature = "features")]
 use ogcapi_types::{
     common::Crs,
-    features::{Feature, Query as FeatureQuery},
+    features::{Feature, Query as FeatureQuery, Queryables},
 };
 
 #[cfg(any(feature = "features", feature = "stac", feature = "edr"))]
@@ -60,6 +60,14 @@ pub trait FeatureTransactions: Send + Sync {
         collection: &str,
         query: &FeatureQuery,
     ) -> anyhow::Result<FeatureCollection>;
+
+    async fn queryables(&self, _collection: &str) -> anyhow::Result<Queryables> {
+        // Default to nothing is queryable
+        Ok(Queryables {
+            queryables: Default::default(),
+            additional_properties: false,
+        })
+    }
 }
 
 /// Trait for `STAC` search

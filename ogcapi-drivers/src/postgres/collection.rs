@@ -107,7 +107,6 @@ impl CollectionTransactions for Db {
     }
 
     async fn list_collections(&self, _query: &Query) -> anyhow::Result<Collections> {
-        println!("Query collections");
         let collections: Option<sqlx::types::Json<Vec<Collection>>> = if cfg!(feature = "stac") {
             sqlx::query_scalar(
                 r#"
