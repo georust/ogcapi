@@ -4,12 +4,12 @@ use ogcapi_types::{
     stac::SearchParams,
 };
 
-use crate::StacSeach;
+use crate::StacSearch;
 
 use super::Db;
 
 #[async_trait::async_trait]
-impl StacSeach for Db {
+impl StacSearch for Db {
     async fn search(&self, query: &SearchParams) -> anyhow::Result<FeatureCollection> {
         let mut tx = self.pool.begin().await?;
 

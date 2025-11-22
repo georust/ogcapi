@@ -13,7 +13,7 @@ pub use config::Config;
 pub use error::Error;
 pub use openapi::ApiDoc;
 pub use service::Service;
-pub use state::AppState;
+pub use state::{AppState, Drivers};
 
 #[doc(hidden)]
 pub use clap::Parser as ConfigParser;

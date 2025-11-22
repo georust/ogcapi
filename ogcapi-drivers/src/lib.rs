@@ -73,7 +73,7 @@ pub trait FeatureTransactions: Send + Sync {
 /// Trait for `STAC` search
 #[cfg(feature = "stac")]
 #[async_trait::async_trait]
-pub trait StacSeach: Send + Sync {
+pub trait StacSearch: Send + Sync {
     async fn search(&self, query: &SearchParams) -> anyhow::Result<FeatureCollection>;
 }
 
