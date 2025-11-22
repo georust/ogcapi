@@ -1,26 +1,18 @@
-use clap::Parser;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 use ogcapi::{
     processes::echo::Echo,
-    services::{AppState, Config, Drivers, Service},
+    services::{AppState, Config, ConfigParser, Drivers, Service},
 };
 
 #[tokio::main]
 async fn main() {
     // setup env
-    dotenvy::dotenv().ok();
+    ogcapi::services::setup_env();
 
     // setup tracing
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            "cite_service=debug,ogcapi=debug,sqlx=warn",
-        ))
-        .with(tracing_subscriber::fmt::layer().pretty())
-        .init();
+    ogcapi::services::telemetry::init();
 
     // Config
-    let config = Config::parse();
+    let config = Config::try_parse().unwrap();
 
     // Drivers
     let drivers = Drivers::try_new_from_env().await.unwrap();

@@ -19,3 +19,7 @@ pub use state::{AppState, Drivers};
 pub use clap::Parser as ConfigParser;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+pub fn setup_env() {
+    dotenvy::dotenv().ok();
+}

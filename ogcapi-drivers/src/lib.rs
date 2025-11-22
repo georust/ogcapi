@@ -4,11 +4,9 @@ pub mod postgres;
 pub mod s3;
 
 #[cfg(feature = "common")]
-use ogcapi_types::common::{Collection, Collections, Link, Query as CollectionQuery};
+use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
 #[cfg(feature = "edr")]
 use ogcapi_types::edr::{Query as EdrQuery, QueryType};
-#[cfg(feature = "processes")]
-use ogcapi_types::processes::{Response, StatusCode, StatusInfo};
 #[cfg(feature = "stac")]
 use ogcapi_types::stac::SearchParams;
 #[cfg(feature = "styles")]
@@ -19,6 +17,11 @@ use ogcapi_types::tiles::TileMatrixSet;
 use ogcapi_types::{
     common::Crs,
     features::{Feature, Query as FeatureQuery, Queryables},
+};
+#[cfg(feature = "processes")]
+use ogcapi_types::{
+    common::Link,
+    processes::{Response, StatusCode, StatusInfo},
 };
 
 #[cfg(any(feature = "features", feature = "stac", feature = "edr"))]
