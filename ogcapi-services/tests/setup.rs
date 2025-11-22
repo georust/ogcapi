@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use url::Url;
 use uuid::Uuid;
 
-use ogcapi_services::{AppState, Config, ConfigParser, Service};
+use ogcapi_services::{AppState, Config, ConfigParser, Drivers, Service};
 
 #[allow(dead_code)]
 pub async fn spawn_app() -> anyhow::Result<(SocketAddr, Url)> {
@@ -12,12 +12,17 @@ pub async fn spawn_app() -> anyhow::Result<(SocketAddr, Url)> {
     // ogcapi_services::telemetry::init();
 
     let mut config = Config::parse();
-    config.database_url.set_path(&Uuid::new_v4().to_string());
     config.port = 0;
 
-    let state = AppState::new_from(&config).await;
+    let var = std::env::var("DATABASE_URL")?;
+    let mut database_url = Url::parse(&var)?;
+    database_url.set_path(&Uuid::new_v4().to_string());
 
-    let service = Service::new_with(&config, state).await;
+    let drivers = Drivers::try_new_db(database_url.as_str()).await?;
+
+    let state = AppState::new(drivers).await;
+
+    let service = Service::try_new_with(&config, state).await?;
 
     let addr = service.local_addr()?;
 
@@ -25,5 +30,5 @@ pub async fn spawn_app() -> anyhow::Result<(SocketAddr, Url)> {
         service.serve().await;
     });
 
-    Ok((addr, config.database_url))
+    Ok((addr, database_url))
 }

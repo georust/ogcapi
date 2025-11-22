@@ -4,7 +4,7 @@ use tracing_subscriber::{EnvFilter, prelude::*};
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // setup env
-    dotenvy::dotenv().ok();
+    ogcapi::services::setup_env();
 
     // setup tracing
     tracing_subscriber::registry()

@@ -26,7 +26,7 @@ use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{ApiDoc, AppState, Config, ConfigParser, Error, routes};
+use crate::{ApiDoc, AppState, Config, ConfigParser, Error, routes, state::Drivers};
 
 /// OGC API Services
 pub struct Service {
@@ -36,17 +36,20 @@ pub struct Service {
 }
 
 impl Service {
-    pub async fn new() -> Self {
+    pub async fn try_new() -> Result<Self, anyhow::Error> {
         // config
         let config = Config::parse();
 
-        // state
-        let state = AppState::new_from(&config).await;
+        // drivers
+        let drivers = Drivers::try_new_from_env().await?;
 
-        Service::new_with(&config, state).await
+        // state
+        let state = AppState::new(drivers).await;
+
+        Service::try_new_with(&config, state).await
     }
 
-    pub async fn new_with(config: &Config, state: AppState) -> Self {
+    pub async fn try_new_with(config: &Config, state: AppState) -> Result<Self, anyhow::Error> {
         // router
         let router = OpenApiRouter::<AppState>::with_openapi(ApiDoc::openapi());
 
@@ -98,15 +101,13 @@ impl Service {
         );
 
         // listener
-        let listener = TcpListener::bind((config.host.as_str(), config.port))
-            .await
-            .expect("create listener");
+        let listener = TcpListener::bind((config.host.as_str(), config.port)).await?;
 
-        Service {
+        Ok(Service {
             state,
             router,
             listener,
-        }
+        })
     }
 
     /// Serve application
@@ -117,7 +118,7 @@ impl Service {
         // serve
         tracing::info!(
             "listening on http://{}",
-            self.listener.local_addr().unwrap()
+            self.listener.local_addr().expect("local address")
         );
 
         axum::serve::serve(self.listener, router)

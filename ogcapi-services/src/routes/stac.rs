@@ -7,7 +7,6 @@ use hyper::header::CONTENT_TYPE;
 use url::Url;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
-use ogcapi_drivers::StacSeach;
 use ogcapi_types::{
     common::{
         Bbox, Exception, Link, Linked,
@@ -139,7 +138,7 @@ pub(crate) async fn search(
         }
     }
 
-    let mut fc = state.db.search(&params).await?;
+    let mut fc = state.drivers.stac.search(&params).await?;
 
     fc.links.insert_or_update(&[
         Link::new(&url, SELF).mediatype(GEO_JSON),
