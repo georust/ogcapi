@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed fields to status database model for OGC API - Processes.
 - Consolidate API definition for OGC cite validation.
 - Decouple drivers from app state.
+- Set default item type of collection as `feature`.
 
 ## [0.3.0] - 2025-04-05
 

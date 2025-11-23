@@ -25,7 +25,6 @@ pub async fn load(args: Args) -> anyhow::Result<()> {
     // Create collection
     let collection = Collection {
         id: args.collection.to_owned(),
-        item_type: Some("Feature".to_string()),
         extent: geojson
             .bbox
             .map(|bbox| Extent {

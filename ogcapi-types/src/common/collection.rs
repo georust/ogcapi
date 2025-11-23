@@ -26,7 +26,8 @@ pub struct Collection {
     pub attribution: Option<String>,
     pub extent: Option<Extent>,
     /// An indicator about the type of the items in the collection.
-    pub item_type: Option<String>,
+    #[serde(default = "feature")]
+    pub item_type: String,
     /// The list of coordinate reference systems supported by the API; the first item is the default coordinate reference system.
     #[serde(default)]
     #[serde_as(as = "Vec<DisplayFromStr>")]
@@ -97,6 +98,10 @@ pub struct Collection {
     pub update_frequency: Option<i64>,
     #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
+}
+
+fn feature() -> String {
+    "feature".to_string()
 }
 
 #[cfg(feature = "stac")]
