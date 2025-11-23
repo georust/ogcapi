@@ -30,9 +30,9 @@ pub struct SpatialExtent {
     /// Extensions may support additional coordinate reference systems and add
     /// additional enum values.
     #[serde(default)]
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde_as(as = "Option<DisplayFromStr>")]
     #[schema(value_type = String)]
-    pub crs: Crs,
+    pub crs: Option<Crs>,
 }
 
 impl Default for SpatialExtent {

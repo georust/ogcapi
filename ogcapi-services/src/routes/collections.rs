@@ -288,7 +288,7 @@ async fn collections(
         Link::new(url.join(".")?, ROOT).mediatype(JSON),
     ];
 
-    collections.crs = vec![Crs::default(), Crs::from_epsg(3857)];
+    collections.crs = vec![Crs::default2d(), Crs::from_epsg(3857)];
 
     Ok(Json(collections))
 }

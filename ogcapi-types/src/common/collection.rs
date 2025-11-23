@@ -122,7 +122,7 @@ impl Default for Collection {
             attribution: Default::default(),
             extent: Default::default(),
             item_type: Default::default(),
-            crs: vec![Crs::default()],
+            crs: vec![Crs::default2d()],
             storage_crs: Default::default(),
             storage_crs_coordinate_epoch: Default::default(),
             links: Default::default(),

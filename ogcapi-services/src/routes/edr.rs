@@ -72,7 +72,7 @@ async fn query(
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", query);
 
-    let mut fc = state
+    let (mut fc, crs) = state
         .drivers
         .edr
         .query(&collection_id, &query_type, &query)
@@ -92,7 +92,7 @@ async fn query(
     }
 
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Crs", query.crs.to_string().parse().unwrap());
+    headers.insert("Content-Crs", crs.to_string().parse().unwrap());
     headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(fc)))

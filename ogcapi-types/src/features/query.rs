@@ -62,9 +62,9 @@ pub struct Query {
     #[param(value_type = Bbox, style = Form, explode = false, nullable = false)]
     pub bbox: Option<Bbox>,
     #[serde(default)]
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = String, nullable = false)]
-    pub bbox_crs: Crs,
+    pub bbox_crs: Option<Crs>,
     /// Either a date-time or an interval. Date and time expressions adhere to
     /// RFC 3339. Intervals may be bounded or half-bounded (double-dots at start or end).
     ///
@@ -85,9 +85,9 @@ pub struct Query {
     #[param(value_type = String)]
     pub datetime: Option<Datetime>,
     #[serde(default)]
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = String)]
-    pub crs: Crs,
+    pub crs: Option<Crs>,
     #[param(nullable = false)]
     pub filter: Option<String>,
     #[serde(default)]

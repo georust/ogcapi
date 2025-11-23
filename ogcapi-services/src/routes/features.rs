@@ -109,12 +109,18 @@ async fn read(
         .read_collection(&collection_id)
         .await?
         .ok_or(Error::NotFound)?;
-    is_supported_crs(&collection, &query.crs).await?;
+
+    let crs = if let Some(crs) = query.crs {
+        is_supported_crs(&collection, &crs).await?;
+        crs
+    } else {
+        Crs::default2d()
+    };
 
     let mut feature = state
         .drivers
         .features
-        .read_feature(&collection_id, &id, &query.crs)
+        .read_feature(&collection_id, &id, &crs)
         .await?
         .ok_or(Error::NotFound)?;
 
@@ -128,7 +134,7 @@ async fn read(
     let mut headers = HeaderMap::new();
     headers.insert(
         "Content-Crs",
-        format!("<{}>", query.crs)
+        format!("<{}>", crs)
             .parse()
             .context("Unable to parse `Content-Crs` header value")?,
     );
@@ -282,7 +288,12 @@ async fn items(
         .read_collection(&collection_id)
         .await?
         .ok_or(Error::NotFound)?;
-    is_supported_crs(&collection, &query.crs).await?;
+    let crs = if let Some(crs) = query.crs.as_ref() {
+        is_supported_crs(&collection, crs).await?;
+        crs
+    } else {
+        &Crs::default2d()
+    };
 
     // queryables
     let queryables = state.drivers.features.queryables(&collection_id).await?;
@@ -310,23 +321,23 @@ async fn items(
     ]);
 
     // pagination
-    if let Some(limit) = query.limit {
-        if let Some(offset) = query.offset {
-            if offset != 0 && offset >= limit {
-                query.offset = Some(offset - limit);
-                url.set_query(serde_qs::to_string(&query).ok().as_deref());
-                let previous = Link::new(&url, PREV).mediatype(GEO_JSON);
-                fc.links.insert_or_update(&[previous]);
-            }
+    if let Some(limit) = query.limit
+        && let Some(offset) = query.offset
+    {
+        if offset != 0 && offset >= limit {
+            query.offset = Some(offset - limit);
+            url.set_query(serde_qs::to_string(&query).ok().as_deref());
+            let previous = Link::new(&url, PREV).mediatype(GEO_JSON);
+            fc.links.insert_or_update(&[previous]);
+        }
 
-            if let Some(number_matched) = fc.number_matched
-                && number_matched > (offset + limit) as u64
-            {
-                query.offset = Some(offset + limit);
-                url.set_query(serde_qs::to_string(&query).ok().as_deref());
-                let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
-                fc.links.insert_or_update(&[next]);
-            }
+        if let Some(number_matched) = fc.number_matched
+            && number_matched > (offset + limit) as u64
+        {
+            query.offset = Some(offset + limit);
+            url.set_query(serde_qs::to_string(&query).ok().as_deref());
+            let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
+            fc.links.insert_or_update(&[next]);
         }
     }
 
@@ -338,12 +349,12 @@ async fn items(
             )
             .mediatype(GEO_JSON),
             Link::new(url.join("../..")?, ROOT).mediatype(JSON),
-            Link::new(url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
+            Link::new(url.join(&format!("../{}", collection_id))?, COLLECTION).mediatype(JSON),
         ])
     }
 
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Crs", format!("<{}>", query.crs).parse().unwrap());
+    headers.insert("Content-Crs", format!("<{}>", crs).parse().unwrap());
     headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(fc)))

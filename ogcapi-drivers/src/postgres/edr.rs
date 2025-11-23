@@ -1,6 +1,7 @@
 use sqlx::types::Json;
 
 use ogcapi_types::{
+    common::{Crs, Exception},
     edr::{Query, QueryType},
     features::{Feature, FeatureCollection},
 };
@@ -16,27 +17,49 @@ impl EdrQuerier for Db {
         collection_id: &str,
         query_type: &QueryType,
         query: &Query,
-    ) -> anyhow::Result<FeatureCollection> {
-        let srid: i32 = query.crs.as_srid();
-
-        let c = self.read_collection(collection_id).await?;
-        let storage_srid = c.unwrap().storage_crs.unwrap_or_default().as_srid();
+    ) -> anyhow::Result<(FeatureCollection, Crs)> {
+        let collection = self.read_collection(collection_id).await?;
+        let storage_srid = match collection {
+            Some(collection) => match collection.storage_crs.map(|crs| crs.as_srid()) {
+                Some(srid) => srid,
+                None => {
+                    sqlx::query_scalar(&format!(
+                        "SELECT Find_SRID('items', '{collection_id}', 'geom')"
+                    ))
+                    .fetch_one(&self.pool)
+                    .await?
+                }
+            },
+            None => return Err(Exception::new_from_status(404).into()),
+        };
 
         let mut geometry_type = query.coords.split('(').next().unwrap().to_uppercase();
         geometry_type.retain(|c| !c.is_whitespace());
 
-        let spatial_predicate = match &query_type {
+        let (spatial_predicate, srid) = match &query_type {
             QueryType::Position | QueryType::Area | QueryType::Trajectory => {
                 if geometry_type.ends_with('Z') || geometry_type.ends_with('M') {
-                    format!(
+                    let srid: i32 = query
+                        .crs
+                        .as_ref()
+                        .map(|crs| crs.as_srid())
+                        .unwrap_or_else(|| Crs::default3d().as_srid());
+                    let predicate = format!(
                         "ST_3DIntersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                         srid, query.coords, storage_srid
-                    )
+                    );
+                    (predicate, srid)
                 } else {
-                    format!(
+                    let srid: i32 = query
+                        .crs
+                        .as_ref()
+                        .map(|crs| crs.as_srid())
+                        .unwrap_or_else(|| Crs::default2d().as_srid());
+                    let predicate = format!(
                         "ST_Intersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                         srid, query.coords, storage_srid
-                    )
+                    );
+                    (predicate, srid)
                 }
             }
             QueryType::Radius => {
@@ -56,26 +79,49 @@ impl EdrQuerier for Db {
                     .expect("Failed to parse & convert distance");
 
                 if geometry_type.ends_with('Z') || geometry_type.ends_with('M') {
-                    format!(
+                    let srid: i32 = query
+                        .crs
+                        .as_ref()
+                        .map(|crs| crs.as_srid())
+                        .unwrap_or_else(|| Crs::default3d().as_srid());
+                    let predicate = format!(
                         "ST_3DDWithin(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                         srid, query.coords, storage_srid
-                    )
+                    );
+                    (predicate, srid)
                 } else {
-                    format!(
+                    let srid: i32 = query
+                        .crs
+                        .as_ref()
+                        .map(|crs| crs.as_srid())
+                        .unwrap_or_else(|| Crs::default2d().as_srid());
+                    let predicate = format!(
                         "ST_DWithin(ST_Transform(geom, 4326)::geography, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), 4326)::geography, {}, false)",
                         srid, query.coords, distance
-                    )
+                    );
+                    (predicate, srid)
                 }
             }
             QueryType::Cube => {
                 let bbox: Vec<&str> = query.coords.split(',').collect();
                 if bbox.len() == 4 {
-                    format!(
+                    let srid: i32 = query
+                        .crs
+                        .as_ref()
+                        .map(|crs| crs.as_srid())
+                        .unwrap_or_else(|| Crs::default2d().as_srid());
+                    let predicate = format!(
                         "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}), {})",
                         query.coords, srid, storage_srid
-                    )
+                    );
+                    (predicate, srid)
                 } else {
-                    format!(
+                    let srid: i32 = query
+                        .crs
+                        .as_ref()
+                        .map(|crs| crs.as_srid())
+                        .unwrap_or_else(|| Crs::default3d().as_srid());
+                    let predicate = format!(
                         "ST_3DIntersects(
                             geom,
                             ST_Transform(
@@ -87,7 +133,8 @@ impl EdrQuerier for Db {
                             )
                         )",
                         bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5], srid, storage_srid
-                    )
+                    );
+                    (predicate, srid)
                 }
             }
             qt => unimplemented!("{qt:?}"),
@@ -142,6 +189,6 @@ impl EdrQuerier for Db {
         let mut fc = FeatureCollection::new(features);
         fc.number_matched = Some(number_matched);
 
-        Ok(fc)
+        Ok((fc, Crs::from_srid(srid)))
     }
 }
