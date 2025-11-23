@@ -257,7 +257,7 @@ async fn items(
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", query);
 
-    // Limit
+    // limit
     if let Some(limit) = query.limit {
         // TODO: sync with opanapi specification
         if limit > 10000 {
@@ -270,6 +270,12 @@ async fn items(
         query.limit = Some(10);
     }
 
+    // offset
+    if query.offset.is_none() {
+        query.offset = Some(0);
+    }
+
+    // crs
     let collection = state
         .drivers
         .collections
@@ -278,7 +284,7 @@ async fn items(
         .ok_or(Error::NotFound)?;
     is_supported_crs(&collection, &query.crs).await?;
 
-    // validate additional parameters
+    // queryables
     let queryables = state.drivers.features.queryables(&collection_id).await?;
     if !queryables.additional_properties {
         for prop in query.additional_parameters.keys() {
@@ -305,10 +311,6 @@ async fn items(
 
     // pagination
     if let Some(limit) = query.limit {
-        if query.offset.is_none() {
-            query.offset = Some(0);
-        }
-
         if let Some(offset) = query.offset {
             if offset != 0 && offset >= limit {
                 query.offset = Some(offset - limit);
