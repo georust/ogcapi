@@ -17,7 +17,7 @@ use crate::{
     extractors::{Qs, RemoteUrl},
 };
 
-const CONFORMANCE: [&str; 5] = [
+const CONFORMANCE: [&str; 6] = [
     "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/core",
     "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/collections",
     "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/json",
@@ -25,7 +25,7 @@ const CONFORMANCE: [&str; 5] = [
     // "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/edr-geojson",
     // "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/covjson",
     // "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/html",
-    // "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-edr-1/1.0/conf/queries",
 ];
 
