@@ -99,17 +99,20 @@ impl str::FromStr for Crs {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = if s.starts_with("urn") {
+        let parts: Vec<&str> = if s.starts_with("http") {
+            s.trim_start_matches("http://www.opengis.net/def/crs/")
+                .split('/')
+                .collect()
+        } else if s.starts_with("urn") {
             s.trim_start_matches("urn:ogc:def:crs:")
                 .split(':')
                 .collect()
         } else {
-            s.trim_start_matches("http://www.opengis.net/def/crs/")
-                .split('/')
-                .collect()
+            s.split(':').collect()
         };
         match parts.len() {
             3 => Ok(Crs::new(Authority::from_str(parts[0])?, parts[1], parts[2])),
+            2 => Ok(Crs::new(Authority::from_str(parts[0])?, "0", parts[1])),
             _ => Err(format!("Unable to parse CRS from `{s}`!")),
         }
     }
