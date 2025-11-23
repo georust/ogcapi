@@ -31,7 +31,7 @@ pub enum Type {
 #[serde(untagged)]
 pub enum FeatureId {
     String(String),
-    Integer(isize),
+    Integer(u64),
 }
 
 impl Display for FeatureId {
