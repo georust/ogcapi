@@ -331,9 +331,18 @@ async fn items(
             fc.links.insert_or_update(&[previous]);
         }
 
+        let mut next = false;
         if let Some(number_matched) = fc.number_matched
             && number_matched > (offset + limit) as u64
         {
+            next = true;
+        }
+        if let Some(number_returned) = fc.number_returned
+            && number_returned == limit as u64
+        {
+            next = true;
+        }
+        if next {
             query.offset = Some(offset + limit);
             url.set_query(serde_qs::to_string(&query).ok().as_deref());
             let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
