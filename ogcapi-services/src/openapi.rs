@@ -1,7 +1,10 @@
 use utoipa::OpenApi;
 
 /// TODO: remove once Open API 3.1 is supported
-#[cfg(all(any(feature = "features", feature = "processes"), not(feature = "edr")))]
+#[cfg(all(
+    any(feature = "common", feature = "features", feature = "processes"),
+    not(feature = "edr")
+))]
 pub(crate) static OPENAPI: &[u8; 45786] = include_bytes!("../assets/openapi/openapi.yaml");
 
 /// TODO: remove once Open API 3.1 is supported

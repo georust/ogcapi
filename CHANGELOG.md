@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Output type for OGC API - Processes trait (execute).
 - Changed fields to status database model for OGC API - Processes.
 - Consolidate API definition for OGC cite validation.
+- Decouple drivers from app state.
 
 ## [0.3.0] - 2025-04-05
 
