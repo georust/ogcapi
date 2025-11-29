@@ -118,20 +118,6 @@ impl GdalLoaderOutputs {
     }
 }
 
-impl TryFrom<ProcessResponseBody> for GdalLoaderOutputs {
-    type Error = Exception;
-
-    fn try_from(value: ProcessResponseBody) -> Result<Self, Self::Error> {
-        if let ProcessResponseBody::Requested(buf) = value {
-            Ok(GdalLoaderOutputs {
-                collection: String::from_utf8(buf).unwrap(),
-            })
-        } else {
-            Err(Exception::new("500"))
-        }
-    }
-}
-
 #[async_trait::async_trait]
 impl Processor for GdalLoader {
     fn id(&self) -> &'static str {
@@ -356,9 +342,10 @@ impl Processor for GdalLoader {
             })?;
         }
 
-        Ok(ProcessResponseBody::Requested(
-            inputs.collection.as_bytes().to_owned(),
-        ))
+        Ok(ProcessResponseBody::Requested {
+            outputs: GdalLoaderOutputs::execute_output(),
+            parts: vec![inputs.collection.as_bytes().to_owned()],
+        })
     }
 }
 
@@ -366,10 +353,9 @@ impl Processor for GdalLoader {
 mod tests {
     use ogcapi_types::processes::Execute;
 
-    use crate::{
-        Processor,
-        gdal_loader::{GdalLoader, GdalLoaderInputs, GdalLoaderOutputs},
-    };
+    use crate::{ProcessResponseBody, Processor};
+
+    use super::*;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_loader() {
@@ -386,7 +372,7 @@ mod tests {
             collection: "streets-gdal".to_string(),
             filter: None,
             s_srs: None,
-            database_url: "postgresql://postgres:password@localhost:5433/ogcapi".to_string(),
+            database_url: "postgresql://postgres:password@localhost:5432/ogcapi".to_string(),
         };
 
         let execute = Execute {
@@ -394,7 +380,16 @@ mod tests {
             ..Default::default()
         };
 
-        let output: GdalLoaderOutputs = loader.execute(execute).await.unwrap().try_into().unwrap();
-        assert_eq!(output.collection, "streets-gdal");
+        let output = loader.execute(execute).await.unwrap();
+
+        let ProcessResponseBody::Requested {
+            outputs: _outputs,
+            parts,
+        } = output
+        else {
+            panic!()
+        };
+
+        assert_eq!(String::from_utf8(parts[0].clone()).unwrap(), "streets-gdal");
     }
 }

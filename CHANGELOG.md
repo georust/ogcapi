@@ -11,12 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dynamic OpenAPI definition extraction.
 - Types for `OGCAPI - Moving Features`
+- Async OGC API - Processes execution (jobs).
+- Multipart/related response support for raw OGC API - Processes results with multiple outputs.
+- Echo process for testing.
+- Dedicate `cite-service` for OGC Cite testsuite in CI.
+- Make public base url configurable via `PUBLIC_URL` environment variable.
+
+### Fixed
+
+- Respect process execution `response` parameter.
+- Service URL for OGC API - Features.
+- Minor issues with OGC API - Features conformance.
 
 ### Changed
 
 - Make features opt-out rather than opt-in for released standards.
 - Allow integers for feature id.
 - Build documentation for all features.
+- Output type for OGC API - Processes trait (execute).
+- Changed fields to status database model for OGC API - Processes.
+- Consolidate API definition for OGC cite validation.
+- Decouple drivers from app state.
 
 ## [0.3.0] - 2025-04-05
 

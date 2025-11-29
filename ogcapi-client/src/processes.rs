@@ -1,7 +1,6 @@
 use crate::{Client, Error};
-
-use ogcapi_processes::ProcessResponseBody;
-use ogcapi_types::processes::{Execute, Response, Results, StatusInfo, TransmissionMode};
+use ogcapi_types::processes::{Execute, Output, Response, Results, StatusInfo, TransmissionMode};
+use std::collections::HashMap;
 
 impl Client {
     #[cfg(feature = "processes")]
@@ -28,9 +27,10 @@ impl Client {
                     if execute.outputs.len() == 1 {
                         let (_k, v) = execute.outputs.iter().next().unwrap();
                         match v.transmission_mode {
-                            TransmissionMode::Value => {
-                                Ok(ProcessResponseBody::Requested(response.bytes()?.to_vec()))
-                            }
+                            TransmissionMode::Value => Ok(ProcessResponseBody::Requested {
+                                outputs: execute.outputs.clone(),
+                                parts: vec![response.bytes()?.to_vec()],
+                            }),
                             TransmissionMode::Reference => todo!(),
                         }
                     } else {
@@ -55,9 +55,20 @@ impl Client {
     }
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub enum ProcessResponseBody {
+    Requested {
+        outputs: HashMap<String, Output>,
+        parts: Vec<Vec<u8>>,
+    },
+    Results(Results),
+    Empty(String),
+    StatusInfo(StatusInfo),
+}
+
 #[cfg(test)]
 mod tests {
-    use ogcapi_processes::gdal_loader::GdalLoaderOutputs;
+    // use ogcapi_processes::gdal_loader::GdalLoaderOutputs;
     use ogcapi_types::processes::Execute;
 
     use super::*;
@@ -85,38 +96,55 @@ mod tests {
 
         let response = client.execute(Greeter {}.id(), &execute).unwrap();
 
-        let output: GreeterOutputs = response.try_into().unwrap();
-        assert_eq!(output.greeting, "Hello, client!\n")
+        let ProcessResponseBody::Requested {
+            outputs: _outputs,
+            parts,
+        } = response
+        else {
+            panic!()
+        };
+
+        assert_eq!(
+            String::from_utf8(parts[0].clone()).unwrap(),
+            "Hello, client!\n"
+        )
     }
 
-    #[test]
-    #[ignore = "needs running demo service"]
-    fn execute_gdal_loader() {
-        use ogcapi_processes::{
-            Processor,
-            gdal_loader::{GdalLoader, GdalLoaderInputs},
-        };
+    // #[test]
+    // #[ignore = "needs running demo service"]
+    // fn execute_gdal_loader() {
+    //     use ogcapi_processes::{
+    //         Processor,
+    //         gdal_loader::{GdalLoader, GdalLoaderInputs},
+    //     };
 
-        let endpoint = "http://0.0.0.0:8484/";
-        let client = Client::new(endpoint).unwrap();
+    //     let endpoint = "http://0.0.0.0:8484/";
+    //     let client = Client::new(endpoint).unwrap();
 
-        let input = GdalLoaderInputs {
-            input: "/data/ne_10m_railroads_north_america.geojson".to_owned(),
-            collection: "streets".to_string(),
-            filter: None,
-            s_srs: None,
-            database_url: "postgresql://postgres:password@db:5432/ogcapi".to_string(),
-        };
+    //     let input = GdalLoaderInputs {
+    //         input: "/data/ne_10m_railroads_north_america.geojson".to_owned(),
+    //         collection: "streets".to_string(),
+    //         filter: None,
+    //         s_srs: None,
+    //         database_url: "postgresql://postgres:password@db:5432/ogcapi".to_string(),
+    //     };
 
-        let execute = Execute {
-            inputs: input.execute_input(),
-            outputs: GdalLoaderOutputs::execute_output(),
-            ..Default::default()
-        };
+    //     let execute = Execute {
+    //         inputs: input.execute_input(),
+    //         outputs: GdalLoaderOutputs::execute_output(),
+    //         ..Default::default()
+    //     };
 
-        let response = client.execute(GdalLoader {}.id(), &execute).unwrap();
+    //     let response = client.execute(GdalLoader {}.id(), &execute).unwrap();
 
-        let output: GdalLoaderOutputs = response.try_into().unwrap();
-        dbg!(output);
-    }
+    //     let ProcessResponseBody::Requested {
+    //         outputs: _outputs,
+    //         parts,
+    //     } = response
+    //     else {
+    //         panic!()
+    //     };
+
+    //     assert_eq!(String::from_utf8(parts[0].clone()).unwrap(), "streets");
+    // }
 }

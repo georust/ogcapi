@@ -21,12 +21,7 @@ async fn main() {
     let state = AppState::new(drivers).await;
 
     // Register processes/processors
-    let state = state.processors(vec![
-        // Box::new(Greeter),
-        // Box::new(GeoJsonLoader),
-        // Box::new(GdalLoader),
-        Box::new(Echo),
-    ]);
+    let state = state.processors(vec![Box::new(Echo)]);
 
     // Build & run with hyper
     Service::try_new_with(&config, state)

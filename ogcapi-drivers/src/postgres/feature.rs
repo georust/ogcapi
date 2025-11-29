@@ -1,5 +1,5 @@
 use ogcapi_types::{
-    common::{Bbox, Crs, Datetime, IntervalDatetime},
+    common::{Authority, Bbox, Crs, Datetime, IntervalDatetime},
     features::{Feature, FeatureCollection, Query},
 };
 
@@ -140,8 +140,11 @@ impl FeatureTransactions for Db {
 
         // bbox
         if let Some(bbox) = query.bbox.as_ref() {
-            // TODO: Properly handle crs and bbox transformation
-            let bbox_srid: i32 = query.bbox_crs.as_srid();
+            // coordinate system axis order (OGC and Postgis is lng, lat | EPSG is lat, lng)
+            let order = match query.bbox_crs.authority {
+                Authority::OGC => [0, 1, 2, 3],
+                Authority::EPSG => [1, 0, 3, 2],
+            };
 
             let c = self.read_collection(collection).await?;
             let storage_srid = c
@@ -150,17 +153,39 @@ impl FeatureTransactions for Db {
                 .unwrap_or_default()
                 .as_srid();
 
-            let envelope = match bbox {
+            // TODO: handle antimeridian (lower > upper on axis 1)
+            let intersection = match bbox {
                 Bbox::Bbox2D(bbox) => format!(
-                    "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                    bbox[0], bbox[1], bbox[2], bbox[3], bbox_srid
+                    "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}, {}, {}, {}), {storage_srid}))",
+                    bbox[order[0]],
+                    bbox[order[1]],
+                    bbox[order[2]],
+                    bbox[order[3]],
+                    query.bbox_crs.as_srid()
                 ),
                 Bbox::Bbox3D(bbox) => format!(
-                    "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                    bbox[0], bbox[1], bbox[3], bbox[4], bbox_srid
+                    // FIXME: ensure proper height/box transformation handling
+                    r#"ST_3DIntersects(geom, ST_Envelope(ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY[
+                        ST_MakePoint({x1}, {y1}, {z1}), 
+                        ST_MakePoint({x2}, {y1}, {z1}),
+                        ST_MakePoint({x1}, {y2}, {z1}), 
+                        ST_MakePoint({x2}, {y2}, {z1}),
+                        ST_MakePoint({x1}, {y1}, {z2}), 
+                        ST_MakePoint({x2}, {y1}, {z2}),
+                        ST_MakePoint({x1}, {y2}, {z2}), 
+                        ST_MakePoint({x2}, {y2}, {z2})
+                    ]), {srid}), {storage_srid})))"#,
+                    x1 = bbox[order[0]],
+                    y1 = bbox[order[1]],
+                    z1 = bbox[2],
+                    x2 = bbox[order[2] + 1],
+                    y2 = bbox[order[3] + 1],
+                    z2 = bbox[5],
+                    srid = query.bbox_crs.as_srid()
                 ),
             };
-            where_conditions.push(format!("geom && ST_Transform({envelope}, {storage_srid})"));
+
+            where_conditions.push(intersection);
         }
 
         // datetime

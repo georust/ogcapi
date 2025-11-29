@@ -15,20 +15,19 @@ stac = ["ogcapi/stac"]
 
 [dependencies]
 anyhow = { workspace = true }
-arrow = { version = "56.0", optional = true, default-features = false }
+arrow = { version = "57.0", optional = true, default-features = false }
 clap = { version = "4.5", features = ["derive", "env"] }
-dotenvy = "0.15.7"
 gdal = { version = "0.18.0", optional = true, features = ["bindgen"] }
-geo = { version = "0.30.0", optional = true }
+geo = { version = "0.31.0", optional = true }
 geojson = { workspace = true, optional = true, features = ["geo-types"] }
 osmpbfreader = { version = "0.19.1", optional = true }
 serde_json = { workspace = true }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres"] }
-tokio = { version = "1.47", features = ["full"] }
+tokio = { version = "1.48", features = ["full"] }
 tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
-wkb = { version = "0.9.0", optional = true }
+wkb = { version = "0.9.2", optional = true }
 
 
 ogcapi = { path = "../../ogcapi", version = "0.3", features = [

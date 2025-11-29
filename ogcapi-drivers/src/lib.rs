@@ -7,8 +7,6 @@ pub mod s3;
 use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
 #[cfg(feature = "edr")]
 use ogcapi_types::edr::{Query as EdrQuery, QueryType};
-#[cfg(feature = "processes")]
-use ogcapi_types::processes::{Results, StatusInfo};
 #[cfg(feature = "stac")]
 use ogcapi_types::stac::SearchParams;
 #[cfg(feature = "styles")]
@@ -18,7 +16,12 @@ use ogcapi_types::tiles::TileMatrixSet;
 #[cfg(feature = "features")]
 use ogcapi_types::{
     common::Crs,
-    features::{Feature, Query as FeatureQuery},
+    features::{Feature, Query as FeatureQuery, Queryables},
+};
+#[cfg(feature = "processes")]
+use ogcapi_types::{
+    common::Link,
+    processes::{Response, StatusCode, StatusInfo},
 };
 
 #[cfg(any(feature = "features", feature = "stac", feature = "edr"))]
@@ -60,12 +63,20 @@ pub trait FeatureTransactions: Send + Sync {
         collection: &str,
         query: &FeatureQuery,
     ) -> anyhow::Result<FeatureCollection>;
+
+    async fn queryables(&self, _collection: &str) -> anyhow::Result<Queryables> {
+        // Default to nothing is queryable
+        Ok(Queryables {
+            queryables: Default::default(),
+            additional_properties: false,
+        })
+    }
 }
 
 /// Trait for `STAC` search
 #[cfg(feature = "stac")]
 #[async_trait::async_trait]
-pub trait StacSeach: Send + Sync {
+pub trait StacSearch: Send + Sync {
     async fn search(&self, query: &SearchParams) -> anyhow::Result<FeatureCollection>;
 }
 
@@ -85,13 +96,37 @@ pub trait EdrQuerier: Send + Sync {
 #[cfg(feature = "processes")]
 #[async_trait::async_trait]
 pub trait JobHandler: Send + Sync {
-    async fn register(&self, job: &StatusInfo) -> anyhow::Result<String>;
+    async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String>;
+
+    async fn update(&self, job: &StatusInfo) -> anyhow::Result<()>;
+
+    async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>>;
 
     async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
+    async fn finish(
+        &self,
+        job_id: &str,
+        status: &StatusCode,
+        message: Option<String>,
+        links: Vec<Link>,
+        results: Option<ogcapi_types::processes::ExecuteResults>,
+    ) -> anyhow::Result<()>;
+
     async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
-    async fn results(&self, id: &str) -> anyhow::Result<Option<Results>>;
+    async fn results(&self, id: &str) -> anyhow::Result<ProcessResult>;
+}
+
+#[cfg(feature = "processes")]
+#[derive(Debug)]
+pub enum ProcessResult {
+    NoSuchJob,
+    NotReady,
+    Results {
+        results: ogcapi_types::processes::ExecuteResults,
+        response_mode: Response,
+    },
 }
 
 /// Trait for `Style` transactions

@@ -58,9 +58,12 @@ async fn create(
         .await?
         .is_some()
     {
-        return Err(Error::Exception(
-            StatusCode::CONFLICT,
-            format!("Collection with id `{}` already exists.", collection.id),
+        return Err(Error::ApiException(
+            (
+                StatusCode::CONFLICT,
+                format!("Collection with id `{}` already exists.", collection.id),
+            )
+                .into(),
         ));
     }
 

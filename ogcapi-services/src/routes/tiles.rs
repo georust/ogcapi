@@ -113,9 +113,8 @@ async fn tile_matrix_sets(RemoteUrl(url): RemoteUrl) -> Result<Json<TileMatrixSe
 async fn tile_matrix_set(Path(id): Path<TileMatrixSetId>) -> Result<Json<TileMatrixSet>> {
     match TMS.get().and_then(|tms| tms.get(&id)) {
         Some(tms) => Ok(Json(tms.to_owned())),
-        None => Err(Error::Exception(
-            StatusCode::NOT_FOUND,
-            "Unable to find resource".to_string(),
+        None => Err(Error::ApiException(
+            (StatusCode::NOT_FOUND, "Unable to find resource".to_string()).into(),
         )),
     }
 }

@@ -11,14 +11,18 @@ use super::execute::InlineOrRefData;
 
 #[derive(Serialize, Deserialize, ToSchema, Debug, Default)]
 pub struct JobList {
-    jobs: Vec<StatusInfo>,
-    links: Vec<Link>,
+    pub jobs: Vec<StatusInfo>,
+    pub links: Vec<Link>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone, Default)]
 pub struct StatusInfo {
     #[schema(nullable = false)]
-    #[serde(rename = "processID", alias = "process_id")]
+    #[serde(
+        rename = "processID",
+        alias = "process_id",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub process_id: Option<String>,
     #[schema(required = false)]
     #[serde(default)]
@@ -27,16 +31,21 @@ pub struct StatusInfo {
     pub job_id: String,
     pub status: StatusCode,
     #[schema(nullable = false)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
     #[schema(nullable = false)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created: Option<DateTime<Utc>>,
     #[schema(nullable = false)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub finished: Option<DateTime<Utc>>,
     #[schema(nullable = false)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated: Option<DateTime<Utc>>,
     #[schema(nullable = false, value_type = isize, required = false, minimum = 0, maximum = 100)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub progress: Option<u8>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub links: Vec<Link>,
 }
 
@@ -48,20 +57,15 @@ pub enum JobType {
     Process,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum StatusCode {
+    #[default]
     Accepted,
     Running,
     Successful,
     Failed,
     Dismissed,
-}
-
-impl Default for StatusCode {
-    fn default() -> Self {
-        Self::Accepted
-    }
 }
 
 #[serde_with::serde_as]

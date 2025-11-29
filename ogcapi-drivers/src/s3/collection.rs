@@ -79,16 +79,16 @@ impl CollectionTransactions for S3 {
             .await?;
 
         for object in resp.contents.unwrap() {
-            if let Some(key) = object.key() {
-                if key.ends_with("collection.json") {
-                    let r = self
-                        .get_object(self.bucket.clone().unwrap_or_default(), key)
-                        .await?;
+            if let Some(key) = object.key()
+                && key.ends_with("collection.json")
+            {
+                let r = self
+                    .get_object(self.bucket.clone().unwrap_or_default(), key)
+                    .await?;
 
-                    let c = serde_json::from_slice(&r.body.collect().await?.into_bytes()[..])?;
+                let c = serde_json::from_slice(&r.body.collect().await?.into_bytes()[..])?;
 
-                    collections.push(c);
-                }
+                collections.push(c);
             }
         }
 

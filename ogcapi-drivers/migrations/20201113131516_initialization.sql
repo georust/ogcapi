@@ -32,6 +32,8 @@ CREATE TABLE meta.styles (
     value jsonb NOT NULL
 );
 
+CREATE TYPE response_type AS ENUM ('raw', 'document');
+
 CREATE TABLE meta.jobs (
     job_id text PRIMARY KEY,
     process_id text,
@@ -42,5 +44,6 @@ CREATE TABLE meta.jobs (
     updated timestamptz,
     progress smallint,
     links jsonb,
-    results jsonb
+    results jsonb,
+    response response_type NOT NULL
 );

@@ -20,7 +20,13 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let uri = OriginalUri::from_request_parts(parts, state).await.unwrap();
 
-        let url = if uri.0.scheme().is_some() {
+        let url = if let Ok(url) = std::env::var("PUBLIC_URL") {
+            format!(
+                "{}{}",
+                url.trim_end_matches('/'),
+                uri.path_and_query().unwrap()
+            )
+        } else if uri.0.scheme().is_some() {
             uri.0.to_string()
         } else {
             let host = Host::from_request_parts(parts, state)
@@ -54,7 +60,9 @@ where
         let qs = parts.uri.query().unwrap_or("");
         match serde_qs::from_str(qs) {
             Ok(query) => Ok(Self(query)),
-            Err(e) => Err(Error::Exception(StatusCode::BAD_REQUEST, e.to_string())),
+            Err(e) => Err(Error::ApiException(
+                (StatusCode::BAD_REQUEST, e.to_string()).into(),
+            )),
         }
     }
 }
