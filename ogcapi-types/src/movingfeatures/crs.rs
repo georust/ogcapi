@@ -1,6 +1,7 @@
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-use std::str::FromStr;
 
 use crate::common;
 

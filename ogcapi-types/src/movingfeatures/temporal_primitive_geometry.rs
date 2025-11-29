@@ -94,28 +94,12 @@ pub enum Value {
 impl TryFrom<(Vec<chrono::DateTime<Utc>>, Vec<PointType>)> for Value {
     type Error = String;
     fn try_from(value: (Vec<chrono::DateTime<Utc>>, Vec<PointType>)) -> Result<Self, Self::Error> {
-        let dt_coords = DateTimeCoordsUnchecked{
-            datetimes: value.0, 
-            coordinates: value.1
-        }.try_into()?;
-        Ok(Self::MovingPoint { dt_coords, base_representation: None })
+        let dt_coords = DateTimeCoords::new(value.0, value.1)?;
+        Ok(Self::MovingPoint {
+            dt_coords,
+            base_representation: None,
+        })
     }
-}
-
-impl<A, B> TryFrom<(Vec<A>, Vec<B>)> for DateTimeCoords<A, B>{
-    type Error = &'static str;
-    fn try_from(value: (Vec<A>, Vec<B>)) -> Result<Self, Self::Error> {
-        DateTimeCoordsUnchecked{
-            datetimes: value.0, 
-            coordinates: value.1
-        }.try_into()
-    }
-}
-
-#[derive(Deserialize)]
-struct DateTimeCoordsUnchecked<A, B> {
-    datetimes: Vec<A>,
-    coordinates: Vec<B>,
 }
 
 #[derive(Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
@@ -125,10 +109,21 @@ pub struct DateTimeCoords<A, B> {
     coordinates: Vec<B>,
 }
 
-impl<A,B> DateTimeCoords<A, B> {
-    pub fn append(&mut self, other: &mut Self)  {
-            self.datetimes.append(&mut other.datetimes);
-            self.coordinates.append(&mut other.coordinates);
+impl<A, B> DateTimeCoords<A, B> {
+    pub fn new(datetimes: Vec<A>, coordinates: Vec<B>) -> Result<Self, &'static str> {
+        if coordinates.len() != datetimes.len() {
+            Err("coordinates and datetimes must be of same length")
+        } else {
+            Ok(Self {
+                datetimes,
+                coordinates,
+            })
+        }
+    }
+
+    pub fn append(&mut self, other: &mut Self) {
+        self.datetimes.append(&mut other.datetimes);
+        self.coordinates.append(&mut other.coordinates);
     }
 
     pub fn datetimes(&self) -> &[A] {
@@ -140,36 +135,32 @@ impl<A,B> DateTimeCoords<A, B> {
     }
 }
 
-impl<A,B> Serialize for DateTimeCoords<A, B>{
+#[derive(Deserialize)]
+struct DateTimeCoordsUnchecked<A, B> {
+    datetimes: Vec<A>,
+    coordinates: Vec<B>,
+}
+
+impl<A, B> TryFrom<DateTimeCoordsUnchecked<A, B>> for DateTimeCoords<A, B> {
+    type Error = &'static str;
+
+    fn try_from(value: DateTimeCoordsUnchecked<A, B>) -> Result<Self, Self::Error> {
+        DateTimeCoords::new(value.datetimes, value.coordinates)
+    }
+}
+
+impl<A, B> Serialize for DateTimeCoords<A, B> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         if self.coordinates.len() != self.datetimes.len() {
-             Err(ser::Error::custom("coordinates and datetimes must be of same length"))
-        }else{
+            Err(ser::Error::custom(
+                "coordinates and datetimes must be of same length",
+            ))
+        } else {
             let value = json!(self);
-            value.serialize(serializer) 
-        }
-        
-    }
-}
-
-impl<A, B> TryFrom<DateTimeCoordsUnchecked<A, B>>
-    for DateTimeCoords<A, B>
-{
-    type Error = &'static str;
-
-    fn try_from(
-        value: DateTimeCoordsUnchecked<A, B>,
-    ) -> Result<Self, Self::Error> {
-        if value.coordinates.len() != value.datetimes.len() {
-            Err("coordinates and datetimes must be of same length")
-        }else{
-            Ok(Self{
-                datetimes: value.datetimes, 
-                coordinates: value.coordinates
-            })
+            value.serialize(serializer)
         }
     }
 }
@@ -253,7 +244,7 @@ mod tests {
             datetimes.push(DateTime::from_timestamp(i, 0).unwrap());
         }
         let moving_point = Value::MovingPoint {
-            dt_coords: (datetimes, coordinates).try_into().unwrap(),
+            dt_coords: DateTimeCoords::new(datetimes, coordinates).unwrap(),
             base_representation: None,
         };
         let jo: JsonObject = serde_json::from_str(
@@ -277,8 +268,8 @@ mod tests {
         }
         let geometry: TemporalPrimitiveGeometry =
             TemporalPrimitiveGeometry::new(Value::MovingPoint {
-            dt_coords: (datetimes, coordinates).try_into().unwrap(),
-            base_representation: None,
+                dt_coords: DateTimeCoords::new(datetimes, coordinates).unwrap(),
+                base_representation: None,
             });
         let deserialized_geometry: TemporalPrimitiveGeometry = serde_json::from_str(
             r#"{
@@ -338,12 +329,12 @@ mod tests {
         }
         let geometry: TemporalPrimitiveGeometry = TemporalPrimitiveGeometry::new(
             Value::MovingPoint{
-                dt_coords: (datetimes, coordinates).try_into().unwrap(),
+                dt_coords: DateTimeCoords::new(datetimes, coordinates).unwrap(),
                 base_representation: Some(BaseRepresentation{
                     base: Base{
                         r#type: "glTF".to_string(), 
                         href: "http://www.opengis.net/spec/movingfeatures/json/1.0/prism/example/car3dmodel.gltf".to_string()
-                    }, 
+                    },
                     orientations
                 }),
             });

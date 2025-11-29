@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::{ser, Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer, ser::Error};
 use serde_json::json;
 use utoipa::ToSchema;
 
@@ -65,35 +65,36 @@ struct TemporalPrimitiveValueUnchecked<T> {
     interpolation: Interpolation,
 }
 
-impl<T> TryFrom<TemporalPrimitiveValueUnchecked<T>> for TemporalPrimitiveValue<T>{
+impl<T> TryFrom<TemporalPrimitiveValueUnchecked<T>> for TemporalPrimitiveValue<T> {
     type Error = &'static str;
 
     fn try_from(value: TemporalPrimitiveValueUnchecked<T>) -> Result<Self, Self::Error> {
         if value.values.len() != value.datetimes.len() {
             Err("values and datetimes must be of same length")
-        }else{
-            Ok(Self{
+        } else {
+            Ok(Self {
                 id: value.id,
                 interpolation: value.interpolation,
-                datetimes: value.datetimes, 
-                values: value.values
+                datetimes: value.datetimes,
+                values: value.values,
             })
         }
     }
 }
 
-impl<T> Serialize for TemporalPrimitiveValue<T>{
+impl<T> Serialize for TemporalPrimitiveValue<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         if self.values.len() != self.datetimes.len() {
-             Err(ser::Error::custom("values and datetimes must be of same length"))
-        }else{
+            Err(S::Error::custom(
+                "values and datetimes must be of same length",
+            ))
+        } else {
             let value = json!(self);
-            value.serialize(serializer) 
+            value.serialize(serializer)
         }
-        
     }
 }
 

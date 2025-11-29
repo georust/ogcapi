@@ -80,7 +80,11 @@ pub struct Feature {
     #[serde(default)]
     pub assets: HashMap<String, crate::stac::Asset>,
     #[cfg(feature = "movingfeatures")]
-    #[serde(default, serialize_with="crate::common::serialize_interval", skip_serializing_if = "Vec::is_empty")]
+    #[serde(
+        default,
+        serialize_with = "crate::common::serialize_interval",
+        skip_serializing_if = "Vec::is_empty"
+    )]
     /// Life span information for the moving feature.
     /// See [MF-Json 7.2.3 LifeSpan](https://docs.ogc.org/is/19-045r3/19-045r3.html#time)
     pub time: Vec<[Option<DateTime<Utc>>; 2]>,

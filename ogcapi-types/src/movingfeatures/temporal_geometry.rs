@@ -30,9 +30,10 @@ mod tests {
         }
         let primitive_geometry =
             TemporalPrimitiveGeometry::new((datetimes, coordinates).try_into().unwrap());
-        let geometry = TemporalGeometry::Complex(
-            TemporalComplexGeometry::from(vec![primitive_geometry.clone(), primitive_geometry]),
-        );
+        let geometry = TemporalGeometry::Complex(TemporalComplexGeometry::from(vec![
+            primitive_geometry.clone(),
+            primitive_geometry,
+        ]));
         let deserialized_geometry: TemporalGeometry = serde_json::from_str(
             r#"{
                 "type": "MovingGeometryCollection",

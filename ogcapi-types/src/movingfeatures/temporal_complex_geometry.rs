@@ -23,9 +23,7 @@ pub struct TemporalComplexGeometry {
     pub trs: Option<Trs>,
 }
 
-
 impl From<Vec<TemporalPrimitiveGeometry>> for TemporalComplexGeometry {
-
     fn from(value: Vec<TemporalPrimitiveGeometry>) -> Self {
         debug_assert!(!value.is_empty());
         Self {

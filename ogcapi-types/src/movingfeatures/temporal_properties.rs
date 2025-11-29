@@ -33,6 +33,8 @@ pub enum TemporalPropertiesValue {
 mod tests {
     use std::collections::HashMap;
 
+    use chrono::DateTime;
+
     use crate::{
         common::Link,
         movingfeatures::{
@@ -49,43 +51,36 @@ mod tests {
             Link::new("https://data.example.org/collections/mfc-1/items/mf-1/tproperties&offset=2&limit=2","next").mediatype("application/json"),
         ];
 
+        let datetimes = vec![
+            DateTime::parse_from_rfc3339("2011-07-14T22:01:06.000Z").unwrap(),
+            DateTime::parse_from_rfc3339("2011-07-14T22:01:07.000Z").unwrap(),
+            DateTime::parse_from_rfc3339("2011-07-14T22:01:08.000Z").unwrap(),
+        ];
+
+        let values = HashMap::from([
+            (
+                "length".to_string(),
+                ParametricValues::Measure {
+                    values: vec![1.0, 2.4, 1.0],
+                    interpolation: Some(Interpolation::Linear),
+                    description: None,
+                    form: Some("http://qudt.org/vocab/quantitykind/Length".to_string()),
+                },
+            ),
+            (
+                "speed".to_string(),
+                ParametricValues::Measure {
+                    values: vec![65.0, 70.0, 80.0],
+                    interpolation: Some(Interpolation::Linear),
+                    form: Some("KMH".to_string()),
+                    description: None,
+                },
+            ),
+        ]);
+
         let temporal_properties = TemporalProperties {
             temporal_properties: TemporalPropertiesValue::MFJsonTemporalProperties(vec![
-                MFJsonTemporalProperties {
-                    datetimes: vec![
-                        // TODO does type actually need to be UTC or could it be FixedOffset
-                        // aswell? Converting to UTC loses the information of the original offset!
-                        chrono::DateTime::parse_from_rfc3339("2011-07-14T22:01:06.000Z")
-                            .unwrap()
-                            .into(),
-                        chrono::DateTime::parse_from_rfc3339("2011-07-14T22:01:07.000Z")
-                            .unwrap()
-                            .into(),
-                        chrono::DateTime::parse_from_rfc3339("2011-07-14T22:01:08.000Z")
-                            .unwrap()
-                            .into(),
-                    ],
-                    values: HashMap::from([
-                        (
-                            "length".to_string(),
-                            ParametricValues::Measure {
-                                values: vec![1.0, 2.4, 1.0],
-                                interpolation: Some(Interpolation::Linear),
-                                description: None,
-                                form: Some("http://qudt.org/vocab/quantitykind/Length".to_string()),
-                            },
-                        ),
-                        (
-                            "speed".to_string(),
-                            ParametricValues::Measure {
-                                values: vec![65.0, 70.0, 80.0],
-                                interpolation: Some(Interpolation::Linear),
-                                form: Some("KMH".to_string()),
-                                description: None,
-                            },
-                        ),
-                    ]),
-                },
+                MFJsonTemporalProperties::new(datetimes, values).unwrap(),
             ]),
             links: Some(links),
             time_stamp: Some("2021-09-01T12:00:00Z".into()),

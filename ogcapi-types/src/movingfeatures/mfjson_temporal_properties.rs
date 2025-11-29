@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
-use serde::{ser, Deserialize, Serialize, Serializer};
+use chrono::{DateTime, FixedOffset};
+use serde::{Deserialize, Serialize, Serializer, ser::Error};
 use serde_json::json;
 use utoipa::ToSchema;
 
@@ -16,33 +16,32 @@ use super::temporal_property::Interpolation;
 ///
 /// Opposed to [TemporalProperty](super::temporal_property::TemporalProperty) values for all
 /// represented properties are all measured at the same points in time.
-// TODO enforce same length of datetimes and values
 #[derive(Deserialize, Debug, Clone, PartialEq, ToSchema)]
 pub struct MFJsonTemporalProperties {
-    pub datetimes: Vec<DateTime<Utc>>,
+    datetimes: Vec<DateTime<FixedOffset>>,
     #[serde(flatten)]
-    pub values: HashMap<String, ParametricValues>,
-}
-
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-struct MFJsonTemporalPropertiesUnchecked {
-    datetimes: Vec<DateTime<Utc>>,
     values: HashMap<String, ParametricValues>,
 }
 
-impl TryFrom<MFJsonTemporalPropertiesUnchecked> for MFJsonTemporalProperties {
-    type Error = &'static str;
-
-    fn try_from(value: MFJsonTemporalPropertiesUnchecked) -> Result<Self, Self::Error> {
-        let dt_len = value.datetimes.len();
-        if value.values.values().all(|property| property.len() == dt_len) {
+impl MFJsonTemporalProperties {
+    pub fn new(
+        datetimes: Vec<DateTime<FixedOffset>>,
+        values: HashMap<String, ParametricValues>,
+    ) -> Result<Self, &'static str> {
+        let dt_len = datetimes.len();
+        if values.values().any(|property| property.len() != dt_len) {
             Err("all values and datetimes must be of same length")
         } else {
-            Ok(Self {
-                datetimes: value.datetimes,
-                values: value.values,
-            })
+            Ok(Self { datetimes, values })
         }
+    }
+
+    pub fn datatimes(&self) -> &[DateTime<FixedOffset>] {
+        &self.datetimes
+    }
+
+    pub fn values(&self) -> &HashMap<String, ParametricValues> {
+        &self.values
     }
 }
 
@@ -52,8 +51,12 @@ impl Serialize for MFJsonTemporalProperties {
         S: Serializer,
     {
         let dt_len = self.datetimes.len();
-        if self.values.values().all(|property| property.len() == dt_len) {
-            Err(ser::Error::custom(
+        if self
+            .values
+            .values()
+            .any(|property| property.len() != dt_len)
+        {
+            Err(S::Error::custom(
                 "all values and datetimes must be of same length",
             ))
         } else {
@@ -105,9 +108,9 @@ pub enum ParametricValues {
 impl ParametricValues {
     fn len(&self) -> usize {
         match self {
-            Self::Measure{values, ..} => values.len(),
-            Self::Text{values, ..} => values.len(),
-            Self::Image{values, ..} => values.len(),
+            Self::Measure { values, .. } => values.len(),
+            Self::Text { values, .. } => values.len(),
+            Self::Image { values, .. } => values.len(),
         }
     }
 }
