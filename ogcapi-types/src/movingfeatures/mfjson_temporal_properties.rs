@@ -36,7 +36,7 @@ impl MFJsonTemporalProperties {
         }
     }
 
-    pub fn datatimes(&self) -> &[DateTime<FixedOffset>] {
+    pub fn datetimes(&self) -> &[DateTime<FixedOffset>] {
         &self.datetimes
     }
 
