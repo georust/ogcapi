@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Dynamic OpenAPI definition extraction.
+- Types for `OGCAPI - Moving Features`
 - Async OGC API - Processes execution (jobs).
 - Multipart/related response support for raw OGC API - Processes results with multiple outputs.
 - Echo process for testing.

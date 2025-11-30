@@ -11,7 +11,7 @@ keywords.workspace = true
 include = ["/src", "/assets"]
 
 [features]
-default = ["common", "edr", "features", "processes", "tiles"]
+default = ["common", "edr", "features", "movingfeatures", "processes", "tiles"]
 
 # standards
 common = []
@@ -22,6 +22,7 @@ stac = ["features"]
 styles = []
 tiles = ["common"]
 coverages = []
+movingfeatures = ["common", "features"]
 
 [dependencies]
 chrono = { version = "0.4.42", features = ["serde"] }
