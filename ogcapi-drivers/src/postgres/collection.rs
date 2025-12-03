@@ -1,4 +1,4 @@
-use ogcapi_types::common::{Collection, Collections, Query};
+use ogcapi_types::common::{Collection, Collections, Crs, Query};
 
 use crate::CollectionTransactions;
 
@@ -47,9 +47,14 @@ impl CollectionTransactions for Db {
         .execute(&mut *tx)
         .await?;
 
+        let srid = collection
+            .storage_crs
+            .as_ref()
+            .map(|crs| crs.as_srid())
+            .unwrap_or_else(|| Crs::default2d().as_srid());
         sqlx::query("SELECT UpdateGeometrySRID('items', $1, 'geom', $2)")
             .bind(&collection.id)
-            .bind(collection.storage_crs.clone().unwrap_or_default().as_srid())
+            .bind(srid)
             .execute(&mut *tx)
             .await?;
 

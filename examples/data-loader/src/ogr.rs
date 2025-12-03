@@ -73,14 +73,14 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
     let collection = Collection {
         id: args.collection.to_owned(),
         crs: Vec::from_iter(HashSet::from([
-            Crs::default(),
+            Crs::default2d(),
             storage_crs.clone(),
             Crs::from_epsg(3857),
         ])),
         extent: layer.try_get_extent()?.map(|e| Extent {
             spatial: SpatialExtent {
                 bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
-                crs: storage_crs.to_owned(),
+                crs: Some(storage_crs.to_owned()),
             },
             ..Default::default()
         }),

@@ -23,7 +23,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let collection = Collection {
         id: "test.me-_".to_string(),
         links: vec![],
-        crs: vec![Crs::default()],
+        crs: vec![Crs::default2d()],
         ..Default::default()
     };
 

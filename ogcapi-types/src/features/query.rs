@@ -16,8 +16,10 @@ pub struct Query {
     /// Only items are counted that are on the first level of the  collection
     /// in the response document. Nested objects contained
     /// within the explicitly requested items shall not be counted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[param(nullable = false)]
     pub limit: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[param(nullable = false)]
     pub offset: Option<usize>,
     /// Only features that have a geometry that intersects the bounding box
@@ -57,14 +59,14 @@ pub struct Query {
     /// If a feature has multiple spatial geometry properties, it is the
     /// decision of the server whether only a single spatial geometry property
     /// is used to determine the extent or all relevant geometries.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = Bbox, style = Form, explode = false, nullable = false)]
     pub bbox: Option<Bbox>,
-    #[serde(default)]
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = String, nullable = false)]
-    pub bbox_crs: Crs,
+    pub bbox_crs: Option<Crs>,
     /// Either a date-time or an interval. Date and time expressions adhere to
     /// RFC 3339. Intervals may be bounded or half-bounded (double-dots at start or end).
     ///
@@ -80,20 +82,21 @@ pub struct Query {
     /// If a feature has multiple temporal properties, it is the decision of
     /// the server whether only a single temporal property is used to determine
     /// the extent or all relevant temporal properties.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = String)]
     pub datetime: Option<Datetime>,
-    #[serde(default)]
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = String)]
-    pub crs: Crs,
+    pub crs: Option<Crs>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[param(nullable = false)]
     pub filter: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[param(inline, nullable = false)]
     pub filter_lang: Option<FilterLang>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = String)]
     pub filter_crs: Option<Crs>,

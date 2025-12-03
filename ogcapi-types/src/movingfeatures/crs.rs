@@ -33,7 +33,8 @@ pub enum Crs {
 impl Default for Crs {
     fn default() -> Self {
         Self::Name {
-            name: common::Crs::default().to_urn(),
+            // FIXME: Should this be respect 3d?
+            name: common::Crs::default2d().to_urn(),
         }
     }
 }
@@ -43,7 +44,6 @@ impl TryFrom<Crs> for common::Crs {
 
     fn try_from(value: Crs) -> Result<Self, Self::Error> {
         match value {
-            // TODO this might not work for names like "EPSG:4326"
             Crs::Name { name } => Self::from_str(name.as_str()),
             Crs::Link { href, .. } => Self::from_str(href.as_str()),
         }
@@ -85,9 +85,9 @@ mod tests {
     #[test]
     fn into_common_crs() {
         // assert_eq!(common::Crs::try_from(Crs::default()).unwrap(), common::Crs::default());
-        assert_eq!(common::Crs::default(), Crs::default().try_into().unwrap());
+        assert_eq!(common::Crs::default2d(), Crs::default().try_into().unwrap());
 
         // assert_eq!(Crs::from(common::Crs::default()), Crs::default());
-        assert_eq!(Crs::default(), common::Crs::default().into());
+        assert_eq!(Crs::default(), common::Crs::default2d().into());
     }
 }

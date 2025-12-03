@@ -50,21 +50,21 @@ pub trait FeatureTransactions: Send + Sync {
 
     async fn read_feature(
         &self,
-        collection: &str,
+        collection_id: &str,
         id: &str,
         crs: &Crs,
     ) -> anyhow::Result<Option<Feature>>;
     async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()>;
 
-    async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()>;
+    async fn delete_feature(&self, collection_id: &str, id: &str) -> anyhow::Result<()>;
 
     async fn list_items(
         &self,
-        collection: &str,
+        collection_id: &str,
         query: &FeatureQuery,
     ) -> anyhow::Result<FeatureCollection>;
 
-    async fn queryables(&self, _collection: &str) -> anyhow::Result<Queryables> {
+    async fn queryables(&self, _collection_id: &str) -> anyhow::Result<Queryables> {
         // Default to nothing is queryable
         Ok(Queryables {
             queryables: Default::default(),
@@ -89,7 +89,7 @@ pub trait EdrQuerier: Send + Sync {
         collection_id: &str,
         query_type: &QueryType,
         query: &EdrQuery,
-    ) -> anyhow::Result<FeatureCollection>;
+    ) -> anyhow::Result<(FeatureCollection, Crs)>;
 }
 
 /// Trait for `Processes` jobs

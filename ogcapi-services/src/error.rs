@@ -4,7 +4,6 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use hyper::HeaderMap;
-use tracing::error;
 
 use ogcapi_types::common::{Exception, media_type::PROBLEM_JSON};
 

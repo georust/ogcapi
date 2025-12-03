@@ -17,12 +17,20 @@ pub struct Crs {
 }
 
 impl Crs {
-    pub fn new(authority: Authority, version: impl ToString, code: impl ToString) -> Crs {
+    pub fn new(authority: Authority, version: impl ToString, code: impl ToString) -> Self {
         Crs {
             authority,
             version: version.to_string(),
             code: code.to_string(),
         }
+    }
+
+    pub fn default2d() -> Self {
+        Self::new(Authority::OGC, "1.3".to_string(), "CRS84".to_string())
+    }
+
+    pub fn default3d() -> Self {
+        Self::new(Authority::OGC, "0".to_string(), "CRS84h".to_string())
     }
 
     pub fn from_epsg(code: i32) -> Self {
@@ -31,7 +39,7 @@ impl Crs {
 
     pub fn from_srid(code: i32) -> Self {
         if code == 4326 {
-            Crs::default()
+            Crs::default2d()
         } else {
             Crs::new(Authority::EPSG, "0", code)
         }
@@ -99,28 +107,21 @@ impl str::FromStr for Crs {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = if s.starts_with("urn") {
+        let parts: Vec<&str> = if s.starts_with("http") {
+            s.trim_start_matches("http://www.opengis.net/def/crs/")
+                .split('/')
+                .collect()
+        } else if s.starts_with("urn") {
             s.trim_start_matches("urn:ogc:def:crs:")
                 .split(':')
                 .collect()
         } else {
-            s.trim_start_matches("http://www.opengis.net/def/crs/")
-                .split('/')
-                .collect()
+            s.split(':').collect()
         };
         match parts.len() {
             3 => Ok(Crs::new(Authority::from_str(parts[0])?, parts[1], parts[2])),
+            2 => Ok(Crs::new(Authority::from_str(parts[0])?, "0", parts[1])),
             _ => Err(format!("Unable to parse CRS from `{s}`!")),
-        }
-    }
-}
-
-impl Default for Crs {
-    fn default() -> Crs {
-        Crs {
-            authority: Authority::OGC,
-            version: "1.3".to_string(),
-            code: "CRS84".to_string(),
         }
     }
 }
