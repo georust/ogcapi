@@ -5,8 +5,6 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
-use serde::{Deserialize, Serialize};
-use utoipa::IntoParams;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
@@ -16,8 +14,8 @@ use ogcapi_types::{
         media_type::JSON,
     },
     tiles::{
-        DataType, TileMatrix, TileMatrixSet, TileMatrixSetId, TileMatrixSetItem, TileMatrixSets,
-        TileQuery, TileSet, TileSets, TilesCrs,
+        CollectionTileParams, DataType, TileMatrix, TileMatrixSet, TileMatrixSetId,
+        TileMatrixSetItem, TileMatrixSets, TileParams, TileQuery, TileSet, TileSets, TilesCrs,
     },
 };
 
@@ -237,31 +235,11 @@ async fn tiles_tile(
     Ok(tiles)
 }
 
-#[derive(Serialize, Deserialize, IntoParams, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct TileParams {
-    /// Identifier selecting one of the TileMatrixSetId supported by the resource.
-    tile_matrix_set_id: TileMatrixSetId,
-    /// Identifier selecting one of the scales defined in the TileMatrixSet
-    /// and representing the scaleDenominator the tile.
-    tile_matrix: String,
-    /// Row index of the tile on the selected TileMatrix. It cannot exceed
-    /// the MatrixWidth-1 for the selected TileMatrix.
-    tile_row: u32,
-    /// Column index of the tile on the selected TileMatrix. It cannot exceed
-    /// the MatrixHeight-1 for the selected TileMatrix.
-    tile_col: u32,
-}
-
 /// Retrieve a vector tile from a collection.
 #[utoipa::path(get,
     path = "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow}/{tileCol}", 
     tag = "Vector Tiles",
     params(
-        (
-            "collectionId" = String, Path, 
-            description = "Local identifier of a vector tile collection"
-        ),
         TileParams,
         TileQuery,
     ),
@@ -278,23 +256,22 @@ pub struct TileParams {
     )
 )]
 async fn collection_tile(
-    Path(collection_id): Path<String>,
-    Path(params): Path<TileParams>,
+    Path(params): Path<CollectionTileParams>,
     Qs(mut query): Qs<TileQuery>,
     State(state): State<AppState>,
 ) -> Result<Vec<u8>> {
     let tms = TMS
         .get()
-        .and_then(|tms| tms.get(&params.tile_matrix_set_id))
+        .and_then(|tms| tms.get(&params.tile_params.tile_matrix_set_id))
         .expect("Get tms from TMS");
 
     let collections = if !query.collections.is_empty() {
-        if !query.collections.contains(&collection_id) {
-            query.collections.push(collection_id);
+        if !query.collections.contains(&params.collection_id) {
+            query.collections.push(params.collection_id);
         }
         query.collections
     } else {
-        vec![collection_id]
+        vec![params.collection_id]
     };
 
     let tiles = state
@@ -303,9 +280,9 @@ async fn collection_tile(
         .tile(
             &collections,
             tms,
-            &params.tile_matrix,
-            params.tile_row,
-            params.tile_col,
+            &params.tile_params.tile_matrix,
+            params.tile_params.tile_row,
+            params.tile_params.tile_col,
         )
         .await?;
 

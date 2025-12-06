@@ -6,6 +6,7 @@ mod tms;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use serde_with::DisplayFromStr;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::common::Crs;
@@ -30,6 +31,34 @@ pub enum TilesCrs {
         #[serde(rename = "referenceSystem")]
         reference_system: String,
     },
+}
+
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, ToSchema, IntoParams, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TileParams {
+    /// Identifier selecting one of the TileMatrixSetId supported by the resource.
+    pub tile_matrix_set_id: TileMatrixSetId,
+    /// Identifier selecting one of the scales defined in the TileMatrixSet
+    /// and representing the scaleDenominator the tile.
+    pub tile_matrix: String,
+    /// Row index of the tile on the selected TileMatrix. It cannot exceed
+    /// the MatrixWidth-1 for the selected TileMatrix.
+    #[serde_as(as = "DisplayFromStr")]
+    pub tile_row: u32,
+    /// Column index of the tile on the selected TileMatrix. It cannot exceed
+    /// the MatrixHeight-1 for the selected TileMatrix.
+    #[serde_as(as = "DisplayFromStr")]
+    pub tile_col: u32,
+}
+
+#[derive(Serialize, Deserialize, IntoParams, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CollectionTileParams {
+    /// Local identifier of a vector tile collection
+    pub collection_id: String,
+    #[serde(flatten)]
+    pub tile_params: TileParams,
 }
 
 #[derive(Serialize, Deserialize, IntoParams, Debug)]
