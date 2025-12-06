@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use utoipa::{IntoParams, ToSchema};
 
-// use crate::common::Crs;
+use crate::common::Crs;
 
 /// A 2DPoint in the CRS indicated elsewere
 type Point2D = [f64; 2];
@@ -18,7 +18,8 @@ type Point2D = [f64; 2];
 #[serde(untagged)]
 pub enum TilesCrs {
     /// Simplification of the object into a url if the other properties are not present
-    Simple(String),
+    #[schema(value_type = String)]
+    Simple(Crs),
     /// Reference to one coordinate reference system (CRS)
     Uri { uri: String },
     /// An object defining the CRS using the JSON encoding for Well-known text

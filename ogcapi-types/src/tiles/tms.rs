@@ -81,9 +81,7 @@ pub struct TileMatrixSet {
     #[schema(nullable = false)]
     pub uri: Option<String>,
     /// Coordinate Reference System (CRS)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(nullable = false)]
-    pub crs: Option<TilesCrs>,
+    pub crs: TilesCrs,
     /// Ordered list of names of the dimensions defined in the CRS
     #[schema(min_items = 1, inline = true)]
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -103,8 +101,6 @@ pub struct TileMatrixSet {
 
 /// A tile matrix, usually corresponding to a particular zoom level of a
 /// TileMatrixSet.
-#[serde_with::serde_as]
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TileMatrix {
@@ -112,10 +108,12 @@ pub struct TileMatrix {
     /// and representing the scaleDenominator the tile.
     pub id: String,
     /// Title of a tile matrix, normally used for display to a human
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub title: Option<String>,
     /// Brief narrative description of a tile matrix, normally available
     /// for display to a human
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub description: Option<String>,
     /// Unordered list of one or more commonly used or formalized word(s) or
@@ -129,8 +127,8 @@ pub struct TileMatrix {
     /// The corner of the tile matrix (_topLeft_ or
     /// _bottomLeft_) used as the origin for numbering tile rows and columns.
     /// This corner is also a corner of the (0, 0) tile.
-    #[schema(nullable = false)]
-    pub corner_of_origin: Option<CornerOfOrigin>,
+    #[serde(default)]
+    pub corner_of_origin: CornerOfOrigin,
     /// Precise position in CRS coordinates of the corner of origin (e.g. the
     /// top-left corner) for this tile matrix. This position is also a corner
     /// of the (0, 0) tile.

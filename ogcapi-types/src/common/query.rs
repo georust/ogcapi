@@ -12,7 +12,6 @@ pub struct Query {
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub bbox: Option<Bbox>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[serde_as(as = "Option<DisplayFromStr>")]
     #[schema(value_type = String)]
     pub bbox_crs: Option<Crs>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

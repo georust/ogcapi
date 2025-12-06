@@ -41,7 +41,7 @@ const CONFORMANCE: [&str; 7] = [
     // "http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/netcdf",
 ];
 
-const WEB_MERCARTOR_QUAD: &[u8; 8005] = include_bytes!("../../assets/tms/WebMercartorQuad.json");
+const WEB_MERCARTOR_QUAD: &[u8; 8744] = include_bytes!("../../assets/tms/WebMercartorQuad.json");
 
 static TMS: OnceLock<HashMap<TileMatrixSetId, TileMatrixSet>> = OnceLock::new();
 static TM: OnceLock<HashMap<TileMatrixSetId, HashMap<String, TileMatrix>>> = OnceLock::new();
@@ -172,7 +172,7 @@ async fn tile_set() -> Result<Json<TileSet>> {
         data_type: DataType::Vector,
         tile_matrix_set_uri: Default::default(),
         tile_matrix_set_limits: Default::default(),
-        crs: TilesCrs::Simple(Crs::default2d().to_string()),
+        crs: TilesCrs::Simple(Crs::default2d()),
         epoch: Default::default(),
         links: Default::default(),
         layers: Default::default(),
