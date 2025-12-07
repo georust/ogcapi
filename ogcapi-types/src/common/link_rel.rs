@@ -15,7 +15,7 @@ pub const COLLECTION: &str = "collection";
 /// Refers to a resource that identifies the specifications that the link’s context conforms to.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/conformance>
-pub const CONFORMANCE: &str = "http://www.opengis.net/def/rel/ogc/1.0/conformance";
+pub const CONFORMANCE: &str = "conformance";
 
 pub const DATA: &str = "data";
 
