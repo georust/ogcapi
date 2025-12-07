@@ -1,5 +1,9 @@
+use std::{
+    fmt::Display,
+    num::{NonZeroU16, NonZeroU64},
+};
+
 use serde::{Deserialize, Serialize};
-use std::num::{NonZeroU16, NonZeroU64};
 use utoipa::ToSchema;
 
 use crate::common::Link;
@@ -16,6 +20,16 @@ pub enum TileMatrixSetId {
     // WorldCRS84Quad,
     // GNOSISGlobalGrid,
     // WorldMercatorWGS84Quad,
+    Custom(String),
+}
+
+impl Display for TileMatrixSetId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TileMatrixSetId::WebMercatorQuad => write!(f, "WebMercatorQuad"),
+            TileMatrixSetId::Custom(name) => write!(f, "{name}"),
+        }
+    }
 }
 
 /// A definition of a tile matrix set following the Tile Matrix Set standard.

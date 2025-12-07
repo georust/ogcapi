@@ -24,6 +24,9 @@ pub const OPEN_API_YAML: &str = "application/vnd.oai.openapi+yaml;version=3.0";
 /// Media Type for `application/vnd.mapbox.style+json`
 pub const MAPBOX_STYLE: &str = "application/vnd.mapbox.style+json";
 
+/// Media Type for `application/vnd.mapbox-vector-tile`
+pub const MVT: &str = "application/vnd.mapbox-vector-tile";
+
 /// Media Type for `image/png`
 pub const PNG: &str = "image/png";
 
