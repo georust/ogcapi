@@ -206,6 +206,15 @@ async fn execution(
         ));
     };
 
+    let auth = match extract_authentication(processor.requires_auth(), &headers) {
+        Ok(auth) => auth,
+        Err(e) => {
+            return Err(Error::ApiException(
+                (StatusCode::UNAUTHORIZED, e.to_string()).into(),
+            ));
+        }
+    };
+
     let process_description = processor.process()?;
 
     let response_mode = execute.response.clone();
@@ -298,6 +307,43 @@ async fn execution(
         was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
         base_url,
     })
+}
+
+fn extract_authentication(
+    requirement: ProcessAuthRequirement,
+    headers: &HeaderMap,
+) -> Result<ProcessAuth> {
+    fn extract_http_auth(headers: &HeaderMap) -> Result<ProcessAuthHttp> {
+        fn header_pairs(headers: &HeaderMap) -> Option<(String, String)> {
+            let header_value = headers.get(AUTHORIZATION)?;
+            let header_str = header_value.to_str().ok()?;
+            let mut parts = header_str.splitn(2, ' ');
+            let auth_type = parts.next()?.to_lowercase();
+            let credentials = parts.next()?.to_string();
+            Some((auth_type, credentials))
+        }
+        let (auth_type, credentials) =
+            header_pairs(headers).context("Authorization header missing or invalid")?;
+        Ok(ProcessAuthHttp {
+            r#type: serde_qs::from_str(&auth_type)
+                .context("Unsupported or invalid HTTP Auth Type")?,
+            credentials,
+        })
+    }
+
+    match requirement {
+        ProcessAuthRequirement::NoAuth => Ok(ProcessAuth::None),
+        ProcessAuthRequirement::Http => {
+            let auth = extract_http_auth(headers)
+                .context("HTTP authentication required but no Authorization header found")?;
+            Ok(ProcessAuth::Http(auth))
+        }
+        ProcessAuthRequirement::ApiKey { name: _, r#in: _ }
+        | ProcessAuthRequirement::OAuth2
+        | ProcessAuthRequirement::OpenIDConnect => {
+            Err(anyhow::anyhow!("Not implemented yet").into())
+        }
+    }
 }
 
 /// Determine whether the client prefers synchronous execution

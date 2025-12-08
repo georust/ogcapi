@@ -46,3 +46,53 @@ pub struct Process {
     #[schema(required = false)]
     pub outputs: HashMap<String, OutputDescription>,
 }
+
+/// Defines the authentication requirement for a Process
+///
+/// The OpenAPI specification currently supports the following security schemes:
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum ProcessAuthRequirement {
+    #[default]
+    NoAuth,
+    /// HTTP authentication,
+    Http,
+    /// an API key (either as a header or as a query parameter),
+    ApiKey {
+        name: String,
+        r#in: ProcessAuthLocation,
+    },
+    /// OAuth2’s common flows (implicit, password, application and access code) as defined in RFC6749, and
+    OAuth2, // TODO: add fields
+    /// OpenID Connect Discovery.
+    OpenIDConnect, // TODO: add fields
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProcessAuthLocation {
+    Header,
+    Query,
+    Cookie,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProcessAuth {
+    None,
+    Http(ProcessAuthHttp),
+    ApiKey(String),
+    // TODO: add others
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProcessAuthHttp {
+    pub r#type: ProcessAuthHttpType,
+    pub credentials: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub enum ProcessAuthHttpType {
+    #[serde(alias = "basic")] // lowercase to match standard HTTP auth scheme names
+    Basic,
+    #[serde(alias = "bearer")] // lowercase to match standard HTTP auth scheme names
+    Bearer,
+    // TODO: add others
+}

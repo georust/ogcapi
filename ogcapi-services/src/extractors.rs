@@ -25,7 +25,7 @@ where
         } else {
             let host = Host::from_request_parts(parts, state)
                 .await
-                .context("Unabe to extract host")?;
+                .context("Unable to extract host")?;
 
             let proto = parts
                 .headers
