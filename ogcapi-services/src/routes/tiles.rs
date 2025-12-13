@@ -3,6 +3,7 @@ use std::sync::{Arc, OnceLock};
 use axum::{
     Json,
     extract::{Path, State},
+    http::HeaderMap,
 };
 use dashmap::DashMap;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -209,7 +210,9 @@ async fn tiles(RemoteUrl(url): RemoteUrl) -> Result<Json<TileSets>> {
 async fn tiles_tile_set(
     RemoteUrl(url): RemoteUrl,
     Path(tms_id): Path<TileMatrixSetId>,
-) -> Result<Json<TileSet>> {
+) -> Result<(HeaderMap, Json<TileSet>)> {
+    let mut headers = HeaderMap::new();
+
     // tms
     let registry = TMS.get().expect("TMS cell to be inizialized");
 
@@ -229,6 +232,15 @@ async fn tiles_tile_set(
 
     let tiles_path = format!("{tms_id}/{{tileMatrix}}/{{tileRow}}/{{tileCol}}");
     let tiles_url = url.join(&tiles_path).expect("failed to parse url");
+    headers.insert(
+        "Link-Template",
+        format!(
+            "<{}>; rel=\"{ITEM}\"; type=\"{MVT}\"; var-base=\"./vars/\"",
+            tiles_url
+        )
+        .parse()
+        .unwrap(),
+    );
     let tiles_link = Link::new(tiles_url, ITEM).mediatype(MVT).templated(true);
 
     // tileset
@@ -237,7 +249,7 @@ async fn tiles_tile_set(
         description: Default::default(),
         keywords: Default::default(),
         data_type: DataType::Vector,
-        tile_matrix_set_uri: Some(tms_url.as_str().to_owned()),
+        tile_matrix_set_uri: tms.uri.to_owned(),
         tile_matrix_set_limits: Default::default(),
         crs: tms.crs.to_owned(),
         epoch: Default::default(),
@@ -256,7 +268,7 @@ async fn tiles_tile_set(
         media_types: Default::default(),
     };
 
-    Ok(Json(tile_set))
+    Ok((headers, Json(tile_set)))
 }
 
 /// Retrieve a vector tile including one or more collections from the dataset.
@@ -284,10 +296,33 @@ async fn tiles_tile(
     Qs(query): Qs<TileQuery>,
     State(state): State<AppState>,
 ) -> Result<Vec<u8>> {
-    let tms = TMS
-        .get()
-        .and_then(|tms| tms.get(&params.tile_matrix_set_id))
-        .expect("Get tms from TMS");
+    // tile matrix set
+    let tms_id = &params.tile_matrix_set_id;
+    let Some(tms) = TMS.get().and_then(|tms| tms.get(tms_id)) else {
+        return Err(Exception::new_from_status(404)
+            .detail(format!("Tile matrix set `{tms_id}` not found",))
+            .into());
+    };
+
+    // tile matrix
+    let tm_id = &params.tile_matrix;
+    let Some(tm) = tms.tile_matrices.iter().find(|tm| tm.id.as_str() == tm_id) else {
+        return Err(Exception::new_from_status(404)
+            .detail(format!(
+                "No tile matrix with id `{tm_id}` in tile matrix set `{tms_id}`"
+            ))
+            .into());
+    };
+
+    // check bounds
+    let row = params.tile_row;
+    let col = params.tile_col;
+
+    if row >= tm.matrix_height.get() as u32 || col >= tm.matrix_width.get() as u32 {
+        return Err(Exception::new_from_status(404)
+            .detail(format!("Tile row/col `{row}/{col}` out of bounds"))
+            .into());
+    }
 
     let tiles = state
         .drivers
@@ -390,7 +425,9 @@ async fn collection_tile_set(
     State(_state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
     Path((collection_id, tms_id)): Path<(String, TileMatrixSetId)>,
-) -> Result<Json<TileSet>> {
+) -> Result<(HeaderMap, Json<TileSet>)> {
+    let mut headers = HeaderMap::new();
+
     // tms
     let registry = TMS.get().expect("TMS cell to be inizialized");
 
@@ -413,6 +450,15 @@ async fn collection_tile_set(
         "/collections/{collection_id}/tiles/{tms_id}/{{tileMatrix}}/{{tileRow}}/{{tileCol}}"
     );
     let tiles_url = url.join(&tiles_path).expect("failed to parse url");
+    headers.insert(
+        "Link-Template",
+        format!(
+            "<{}>; rel=\"{ITEM}\"; type=\"{MVT}\"; var-base=\"./vars/\"",
+            tiles_url
+        )
+        .parse()
+        .unwrap(),
+    );
     let tiles_link = Link::new(tiles_url, ITEM).mediatype(MVT).templated(true);
 
     // tileset
@@ -421,7 +467,7 @@ async fn collection_tile_set(
         description: Default::default(),
         keywords: Default::default(),
         data_type: DataType::Vector,
-        tile_matrix_set_uri: Some(tms_url.as_str().to_owned()),
+        tile_matrix_set_uri: tms.uri.to_owned(),
         tile_matrix_set_limits: Default::default(),
         crs: tms.crs.to_owned(),
         epoch: Default::default(),
@@ -440,7 +486,7 @@ async fn collection_tile_set(
         media_types: Default::default(),
     };
 
-    Ok(Json(tile_set))
+    Ok((headers, Json(tile_set)))
 }
 
 /// Retrieve a vector tile from a collection.
@@ -496,13 +542,13 @@ async fn collection_tile(
             .into());
     }
 
-    let collections = if !query.collections.is_empty() {
+    let collections = if query.collections.is_empty() {
+        vec![params.collection_id]
+    } else {
         if !query.collections.contains(&params.collection_id) {
             query.collections.push(params.collection_id);
         }
         query.collections
-    } else {
-        vec![params.collection_id]
     };
 
     let tiles = state
