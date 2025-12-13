@@ -167,7 +167,7 @@ async fn tiles(RemoteUrl(url): RemoteUrl) -> Result<Json<TileSets>> {
         let tiles_link = Link::new(tiles_url, ITEM).mediatype(MVT).templated(true);
 
         let tileset = TileSetItem {
-            title: Some(tms.id.to_string()),
+            title: Some(format!("Whole dataset in {}", tms.id)),
             data_type: DataType::Vector,
             crs: tms.crs.to_owned(),
             tile_matrix_set_uri: None,
