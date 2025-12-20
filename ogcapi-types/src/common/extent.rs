@@ -1,6 +1,5 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize, ser::SerializeSeq, ser::Serializer};
-use serde_with::DisplayFromStr;
 use utoipa::ToSchema;
 
 use crate::common::{Bbox, Crs};
@@ -15,7 +14,6 @@ pub struct Extent {
 }
 
 /// The spatial extent of the features in the collection.
-#[serde_with::serde_as]
 #[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
 pub struct SpatialExtent {
     /// One or more bounding boxes that describe the spatial extent of the
@@ -30,7 +28,6 @@ pub struct SpatialExtent {
     /// Extensions may support additional coordinate reference systems and add
     /// additional enum values.
     #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
     #[schema(value_type = String)]
     pub crs: Option<Crs>,
 }
@@ -39,7 +36,7 @@ impl Default for SpatialExtent {
     fn default() -> Self {
         Self {
             bbox: vec![Bbox::Bbox2D([-180.0, -90.0, 180.0, 90.0])],
-            crs: Default::default(),
+            crs: Some(Crs::default2d()),
         }
     }
 }

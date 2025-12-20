@@ -5,14 +5,13 @@ use utoipa::ToSchema;
 use crate::common::{Bbox, Crs, Datetime};
 
 #[serde_with::serde_as]
-#[derive(Deserialize, ToSchema, Debug, Clone)]
+#[derive(Deserialize, ToSchema, Debug, Clone, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<DisplayFromStr>")]
     pub bbox: Option<Bbox>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[serde_as(as = "Option<DisplayFromStr>")]
     #[schema(value_type = String)]
     pub bbox_crs: Option<Crs>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -25,7 +24,7 @@ pub struct Query {
 }
 
 /// Query parameters to facilitate pagination with a limit and offset
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq, Default)]
 pub struct LimitOffsetPagination {
     /// Amount of items to return
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -7,7 +7,7 @@ use utoipa::{IntoParams, ToSchema};
 use crate::common::{Bbox, Crs, Datetime};
 
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, IntoParams, Debug, Clone)]
+#[derive(Serialize, Deserialize, IntoParams, Debug, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct Query {
     /// The optional limit parameter limits the number of items that are
@@ -64,7 +64,6 @@ pub struct Query {
     #[param(value_type = Bbox, style = Form, explode = false, nullable = false)]
     pub bbox: Option<Bbox>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = String, nullable = false)]
     pub bbox_crs: Option<Crs>,
     /// Either a date-time or an interval. Date and time expressions adhere to
@@ -87,7 +86,6 @@ pub struct Query {
     #[param(value_type = String)]
     pub datetime: Option<Datetime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = String)]
     pub crs: Option<Crs>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -97,7 +95,6 @@ pub struct Query {
     #[param(inline, nullable = false)]
     pub filter_lang: Option<FilterLang>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[serde_as(as = "Option<DisplayFromStr>")]
     #[param(value_type = String)]
     pub filter_crs: Option<Crs>,
     /// Parameters for filtering on feature properties
@@ -105,7 +102,7 @@ pub struct Query {
     pub additional_parameters: HashMap<String, String>,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub enum FilterLang {
     #[default]

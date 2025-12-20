@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use serde_with::DisplayFromStr;
 use utoipa::ToSchema;
 
 use super::{Crs, Extent, Link};
@@ -8,8 +7,6 @@ use super::{Crs, Extent, Link};
 // const CRS_REF: &str = "#/crs";
 
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
-#[serde_with::serde_as]
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Collection {
@@ -18,31 +15,34 @@ pub struct Collection {
     #[cfg(feature = "stac")]
     #[serde(default = "collection")]
     pub r#type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keywords: Vec<String>,
     /// Attribution for the collection.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub attribution: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub extent: Option<Extent>,
     /// An indicator about the type of the items in the collection.
     #[serde(default = "feature")]
     pub item_type: String,
     /// The list of coordinate reference systems supported by the API; the first item is the default coordinate reference system.
     #[serde(default)]
-    #[serde_as(as = "Vec<DisplayFromStr>")]
     #[schema(value_type = Vec<String>)]
     pub crs: Vec<Crs>,
-    #[serde(default)]
-    #[serde_as(as = "Option<DisplayFromStr>")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(value_type = String)]
     pub storage_crs: Option<Crs>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub storage_crs_coordinate_epoch: Option<f32>,
     #[serde(default)]
     pub links: Vec<Link>,
     /// Detailed information relevant to individual query types
     #[cfg(feature = "edr")]
-    #[serde(rename = "data_queries")]
+    #[serde(rename = "data_queries", skip_serializing_if = "Option::is_none")]
     pub data_queries: Option<crate::edr::DataQueries>,
     /// List of formats the results can be presented in
     #[cfg(feature = "edr")]

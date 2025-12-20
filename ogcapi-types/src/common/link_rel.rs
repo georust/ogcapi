@@ -22,7 +22,7 @@ pub const DATA: &str = "data";
 /// Identifies general metadata for the context (dataset or collection) that is primarily intended for consumption by machines.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/data-meta>
-pub const DATA_META: &str = "data-meta";
+pub const DATA_META: &str = "http://www.opengis.net/def/rel/ogc/1.0/data-meta";
 
 /// Refers to a resource providing information about the link’s context.
 pub const DESCRIBEDBY: &str = "describedby";
@@ -30,12 +30,12 @@ pub const DESCRIBEDBY: &str = "describedby";
 /// The target URI points to exceptions of a failed process.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/exceptions>
-pub const EXCEPTIONS: &str = "exceptions";
+pub const EXCEPTIONS: &str = "http://www.opengis.net/def/rel/ogc/1.0/exceptions";
 
 /// The target URI points to the execution endpoint of the server.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/execute>
-pub const EXECUTE: &str = "execute";
+pub const EXECUTE: &str = "http://www.opengis.net/def/rel/ogc/1.0/execute";
 
 pub const FIRST: &str = "first";
 
@@ -46,7 +46,7 @@ pub const ITEMS: &str = "items";
 /// The target URI points to the list of jobs.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/job-list>
-pub const JOB_LIST: &str = "job-list";
+pub const JOB_LIST: &str = "http://www.opengis.net/def/rel/ogc/1.0/job-list";
 
 pub const LAST: &str = "last";
 
@@ -67,7 +67,7 @@ pub const PREV: &str = "prev";
 /// The target URI points to the list of processes the API offers.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/processes>
-pub const PROCESSES: &str = "processes";
+pub const PROCESSES: &str = "http://www.opengis.net/def/rel/ogc/1.0/processes";
 
 pub const RELATED: &str = "related";
 
@@ -105,12 +105,17 @@ pub const TILES: &str = "tiles";
 /// The target IRI points to a resource that describes how to provide tile sets of the context resource in vector format.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector>
-pub const TILESETS_VECTOR: &str = "tilesets-vector";
+pub const TILESETS_VECTOR: &str = "http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector";
 
 /// The target IRI points to a resource that describes the TileMatrixSet according to the 2D-TMS standard.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme>
-pub const TILING_SCHEME: &str = "tiling-scheme";
+pub const TILING_SCHEME: &str = "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme";
+
+/// The target IRI points to a resource that lists one or more TileMatrixSets according to the 2D-TMS standard.
+///
+/// See: <http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes>
+pub const TILING_SCHEMES: &str = "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes";
 
 pub const OVERVIEW: &str = "overview";
 

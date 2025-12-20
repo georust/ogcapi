@@ -6,6 +6,8 @@ use axum::{
 use hyper::HeaderMap;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
+#[cfg(feature = "tiles")]
+use ogcapi_types::common::link_rel::TILESETS_VECTOR;
 use ogcapi_types::common::{
     Collection, Collections, Crs, Exception, Link, Linked, Query,
     link_rel::{DATA, ITEMS, ROOT, SELF},
@@ -17,10 +19,10 @@ use crate::{
     extractors::{Qs, RemoteUrl},
 };
 
-const CONFORMANCE: [&str; 4] = [
+const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/core",
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
-    // "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
     // "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
     "http://www.opengis.net/spec/ogcapi_common-2/1.0/conf/json",
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
@@ -139,19 +141,24 @@ async fn read(
     ]);
 
     #[cfg(not(feature = "stac"))]
-    collection.links.insert_or_update(&[Link::new(
-        &url.join(&format!("{}/items", collection.id))?,
-        ITEMS,
-    )
-    .mediatype(GEO_JSON)]);
+    {
+        let items_url = url.join(&format!("{}/items", collection.id))?;
+        let items_link = Link::new(items_url, ITEMS).mediatype(GEO_JSON);
+        collection.links.insert_or_update(&[items_link]);
+    }
+
+    #[cfg(feature = "tiles")]
+    {
+        let tiles_url = url.join(&format!("{}/tiles", collection.id))?;
+        let tiles_link = Link::new(tiles_url, TILESETS_VECTOR).mediatype(JSON);
+        collection.links.insert_or_update(&[tiles_link]);
+    }
 
     #[cfg(feature = "stac")]
     if collection.r#type == "Collection" {
-        collection.links.insert_or_update(&[Link::new(
-            url.join(&format!("{}/items", collection.id))?,
-            ITEMS,
-        )
-        .mediatype(GEO_JSON)]);
+        let items_url = url.join(&format!("{}/items", collection.id))?;
+        let items_link = Link::new(items_url, ITEMS).mediatype(GEO_JSON);
+        collection.links.insert_or_update(&[items_link]);
     }
 
     collection.links.resolve_relative_links();
@@ -278,6 +285,12 @@ async fn collections(
                 ITEMS,
             )
             .mediatype(GEO_JSON),
+            #[cfg(feature = "tiles")]
+            Link::new(
+                url.join(&format!("collections/{}/tiles", collection.id))?,
+                TILESETS_VECTOR,
+            )
+            .mediatype(JSON),
         ]);
 
         collection.links.resolve_relative_links()

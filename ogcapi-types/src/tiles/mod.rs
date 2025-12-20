@@ -6,9 +6,10 @@ mod tms;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use serde_with::DisplayFromStr;
 use utoipa::{IntoParams, ToSchema};
 
-// use crate::common::Crs;
+use crate::common::Crs;
 
 /// A 2DPoint in the CRS indicated elsewere
 type Point2D = [f64; 2];
@@ -18,7 +19,8 @@ type Point2D = [f64; 2];
 #[serde(untagged)]
 pub enum TilesCrs {
     /// Simplification of the object into a url if the other properties are not present
-    Simple(String),
+    #[schema(value_type = String)]
+    Simple(Crs),
     /// Reference to one coordinate reference system (CRS)
     Uri { uri: String },
     /// An object defining the CRS using the JSON encoding for Well-known text
@@ -29,6 +31,34 @@ pub enum TilesCrs {
         #[serde(rename = "referenceSystem")]
         reference_system: String,
     },
+}
+
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, ToSchema, IntoParams, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TileParams {
+    /// Identifier selecting one of the TileMatrixSetId supported by the resource.
+    pub tile_matrix_set_id: TileMatrixSetId,
+    /// Identifier selecting one of the scales defined in the TileMatrixSet
+    /// and representing the scaleDenominator the tile.
+    pub tile_matrix: String,
+    /// Row index of the tile on the selected TileMatrix. It cannot exceed
+    /// the MatrixWidth-1 for the selected TileMatrix.
+    #[serde_as(as = "DisplayFromStr")]
+    pub tile_row: u32,
+    /// Column index of the tile on the selected TileMatrix. It cannot exceed
+    /// the MatrixHeight-1 for the selected TileMatrix.
+    #[serde_as(as = "DisplayFromStr")]
+    pub tile_col: u32,
+}
+
+#[derive(Serialize, Deserialize, IntoParams, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CollectionTileParams {
+    /// Local identifier of a vector tile collection
+    pub collection_id: String,
+    #[serde(flatten)]
+    pub tile_params: TileParams,
 }
 
 #[derive(Serialize, Deserialize, IntoParams, Debug)]

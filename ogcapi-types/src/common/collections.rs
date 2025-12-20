@@ -1,24 +1,23 @@
 use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
-use serde_with::DisplayFromStr;
 use utoipa::ToSchema;
 
 use super::{Collection, Crs, Link};
 
-#[serde_with::serde_as]
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Collections {
     #[serde(default)]
     pub links: Vec<Link>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub time_stamp: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub number_matched: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub number_returned: Option<u64>,
     pub collections: Vec<Collection>,
     #[serde(default)]
-    #[serde_as(as = "Vec<DisplayFromStr>")]
-    #[schema(value_type = String)]
+    #[schema(value_type = Vec<String>)]
     pub crs: Vec<Crs>,
 }
 
