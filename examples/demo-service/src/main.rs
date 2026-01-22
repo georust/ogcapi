@@ -31,14 +31,12 @@ async fn main() {
     // Build & run with hyper
     Service::try_new_with(&config, state)
         .await
+        .unwrap()
         .with_collections()
         .with_features()
-        .with_stac()
         .with_edr()
-        .with_styles()
         .with_tiles()
         .with_processes()
-        .unwrap()
         .serve()
         .await;
 }
