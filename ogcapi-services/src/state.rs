@@ -1,11 +1,17 @@
+#[cfg(feature = "processes")]
+use std::collections::HashMap;
+#[cfg(feature = "processes")]
 use std::sync::{Arc, RwLock};
 
+use axum::{extract::Request, response::Response};
+use futures::future::BoxFuture;
 #[cfg(feature = "edr")]
 use ogcapi_drivers::EdrQuerier;
 #[cfg(feature = "features")]
 use ogcapi_drivers::FeatureTransactions;
 #[cfg(feature = "processes")]
 use ogcapi_drivers::JobHandler;
+use ogcapi_drivers::NoUser;
 #[cfg(feature = "styles")]
 use ogcapi_drivers::StyleTransactions;
 #[cfg(feature = "tiles")]
@@ -14,9 +20,13 @@ use ogcapi_drivers::TileTransactions;
 use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 #[cfg(feature = "processes")]
 use ogcapi_processes::Processor;
-use ogcapi_types::common::{Conformance, LandingPage};
+use ogcapi_types::common::{Conformance, LandingPage, Link};
+use tower_http::auth::AsyncAuthorizeRequest;
 
 use crate::{Config, ConfigParser};
+
+#[cfg(feature = "processes")]
+type BoxedProcessor<User> = Box<dyn Processor<User = User>>;
 
 /// Application state
 #[derive(Clone)]
@@ -28,7 +38,7 @@ pub struct AppState {
     #[cfg(feature = "stac")]
     pub s3: ogcapi_drivers::s3::S3,
     #[cfg(feature = "processes")]
-    pub processors: Arc<RwLock<std::collections::HashMap<String, Box<dyn Processor>>>>,
+    pub processors: Arc<RwLock<HashMap<String, BoxedProcessor<NoUser>>>>,
 }
 
 // TODO: Introduce service trait
@@ -39,7 +49,7 @@ pub struct Drivers {
     #[cfg(feature = "edr")]
     pub edr: Box<dyn EdrQuerier>,
     #[cfg(feature = "processes")]
-    pub jobs: Box<dyn JobHandler>,
+    pub jobs: Box<dyn JobHandler<User = NoUser>>,
     #[cfg(feature = "styles")]
     pub styles: Box<dyn StyleTransactions>,
     #[cfg(feature = "tiles")]
@@ -109,7 +119,7 @@ impl AppState {
     }
 
     #[cfg(feature = "processes")]
-    pub fn processors(self, processors: Vec<Box<dyn Processor>>) -> Self {
+    pub fn processors(self, processors: Vec<Box<dyn Processor<User = NoUser>>>) -> Self {
         for p in processors {
             self.processors
                 .write()
@@ -117,5 +127,110 @@ impl AppState {
                 .insert(p.id().to_string(), p);
         }
         self
+    }
+}
+
+pub trait OgcApiState: Send + Sync + Clone + 'static
+where
+    <Self::AuthLayer as AsyncAuthorizeRequest<axum::body::Body>>::Future: Send,
+{
+    type User: Send + Sync + Clone;
+    type AuthLayer: AsyncAuthorizeRequest<
+            axum::body::Body,
+            RequestBody = axum::body::Body,
+            ResponseBody = axum::body::Body,
+        >
+        + Send
+        + Sync
+        + 'static
+        + Clone;
+
+    fn root(&self) -> LandingPage;
+    fn add_links(&mut self, links: impl IntoIterator<Item = Link>);
+
+    fn conformance(&self) -> Conformance;
+    fn extend_conformance(&self, items: &[&str]);
+
+    fn auth_middleware(&self) -> Self::AuthLayer;
+}
+
+#[cfg(feature = "processes")]
+pub trait OgcApiProcessesState: OgcApiState {
+    fn processors(&self) -> Vec<Box<dyn Processor<User = Self::User>>>;
+
+    fn processor(&self, id: &str) -> Option<Box<dyn Processor<User = Self::User>>>;
+
+    fn jobs(&self) -> &dyn JobHandler<User = Self::User>;
+}
+
+#[derive(Clone, Copy)]
+pub struct NoAuth;
+
+impl AsyncAuthorizeRequest<axum::body::Body> for NoAuth {
+    type RequestBody = axum::body::Body;
+    type ResponseBody = axum::body::Body;
+    type Future =
+        BoxFuture<'static, Result<Request<Self::RequestBody>, Response<Self::ResponseBody>>>;
+
+    fn authorize(&mut self, mut request: Request<Self::RequestBody>) -> Self::Future {
+        dbg!(NoUser);
+        request.extensions_mut().insert(NoUser);
+        dbg!(request.extensions());
+        Box::pin(async { Ok(request) })
+    }
+}
+
+impl OgcApiState for AppState {
+    type User = NoUser;
+    type AuthLayer /*<B: Send + Sync + 'static>*/ = NoAuth;
+
+    fn root(&self) -> LandingPage {
+        use crate::util::read_lock;
+
+        read_lock(self.root.as_ref()).to_owned()
+    }
+
+    fn add_links(&mut self, links: impl IntoIterator<Item = Link>) {
+        use crate::util::write_lock;
+
+        write_lock(&self.root).links.extend(links);
+    }
+
+    fn conformance(&self) -> Conformance {
+        use crate::util::read_lock;
+
+        read_lock(self.conformance.as_ref()).to_owned()
+    }
+
+    fn extend_conformance(&self, items: &[&str]) {
+        use crate::util::write_lock;
+
+        write_lock(&self.conformance).extend(items);
+    }
+
+    fn auth_middleware(&self) -> Self::AuthLayer {
+        NoAuth
+    }
+}
+
+#[cfg(feature = "processes")]
+impl OgcApiProcessesState for AppState {
+    fn processors(&self) -> Vec<Box<dyn Processor<User = Self::User>>> {
+        use crate::util::read_lock;
+
+        read_lock(self.processors.as_ref())
+            .values()
+            .cloned()
+            .collect()
+    }
+
+    fn processor(&self, id: &str) -> Option<Box<dyn Processor<User = Self::User>>> {
+        use crate::util::read_lock;
+
+        read_lock(self.processors.as_ref()).get(id).cloned()
+    }
+
+    fn jobs(&self) -> &dyn JobHandler<User = Self::User> {
+        &*self.drivers.jobs
     }
 }

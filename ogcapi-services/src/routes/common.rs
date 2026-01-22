@@ -11,9 +11,11 @@ use ogcapi_types::common::{
 };
 
 use crate::{
-    AppState, Result,
+    Result,
     extractors::RemoteUrl,
     openapi::{OPENAPI, OpenAPI},
+    routes2,
+    state::OgcApiState,
 };
 
 /// Landing page
@@ -41,11 +43,11 @@ use crate::{
         )
     )
 )]
-pub async fn root(
-    State(state): State<AppState>,
+pub async fn root<S: OgcApiState>(
+    State(state): State<S>,
     RemoteUrl(url): RemoteUrl,
 ) -> Result<Json<LandingPage>> {
-    let mut root = state.root.read().unwrap().to_owned();
+    let mut root = state.root();
 
     root.links.insert_or_update(&[
         Link::new(format!("{}/", url.as_str().trim_end_matches('/')), SELF).mediatype(JSON),
@@ -70,7 +72,7 @@ pub async fn root(
     root.links.resolve_relative_links();
 
     #[cfg(feature = "stac")]
-    let root = root.conforms_to(&state.conformance.read().unwrap().conforms_to[..]);
+    let root = root.conforms_to(&state.conformance().conforms_to);
 
     Ok(Json(root))
 }
@@ -135,13 +137,13 @@ pub(crate) async fn api(RemoteUrl(url): RemoteUrl) -> (HeaderMap, Json<openapiv3
         )
     )
 )]
-pub(crate) async fn conformance(State(state): State<AppState>) -> Json<Conformance> {
-    Json(state.conformance.read().unwrap().to_owned())
+pub(crate) async fn conformance<S: OgcApiState>(State(state): State<S>) -> Json<Conformance> {
+    Json(state.conformance())
 }
 
-pub(crate) fn router() -> OpenApiRouter<AppState> {
+pub(crate) fn router<S: OgcApiState>() -> OpenApiRouter<S> {
     OpenApiRouter::new()
-        .routes(routes!(root))
+        .routes(routes2!(root))
         .routes(routes!(api))
-        .routes(routes!(conformance))
+        .routes(routes2!(conformance))
 }

@@ -6,7 +6,6 @@ use axum::{
 use hyper::HeaderMap;
 
 use ogcapi_types::common::{Exception, media_type::PROBLEM_JSON};
-use tracing::error;
 
 /// A common error type that can be used throughout the API.
 ///

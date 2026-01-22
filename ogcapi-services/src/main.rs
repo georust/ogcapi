@@ -1,3 +1,5 @@
+use ogcapi_services::AppState;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // setup env
@@ -7,7 +9,10 @@ async fn main() -> anyhow::Result<()> {
     ogcapi_services::telemetry::init();
 
     // build & run our application with hyper
-    ogcapi_services::Service::new().await.serve().await;
+    ogcapi_services::Service::<AppState>::new()
+        .await
+        .serve()
+        .await;
 
     Ok(())
 }

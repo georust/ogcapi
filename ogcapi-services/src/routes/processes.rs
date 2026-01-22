@@ -1,5 +1,5 @@
 use axum::{
-    Json,
+    Extension, Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -10,7 +10,7 @@ use ogcapi_drivers::ProcessResult;
 use tokio::spawn;
 use tracing::error;
 use url::Position;
-use utoipa_axum::{router::OpenApiRouter, routes};
+use utoipa_axum::router::OpenApiRouter;
 
 use ogcapi_types::{
     common::{
@@ -26,9 +26,11 @@ use ogcapi_types::{
 };
 
 use crate::{
-    AppState, Error, Result,
+    Error, Result,
     extractors::RemoteUrl,
     processes::{ProcessExecuteResponse, ProcessResultsResponse, ValidParams},
+    routes2,
+    state::OgcApiProcessesState,
 };
 
 const CONFORMANCE: [&str; 5] = [
@@ -61,20 +63,20 @@ const CONFORMANCE: [&str; 5] = [
         )
     )
 )]
-async fn processes(
-    State(state): State<AppState>,
+async fn processes<S: OgcApiProcessesState>(
+    State(state): State<S>,
     RemoteUrl(mut url): RemoteUrl,
     Query(mut query): Query<LimitOffsetPagination>,
 ) -> Result<Json<ProcessList>> {
-    let processors = read_lock(&state.processors);
-    let limit = query.limit.unwrap_or_else(|| processors.len());
+    let processors = state.processors();
+    let limit = query.limit.unwrap_or(processors.len());
     let offset = query.offset.unwrap_or(0);
 
     let mut summaries: Vec<ProcessSummary> = processors
         .iter()
         .skip(offset)
         .take(limit)
-        .filter_map(|(_id, p)| {
+        .filter_map(|p| {
             p.process()
                 .map(|p| p.summary)
                 .inspect_err(|e| error!("Error when accessing process: {e}"))
@@ -141,13 +143,13 @@ async fn processes(
         )
     )
 )]
-async fn process(
-    State(state): State<AppState>,
+async fn process<S: OgcApiProcessesState>(
+    State(state): State<S>,
     RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
 ) -> Result<Json<Process>> {
-    match read_lock(&state.processors)
-        .get(&process_id)
+    match state
+        .processor(&process_id)
         .and_then(|processor| processor.process().ok())
     {
         Some(mut process) => {
@@ -189,14 +191,15 @@ async fn process(
         )
     )
 )]
-async fn execution(
-    State(state): State<AppState>,
+async fn execution<S: OgcApiProcessesState>(
+    State(state): State<S>,
     RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
     headers: HeaderMap,
+    Extension(user): Extension<S::User>,
     ValidParams(Json(execute)): ValidParams<Json<Execute>>,
 ) -> Result<ProcessExecuteResponse> {
-    let Some(processor) = read_lock(&state.processors).get(&process_id).cloned() else {
+    let Some(processor) = state.processor(&process_id) else {
         return Err(Error::ApiException(
             (
                 StatusCode::NOT_FOUND,
@@ -206,15 +209,6 @@ async fn execution(
         ));
     };
 
-    let auth = match extract_authentication(processor.requires_auth(), &headers) {
-        Ok(auth) => auth,
-        Err(e) => {
-            return Err(Error::ApiException(
-                (StatusCode::UNAUTHORIZED, e.to_string()).into(),
-            ));
-        }
-    };
-
     let process_description = processor.process()?;
 
     let response_mode = execute.response.clone();
@@ -222,7 +216,7 @@ async fn execution(
         negotiate_execution_mode(&headers, &process_description.summary.job_control_options);
 
     if negotiated_execution_mode.is_sync() {
-        let results = processor.execute(execute).await?;
+        let results = processor.execute(execute, &user).await?;
         return Ok(ProcessExecuteResponse::Synchronous {
             results: ProcessResultsResponse {
                 results,
@@ -241,9 +235,8 @@ async fn execution(
     };
 
     let job_id = state
-        .drivers
-        .jobs
-        .register(&status_info, response_mode)
+        .jobs()
+        .register(&status_info, response_mode, &user)
         .await?;
 
     status_info.job_id = job_id;
@@ -259,10 +252,9 @@ async fn execution(
             status_info.status = ogcapi_types::processes::StatusCode::Running;
 
             let result = state
-                .drivers
-                .jobs
-                .update(&status_info)
-                .and_then(|_| processor.execute(execute))
+                .jobs()
+                .update(&status_info, &user)
+                .and_then(|_| processor.execute(execute, &user))
                 .await;
             let mut results = None;
 
@@ -289,14 +281,14 @@ async fn execution(
             };
 
             let _ = state
-                .drivers
-                .jobs
+                .jobs()
                 .finish(
                     &status_info.job_id,
                     &status_info.status,
                     status_info.message.clone(),
                     status_info.links.clone(),
                     results,
+                    &user,
                 )
                 .await;
         });
@@ -307,43 +299,6 @@ async fn execution(
         was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
         base_url,
     })
-}
-
-fn extract_authentication(
-    requirement: ProcessAuthRequirement,
-    headers: &HeaderMap,
-) -> Result<ProcessAuth> {
-    fn extract_http_auth(headers: &HeaderMap) -> Result<ProcessAuthHttp> {
-        fn header_pairs(headers: &HeaderMap) -> Option<(String, String)> {
-            let header_value = headers.get(AUTHORIZATION)?;
-            let header_str = header_value.to_str().ok()?;
-            let mut parts = header_str.splitn(2, ' ');
-            let auth_type = parts.next()?.to_lowercase();
-            let credentials = parts.next()?.to_string();
-            Some((auth_type, credentials))
-        }
-        let (auth_type, credentials) =
-            header_pairs(headers).context("Authorization header missing or invalid")?;
-        Ok(ProcessAuthHttp {
-            r#type: serde_qs::from_str(&auth_type)
-                .context("Unsupported or invalid HTTP Auth Type")?,
-            credentials,
-        })
-    }
-
-    match requirement {
-        ProcessAuthRequirement::NoAuth => Ok(ProcessAuth::None),
-        ProcessAuthRequirement::Http => {
-            let auth = extract_http_auth(headers)
-                .context("HTTP authentication required but no Authorization header found")?;
-            Ok(ProcessAuth::Http(auth))
-        }
-        ProcessAuthRequirement::ApiKey { name: _, r#in: _ }
-        | ProcessAuthRequirement::OAuth2
-        | ProcessAuthRequirement::OpenIDConnect => {
-            Err(anyhow::anyhow!("Not implemented yet").into())
-        }
-    }
 }
 
 /// Determine whether the client prefers synchronous execution
@@ -449,10 +404,11 @@ fn negotiate_execution_mode(
         )
     )
 )]
-async fn jobs(
-    State(state): State<AppState>,
+async fn jobs<S: OgcApiProcessesState>(
+    State(state): State<S>,
     RemoteUrl(url): RemoteUrl,
     Query(query): Query<LimitOffsetPagination>,
+    Extension(user): Extension<S::User>,
 ) -> Result<Json<JobList>> {
     const DEFAULT_LIMIT: usize = 10;
     const MAX_LIMIT: usize = 100;
@@ -460,7 +416,7 @@ async fn jobs(
     let offset = query.offset.unwrap_or_default();
     let limit = query.limit.unwrap_or(DEFAULT_LIMIT).max(MAX_LIMIT);
 
-    let jobs = state.drivers.jobs.status_list(offset, limit).await?;
+    let jobs = state.jobs().status_list(offset, limit, &user).await?;
 
     let mut links = vec![Link::new(&url, SELF).mediatype(JSON)];
 
@@ -492,8 +448,12 @@ async fn jobs(
         )
     )
 )]
-async fn status(State(state): State<AppState>, Path(job_id): Path<String>) -> Result<Response> {
-    let status = state.drivers.jobs.status(&job_id).await?;
+async fn status<S: OgcApiProcessesState>(
+    State(state): State<S>,
+    Path(job_id): Path<String>,
+    Extension(user): Extension<S::User>,
+) -> Result<Response> {
+    let status = state.jobs().status(&job_id, &user).await?;
 
     let Some(info) = status else {
         return Err(Error::ApiException(
@@ -527,8 +487,12 @@ async fn status(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
         )
     )
 )]
-async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Result<Response> {
-    let status = state.drivers.jobs.dismiss(&job_id).await?;
+async fn delete<S: OgcApiProcessesState>(
+    State(state): State<S>,
+    Path(job_id): Path<String>,
+    Extension(user): Extension<S::User>,
+) -> Result<Response> {
+    let status = state.jobs().dismiss(&job_id, &user).await?;
 
     // TODO: cancel execution
 
@@ -561,12 +525,13 @@ async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
         )
     )
 )]
-async fn results(
-    State(state): State<AppState>,
+async fn results<S: OgcApiProcessesState>(
+    State(state): State<S>,
     Path(job_id): Path<String>,
     Query(_query): Query<ResultsQuery>,
+    Extension(user): Extension<S::User>,
 ) -> Result<ProcessResultsResponse> {
-    let results = state.drivers.jobs.results(&job_id).await?;
+    let results = state.jobs().results(&job_id, &user).await?;
 
     // TODO: use pagination, etc. from `_query`
 
@@ -603,31 +568,8 @@ async fn results(
     }
 }
 
-/// Helper function to read-lock a RwLock, recovering from poisoning if necessary.
-fn read_lock<T>(mutex: &std::sync::RwLock<T>) -> std::sync::RwLockReadGuard<'_, T> {
-    match mutex.read() {
-        Ok(guard) => guard,
-        Err(poisoned) => {
-            error!("Mutex was poisoned, attempting to recover.");
-            poisoned.into_inner()
-        }
-    }
-}
-
-/// Helper function to write-lock a RwLock, recovering from poisoning if necessary.
-fn write_lock<T>(mutex: &std::sync::RwLock<T>) -> std::sync::RwLockWriteGuard<'_, T> {
-    match mutex.write() {
-        Ok(guard) => guard,
-        Err(poisoned) => {
-            error!("Mutex was poisoned, attempting to recover.");
-            poisoned.into_inner()
-        }
-    }
-}
-
-pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
-    let mut root = write_lock(&state.root);
-    root.links.append(&mut vec![
+pub(crate) fn router<S: OgcApiProcessesState>(state: &mut S) -> OpenApiRouter<S> {
+    state.add_links([
         Link::new("processes", PROCESSES)
             .mediatype(JSON)
             .title("Metadata about the processes"),
@@ -636,13 +578,14 @@ pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
         //     .title("The endpoint for job monitoring"),
     ]);
 
-    write_lock(&state.conformance).extend(&CONFORMANCE);
+    state.extend_conformance(&CONFORMANCE);
 
     OpenApiRouter::new()
-        .routes(routes!(processes))
-        .routes(routes!(process))
-        .routes(routes!(execution))
-        .routes(routes!(jobs))
-        .routes(routes!(status, delete))
-        .routes(routes!(results))
+        .routes(routes2!(processes))
+        .routes(routes2!(process))
+        .routes(routes2!(execution))
+        .routes(routes2!(jobs))
+        .routes(routes2!(status))
+        .routes(routes2!(delete))
+        .routes(routes2!(results))
 }

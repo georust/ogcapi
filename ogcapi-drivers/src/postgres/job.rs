@@ -4,13 +4,20 @@ use ogcapi_types::{
 };
 use sqlx::types::Json;
 
-use crate::{JobHandler, ProcessResult};
+use crate::{JobHandler, NoUser, ProcessResult};
 
 use super::Db;
 
 #[async_trait::async_trait]
 impl JobHandler for Db {
-    async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String> {
+    type User = NoUser;
+
+    async fn register(
+        &self,
+        job: &StatusInfo,
+        response_mode: Response,
+        _user: &Self::User,
+    ) -> anyhow::Result<String> {
         let (id,): (String,) = sqlx::query_as(
             r#"
             INSERT INTO meta.jobs(
@@ -45,7 +52,7 @@ impl JobHandler for Db {
         Ok(id)
     }
 
-    async fn update(&self, job: &StatusInfo) -> anyhow::Result<()> {
+    async fn update(&self, job: &StatusInfo, _user: &Self::User) -> anyhow::Result<()> {
         sqlx::query(
             r#"
             UPDATE meta.jobs
@@ -71,6 +78,7 @@ impl JobHandler for Db {
         message: Option<String>,
         links: Vec<Link>,
         results: Option<ExecuteResults>,
+        _user: &Self::User,
     ) -> anyhow::Result<()> {
         sqlx::query(
             r#"
@@ -95,7 +103,12 @@ impl JobHandler for Db {
         Ok(())
     }
 
-    async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>> {
+    async fn status_list(
+        &self,
+        offset: usize,
+        limit: usize,
+        _user: &Self::User,
+    ) -> anyhow::Result<Vec<StatusInfo>> {
         let status_list: Vec<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
             r#"
             SELECT row_to_json(jobs) as "status_info!" 
@@ -113,7 +126,7 @@ impl JobHandler for Db {
         Ok(status_list.into_iter().map(|s| s.0).collect())
     }
 
-    async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>> {
+    async fn status(&self, id: &str, _user: &Self::User) -> anyhow::Result<Option<StatusInfo>> {
         let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
             r#"
             SELECT json_object(
@@ -138,7 +151,7 @@ impl JobHandler for Db {
         Ok(status.map(|s| s.0))
     }
 
-    async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>> {
+    async fn dismiss(&self, id: &str, _user: &Self::User) -> anyhow::Result<Option<StatusInfo>> {
         let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
             r#"
             UPDATE meta.jobs
@@ -166,7 +179,7 @@ impl JobHandler for Db {
         Ok(status.map(|s| s.0))
     }
 
-    async fn results(&self, id: &str) -> anyhow::Result<ProcessResult> {
+    async fn results(&self, id: &str, _user: &Self::User) -> anyhow::Result<ProcessResult> {
         let results: Option<(Option<Json<ExecuteResults>>, Json<Response>)> = sqlx::query_as(
             r#"
             SELECT results, to_jsonb(response)

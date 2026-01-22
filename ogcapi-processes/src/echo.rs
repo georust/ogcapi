@@ -18,7 +18,17 @@ use serde::{Deserialize, Serialize};
 ///
 /// Definition: https://docs.ogc.org/is/18-062r2/18-062r2.html#_443805da-dfcc-84bd-1820-4a41a69f629a
 #[derive(Clone)]
-pub struct Echo;
+pub struct Echo<User> {
+    _marker: std::marker::PhantomData<User>,
+}
+
+impl<User> Default for Echo<User> {
+    fn default() -> Self {
+        Self {
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, JsonSchema)]
 pub struct StringInput(String);
@@ -135,7 +145,12 @@ impl EchoOutputs {
 }
 
 #[async_trait::async_trait]
-impl Processor for Echo {
+impl<User> Processor for Echo<User>
+where
+    User: Clone + Send + Sync + 'static,
+{
+    type User = User;
+
     fn id(&self) -> &'static str {
         "echo"
     }
@@ -226,7 +241,7 @@ impl Processor for Echo {
         })
     }
 
-    async fn execute(&self, execute: Execute) -> Result<ExecuteResults> {
+    async fn execute(&self, execute: Execute, _user: &Self::User) -> Result<ExecuteResults> {
         let value = serde_json::to_value(execute.inputs)?;
         let inputs: EchoInputs = serde_json::from_value(value)?;
 
@@ -289,7 +304,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_string_value_sync() {
-        let echo = Echo;
+        let echo = Echo::default();
         assert_eq!(echo.id(), "echo");
 
         eprintln!(
@@ -314,7 +329,7 @@ mod tests {
             ..Default::default()
         };
 
-        let output = echo.execute(execute).await.unwrap();
+        let output = echo.execute(execute, &()).await.unwrap();
 
         assert_eq!(output.len(), 1);
 
@@ -326,7 +341,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_multi_value_sync() {
-        let echo = Echo;
+        let echo = Echo::default();
         assert_eq!(echo.id(), "echo");
 
         eprintln!(
@@ -368,7 +383,7 @@ mod tests {
             ..Default::default()
         };
 
-        let output = echo.execute(execute).await.unwrap();
+        let output = echo.execute(execute, &()).await.unwrap();
 
         assert_eq!(output.len(), 2);
         assert_eq!(
