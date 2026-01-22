@@ -92,7 +92,6 @@ pub trait EdrQuerier: Send + Sync {
     ) -> anyhow::Result<(FeatureCollection, Crs)>;
 }
 
-#[cfg(feature = "processes")]
 #[derive(Clone, Copy, Debug)]
 pub struct NoUser;
 

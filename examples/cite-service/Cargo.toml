@@ -4,13 +4,13 @@ version = "0.1.0"
 edition.workspace = true
 publish = false
 
-
 [dependencies]
 tokio = { version = "1.48", features = ["full"] }
 
 ogcapi = { path = "../../ogcapi", version = "0.3", default-features = false, features = [
     "services",
     "common",
+    "drivers",
     "features",
     "processes",
     "tiles",
