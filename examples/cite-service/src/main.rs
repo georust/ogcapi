@@ -21,23 +21,11 @@ async fn main() {
     let state = AppState::new(drivers).await;
 
     // Register processes/processors
-    let state = state.processors(vec![
-        // Box::new(Greeter),
-        // Box::new(GeoJsonLoader),
-        // Box::new(GdalLoader),
-        Box::new(Echo::default()),
-    ]);
+    let state = state.processors(vec![Box::new(Echo)]);
 
     // Build & run with hyper
     Service::try_new_with(&config, state)
         .await
-        .with_collections()
-        .with_features()
-        .with_stac()
-        .with_edr()
-        .with_styles()
-        .with_tiles()
-        .with_processes()
         .unwrap()
         .serve()
         .await;

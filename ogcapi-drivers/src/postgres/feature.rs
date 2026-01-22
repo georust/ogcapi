@@ -1,5 +1,5 @@
 use ogcapi_types::{
-    common::{Bbox, Crs, Datetime, IntervalDatetime},
+    common::{Authority, Bbox, Crs, Datetime, Exception, IntervalDatetime},
     features::{Feature, FeatureCollection, Query},
 };
 
@@ -133,34 +133,73 @@ impl FeatureTransactions for Db {
 
     async fn list_items(
         &self,
-        collection: &str,
+        collection_id: &str,
         query: &Query,
     ) -> anyhow::Result<FeatureCollection> {
         let mut where_conditions = vec!["TRUE".to_owned()];
 
         // bbox
         if let Some(bbox) = query.bbox.as_ref() {
-            // TODO: Properly handle crs and bbox transformation
-            let bbox_srid: i32 = query.bbox_crs.as_srid();
+            // crs
+            let bbox_crs = query.bbox_crs.clone().unwrap_or_else(|| match bbox {
+                Bbox::Bbox2D(_) => Crs::default2d(),
+                Bbox::Bbox3D(_) => Crs::default3d(),
+            });
 
-            let c = self.read_collection(collection).await?;
-            let storage_srid = c
-                .expect("collection exists")
-                .storage_crs
-                .unwrap_or_default()
-                .as_srid();
+            // coordinate system axis order (OGC and Postgis is lng, lat | EPSG is lat, lng)
+            let order = match bbox_crs.authority {
+                Authority::OGC => [0, 1, 2, 3],
+                Authority::EPSG => [1, 0, 3, 2],
+            };
 
-            let envelope = match bbox {
+            let collection = self.read_collection(collection_id).await?;
+            let storage_srid = match collection {
+                Some(collection) => match collection.storage_crs.map(|crs| crs.as_srid()) {
+                    Some(srid) => srid,
+                    None => {
+                        sqlx::query_scalar(&format!(
+                            "SELECT Find_SRID('items', '{collection_id}', 'geom')"
+                        ))
+                        .fetch_one(&self.pool)
+                        .await?
+                    }
+                },
+                None => return Err(Exception::new_from_status(404).into()),
+            };
+
+            // TODO: handle antimeridian (lower > upper on axis 1)
+            let intersection = match bbox {
                 Bbox::Bbox2D(bbox) => format!(
-                    "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                    bbox[0], bbox[1], bbox[2], bbox[3], bbox_srid
+                    "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}, {}, {}, {}), {storage_srid}))",
+                    bbox[order[0]],
+                    bbox[order[1]],
+                    bbox[order[2]],
+                    bbox[order[3]],
+                    bbox_crs.as_srid()
                 ),
                 Bbox::Bbox3D(bbox) => format!(
-                    "ST_MakeEnvelope({}, {}, {}, {}, {})",
-                    bbox[0], bbox[1], bbox[3], bbox[4], bbox_srid
+                    // FIXME: ensure proper height/box transformation handling
+                    r#"ST_3DIntersects(geom, ST_Envelope(ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY[
+                        ST_MakePoint({x1}, {y1}, {z1}), 
+                        ST_MakePoint({x2}, {y1}, {z1}),
+                        ST_MakePoint({x1}, {y2}, {z1}), 
+                        ST_MakePoint({x2}, {y2}, {z1}),
+                        ST_MakePoint({x1}, {y1}, {z2}), 
+                        ST_MakePoint({x2}, {y1}, {z2}),
+                        ST_MakePoint({x1}, {y2}, {z2}), 
+                        ST_MakePoint({x2}, {y2}, {z2})
+                    ]), {srid}), {storage_srid})))"#,
+                    x1 = bbox[order[0]],
+                    y1 = bbox[order[1]],
+                    z1 = bbox[2],
+                    x2 = bbox[order[2] + 1],
+                    y2 = bbox[order[3] + 1],
+                    z2 = bbox[5],
+                    srid = bbox_crs.as_srid()
                 ),
             };
-            where_conditions.push(format!("geom && ST_Transform({envelope}, {storage_srid})"));
+
+            where_conditions.push(intersection);
         }
 
         // datetime
@@ -235,12 +274,19 @@ impl FeatureTransactions for Db {
         // count
         let number_matched: (i64,) = sqlx::query_as(&format!(
             r#"
-            SELECT count(*) FROM items."{collection}"
+            SELECT count(*) FROM items."{collection_id}"
             WHERE {conditions}
             "#,
         ))
         .fetch_one(&self.pool)
         .await?;
+
+        // srid
+        let srid = query
+            .crs
+            .as_ref()
+            .map(|crs| crs.as_srid())
+            .unwrap_or_else(|| Crs::default2d().as_srid());
 
         // fetch
         let features: Option<sqlx::types::Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
@@ -248,7 +294,7 @@ impl FeatureTransactions for Db {
             SELECT array_to_json(array_agg(row_to_json(t)))
             FROM (
                 SELECT {ROWS}
-                FROM items."{collection}" items JOIN meta.collections meta
+                FROM items."{collection_id}" items JOIN meta.collections meta
                     ON items.collection = meta.id
                 WHERE {conditions}
                 LIMIT {}
@@ -260,7 +306,7 @@ impl FeatureTransactions for Db {
                 .map_or_else(|| String::from("NULL"), |l| l.to_string()),
             query.offset.unwrap_or(0)
         ))
-        .bind(query.crs.as_srid())
+        .bind(srid)
         .fetch_one(&self.pool)
         .await?;
 

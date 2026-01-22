@@ -3,9 +3,6 @@ use url::Url;
 use super::{Link, link_rel::SELF};
 
 #[doc(hidden)]
-pub type Links = Vec<Link>;
-
-#[doc(hidden)]
 pub trait Linked {
     fn get_base_url(&mut self) -> Option<Url>;
 
@@ -14,7 +11,7 @@ pub trait Linked {
     fn insert_or_update(&mut self, other: &[Link]);
 }
 
-impl Linked for Links {
+impl Linked for Vec<Link> {
     fn get_base_url(&mut self) -> Option<Url> {
         self.iter()
             .find(|l| l.rel == SELF)

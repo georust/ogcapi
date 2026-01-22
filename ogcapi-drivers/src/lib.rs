@@ -4,11 +4,9 @@ pub mod postgres;
 pub mod s3;
 
 #[cfg(feature = "common")]
-use ogcapi_types::common::{Collection, Collections, Link, Query as CollectionQuery};
+use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
 #[cfg(feature = "edr")]
 use ogcapi_types::edr::{Query as EdrQuery, QueryType};
-#[cfg(feature = "processes")]
-use ogcapi_types::processes::{Response, StatusCode, StatusInfo};
 #[cfg(feature = "stac")]
 use ogcapi_types::stac::SearchParams;
 #[cfg(feature = "styles")]
@@ -18,7 +16,12 @@ use ogcapi_types::tiles::TileMatrixSet;
 #[cfg(feature = "features")]
 use ogcapi_types::{
     common::Crs,
-    features::{Feature, Query as FeatureQuery},
+    features::{Feature, Query as FeatureQuery, Queryables},
+};
+#[cfg(feature = "processes")]
+use ogcapi_types::{
+    common::Link,
+    processes::{Response, StatusCode, StatusInfo},
 };
 
 #[cfg(any(feature = "features", feature = "stac", feature = "edr"))]
@@ -47,25 +50,33 @@ pub trait FeatureTransactions: Send + Sync {
 
     async fn read_feature(
         &self,
-        collection: &str,
+        collection_id: &str,
         id: &str,
         crs: &Crs,
     ) -> anyhow::Result<Option<Feature>>;
     async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()>;
 
-    async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()>;
+    async fn delete_feature(&self, collection_id: &str, id: &str) -> anyhow::Result<()>;
 
     async fn list_items(
         &self,
-        collection: &str,
+        collection_id: &str,
         query: &FeatureQuery,
     ) -> anyhow::Result<FeatureCollection>;
+
+    async fn queryables(&self, _collection_id: &str) -> anyhow::Result<Queryables> {
+        // Default to nothing is queryable
+        Ok(Queryables {
+            queryables: Default::default(),
+            additional_properties: false,
+        })
+    }
 }
 
 /// Trait for `STAC` search
 #[cfg(feature = "stac")]
 #[async_trait::async_trait]
-pub trait StacSeach: Send + Sync {
+pub trait StacSearch: Send + Sync {
     async fn search(&self, query: &SearchParams) -> anyhow::Result<FeatureCollection>;
 }
 
@@ -78,7 +89,7 @@ pub trait EdrQuerier: Send + Sync {
         collection_id: &str,
         query_type: &QueryType,
         query: &EdrQuery,
-    ) -> anyhow::Result<FeatureCollection>;
+    ) -> anyhow::Result<(FeatureCollection, Crs)>;
 }
 
 #[cfg(feature = "processes")]

@@ -1,6 +1,9 @@
-use std::{fmt, str};
+use std::{
+    fmt,
+    str::{self, FromStr},
+};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 
 /// Default CRS for coordinates without height
 pub const OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84";
@@ -9,7 +12,7 @@ pub const OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84";
 pub const OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h";
 
 /// Coordinate Reference System (CRS)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Crs {
     pub authority: Authority,
     pub version: String,
@@ -17,12 +20,20 @@ pub struct Crs {
 }
 
 impl Crs {
-    pub fn new(authority: Authority, version: impl ToString, code: impl ToString) -> Crs {
+    pub fn new(authority: Authority, version: impl ToString, code: impl ToString) -> Self {
         Crs {
             authority,
             version: version.to_string(),
             code: code.to_string(),
         }
+    }
+
+    pub fn default2d() -> Self {
+        Self::new(Authority::OGC, "1.3".to_string(), "CRS84".to_string())
+    }
+
+    pub fn default3d() -> Self {
+        Self::new(Authority::OGC, "0".to_string(), "CRS84h".to_string())
     }
 
     pub fn from_epsg(code: i32) -> Self {
@@ -31,7 +42,7 @@ impl Crs {
 
     pub fn from_srid(code: i32) -> Self {
         if code == 4326 {
-            Crs::default()
+            Crs::default2d()
         } else {
             Crs::new(Authority::EPSG, "0", code)
         }
@@ -99,29 +110,60 @@ impl str::FromStr for Crs {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = if s.starts_with("urn") {
+        let parts: Vec<&str> = if s.starts_with("http") {
+            s.trim_start_matches("http://www.opengis.net/def/crs/")
+                .split('/')
+                .collect()
+        } else if s.starts_with("urn") {
             s.trim_start_matches("urn:ogc:def:crs:")
                 .split(':')
                 .collect()
         } else {
-            s.trim_start_matches("http://www.opengis.net/def/crs/")
-                .split('/')
-                .collect()
+            s.split(':').collect()
         };
         match parts.len() {
             3 => Ok(Crs::new(Authority::from_str(parts[0])?, parts[1], parts[2])),
+            2 => Ok(Crs::new(Authority::from_str(parts[0])?, "0", parts[1])),
             _ => Err(format!("Unable to parse CRS from `{s}`!")),
         }
     }
 }
 
-impl Default for Crs {
-    fn default() -> Crs {
-        Crs {
-            authority: Authority::OGC,
-            version: "1.3".to_string(),
-            code: "CRS84".to_string(),
+struct StrVisitior;
+
+impl<'de> Visitor<'de> for StrVisitior {
+    type Value = Crs;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a crs string")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        match Crs::from_str(v) {
+            Ok(crs) => Ok(crs),
+            Err(e) => Err(E::custom(e)),
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for Crs {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_string(StrVisitior)
+    }
+}
+
+impl Serialize for Crs {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -141,7 +183,7 @@ impl fmt::Display for Authority {
     }
 }
 
-impl str::FromStr for Authority {
+impl FromStr for Authority {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -163,6 +205,14 @@ mod tests {
     fn parse_crs() {
         let crs = Crs::from_str(OGC_CRS84).unwrap();
         assert_eq!(format!("{crs:#}"), OGC_CRS84)
+    }
+
+    #[test]
+    fn serde_crs() {
+        let original = format!("\"{OGC_CRS84}\"");
+        let crs: Crs = serde_json::from_str(&original).unwrap();
+        let crs_str = serde_json::to_string(&crs).unwrap();
+        assert_eq!(format!("{crs_str}"), original)
     }
 
     #[test]

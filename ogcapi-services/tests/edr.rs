@@ -46,7 +46,7 @@ async fn edr() -> anyhow::Result<()> {
     let query = Query {
         coords: "POINT(2600000 1200000)".to_string(),
         parameter_name: Some("NAME,ISO_A2,CONTINENT".to_string()),
-        crs: Crs::from_epsg(2056),
+        crs: Some(Crs::from_epsg(2056)),
         ..Default::default()
     };
 

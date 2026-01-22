@@ -4,6 +4,9 @@ use utoipa::ToSchema;
 
 use crate::common::Link;
 
+#[cfg(feature = "movingfeatures")]
+use crate::common::Bbox;
+
 use super::Feature;
 
 #[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +29,15 @@ pub struct FeatureCollection {
     pub time_stamp: Option<String>,
     pub number_matched: Option<u64>,
     pub number_returned: Option<u64>,
+    #[cfg(feature = "movingfeatures")]
+    #[serde(default)]
+    pub crs: crate::movingfeatures::crs::Crs,
+    #[cfg(feature = "movingfeatures")]
+    #[serde(default)]
+    pub trs: crate::movingfeatures::trs::Trs,
+    #[cfg(feature = "movingfeatures")]
+    #[serde(default)]
+    pub bbox: Option<Bbox>,
 }
 
 impl FeatureCollection {

@@ -25,7 +25,6 @@ pub async fn load(args: Args) -> anyhow::Result<()> {
     // Create collection
     let collection = Collection {
         id: args.collection.to_owned(),
-        item_type: Some("Feature".to_string()),
         extent: geojson
             .bbox
             .map(|bbox| Extent {
@@ -35,13 +34,13 @@ pub async fn load(args: Args) -> anyhow::Result<()> {
                             .try_into()
                             .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
                     ],
-                    crs: Crs::default(),
+                    crs: Some(Crs::default2d()),
                 },
                 ..Default::default()
             })
             .or_else(|| Some(Extent::default())),
-        crs: vec![Crs::default(), Crs::from_epsg(3857), Crs::from_epsg(2056)],
-        storage_crs: Some(Crs::default()),
+        crs: vec![Crs::default2d(), Crs::from_epsg(3857)],
+        storage_crs: Some(Crs::default2d()),
         #[cfg(feature = "stac")]
         assets: crate::asset::load_asset_from_path(&args.input).await?,
         ..Default::default()

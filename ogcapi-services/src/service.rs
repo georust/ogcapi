@@ -1,5 +1,7 @@
-use std::{any::Any, net::SocketAddr, sync::Arc};
-
+use crate::{
+    ApiDoc, AppState, Config, ConfigParser, Error, routes, state::Drivers, state::OgcApiState,
+};
+use anyhow::Result;
 use axum::{
     Extension,
     body::Body,
@@ -9,6 +11,8 @@ use axum::{
     },
     response::IntoResponse,
 };
+use ogcapi_types::common::Exception;
+use std::{any::Any, net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -21,13 +25,9 @@ use tower_http::{
     sensitive_headers::SetSensitiveRequestHeadersLayer,
     trace::{DefaultMakeSpan, TraceLayer},
 };
-
-use ogcapi_types::common::Exception;
 use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_swagger_ui::SwaggerUi;
-
-use crate::{ApiDoc, AppState, Config, ConfigParser, Error, routes, state::OgcApiState};
 
 /// OGC API Services
 pub struct Service<S: OgcApiState> {
@@ -35,19 +35,20 @@ pub struct Service<S: OgcApiState> {
     pub router: OpenApiRouter<S>,
     listener: TcpListener,
     auth_middleware: S::AuthLayer,
-    // auth_layer: AsyncRequireAuthorizationLayer<axum::body::Body>,
 }
 
 impl Service<AppState> {
-    /// Create new service with default state
-    pub async fn new() -> Service<AppState> {
+    pub async fn try_new() -> Result<Self> {
         // config
         let config = Config::parse();
 
-        // state
-        let state = AppState::new_from(&config).await;
+        // drivers
+        let drivers = Drivers::try_new_from_env().await?;
 
-        Service::new_with(&config, state).await
+        // state
+        let state = AppState::new(drivers).await;
+
+        Service::try_new_with(&config, state).await
     }
 
     pub fn with_collections(mut self) -> Self {
@@ -98,23 +99,21 @@ impl<S: OgcApiState> Service<S> {
         self
     }
 
-    pub async fn new_with(config: &Config, state: S) -> Self {
+    pub async fn try_new_with(config: &Config, state: S) -> Result<Self> {
         // router
         let router = OpenApiRouter::<S>::with_openapi(ApiDoc::openapi());
 
         let router = router.merge(routes::common::router());
 
         // listener
-        let listener = TcpListener::bind((config.host.as_str(), config.port))
-            .await
-            .expect("create listener");
+        let listener = TcpListener::bind((config.host.as_str(), config.port)).await?;
 
-        Service {
+        Ok(Service {
             auth_middleware: state.auth_middleware(),
             state,
             router,
             listener,
-        }
+        })
     }
 
     /// Serve application

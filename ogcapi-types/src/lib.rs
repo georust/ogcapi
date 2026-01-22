@@ -9,6 +9,9 @@ pub mod edr;
 /// Types specified in the `OGC API - Features` standard.
 #[cfg(feature = "features")]
 pub mod features;
+/// Types specified in the `OGC API - Moving Features` standard.
+#[cfg(feature = "movingfeatures")]
+pub mod movingfeatures;
 /// Types specified in the `OGC API - Processes` standard.
 #[cfg(feature = "processes")]
 pub mod processes;

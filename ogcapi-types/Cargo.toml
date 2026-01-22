@@ -11,7 +11,7 @@ keywords.workspace = true
 include = ["/src", "/assets"]
 
 [features]
-default = ["common", "edr", "features", "processes", "tiles"]
+default = ["common", "edr", "features", "movingfeatures", "processes", "tiles"]
 
 # standards
 common = []
@@ -22,15 +22,16 @@ stac = ["features"]
 styles = []
 tiles = ["common"]
 coverages = []
+movingfeatures = ["common", "features"]
 
 [dependencies]
-chrono = { version = "0.4.41", features = ["serde"] }
+chrono = { version = "0.4.42", features = ["serde"] }
 geojson = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_repr = "0.1.20"
-serde_with = { version = "3.14", features = ["json"] }
+serde_with = { version = "3.16.0", features = ["json"] }
 serde_qs = { workspace = true }
 url = { workspace = true }
 utoipa = { workspace = true, features = ["preserve_order", "chrono", "url", "repr"] }

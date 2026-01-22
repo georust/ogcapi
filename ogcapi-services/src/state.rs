@@ -1,6 +1,5 @@
 #[cfg(feature = "processes")]
 use std::collections::HashMap;
-#[cfg(feature = "processes")]
 use std::sync::{Arc, RwLock};
 
 use axum::{extract::Request, response::Response};
@@ -12,6 +11,8 @@ use ogcapi_drivers::FeatureTransactions;
 #[cfg(feature = "processes")]
 use ogcapi_drivers::JobHandler;
 use ogcapi_drivers::NoUser;
+#[cfg(feature = "stac")]
+use ogcapi_drivers::StacSearch;
 #[cfg(feature = "styles")]
 use ogcapi_drivers::StyleTransactions;
 #[cfg(feature = "tiles")]
@@ -22,8 +23,7 @@ use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_processes::Processor;
 use ogcapi_types::common::{Conformance, LandingPage, Link};
 use tower_http::auth::AsyncAuthorizeRequest;
-
-use crate::{Config, ConfigParser};
+use url::Url;
 
 #[cfg(feature = "processes")]
 type BoxedProcessor<User> = Box<dyn Processor<User = User>>;
@@ -31,14 +31,11 @@ type BoxedProcessor<User> = Box<dyn Processor<User = User>>;
 /// Application state
 #[derive(Clone)]
 pub struct AppState {
-    pub root: Arc<RwLock<LandingPage>>,
-    pub conformance: Arc<RwLock<Conformance>>,
-    pub drivers: Arc<Drivers>,
-    pub db: Db,
-    #[cfg(feature = "stac")]
-    pub s3: ogcapi_drivers::s3::S3,
+    pub(crate) root: Arc<RwLock<LandingPage>>,
+    pub(crate) conformance: Arc<RwLock<Conformance>>,
+    pub(crate) drivers: Arc<Drivers>,
     #[cfg(feature = "processes")]
-    pub processors: Arc<RwLock<HashMap<String, BoxedProcessor<NoUser>>>>,
+    pub(crate) processors: Arc<RwLock<HashMap<String, BoxedProcessor<NoUser>>>>,
 }
 
 // TODO: Introduce service trait
@@ -54,33 +51,22 @@ pub struct Drivers {
     pub styles: Box<dyn StyleTransactions>,
     #[cfg(feature = "tiles")]
     pub tiles: Box<dyn TileTransactions>,
+    #[cfg(feature = "stac")]
+    pub stac: Box<dyn StacSearch>,
 }
 
-impl AppState {
-    pub async fn new() -> Self {
-        let config = Config::parse();
-        AppState::new_from(&config).await
+impl Drivers {
+    /// Try to setup drivers from `DATABASE_URL` environment variable.
+    pub async fn try_new_from_env() -> Result<Self, anyhow::Error> {
+        let var = std::env::var("DATABASE_URL")?;
+        Self::try_new_db(&var).await
     }
 
-    pub async fn new_from(config: &Config) -> Self {
-        let db = Db::setup(&config.database_url).await.unwrap();
-        AppState::new_with(db).await
-    }
+    /// Try to setup db driver from database url.
+    pub async fn try_new_db(url: &str) -> Result<Self, anyhow::Error> {
+        let database_url = Url::parse(url)?;
+        let db = Db::setup(&database_url).await?;
 
-    pub async fn new_with(db: Db) -> Self {
-        // conformance
-        #[allow(unused_mut)]
-        let mut conformace = Conformance::default();
-        #[cfg(feature = "stac")]
-        conformace.extend(&[
-            "https://api.stacspec.org/v1.0.0-rc.1/core",
-            "https://api.stacspec.org/v1.0.0-rc.1/item-search",
-            "https://api.stacspec.org/v1.0.0-rc.1/collections",
-            "https://api.stacspec.org/v1.0.0-rc.1/ogcapi-features",
-            "https://api.stacspec.org/v1.0.0-rc.1/browseable",
-        ]);
-
-        // drivers
         let drivers = Drivers {
             collections: Box::new(db.clone()),
             #[cfg(feature = "features")]
@@ -93,15 +79,32 @@ impl AppState {
             styles: Box::new(db.clone()),
             #[cfg(feature = "tiles")]
             tiles: Box::new(db.clone()),
+            #[cfg(feature = "stac")]
+            stac: Box::new(db.clone()),
         };
+
+        Ok(drivers)
+    }
+}
+
+impl AppState {
+    pub async fn new(drivers: Drivers) -> Self {
+        // conformance
+        #[allow(unused_mut)]
+        let mut conformace = Conformance::default();
+        #[cfg(feature = "stac")]
+        conformace.extend(&[
+            "https://api.stacspec.org/v1.0.0-rc.1/core",
+            "https://api.stacspec.org/v1.0.0-rc.1/item-search",
+            "https://api.stacspec.org/v1.0.0-rc.1/collections",
+            "https://api.stacspec.org/v1.0.0-rc.1/ogcapi-features",
+            "https://api.stacspec.org/v1.0.0-rc.1/browseable",
+        ]);
 
         AppState {
             root: Arc::new(RwLock::new(LandingPage::new("root").description("root"))),
             conformance: Arc::new(RwLock::new(conformace)),
             drivers: Arc::new(drivers),
-            db,
-            #[cfg(feature = "stac")]
-            s3: ogcapi_drivers::s3::S3::new().await,
             #[cfg(feature = "processes")]
             processors: Default::default(),
         }
@@ -109,12 +112,6 @@ impl AppState {
 
     pub fn root(mut self, root: LandingPage) -> Self {
         self.root = Arc::new(RwLock::new(root));
-        self
-    }
-
-    #[cfg(feature = "stac")]
-    pub async fn s3_client(mut self, client: ogcapi_drivers::s3::S3) -> Self {
-        self.s3 = client;
         self
     }
 

@@ -32,9 +32,8 @@ pub struct Query {
     pub datetime: Option<Datetime>,
     pub parameter_name: Option<String>,
     #[serde(default)]
-    #[serde_as(as = "DisplayFromStr")]
     #[param(value_type = String)]
-    pub crs: Crs,
+    pub crs: Option<Crs>,
     pub f: Option<String>,
     pub z: Option<Vec<String>>,
     pub within: Option<String>,

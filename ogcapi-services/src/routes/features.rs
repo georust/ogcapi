@@ -23,9 +23,9 @@ use crate::{
     extractors::{Qs, RemoteUrl},
 };
 
-const CONFORMANCE: [&str; 3] = [
+const CONFORMANCE: [&str; 4] = [
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-    // "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+    "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
     "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
     "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
 ];
@@ -109,12 +109,18 @@ async fn read(
         .read_collection(&collection_id)
         .await?
         .ok_or(Error::NotFound)?;
-    is_supported_crs(&collection, &query.crs).await?;
+
+    let crs = if let Some(crs) = query.crs {
+        is_supported_crs(&collection, &crs).await?;
+        crs
+    } else {
+        Crs::default2d()
+    };
 
     let mut feature = state
         .drivers
         .features
-        .read_feature(&collection_id, &id, &query.crs)
+        .read_feature(&collection_id, &id, &crs)
         .await?
         .ok_or(Error::NotFound)?;
 
@@ -128,9 +134,7 @@ async fn read(
     let mut headers = HeaderMap::new();
     headers.insert(
         "Content-Crs",
-        query
-            .crs
-            .to_string()
+        format!("<{}>", crs)
             .parse()
             .context("Unable to parse `Content-Crs` header value")?,
     );
@@ -259,24 +263,50 @@ async fn items(
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
     tracing::debug!("{:#?}", query);
 
-    // Limit
+    // limit
     if let Some(limit) = query.limit {
+        // TODO: sync with opanapi specification
         if limit > 10000 {
             query.limit = Some(10000);
         }
+        if limit == 0 {
+            query.limit = Some(1)
+        }
     } else {
-        query.limit = Some(100);
+        query.limit = Some(10);
     }
 
+    // offset
+    if query.offset.is_none() {
+        query.offset = Some(0);
+    }
+
+    // crs
     let collection = state
         .drivers
         .collections
         .read_collection(&collection_id)
         .await?
         .ok_or(Error::NotFound)?;
-    is_supported_crs(&collection, &query.crs).await?;
+    let crs = if let Some(crs) = query.crs.as_ref() {
+        is_supported_crs(&collection, crs).await?;
+        crs
+    } else {
+        &Crs::default2d()
+    };
 
-    // TODO: validate additional parameters
+    // queryables
+    let queryables = state.drivers.features.queryables(&collection_id).await?;
+    if !queryables.additional_properties {
+        for prop in query.additional_parameters.keys() {
+            if !queryables.queryables.contains_key(prop) {
+                return Err(Error::ApiException(
+                    Exception::new_from_status(StatusCode::BAD_REQUEST.as_u16())
+                        .detail(format!("Property {prop} is not queryable!")),
+                ));
+            }
+        }
+    }
 
     let mut fc = state
         .drivers
@@ -291,27 +321,32 @@ async fn items(
     ]);
 
     // pagination
-    if let Some(limit) = query.limit {
-        if query.offset.is_none() {
-            query.offset = Some(0);
+    if let Some(limit) = query.limit
+        && let Some(offset) = query.offset
+    {
+        if offset != 0 && offset >= limit {
+            query.offset = Some(offset - limit);
+            url.set_query(serde_qs::to_string(&query).ok().as_deref());
+            let previous = Link::new(&url, PREV).mediatype(GEO_JSON);
+            fc.links.insert_or_update(&[previous]);
         }
 
-        if let Some(offset) = query.offset {
-            if offset != 0 && offset >= limit {
-                query.offset = Some(offset - limit);
-                url.set_query(serde_qs::to_string(&query).ok().as_deref());
-                let previous = Link::new(&url, PREV).mediatype(GEO_JSON);
-                fc.links.insert_or_update(&[previous]);
-            }
-
-            if let Some(number_matched) = fc.number_matched
-                && number_matched > (offset + limit) as u64
-            {
-                query.offset = Some(offset + limit);
-                url.set_query(serde_qs::to_string(&query).ok().as_deref());
-                let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
-                fc.links.insert_or_update(&[next]);
-            }
+        let mut next = false;
+        if let Some(number_matched) = fc.number_matched
+            && number_matched > (offset + limit) as u64
+        {
+            next = true;
+        }
+        if let Some(number_returned) = fc.number_returned
+            && number_returned == limit as u64
+        {
+            next = true;
+        }
+        if next {
+            query.offset = Some(offset + limit);
+            url.set_query(serde_qs::to_string(&query).ok().as_deref());
+            let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
+            fc.links.insert_or_update(&[next]);
         }
     }
 
@@ -323,16 +358,49 @@ async fn items(
             )
             .mediatype(GEO_JSON),
             Link::new(url.join("../..")?, ROOT).mediatype(JSON),
-            Link::new(url.join(&format!("../{}", collection.id))?, COLLECTION).mediatype(JSON),
+            Link::new(url.join(&format!("../{}", collection_id))?, COLLECTION).mediatype(JSON),
         ])
     }
 
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Crs", query.crs.to_string().parse().unwrap());
+    headers.insert("Content-Crs", format!("<{}>", crs).parse().unwrap());
     headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
 
     Ok((headers, Json(fc)))
 }
+
+// /// Fetch queriables of a collection
+// ///
+// /// Fetch the feature with id `featureId` in the feature collection with id
+// /// `collectionId`.
+// #[utoipa::path(get, path = "/collections/{collectionId}/queryables", tag = "Schema",
+//     params(
+//         ("collectionId" = String, Path, description = "local identifier of a collection")
+//     ),
+//     responses(
+//         (
+//             status = 200,
+//             description = "Fetch the queryable properties of the collection with id `collectionId`",
+//             body = Queryables),
+//         (
+//             status = 404, description = "The requested resource does not exist \
+//             on the server. For example, a path parameter had an incorrect value.",
+//             body = Exception, example = json!(Exception::new_from_status(404))
+//         ),
+//         (
+//             status = 500, description = "A server error occurred.",
+//             body = Exception, example = json!(Exception::new_from_status(500))
+//         )
+//     )
+// )]
+// async fn queryables(
+//     State(state): State<AppState>,
+//     Path(collection_id): Path<String>,
+// ) -> Result<Json<Queryables>> {
+//     let queryables = state.drivers.features.queryables(&collection_id).await?;
+
+//     Ok(Json(queryables))
+// }
 
 async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Error> {
     if collection.crs.contains(crs) {

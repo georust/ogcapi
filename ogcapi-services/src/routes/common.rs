@@ -4,6 +4,8 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 
 #[cfg(feature = "stac")]
 use ogcapi_types::common::link_rel::SEARCH;
+#[cfg(feature = "tiles")]
+use ogcapi_types::common::link_rel::{TILESETS_VECTOR, TILING_SCHEMES};
 use ogcapi_types::common::{
     Conformance, Exception, LandingPage, Link, Linked,
     link_rel::{CONFORMANCE, ROOT, SELF, SERVICE_DESC, SERVICE_DOC},
@@ -67,6 +69,14 @@ pub async fn root<S: OgcApiState>(
         #[cfg(feature = "stac")]
         Link::new("search", SEARCH)
             .title("URI for the STAC API - Item Search endpoint")
+            .mediatype(JSON),
+        #[cfg(feature = "tiles")]
+        Link::new("tileMatrixSets", TILING_SCHEMES)
+            .title("List of tileMatrixSets implemented by this API in JSON")
+            .mediatype(JSON),
+        #[cfg(feature = "tiles")]
+        Link::new("tiles", TILESETS_VECTOR)
+            .title("List of available vector tilesets for the dataset")
             .mediatype(JSON),
     ]);
     root.links.resolve_relative_links();

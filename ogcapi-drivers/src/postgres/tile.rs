@@ -16,19 +16,28 @@ impl TileTransactions for Db {
     ) -> anyhow::Result<Vec<u8>> {
         let mut sql: Vec<String> = Vec::new();
 
-        for collection in collections {
-            if let Some(c) = self.read_collection(collection).await? {
-                let storage_srid = c.storage_crs.unwrap_or_default().as_srid();
+        for collection_id in collections {
+            if let Some(collection) = self.read_collection(collection_id).await? {
+                let storage_srid = match collection.storage_crs.map(|crs| crs.as_srid()) {
+                    Some(srid) => srid,
+                    None => {
+                        sqlx::query_scalar(&format!(
+                            "SELECT Find_SRID('items', '{collection_id}', 'geom')"
+                        ))
+                        .fetch_one(&self.pool)
+                        .await?
+                    }
+                };
 
                 sql.push(format!(
                     r#"
-                    SELECT ST_AsMVT(mvtgeom, '{collection}', 4096, 'geom')
+                    SELECT ST_AsMVT(mvtgeom, '{collection_id}', 4096, 'geom')
                     FROM (
                         SELECT
                             ST_AsMVTGeom(ST_Transform(ST_Force2D(geom), 3857), ST_TileEnvelope($1, $3, $2), 4096, 64, TRUE) AS geom,
-                            '{collection}' as collection,
+                            '{collection_id}' as collection,
                             properties
-                        FROM items.{collection}
+                        FROM items.{collection_id}
                         WHERE geom && ST_Transform(ST_TileEnvelope($1, $3, $2, margin => (64.0 / 4096)), {storage_srid})
                     ) AS mvtgeom
                     "#

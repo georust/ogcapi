@@ -20,7 +20,7 @@ pub async fn load(args: Args) -> Result<(), anyhow::Error> {
     // Create collection
     let collection = Collection {
         id: args.collection.to_owned(),
-        crs: vec![Crs::default()],
+        crs: vec![Crs::default2d()],
         ..Default::default()
     };
     // db.delete_collection(&collection.id).await?;

@@ -12,9 +12,6 @@ use ogcapi_types::common::{Exception, media_type::PROBLEM_JSON};
 /// Can be returned in a `Result` from an API handler function.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    // /// Automatically return `500 Internal Server Error` on a `sqlx::Error`.
-    // #[error("an error occurred with the database")]
-    // Sqlx(#[from] sqlx::Error),
     /// Return `404 Not Found`
     #[error("not found")]
     NotFound,
@@ -69,10 +66,6 @@ impl IntoResponse for Error {
 impl From<Error> for Exception {
     fn from(value: Error) -> Self {
         let (status, message) = match value {
-            // Self::Sqlx(ref e) => {
-            //     tracing::error!("SQLx error: {:?}", e);
-            //     (self.status_code(), self.to_string())
-            // }
             Error::NotFound => (value.status_code(), value.to_string()),
             Error::Anyhow(ref e) => {
                 tracing::error!("Generic error: {:?}", e);
