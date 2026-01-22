@@ -170,9 +170,7 @@ impl AsyncAuthorizeRequest<axum::body::Body> for NoAuth {
         BoxFuture<'static, Result<Request<Self::RequestBody>, Response<Self::ResponseBody>>>;
 
     fn authorize(&mut self, mut request: Request<Self::RequestBody>) -> Self::Future {
-        dbg!(NoUser);
         request.extensions_mut().insert(NoUser);
-        dbg!(request.extensions());
         Box::pin(async { Ok(request) })
     }
 }
