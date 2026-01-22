@@ -28,6 +28,9 @@ async fn main() {
     Service::try_new_with(&config, state)
         .await
         .unwrap()
+        .with_collections()
+        .with_features()
+        .with_processes()
         .serve()
         .await;
 }
