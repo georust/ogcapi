@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Respect process execution `response` parameter.
 - Service URL for OGC API - Features.
 - Minor issues with OGC API - Features conformance.
+- Changed enum order when deserializing `processes` inputs, so that the integers would not be deserialized as floats.
 
 ### Changed
 
