@@ -41,8 +41,8 @@ pub enum InlineOrRefData {
 #[serde(untagged)]
 pub enum InputValueNoObject {
     String(String),
-    Number(f64),
     Integer(i64),
+    Number(f64),
     Boolean(bool),
     Array(Vec<String>),
     // TODO: requires custom serde implementation
@@ -153,4 +153,21 @@ pub type ExecuteResults = HashMap<String, ExecuteResult>;
 pub struct ExecuteResult {
     pub output: Output,
     pub data: InlineOrRefData,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_deserializes_numbers_in_a_stable_way() {
+        let json = serde_json::json!({
+            "float": 42.0,
+            "integer": 42
+        });
+
+        let input: HashMap<String, Input> = serde_json::from_value(json.clone()).unwrap();
+
+        assert_eq!(serde_json::to_value(&input).unwrap(), json);
+    }
 }
