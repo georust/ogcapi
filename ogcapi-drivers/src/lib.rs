@@ -92,17 +92,32 @@ pub trait EdrQuerier: Send + Sync {
     ) -> anyhow::Result<(FeatureCollection, Crs)>;
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct NoUser;
+
 /// Trait for `Processes` jobs
 #[cfg(feature = "processes")]
 #[async_trait::async_trait]
 pub trait JobHandler: Send + Sync {
-    async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String>;
+    type User;
 
-    async fn update(&self, job: &StatusInfo) -> anyhow::Result<()>;
+    async fn register(
+        &self,
+        job: &StatusInfo,
+        response_mode: Response,
+        user: &Self::User,
+    ) -> anyhow::Result<String>;
 
-    async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>>;
+    async fn update(&self, job: &StatusInfo, user: &Self::User) -> anyhow::Result<()>;
 
-    async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
+    async fn status_list(
+        &self,
+        offset: usize,
+        limit: usize,
+        user: &Self::User,
+    ) -> anyhow::Result<Vec<StatusInfo>>;
+
+    async fn status(&self, id: &str, user: &Self::User) -> anyhow::Result<Option<StatusInfo>>;
 
     async fn finish(
         &self,
@@ -111,11 +126,12 @@ pub trait JobHandler: Send + Sync {
         message: Option<String>,
         links: Vec<Link>,
         results: Option<ogcapi_types::processes::ExecuteResults>,
+        user: &Self::User,
     ) -> anyhow::Result<()>;
 
-    async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
+    async fn dismiss(&self, id: &str, user: &Self::User) -> anyhow::Result<Option<StatusInfo>>;
 
-    async fn results(&self, id: &str) -> anyhow::Result<ProcessResult>;
+    async fn results(&self, id: &str, user: &Self::User) -> anyhow::Result<ProcessResult>;
 }
 
 #[cfg(feature = "processes")]

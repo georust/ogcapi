@@ -1,4 +1,5 @@
 use ogcapi::{
+    drivers::NoUser,
     processes::echo::Echo,
     services::{AppState, Config, ConfigParser, Drivers, Service},
 };
@@ -21,12 +22,15 @@ async fn main() {
     let state = AppState::new(drivers).await;
 
     // Register processes/processors
-    let state = state.processors(vec![Box::new(Echo)]);
+    let state = state.processors(vec![Box::new(Echo::<NoUser>::default())]);
 
     // Build & run with hyper
     Service::try_new_with(&config, state)
         .await
         .unwrap()
+        .with_collections()
+        .with_features()
+        .with_processes()
         .serve()
         .await;
 }

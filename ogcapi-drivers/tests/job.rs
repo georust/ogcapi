@@ -1,12 +1,11 @@
 #[cfg(feature = "processes")]
 mod postgres {
-    use std::collections::HashMap;
-
-    use ogcapi_drivers::{JobHandler, ProcessResult, postgres::Db};
+    use ogcapi_drivers::{JobHandler, NoUser, ProcessResult, postgres::Db};
     use ogcapi_types::processes::{
         ExecuteResult, InlineOrRefData, InputValueNoObject, Output, Response, StatusCode,
         StatusInfo,
     };
+    use std::collections::HashMap;
 
     #[sqlx::test]
     async fn job_handling(pool: sqlx::PgPool) -> () {
@@ -18,15 +17,18 @@ mod postgres {
         };
 
         // register
-        let job_id = db.register(&job, Response::default()).await.unwrap();
+        let job_id = db
+            .register(&job, Response::default(), &NoUser)
+            .await
+            .unwrap();
 
         assert_eq!(job_id, job.job_id);
 
         // status
-        db.status(&job.job_id).await.unwrap();
+        db.status(&job.job_id, &NoUser).await.unwrap();
 
         // dismiss
-        let info = db.dismiss(&job.job_id).await.unwrap();
+        let info = db.dismiss(&job.job_id, &NoUser).await.unwrap();
 
         assert_eq!(info.unwrap().status, StatusCode::Dismissed)
     }
@@ -41,17 +43,19 @@ mod postgres {
         };
 
         matches!(
-            db.results(&job.job_id).await.unwrap(),
+            db.results(&job.job_id, &NoUser).await.unwrap(),
             ProcessResult::NoSuchJob
         );
 
         assert_eq!(
-            db.register(&job, Response::Document).await.unwrap(),
+            db.register(&job, Response::Document, &NoUser)
+                .await
+                .unwrap(),
             job.job_id
         );
 
         matches!(
-            db.results(&job.job_id).await.unwrap(),
+            db.results(&job.job_id, &NoUser).await.unwrap(),
             ProcessResult::NotReady
         );
 
@@ -72,12 +76,13 @@ mod postgres {
                     )),
                 },
             )])),
+            &NoUser,
         )
         .await
         .unwrap();
 
         matches!(
-            db.results(&job.job_id).await.unwrap(),
+            db.results(&job.job_id, &NoUser).await.unwrap(),
             ProcessResult::Results {
                 results: _,
                 response_mode: Response::Document,
@@ -94,14 +99,24 @@ mod postgres {
             ..Default::default()
         };
 
-        let _ = db.register(&job, Response::Document).await.unwrap();
-
-        db.finish(&job.job_id, &StatusCode::Failed, None, vec![], None)
+        let _ = db
+            .register(&job, Response::Document, &NoUser)
             .await
             .unwrap();
 
+        db.finish(
+            &job.job_id,
+            &StatusCode::Failed,
+            None,
+            vec![],
+            None,
+            &NoUser,
+        )
+        .await
+        .unwrap();
+
         matches!(
-            db.results(&job.job_id).await.unwrap(),
+            db.results(&job.job_id, &NoUser).await.unwrap(),
             ProcessResult::Results {
                 results: _,
                 response_mode: Response::Document,

@@ -24,7 +24,17 @@ use crate::Processor;
 ///         -d '{ "inputs": { "name": "World" } }'
 /// ```
 #[derive(Clone)]
-pub struct Greeter;
+pub struct Greeter<User> {
+    _marker: std::marker::PhantomData<User>,
+}
+
+impl<User> Default for Greeter<User> {
+    fn default() -> Self {
+        Self {
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
 
 /// Inputs for the `greet` process
 #[derive(Deserialize, Debug, JsonSchema)]
@@ -67,7 +77,12 @@ impl GreeterOutputs {
 }
 
 #[async_trait::async_trait]
-impl Processor for Greeter {
+impl<User> Processor for Greeter<User>
+where
+    User: Clone + Send + Sync + 'static,
+{
+    type User = User;
+
     fn id(&self) -> &'static str {
         "greet"
     }
@@ -107,7 +122,7 @@ impl Processor for Greeter {
         })
     }
 
-    async fn execute(&self, execute: Execute) -> Result<ExecuteResults> {
+    async fn execute(&self, execute: Execute, _user: &Self::User) -> Result<ExecuteResults> {
         let value = serde_json::to_value(execute.inputs).unwrap();
         let inputs: GreeterInputs = serde_json::from_value(value).unwrap();
         let greeting = format!("Hello, {}!\n", inputs.name);
@@ -137,7 +152,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_greeter() {
-        let greeter = Greeter;
+        let greeter = Greeter::default();
         assert_eq!(greeter.id(), "greet");
 
         println!(
@@ -155,7 +170,7 @@ mod tests {
             ..Default::default()
         };
 
-        let output = greeter.execute(execute).await.unwrap();
+        let output = greeter.execute(execute, &()).await.unwrap();
 
         let ExecuteResult { data, output: _ } = output.get("greeting").unwrap();
         let InlineOrRefData::InputValueNoObject(InputValueNoObject::String(greeting)) = data else {

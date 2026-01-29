@@ -24,7 +24,7 @@ tiles = ["ogcapi-types/tiles", "ogcapi-drivers/tiles", "dashmap", "reqwest"]
 
 [dependencies]
 anyhow = { workspace = true }
-axum = { version = "0.8.7", features = ["multipart"] }
+axum = { version = "0.8.7", features = ["macros", "multipart"] }
 axum-extra = { version = "0.12.2" }
 clap = { version = "4.5", features = ["derive", "env"] }
 dashmap = { version = "6.1", optional = true }
@@ -43,7 +43,7 @@ serde_yaml = "0.9.33"
 thiserror = { workspace = true }
 tokio = { version = "1.48", features = ["full"] }
 tower = "0.5.2"
-tower-http = { version = "0.6.6", features = ["compression-gzip", "catch-panic", "cors", "request-id", "sensitive-headers", "trace", "util"] }
+tower-http = { version = "0.6.6", features = ["auth", "compression-gzip", "catch-panic", "cors", "request-id", "sensitive-headers", "trace", "util"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }

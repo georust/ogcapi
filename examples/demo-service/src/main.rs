@@ -25,13 +25,18 @@ async fn main() {
         // Box::new(Greeter),
         // Box::new(GeoJsonLoader),
         // Box::new(GdalLoader),
-        Box::new(Echo),
+        Box::new(Echo::default()),
     ]);
 
     // Build & run with hyper
     Service::try_new_with(&config, state)
         .await
         .unwrap()
+        .with_collections()
+        .with_features()
+        .with_edr()
+        .with_tiles()
+        .with_processes()
         .serve()
         .await;
 }

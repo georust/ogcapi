@@ -94,7 +94,9 @@ mod tests {
             ..Default::default()
         };
 
-        let response = client.execute(Greeter {}.id(), &execute).unwrap();
+        let response = client
+            .execute(Greeter::<()>::default().id(), &execute)
+            .unwrap();
 
         let ProcessResponseBody::Requested {
             outputs: _outputs,

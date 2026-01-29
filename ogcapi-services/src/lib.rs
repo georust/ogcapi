@@ -8,12 +8,13 @@ mod routes;
 mod service;
 mod state;
 pub mod telemetry;
+mod util;
 
 pub use config::Config;
 pub use error::Error;
 pub use openapi::ApiDoc;
 pub use service::Service;
-pub use state::{AppState, Drivers};
+pub use state::{AppState, Drivers, OgcApiProcessesState, OgcApiState};
 
 #[doc(hidden)]
 pub use clap::Parser as ConfigParser;
