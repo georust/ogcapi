@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dedicate `cite-service` for OGC Cite testsuite in CI.
 - Make public base url configurable via `PUBLIC_URL` environment variable.
 - Allow modifying the spawn function (`with_spawn_fn`) in `AppState`, which is used for OGC API - Processes execution, so that it can be adapted, e.g., for applying scopes.
+- Allow modifying initial OpenAPI definition in `AppState` (`with_openapi`), so that additional paths and components can be added.
 
 ### Fixed
 

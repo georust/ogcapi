@@ -1,7 +1,7 @@
 use std::{any::Any, net::SocketAddr, sync::Arc};
 
 use axum::{
-    Extension, Router,
+    Router,
     body::Body,
     http::{
         Response, StatusCode,
@@ -22,7 +22,7 @@ use tower_http::{
 };
 
 use ogcapi_types::common::Exception;
-use utoipa::OpenApi;
+use utoipa::OpenApi as _;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -49,7 +49,7 @@ impl Service {
         Service::try_new_with(&config, state).await
     }
 
-    pub async fn try_new_with(config: &Config, state: AppState) -> Result<Self, anyhow::Error> {
+    pub async fn try_new_with(config: &Config, mut state: AppState) -> Result<Self, anyhow::Error> {
         // router
         let router = OpenApiRouter::<AppState>::with_openapi(ApiDoc::openapi());
 
@@ -77,8 +77,10 @@ impl Service {
         // api documentation
         let (router, api) = router.split_for_parts();
 
-        let router = router.merge(SwaggerUi::new("/swagger").url("/api_v3.1", api.clone()));
-        let router = router.layer(Extension(Arc::new(api)));
+        state.openapi = Arc::new(state.openapi.as_ref().clone().merge_from(api));
+
+        let router = router
+            .merge(SwaggerUi::new("/swagger").url("/api_v3.1", state.openapi.as_ref().clone()));
 
         // add a fallback service for handling routes to unknown paths
         let router = router.fallback(handler_404);

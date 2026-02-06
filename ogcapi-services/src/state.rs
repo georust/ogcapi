@@ -20,12 +20,14 @@ use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_processes::Processor;
 use ogcapi_types::common::{Conformance, LandingPage};
 use url::Url;
+use utoipa::openapi::OpenApi;
 
 /// Application state
 #[derive(Clone)]
 pub struct AppState {
     pub(crate) root: Arc<RwLock<LandingPage>>,
     pub(crate) conformance: Arc<RwLock<Conformance>>,
+    pub(crate) openapi: Arc<OpenApi>,
     pub(crate) drivers: Arc<Drivers>,
     #[cfg(feature = "processes")]
     pub(crate) processors: Arc<RwLock<HashMap<String, Box<dyn Processor>>>>,
@@ -99,6 +101,7 @@ impl AppState {
         AppState {
             root: Arc::new(RwLock::new(LandingPage::new("root").description("root"))),
             conformance: Arc::new(RwLock::new(conformace)),
+            openapi: Arc::new(OpenApi::default()),
             drivers: Arc::new(drivers),
             #[cfg(feature = "processes")]
             processors: Default::default(),
@@ -129,6 +132,16 @@ impl AppState {
         spawn_fn: fn(futures::future::BoxFuture<'static, ()>) -> tokio::task::JoinHandle<()>,
     ) -> Self {
         self.spawn = spawn_fn;
+        self
+    }
+
+    /// Set initial [`OpenApi`] document for the service, which is empty by default.
+    /// This can be used to add custom paths or components to the [`OpenApi`] document.
+    /// The provided [`OpenApi`] document will be merged with the auto-generated one from the [`Service`].
+    ///
+    /// Note: The provided [`OpenApi`] document should not contain any paths or components that are already defined by the service, as this may lead to conflicts.
+    pub fn with_openapi(mut self, openapi: OpenApi) -> Self {
+        self.openapi = Arc::new(openapi);
         self
     }
 }
