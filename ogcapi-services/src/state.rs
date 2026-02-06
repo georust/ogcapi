@@ -29,6 +29,8 @@ pub struct AppState {
     pub(crate) drivers: Arc<Drivers>,
     #[cfg(feature = "processes")]
     pub(crate) processors: Arc<RwLock<HashMap<String, Box<dyn Processor>>>>,
+    #[cfg(feature = "processes")]
+    pub(crate) spawn: fn(futures::future::BoxFuture<'static, ()>) -> tokio::task::JoinHandle<()>,
 }
 
 // TODO: Introduce service trait
@@ -100,6 +102,8 @@ impl AppState {
             drivers: Arc::new(drivers),
             #[cfg(feature = "processes")]
             processors: Default::default(),
+            #[cfg(feature = "processes")]
+            spawn: tokio::spawn,
         }
     }
 
@@ -116,6 +120,15 @@ impl AppState {
                 .unwrap()
                 .insert(p.id().to_string(), p);
         }
+        self
+    }
+
+    #[cfg(feature = "processes")]
+    pub fn with_spawn_fn(
+        mut self,
+        spawn_fn: fn(futures::future::BoxFuture<'static, ()>) -> tokio::task::JoinHandle<()>,
+    ) -> Self {
+        self.spawn = spawn_fn;
         self
     }
 }

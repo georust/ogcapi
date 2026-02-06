@@ -2961,6 +2961,7 @@ name = "ogcapi-services"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "axum",
  "axum-extra",
  "clap",
