@@ -7,7 +7,6 @@ use axum::{
 use futures::TryFutureExt;
 use hyper::HeaderMap;
 use ogcapi_drivers::ProcessResult;
-use tokio::spawn;
 use tracing::error;
 use url::Position;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -246,7 +245,7 @@ async fn execution(
 
     {
         let mut status_info = status_info.clone();
-        spawn(async move {
+        (state.spawn)(Box::pin(async move {
             status_info.status = ogcapi_types::processes::StatusCode::Running;
 
             let result = state
@@ -290,7 +289,7 @@ async fn execution(
                     results,
                 )
                 .await;
-        });
+        }));
     }
 
     Ok(ProcessExecuteResponse::Asynchronous {
@@ -599,4 +598,148 @@ pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
         .routes(routes!(jobs))
         .routes(routes!(status, delete))
         .routes(routes!(results))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Drivers;
+    use ogcapi_drivers::JobHandler;
+    use ogcapi_processes::echo::Echo;
+    use tokio::task_local;
+
+    /// Test that we can pass task-local context into spawned tasks.
+    #[tokio::test]
+    async fn it_allows_passing_scope_in_spawn() {
+        task_local! {static FOO: String}
+
+        /// A faux job handler that sends a message when update is called.
+        struct FauxJobHandler {
+            msg: tokio::sync::mpsc::Sender<String>,
+        }
+        #[async_trait::async_trait]
+        impl JobHandler for FauxJobHandler {
+            async fn register(
+                &self,
+                _job: &StatusInfo,
+                _response_mode: ogcapi_types::processes::Response,
+            ) -> anyhow::Result<String> {
+                Ok(FOO.get().clone())
+            }
+
+            async fn update(&self, _job: &StatusInfo) -> anyhow::Result<()> {
+                let foo = FOO.get().clone();
+                self.msg.send(foo).await.unwrap();
+                Ok(())
+            }
+
+            async fn status_list(
+                &self,
+                _offset: usize,
+                _limit: usize,
+            ) -> anyhow::Result<Vec<StatusInfo>> {
+                unimplemented!()
+            }
+
+            async fn status(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
+                unimplemented!()
+            }
+
+            async fn finish(
+                &self,
+                _job_id: &str,
+                _status: &ogcapi_types::processes::StatusCode,
+                _message: Option<String>,
+                _links: Vec<Link>,
+                _results: Option<ogcapi_types::processes::ExecuteResults>,
+            ) -> anyhow::Result<()> {
+                unimplemented!()
+            }
+
+            async fn dismiss(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
+                unimplemented!()
+            }
+
+            async fn results(&self, _id: &str) -> anyhow::Result<ProcessResult> {
+                unimplemented!()
+            }
+        }
+
+        crate::setup_env();
+
+        // 1. Create drivers with our faux job handler.
+        let mut drivers = Drivers::try_new_from_env().await.unwrap();
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        drivers.jobs = Box::new(FauxJobHandler { msg: tx });
+
+        let state = AppState::new(drivers)
+            .await
+            // 2. Add the Echo process.
+            .processors(vec![Box::new(Echo)])
+            // 3. Override the spawn function to pass task-local context.
+            .with_spawn_fn(|fut| {
+                let foo = FOO.scope(FOO.get(), fut);
+                tokio::spawn(foo)
+            });
+
+        // 4. Execute a process asynchronously within a task-local scope.
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "Prefer",
+            hyper::header::HeaderValue::from_static("respond-async"),
+        );
+        let response = FOO
+            .scope("bar".to_string(), async {
+                execution(
+                    State(state.clone()),
+                    RemoteUrl(
+                        "http://example.com/processes/echo/execution"
+                            .parse()
+                            .unwrap(),
+                    ),
+                    Path("echo".to_string()),
+                    headers,
+                    ValidParams(Json(
+                        serde_json::from_value(serde_json::json!({
+                          "inputs" : {
+                            "stringInput" : "Value1",
+                          },
+                          "outputs" : {
+                            "stringOutput" : {
+                              "transmissionMode" : "value"
+                            },
+                          },
+                          "response": "raw"
+                        }))
+                        .unwrap(),
+                    )),
+                )
+                .await
+            })
+            .await
+            .unwrap();
+
+        // 5. Verify that the job was registered and the handler was called.
+        let ProcessExecuteResponse::Asynchronous {
+            status_info,
+            was_preferred_execution_mode: _,
+            base_url: _,
+        } = response
+        else {
+            panic!("Expected asynchronous response");
+        };
+
+        // 6. Verify that the job ID is as expected.
+        assert_eq!(status_info.job_id, "bar");
+
+        // 7. Wait for the job handler to be called and verify the message.
+        tokio::select! {
+            _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {
+                panic!("Timeout waiting for job handler to be called");
+            }
+            foo = rx.recv() => {
+                assert_eq!(foo.unwrap(), "bar");
+            }
+        }
+    }
 }
