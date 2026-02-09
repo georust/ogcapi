@@ -24,10 +24,14 @@ pub async fn spawn_app() -> anyhow::Result<(SocketAddr, Url)> {
 
     let service = Service::try_new_with(&config, state).await?;
 
-    let addr = service.local_addr()?;
+    let addr = dbg!(service.local_addr()?);
 
     tokio::spawn(async move {
-        service.serve().await;
+        service
+            .with_all_apis()
+            .serve()
+            .await
+            .expect("to serve application");
     });
 
     Ok((addr, database_url))
