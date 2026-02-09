@@ -33,7 +33,7 @@ pub struct Service {
     pub(crate) router: OpenApiRouter<AppState>,
     listener: TcpListener,
     apply_middleware: bool,
-    custom_openapi_doc: OpenApi,
+    custom_openapi_doc_fn: Box<dyn FnOnce(OpenApi) -> OpenApi + Send>,
 }
 
 impl Service {
@@ -67,7 +67,7 @@ impl Service {
             router,
             listener,
             apply_middleware: true,
-            custom_openapi_doc: OpenApi::default(),
+            custom_openapi_doc_fn: Box::new(std::convert::identity),
         })
     }
 
@@ -159,13 +159,13 @@ impl Service {
         self
     }
 
-    /// Set additional [`OpenApi`] document for the service, which is empty by default.
+    /// Customized the [`OpenApi`] document for the service, which is provided by default.
     /// This can be used to add custom paths or components to the [`OpenApi`] document.
-    /// The provided [`OpenApi`] document will be merged with the auto-generated one from the [`Service`].
-    ///
-    /// Note: The provided [`OpenApi`] document should not contain any paths or components that are already defined by the service, as this may lead to conflicts.
-    pub fn with_custom_openapi_doc(mut self, openapi_doc: OpenApi) -> Self {
-        self.custom_openapi_doc = openapi_doc;
+    pub fn with_custom_openapi_doc(
+        mut self,
+        openapi_doc_fn: impl FnOnce(OpenApi) -> OpenApi + Send + 'static,
+    ) -> Self {
+        self.custom_openapi_doc_fn = Box::new(openapi_doc_fn);
         self
     }
 
@@ -174,7 +174,7 @@ impl Service {
         // api documentation
         let (router, api) = self.router.split_for_parts();
 
-        let openapi = Arc::new(api.merge_from(self.custom_openapi_doc));
+        let openapi = Arc::new((self.custom_openapi_doc_fn)(api));
 
         let router =
             router.merge(SwaggerUi::new("/swagger").url("/api_v3.1", openapi.as_ref().clone()));
