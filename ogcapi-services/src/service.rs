@@ -9,7 +9,7 @@ use axum::{
     response::IntoResponse,
 };
 use ogcapi_types::common::Exception;
-use std::{any::Any, net::SocketAddr, sync::Arc};
+use std::{any::Any, collections::HashSet, net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -34,6 +34,8 @@ pub struct Service {
     listener: TcpListener,
     apply_middleware: bool,
     custom_openapi_doc_fn: Box<dyn FnOnce(OpenApi) -> OpenApi + Send>,
+    /// Prevent multiple additions of the same API to the service, which would cause duplicate routes and documentation.
+    added_apis: HashSet<ApiType>,
 }
 
 impl Service {
@@ -68,47 +70,62 @@ impl Service {
             listener,
             apply_middleware: true,
             custom_openapi_doc_fn: Box::new(std::convert::identity),
+            added_apis: HashSet::new(),
         })
     }
 
     pub fn with_collections_api(mut self) -> Self {
-        self.router = self.router.merge(routes::collections::router(&self.state));
+        if self.added_apis.insert(ApiType::Collections) {
+            self.router = self.router.merge(routes::collections::router(&self.state));
+        }
         self
     }
 
     #[cfg(feature = "features")]
     pub fn with_features_api(mut self) -> Self {
-        self.router = self.router.merge(routes::features::router(&self.state));
+        if self.added_apis.insert(ApiType::Features) {
+            self.router = self.router.merge(routes::features::router(&self.state));
+        }
         self
     }
 
     #[cfg(feature = "edr")]
     pub fn with_edr_api(mut self) -> Self {
-        self.router = self.router.merge(routes::edr::router(&self.state));
+        if self.added_apis.insert(ApiType::Edr) {
+            self.router = self.router.merge(routes::edr::router(&self.state));
+        }
         self
     }
 
     #[cfg(feature = "styles")]
     pub fn with_styles_api(mut self) -> Self {
-        self.router = self.router.merge(routes::styles::router(&self.state));
+        if self.added_apis.insert(ApiType::Styles) {
+            self.router = self.router.merge(routes::styles::router(&self.state));
+        }
         self
     }
 
     #[cfg(feature = "stac")]
     pub fn with_stac_api(mut self) -> Self {
-        self.router = self.router.merge(routes::stac::router());
+        if self.added_apis.insert(ApiType::Stac) {
+            self.router = self.router.merge(routes::stac::router());
+        }
         self
     }
 
     #[cfg(feature = "tiles")]
     pub fn with_tiles_api(mut self) -> Self {
-        self.router = self.router.merge(routes::tiles::router(&self.state));
+        if self.added_apis.insert(ApiType::Tiles) {
+            self.router = self.router.merge(routes::tiles::router(&self.state));
+        }
         self
     }
 
     #[cfg(feature = "processes")]
     pub fn with_processes_api(mut self) -> Self {
-        self.router = self.router.merge(routes::processes::router(&self.state));
+        if self.added_apis.insert(ApiType::Processes) {
+            self.router = self.router.merge(routes::processes::router(&self.state));
+        }
         self
     }
 
@@ -284,4 +301,21 @@ async fn shutdown_signal() {
     }
 
     tracing::debug!("signal received, starting graceful shutdown");
+}
+
+#[derive(Debug, Hash, PartialEq, Eq)]
+enum ApiType {
+    Collections,
+    #[cfg(feature = "features")]
+    Features,
+    #[cfg(feature = "edr")]
+    Edr,
+    #[cfg(feature = "styles")]
+    Styles,
+    #[cfg(feature = "stac")]
+    Stac,
+    #[cfg(feature = "tiles")]
+    Tiles,
+    #[cfg(feature = "processes")]
+    Processes,
 }
