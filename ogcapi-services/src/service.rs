@@ -21,7 +21,7 @@ use tower_http::{
     sensitive_headers::SetSensitiveRequestHeadersLayer,
     trace::{DefaultMakeSpan, TraceLayer},
 };
-use utoipa::{OpenApi as _, openapi::OpenApi};
+use utoipa::OpenApi as _;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -33,7 +33,6 @@ pub struct Service {
     pub(crate) router: OpenApiRouter<AppState>,
     listener: TcpListener,
     apply_middleware: bool,
-    custom_openapi_doc_fn: Box<dyn FnOnce(OpenApi) -> OpenApi + Send>,
     /// Prevent multiple additions of the same API to the service, which would cause duplicate routes and documentation.
     added_apis: HashSet<ApiType>,
 }
@@ -69,7 +68,6 @@ impl Service {
             router,
             listener,
             apply_middleware: true,
-            custom_openapi_doc_fn: Box::new(std::convert::identity),
             added_apis: HashSet::new(),
         })
     }
@@ -166,24 +164,10 @@ impl Service {
         self
     }
 
-    /// Customize the router by providing a function that takes the current router and returns a modified router.
+    /// Allows modifying the router by providing a function that takes the current router and returns a modified router.
     /// This can be used to add custom routes or middleware to the service.
-    pub fn with_custom_router(
-        mut self,
-        router_fn: impl FnOnce(OpenApiRouter<AppState>) -> OpenApiRouter<AppState>,
-    ) -> Self {
-        self.router = router_fn(self.router);
-        self
-    }
-
-    /// Customized the [`OpenApi`] document for the service, which is provided by default.
-    /// This can be used to add custom paths or components to the [`OpenApi`] document.
-    pub fn with_custom_openapi_doc(
-        mut self,
-        openapi_doc_fn: impl FnOnce(OpenApi) -> OpenApi + Send + 'static,
-    ) -> Self {
-        self.custom_openapi_doc_fn = Box::new(openapi_doc_fn);
-        self
+    pub fn get_router_mut(&mut self) -> &mut OpenApiRouter<AppState> {
+        &mut self.router
     }
 
     /// Serve application
@@ -191,7 +175,7 @@ impl Service {
         // api documentation
         let (router, api) = self.router.split_for_parts();
 
-        let openapi = Arc::new((self.custom_openapi_doc_fn)(api));
+        let openapi = Arc::new(api);
 
         let router =
             router.merge(SwaggerUi::new("/swagger").url("/api_v3.1", openapi.as_ref().clone()));
