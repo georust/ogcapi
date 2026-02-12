@@ -1,22 +1,24 @@
 use anyhow::Context;
 use axum::{
-    Router,
     body::Body,
+    extract::Request,
     http::{
-        Response, StatusCode,
+        StatusCode,
         header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, PROXY_AUTHORIZATION, SET_COOKIE},
     },
-    response::IntoResponse,
+    response::{IntoResponse, Response},
+    routing::Route,
 };
 use ogcapi_types::common::Exception;
-use std::{any::Any, collections::HashSet, net::SocketAddr, sync::Arc};
+use std::{any::Any, collections::HashSet, convert::Infallible, net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
-use tower::ServiceBuilder;
+use tower::{ServiceBuilder, util::BoxCloneSyncServiceLayer};
 use tower_http::{
     ServiceBuilderExt,
     catch_panic::CatchPanicLayer,
     compression::CompressionLayer,
     cors::CorsLayer,
+    map_response_body::MapResponseBodyLayer,
     request_id::MakeRequestUuid,
     sensitive_headers::SetSensitiveRequestHeadersLayer,
     trace::{DefaultMakeSpan, TraceLayer},
@@ -32,7 +34,7 @@ pub struct Service {
     pub(crate) state: AppState,
     pub(crate) router: OpenApiRouter<AppState>,
     listener: TcpListener,
-    apply_middleware: bool,
+    middleware_stack: BoxCloneSyncServiceLayer<Route, Request, Response, Infallible>,
     /// Prevent multiple additions of the same API to the service, which would cause duplicate routes and documentation.
     added_apis: HashSet<ApiType>,
 }
@@ -67,7 +69,7 @@ impl Service {
             state,
             router,
             listener,
-            apply_middleware: true,
+            middleware_stack: middleware_stack(),
             added_apis: HashSet::new(),
         })
     }
@@ -170,6 +172,13 @@ impl Service {
         &mut self.router
     }
 
+    /// Get a mutable reference to the middleware stack, allowing for modification of the middleware layers.
+    pub fn get_middleware_stack_mut(
+        &mut self,
+    ) -> &mut BoxCloneSyncServiceLayer<Route, Request, Response, Infallible> {
+        &mut self.middleware_stack
+    }
+
     /// Serve application
     pub async fn serve(self) -> Result<(), anyhow::Error> {
         // api documentation
@@ -181,8 +190,7 @@ impl Service {
             router.merge(SwaggerUi::new("/swagger").url("/api_v3.1", openapi.as_ref().clone()));
 
         // add state
-        let router =
-            Service::apply_middleware(router, self.apply_middleware).with_state(self.state);
+        let router = router.layer(self.middleware_stack).with_state(self.state);
 
         // serve
         tracing::info!(
@@ -198,39 +206,32 @@ impl Service {
         Ok(())
     }
 
-    fn apply_middleware(router: Router<AppState>, apply_middleware: bool) -> Router<AppState> {
-        if !apply_middleware {
-            return router;
-        }
-
-        let middleware_stack = ServiceBuilder::new()
-            .set_x_request_id(MakeRequestUuid)
-            .layer(SetSensitiveRequestHeadersLayer::new([
-                AUTHORIZATION,
-                PROXY_AUTHORIZATION,
-                COOKIE,
-                SET_COOKIE,
-            ]))
-            .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new()))
-            .layer(CompressionLayer::new())
-            .layer(CorsLayer::permissive())
-            .layer(CatchPanicLayer::custom(handle_panic))
-            .propagate_x_request_id();
-
-        router.layer(middleware_stack)
-    }
-
-    /// Do not apply middleware layers
-    pub fn without_middleware(mut self) -> Self {
-        self.apply_middleware = false;
-        self
-    }
-
     // helper function to get randomized port
     #[doc(hidden)]
     pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
         self.listener.local_addr()
     }
+}
+
+fn middleware_stack() -> BoxCloneSyncServiceLayer<Route, Request, Response, Infallible> {
+    let inner = ServiceBuilder::new()
+        .set_x_request_id(MakeRequestUuid)
+        .layer(SetSensitiveRequestHeadersLayer::new([
+            AUTHORIZATION,
+            PROXY_AUTHORIZATION,
+            COOKIE,
+            SET_COOKIE,
+        ]))
+        .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new()))
+        .layer(CompressionLayer::new())
+        .layer(CorsLayer::permissive())
+        .layer(CatchPanicLayer::custom(handle_panic))
+        .propagate_x_request_id()
+        .into_inner();
+
+    let inner = (MapResponseBodyLayer::new(Body::new), inner); // erase complex type after compression layer
+
+    BoxCloneSyncServiceLayer::new(inner)
 }
 
 /// Custom 404 handler
