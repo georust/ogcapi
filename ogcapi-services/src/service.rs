@@ -71,7 +71,7 @@ impl Service {
             state,
             router,
             listener,
-            middleware_stack: middleware_stack(),
+            middleware_stack: default_middleware_stack(),
             added_apis: HashSet::new(),
         })
     }
@@ -215,7 +215,7 @@ impl Service {
     }
 }
 
-fn middleware_stack() -> BoxCloneSyncServiceLayer<Route, Request, Response, Infallible> {
+fn default_middleware_stack() -> BoxCloneSyncServiceLayer<Route, Request, Response, Infallible> {
     let inner = ServiceBuilder::new()
         .set_x_request_id(MakeRequestUuid)
         .layer(SetSensitiveRequestHeadersLayer::new([
