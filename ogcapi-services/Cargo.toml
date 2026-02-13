@@ -42,8 +42,8 @@ serde_qs = { workspace = true }
 serde_yaml = "0.9.33"
 thiserror = { workspace = true }
 tokio = { version = "1.48", features = ["full"] }
-tower = "0.5.2"
-tower-http = { version = "0.6.6", features = ["compression-gzip", "catch-panic", "cors", "request-id", "sensitive-headers", "trace", "util"] }
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.6.6", features = ["compression-gzip", "catch-panic", "cors", "request-id", "sensitive-headers", "trace", "util", "map-response-body"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
