@@ -29,7 +29,7 @@ async fn main() {
     ]);
 
     // Build & run with hyper
-    Service::try_new_with(&config, state)
+    Service::try_new(&config, state)
         .await
         .unwrap()
         .all_apis()

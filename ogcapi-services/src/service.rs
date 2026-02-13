@@ -42,7 +42,9 @@ pub struct Service {
 }
 
 impl Service {
-    pub async fn try_new() -> Result<Self, anyhow::Error> {
+    /// Create a new service by reading the configuration from environment variables and command line arguments.
+    /// Proceeds to call [`try_new()`](Self::try_new) with the parsed configuration and application state.
+    pub async fn try_new_from_env() -> Result<Self, anyhow::Error> {
         // config
         let config = Config::parse();
 
@@ -52,10 +54,17 @@ impl Service {
         // state
         let state = AppState::new(drivers).await;
 
-        Service::try_new_with(&config, state).await
+        Service::try_new(&config, state).await
     }
 
-    pub async fn try_new_with(config: &Config, state: AppState) -> Result<Self, anyhow::Error> {
+    /// Create a new service with the given configuration and application state.
+    ///
+    /// This function sets up the router, listener, and middleware stack for the service.
+    /// It also adds a fallback route for handling requests to unknown paths.
+    /// The service is not started yet, you need to call [`serve()`](Self::serve) to start the server.
+    ///
+    /// Note, this function only adds the common routes to the router, you need to call the respective API functions (e.g. [`collections_api()`](Self::collections_api) or [`all_apis()`](Self::all_apis)) to add the specific API routes to the router.
+    pub async fn try_new(config: &Config, state: AppState) -> Result<Self, anyhow::Error> {
         // router
         let router = OpenApiRouter::<AppState>::with_openapi(ApiDoc::openapi());
 
