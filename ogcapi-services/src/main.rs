@@ -9,7 +9,7 @@ async fn main() -> anyhow::Result<()> {
     // build & run our application with hyper
     ogcapi_services::Service::try_new()
         .await?
-        .with_all_apis()
+        .all_apis()
         .serve()
         .await
         .expect("to serve application");

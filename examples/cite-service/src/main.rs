@@ -27,7 +27,7 @@ async fn main() {
     Service::try_new_with(&config, state)
         .await
         .unwrap()
-        .with_all_apis()
+        .all_apis()
         .serve()
         .await
         .expect("to serve application");

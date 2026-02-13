@@ -74,7 +74,7 @@ impl Service {
         })
     }
 
-    pub fn with_collections_api(mut self) -> Self {
+    pub fn collections_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Collections) {
             self.router = self.router.merge(routes::collections::router(&self.state));
         }
@@ -82,7 +82,7 @@ impl Service {
     }
 
     #[cfg(feature = "features")]
-    pub fn with_features_api(mut self) -> Self {
+    pub fn features_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Features) {
             self.router = self.router.merge(routes::features::router(&self.state));
         }
@@ -90,7 +90,7 @@ impl Service {
     }
 
     #[cfg(feature = "edr")]
-    pub fn with_edr_api(mut self) -> Self {
+    pub fn edr_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Edr) {
             self.router = self.router.merge(routes::edr::router(&self.state));
         }
@@ -98,7 +98,7 @@ impl Service {
     }
 
     #[cfg(feature = "styles")]
-    pub fn with_styles_api(mut self) -> Self {
+    pub fn styles_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Styles) {
             self.router = self.router.merge(routes::styles::router(&self.state));
         }
@@ -106,7 +106,7 @@ impl Service {
     }
 
     #[cfg(feature = "stac")]
-    pub fn with_stac_api(mut self) -> Self {
+    pub fn stac_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Stac) {
             self.router = self.router.merge(routes::stac::router());
         }
@@ -114,7 +114,7 @@ impl Service {
     }
 
     #[cfg(feature = "tiles")]
-    pub fn with_tiles_api(mut self) -> Self {
+    pub fn tiles_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Tiles) {
             self.router = self.router.merge(routes::tiles::router(&self.state));
         }
@@ -122,7 +122,7 @@ impl Service {
     }
 
     #[cfg(feature = "processes")]
-    pub fn with_processes_api(mut self) -> Self {
+    pub fn processes_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Processes) {
             self.router = self.router.merge(routes::processes::router(&self.state));
         }
@@ -130,37 +130,37 @@ impl Service {
     }
 
     /// Add all available APIs to the service
-    pub fn with_all_apis(mut self) -> Self {
-        self = self.with_collections_api();
+    pub fn all_apis(mut self) -> Self {
+        self = self.collections_api();
 
         #[cfg(feature = "features")]
         {
-            self = self.with_features_api();
+            self = self.features_api();
         }
 
         #[cfg(feature = "edr")]
         {
-            self = self.with_edr_api();
+            self = self.edr_api();
         }
 
         #[cfg(feature = "styles")]
         {
-            self = self.with_styles_api();
+            self = self.styles_api();
         }
 
         #[cfg(feature = "stac")]
         {
-            self = self.with_stac_api();
+            self = self.stac_api();
         }
 
         #[cfg(feature = "tiles")]
         {
-            self = self.with_tiles_api();
+            self = self.tiles_api();
         }
 
         #[cfg(feature = "processes")]
         {
-            self = self.with_processes_api();
+            self = self.processes_api();
         }
 
         self

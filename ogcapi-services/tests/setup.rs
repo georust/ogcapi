@@ -28,7 +28,7 @@ pub async fn spawn_app() -> anyhow::Result<(SocketAddr, Url)> {
 
     tokio::spawn(async move {
         service
-            .with_all_apis()
+            .all_apis()
             .serve()
             .await
             .expect("to serve application");
