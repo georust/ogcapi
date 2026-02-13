@@ -1,3 +1,5 @@
+use std::{any::Any, collections::HashSet, convert::Infallible, net::SocketAddr, sync::Arc};
+
 use anyhow::Context;
 use axum::{
     body::Body,
@@ -9,8 +11,6 @@ use axum::{
     response::{IntoResponse, Response},
     routing::Route,
 };
-use ogcapi_types::common::Exception;
-use std::{any::Any, collections::HashSet, convert::Infallible, net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
 use tower::{ServiceBuilder, util::BoxCloneSyncServiceLayer};
 use tower_http::{
@@ -26,6 +26,8 @@ use tower_http::{
 use utoipa::OpenApi as _;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_swagger_ui::SwaggerUi;
+
+use ogcapi_types::common::Exception;
 
 use crate::{ApiDoc, AppState, Config, ConfigParser, Error, routes, state::Drivers};
 
