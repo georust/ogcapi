@@ -177,8 +177,8 @@ impl Service {
         self
     }
 
-    /// Allows modifying the router by providing a function that takes the current router and returns a modified router.
-    /// This can be used to add custom routes or middleware to the service.
+    /// Allows modifying the router after the service has been set up, e.g., to add custom routes.
+    /// This can also be used to modify the OpenAPI documentation, e.g., for modifying the [`info`](utoipa::openapi::info) fields or changing the [`server`](utoipa::openapi::server) URLs.
     pub fn get_router_mut(&mut self) -> &mut OpenApiRouter<AppState> {
         &mut self.router
     }
