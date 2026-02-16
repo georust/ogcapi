@@ -7,7 +7,7 @@ mod units;
 pub use data_queries::DataQueries;
 pub use observed_property::ObservedPropertyCollection;
 pub use parameter_names::ParameterNames;
-pub use query::{Query, QueryType};
+pub use query::{Query, QueryType, Z};
 pub use units::Units;
 
 use serde::{Deserialize, Serialize};
