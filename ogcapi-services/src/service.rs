@@ -1,42 +1,50 @@
-use std::{any::Any, net::SocketAddr, sync::Arc};
+use std::{any::Any, collections::HashSet, convert::Infallible, net::SocketAddr, sync::Arc};
 
+use anyhow::Context;
 use axum::{
-    Extension, Router,
     body::Body,
+    extract::Request,
     http::{
-        Response, StatusCode,
+        StatusCode,
         header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, PROXY_AUTHORIZATION, SET_COOKIE},
     },
-    response::IntoResponse,
+    response::{IntoResponse, Response},
+    routing::Route,
 };
 use tokio::net::TcpListener;
-use tower::ServiceBuilder;
+use tower::{ServiceBuilder, util::BoxCloneSyncServiceLayer};
 use tower_http::{
     ServiceBuilderExt,
     catch_panic::CatchPanicLayer,
     compression::CompressionLayer,
     cors::CorsLayer,
+    map_response_body::MapResponseBodyLayer,
     request_id::MakeRequestUuid,
     sensitive_headers::SetSensitiveRequestHeadersLayer,
     trace::{DefaultMakeSpan, TraceLayer},
 };
-
-use ogcapi_types::common::Exception;
-use utoipa::OpenApi;
+use utoipa::OpenApi as _;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_swagger_ui::SwaggerUi;
+
+use ogcapi_types::common::Exception;
 
 use crate::{ApiDoc, AppState, Config, ConfigParser, Error, routes, state::Drivers};
 
 /// OGC API Services
 pub struct Service {
-    pub state: AppState,
-    pub router: Router<AppState>,
+    pub(crate) state: AppState,
+    pub(crate) router: OpenApiRouter<AppState>,
     listener: TcpListener,
+    middleware: BoxCloneSyncServiceLayer<Route, Request, Response, Infallible>,
+    /// Prevent multiple additions of the same API to the service, which would cause duplicate routes and documentation.
+    added_apis: HashSet<ApiType>,
 }
 
 impl Service {
-    pub async fn try_new() -> Result<Self, anyhow::Error> {
+    /// Create a new service by reading the configuration from environment variables and command line arguments.
+    /// Proceeds to call [`try_new()`](Self::try_new) with the parsed configuration and application state.
+    pub async fn try_new_from_env() -> Result<Self, anyhow::Error> {
         // config
         let config = Config::parse();
 
@@ -46,85 +54,167 @@ impl Service {
         // state
         let state = AppState::new(drivers).await;
 
-        Service::try_new_with(&config, state).await
+        Service::try_new(&config, state).await
     }
 
-    pub async fn try_new_with(config: &Config, state: AppState) -> Result<Self, anyhow::Error> {
+    /// Create a new service with the given configuration and application state.
+    ///
+    /// This function sets up the router, listener, and middleware stack for the service.
+    /// It also adds a fallback route for handling requests to unknown paths.
+    /// The service is not started yet, you need to call [`serve()`](Self::serve) to start the server.
+    ///
+    /// Note, this function only adds the common routes to the router, you need to call the respective API functions (e.g. [`collections_api()`](Self::collections_api) or [`all_apis()`](Self::all_apis)) to add the specific API routes to the router.
+    pub async fn try_new(config: &Config, state: AppState) -> Result<Self, anyhow::Error> {
         // router
         let router = OpenApiRouter::<AppState>::with_openapi(ApiDoc::openapi());
 
         let router = router.merge(routes::common::router());
-        let router = router.merge(routes::collections::router(&state));
-
-        #[cfg(feature = "features")]
-        let router = router.merge(routes::features::router(&state));
-
-        #[cfg(feature = "stac")]
-        let router = router.merge(routes::stac::router());
-
-        #[cfg(feature = "edr")]
-        let router = router.merge(routes::edr::router(&state));
-
-        #[cfg(feature = "styles")]
-        let router = router.merge(routes::styles::router(&state));
-
-        #[cfg(feature = "tiles")]
-        let router = router.merge(routes::tiles::router(&state));
-
-        #[cfg(feature = "processes")]
-        let router = router.merge(routes::processes::router(&state));
-
-        // api documentation
-        let (router, api) = router.split_for_parts();
-
-        let router = router.merge(SwaggerUi::new("/swagger").url("/api_v3.1", api.clone()));
-        let router = router.layer(Extension(Arc::new(api)));
 
         // add a fallback service for handling routes to unknown paths
         let router = router.fallback(handler_404);
 
-        // middleware stack
-        let router = router.layer(
-            ServiceBuilder::new()
-                .set_x_request_id(MakeRequestUuid)
-                .layer(SetSensitiveRequestHeadersLayer::new([
-                    AUTHORIZATION,
-                    PROXY_AUTHORIZATION,
-                    COOKIE,
-                    SET_COOKIE,
-                ]))
-                .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new()))
-                .layer(CompressionLayer::new())
-                .layer(CorsLayer::permissive())
-                .layer(CatchPanicLayer::custom(handle_panic))
-                .propagate_x_request_id(),
-        );
-
-        // listener
+        // listen
         let listener = TcpListener::bind((config.host.as_str(), config.port)).await?;
 
         Ok(Service {
             state,
             router,
             listener,
+            middleware: default_middleware(),
+            added_apis: HashSet::new(),
         })
     }
 
+    pub fn collections_api(mut self) -> Self {
+        if self.added_apis.insert(ApiType::Collections) {
+            self.router = self.router.merge(routes::collections::router(&self.state));
+        }
+        self
+    }
+
+    #[cfg(feature = "features")]
+    pub fn features_api(mut self) -> Self {
+        if self.added_apis.insert(ApiType::Features) {
+            self.router = self.router.merge(routes::features::router(&self.state));
+        }
+        self
+    }
+
+    #[cfg(feature = "edr")]
+    pub fn edr_api(mut self) -> Self {
+        if self.added_apis.insert(ApiType::Edr) {
+            self.router = self.router.merge(routes::edr::router(&self.state));
+        }
+        self
+    }
+
+    #[cfg(feature = "styles")]
+    pub fn styles_api(mut self) -> Self {
+        if self.added_apis.insert(ApiType::Styles) {
+            self.router = self.router.merge(routes::styles::router(&self.state));
+        }
+        self
+    }
+
+    #[cfg(feature = "stac")]
+    pub fn stac_api(mut self) -> Self {
+        if self.added_apis.insert(ApiType::Stac) {
+            self.router = self.router.merge(routes::stac::router());
+        }
+        self
+    }
+
+    #[cfg(feature = "tiles")]
+    pub fn tiles_api(mut self) -> Self {
+        if self.added_apis.insert(ApiType::Tiles) {
+            self.router = self.router.merge(routes::tiles::router(&self.state));
+        }
+        self
+    }
+
+    #[cfg(feature = "processes")]
+    pub fn processes_api(mut self) -> Self {
+        if self.added_apis.insert(ApiType::Processes) {
+            self.router = self.router.merge(routes::processes::router(&self.state));
+        }
+        self
+    }
+
+    /// Add all available APIs to the service
+    pub fn all_apis(mut self) -> Self {
+        self = self.collections_api();
+
+        #[cfg(feature = "features")]
+        {
+            self = self.features_api();
+        }
+
+        #[cfg(feature = "edr")]
+        {
+            self = self.edr_api();
+        }
+
+        #[cfg(feature = "styles")]
+        {
+            self = self.styles_api();
+        }
+
+        #[cfg(feature = "stac")]
+        {
+            self = self.stac_api();
+        }
+
+        #[cfg(feature = "tiles")]
+        {
+            self = self.tiles_api();
+        }
+
+        #[cfg(feature = "processes")]
+        {
+            self = self.processes_api();
+        }
+
+        self
+    }
+
+    /// Allows modifying the router after the service has been set up, e.g., to add custom routes.
+    /// This can also be used to modify the OpenAPI documentation, e.g., for modifying the [`info`](utoipa::openapi::info) fields or changing the [`server`](utoipa::openapi::server) URLs.
+    pub fn get_router_mut(&mut self) -> &mut OpenApiRouter<AppState> {
+        &mut self.router
+    }
+
+    /// Get a mutable reference to the middleware, allowing for modification of the middleware layers.
+    pub fn get_middleware_mut(
+        &mut self,
+    ) -> &mut BoxCloneSyncServiceLayer<Route, Request, Response, Infallible> {
+        &mut self.middleware
+    }
+
     /// Serve application
-    pub async fn serve(self) {
+    pub async fn serve(self) -> Result<(), anyhow::Error> {
+        // api documentation
+        let (router, api) = self.router.split_for_parts();
+
+        let openapi = Arc::new(api);
+
+        let router =
+            router.merge(SwaggerUi::new("/swagger").url("/api_v3.1", openapi.as_ref().clone()));
+
         // add state
-        let router = self.router.with_state(self.state);
+        let router = router.layer(self.middleware).with_state(self.state);
 
         // serve
         tracing::info!(
             "listening on http://{}",
-            self.listener.local_addr().expect("local address")
+            self.listener.local_addr()?.to_string()
         );
 
         axum::serve::serve(self.listener, router)
             .with_graceful_shutdown(shutdown_signal())
             .await
-            .unwrap()
+            .context("failed to serve application")?;
+
+        Ok(())
     }
 
     // helper function to get randomized port
@@ -132,6 +222,27 @@ impl Service {
     pub fn local_addr(&self) -> std::io::Result<SocketAddr> {
         self.listener.local_addr()
     }
+}
+
+fn default_middleware() -> BoxCloneSyncServiceLayer<Route, Request, Response, Infallible> {
+    let inner = ServiceBuilder::new()
+        .set_x_request_id(MakeRequestUuid)
+        .layer(SetSensitiveRequestHeadersLayer::new([
+            AUTHORIZATION,
+            PROXY_AUTHORIZATION,
+            COOKIE,
+            SET_COOKIE,
+        ]))
+        .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new()))
+        .layer(CompressionLayer::new())
+        .layer(CorsLayer::permissive())
+        .layer(CatchPanicLayer::custom(handle_panic))
+        .propagate_x_request_id()
+        .into_inner();
+
+    let inner = (MapResponseBodyLayer::new(Body::new), inner); // erase complex type after compression layer
+
+    BoxCloneSyncServiceLayer::new(inner)
 }
 
 /// Custom 404 handler
@@ -186,4 +297,21 @@ async fn shutdown_signal() {
     }
 
     tracing::debug!("signal received, starting graceful shutdown");
+}
+
+#[derive(Debug, Hash, PartialEq, Eq)]
+enum ApiType {
+    Collections,
+    #[cfg(feature = "features")]
+    Features,
+    #[cfg(feature = "edr")]
+    Edr,
+    #[cfg(feature = "styles")]
+    Styles,
+    #[cfg(feature = "stac")]
+    Stac,
+    #[cfg(feature = "tiles")]
+    Tiles,
+    #[cfg(feature = "processes")]
+    Processes,
 }

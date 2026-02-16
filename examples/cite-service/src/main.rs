@@ -24,9 +24,11 @@ async fn main() {
     let state = state.processors(vec![Box::new(Echo)]);
 
     // Build & run with hyper
-    Service::try_new_with(&config, state)
+    Service::try_new(&config, state)
         .await
         .unwrap()
+        .all_apis()
         .serve()
-        .await;
+        .await
+        .expect("to serve application");
 }

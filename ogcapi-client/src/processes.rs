@@ -19,8 +19,6 @@ impl Client {
             .send()
             .and_then(|rsp| rsp.error_for_status())?;
 
-        dbg!(&response);
-
         match response.status().as_u16() {
             200 => match execute.response {
                 Response::Raw => {
