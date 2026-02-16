@@ -103,6 +103,35 @@ pub struct Feature {
 }
 
 impl Feature {
+    pub fn new(geometry: Geometry) -> Self {
+        Feature {
+            id: Default::default(),
+            collection: Default::default(),
+            r#type: Default::default(),
+            properties: Default::default(),
+            geometry,
+            #[cfg(feature = "stac")]
+            bbox: Default::default(),
+            links: Default::default(),
+            #[cfg(feature = "stac")]
+            stac_version: crate::stac::stac_version(),
+            #[cfg(feature = "stac")]
+            stac_extensions: Default::default(),
+            #[cfg(feature = "stac")]
+            assets: Default::default(),
+            #[cfg(feature = "movingfeatures")]
+            time: Default::default(),
+            #[cfg(feature = "movingfeatures")]
+            crs: Default::default(),
+            #[cfg(feature = "movingfeatures")]
+            trs: Default::default(),
+            #[cfg(feature = "movingfeatures")]
+            temporal_geometry: Default::default(),
+            #[cfg(feature = "movingfeatures")]
+            temporal_properties: Default::default(),
+        }
+    }
+
     pub fn append_properties(&mut self, mut other: Map<String, Value>) {
         if let Some(properties) = self.properties.as_mut() {
             properties.append(&mut other);
