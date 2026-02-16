@@ -36,7 +36,7 @@ pub struct Service {
     pub(crate) state: AppState,
     pub(crate) router: OpenApiRouter<AppState>,
     listener: TcpListener,
-    middleware_stack: BoxCloneSyncServiceLayer<Route, Request, Response, Infallible>,
+    middleware: BoxCloneSyncServiceLayer<Route, Request, Response, Infallible>,
     /// Prevent multiple additions of the same API to the service, which would cause duplicate routes and documentation.
     added_apis: HashSet<ApiType>,
 }
@@ -80,7 +80,7 @@ impl Service {
             state,
             router,
             listener,
-            middleware_stack: default_middleware_stack(),
+            middleware: default_middleware(),
             added_apis: HashSet::new(),
         })
     }
@@ -183,11 +183,11 @@ impl Service {
         &mut self.router
     }
 
-    /// Get a mutable reference to the middleware stack, allowing for modification of the middleware layers.
-    pub fn get_middleware_stack_mut(
+    /// Get a mutable reference to the middleware, allowing for modification of the middleware layers.
+    pub fn get_middleware_mut(
         &mut self,
     ) -> &mut BoxCloneSyncServiceLayer<Route, Request, Response, Infallible> {
-        &mut self.middleware_stack
+        &mut self.middleware
     }
 
     /// Serve application
@@ -201,7 +201,7 @@ impl Service {
             router.merge(SwaggerUi::new("/swagger").url("/api_v3.1", openapi.as_ref().clone()));
 
         // add state
-        let router = router.layer(self.middleware_stack).with_state(self.state);
+        let router = router.layer(self.middleware).with_state(self.state);
 
         // serve
         tracing::info!(
@@ -224,7 +224,7 @@ impl Service {
     }
 }
 
-fn default_middleware_stack() -> BoxCloneSyncServiceLayer<Route, Request, Response, Infallible> {
+fn default_middleware() -> BoxCloneSyncServiceLayer<Route, Request, Response, Infallible> {
     let inner = ServiceBuilder::new()
         .set_x_request_id(MakeRequestUuid)
         .layer(SetSensitiveRequestHeadersLayer::new([
