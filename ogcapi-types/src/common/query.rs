@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::common::{Bbox, Crs, Datetime};
 
@@ -24,7 +24,7 @@ pub struct Query {
 }
 
 /// Query parameters to facilitate pagination with a limit and offset
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq, Default, IntoParams)]
 pub struct LimitOffsetPagination {
     /// Amount of items to return
     #[serde(default, skip_serializing_if = "Option::is_none")]

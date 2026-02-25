@@ -390,6 +390,7 @@ fn negotiate_execution_mode(
 ///
 /// For more information, see [Section 11](https://docs.ogc.org/is/18-062/18-062.html#sc_job_list).
 #[utoipa::path(get, path = "/jobs", tag = "Processes",
+    params(LimitOffsetPagination),
     responses(
         (
             status = 200,
