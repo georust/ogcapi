@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Deref};
+use std::{collections::HashMap, marker::PhantomData};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -79,15 +79,13 @@ pub struct ResultsQuery {
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
-pub struct Results {
-    #[serde(flatten)]
-    pub results: HashMap<String, InlineOrRefData>,
-}
-
-impl Deref for Results {
-    type Target = HashMap<String, InlineOrRefData>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.results
-    }
+#[serde(untagged)]
+#[schema(title = "ExecuteResults")]
+pub enum Results {
+    Json {
+        #[serde(flatten)]
+        results: HashMap<String, InlineOrRefData>,
+    },
+    #[schema(value_type = String, format = Binary)]
+    Binary(PhantomData<Vec<u8>>),
 }
