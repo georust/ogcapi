@@ -412,7 +412,7 @@ async fn jobs(
     const MAX_LIMIT: usize = 100;
 
     let offset = query.offset.unwrap_or_default();
-    let limit = query.limit.unwrap_or(DEFAULT_LIMIT).max(MAX_LIMIT);
+    let limit = query.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
 
     let jobs = state.drivers.jobs.status_list(offset, limit).await?;
 
