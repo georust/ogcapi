@@ -87,5 +87,6 @@ pub enum Results {
         results: HashMap<String, InlineOrRefData>,
     },
     #[schema(value_type = String, format = Binary)]
+    // The `PhantomData` marker is required for proper OpenApi schema generation.
     Binary(PhantomData<Vec<u8>>),
 }
