@@ -112,7 +112,7 @@ impl IntoResponseParts for LocationHeader {
 impl IntoResponse for ProcessResultsResponse {
     fn into_response(self) -> Response {
         if let ogcapi_types::processes::Response::Document = self.response_mode {
-            let results = ogcapi_types::processes::Results {
+            let results = ogcapi_types::processes::Results::Json {
                 results: self
                     .results
                     .into_iter()

@@ -390,6 +390,7 @@ fn negotiate_execution_mode(
 ///
 /// For more information, see [Section 11](https://docs.ogc.org/is/18-062/18-062.html#sc_job_list).
 #[utoipa::path(get, path = "/jobs", tag = "Processes",
+    params(LimitOffsetPagination),
     responses(
         (
             status = 200,
@@ -411,7 +412,7 @@ async fn jobs(
     const MAX_LIMIT: usize = 100;
 
     let offset = query.offset.unwrap_or_default();
-    let limit = query.limit.unwrap_or(DEFAULT_LIMIT).max(MAX_LIMIT);
+    let limit = query.limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT);
 
     let jobs = state.drivers.jobs.status_list(offset, limit).await?;
 
