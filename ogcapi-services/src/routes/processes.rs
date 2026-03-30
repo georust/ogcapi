@@ -8,19 +8,19 @@ use futures::TryFutureExt;
 use hyper::HeaderMap;
 use ogcapi_drivers::ProcessResult;
 use tracing::error;
-use url::Position;
+use url::{Position, Url};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
     common::{
         Exception, Link,
-        link_rel::{NEXT, PREV, PROCESSES, RESULTS, SELF, STATUS},
+        link_rel::{JOB_LIST, NEXT, PREV, PROCESSES, RESULTS, SELF, STATUS},
         media_type::JSON,
         query::LimitOffsetPagination,
     },
     processes::{
         Execute, JobControlOptions, JobList, Process, ProcessList, ProcessSummary, Results,
-        ResultsQuery, StatusInfo,
+        ResultsQuery, StatusCode as JobStatusCode, StatusInfo,
     },
 };
 
@@ -150,12 +150,7 @@ async fn process(
         .and_then(|processor| processor.process().ok())
     {
         Some(mut process) => {
-            let self_link = Link::new(url.clone(), SELF).mediatype(JSON);
-            if let Some(link) = process.summary.links.iter_mut().find(|l| l.rel == SELF) {
-                *link = Link::new(url.clone(), SELF).mediatype(JSON);
-            } else {
-                process.summary.links.insert(0, self_link);
-            }
+            add_or_replace_links(&mut process.summary.links, [self_link(url.clone())]);
 
             Ok(Json(process))
         }
@@ -190,7 +185,7 @@ async fn process(
 )]
 async fn execution(
     State(state): State<AppState>,
-    RemoteUrl(url): RemoteUrl,
+    RemoteUrl(mut url): RemoteUrl,
     Path(process_id): Path<String>,
     headers: HeaderMap,
     ValidParams(Json(execute)): ValidParams<Json<Execute>>,
@@ -222,11 +217,9 @@ async fn execution(
         });
     }
 
-    let base_url = url[..url::Position::BeforePath].to_string();
-
     let mut status_info = StatusInfo {
         process_id: Some(process_id),
-        status: ogcapi_types::processes::StatusCode::Accepted,
+        status: JobStatusCode::Accepted,
         ..Default::default()
     };
 
@@ -237,16 +230,11 @@ async fn execution(
         .await?;
 
     status_info.job_id = job_id;
-    status_info.links.push(
-        Link::new(format!("{base_url}/jobs/{}", status_info.job_id), STATUS)
-            .title("Job status")
-            .mediatype(JSON),
-    );
 
     {
         let mut status_info = status_info.clone();
         (state.spawn)(Box::pin(async move {
-            status_info.status = ogcapi_types::processes::StatusCode::Running;
+            status_info.status = JobStatusCode::Running;
 
             let result = state
                 .drivers
@@ -258,22 +246,13 @@ async fn execution(
 
             match result {
                 Ok(res) => {
-                    status_info.status = ogcapi_types::processes::StatusCode::Successful;
+                    status_info.status = JobStatusCode::Successful;
                     status_info.message = None;
                     status_info.progress = Some(100);
-
-                    if let Ok(results_link) =
-                        url.join(&format!("/jobs/{}/results", status_info.job_id))
-                    {
-                        status_info
-                            .links
-                            .push(Link::new(results_link, RESULTS).title("Job result"));
-                    }
-
                     results = Some(res);
                 }
                 Err(e) => {
-                    status_info.status = ogcapi_types::processes::StatusCode::Failed;
+                    status_info.status = JobStatusCode::Failed;
                     status_info.message = e.to_string().into();
                 }
             };
@@ -292,10 +271,25 @@ async fn execution(
         }));
     }
 
+    let status_url = {
+        if let Ok(mut segments) = url.path_segments_mut() {
+            segments.pop();
+            segments.pop();
+        }
+        url.join("jobs/")?.join(&status_info.job_id)?
+    };
+
+    add_or_replace_links(
+        &mut status_info.links,
+        [Link::new(status_url.clone(), STATUS)
+            .title("Job status")
+            .mediatype(JSON)],
+    );
+
     Ok(ProcessExecuteResponse::Asynchronous {
         status_info,
         was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
-        base_url,
+        status_url: status_url.to_string(),
     })
 }
 
@@ -416,7 +410,7 @@ async fn jobs(
 
     let jobs = state.drivers.jobs.status_list(offset, limit).await?;
 
-    let mut links = vec![Link::new(&url, SELF).mediatype(JSON)];
+    let mut links = vec![self_link(url.clone())];
 
     if jobs.len() >= limit {
         let mut next_url = url.clone();
@@ -446,10 +440,14 @@ async fn jobs(
         )
     )
 )]
-async fn status(State(state): State<AppState>, Path(job_id): Path<String>) -> Result<Response> {
+async fn status(
+    State(state): State<AppState>,
+    Path(job_id): Path<String>,
+    RemoteUrl(url): RemoteUrl,
+) -> Result<Response> {
     let status = state.drivers.jobs.status(&job_id).await?;
 
-    let Some(info) = status else {
+    let Some(mut info) = status else {
         return Err(Error::ApiException(
             Exception::new(
                 "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job",
@@ -459,6 +457,21 @@ async fn status(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
             .detail(format!("No job with id `{job_id}`")),
         ));
     };
+
+    add_or_replace_links(
+        &mut info.links,
+        [Link::new(url.clone(), SELF)
+            .mediatype(JSON)
+            .title("Job status")],
+    );
+
+    if info.status == JobStatusCode::Successful {
+        let results_link = url.join("jobs/{}/results/")?.join(&job_id)?;
+        add_or_replace_links(
+            &mut info.links,
+            [Link::new(results_link, RESULTS).title("Job result")],
+        );
+    }
 
     Ok(Json(info).into_response())
 }
@@ -481,17 +494,27 @@ async fn status(State(state): State<AppState>, Path(job_id): Path<String>) -> Re
         )
     )
 )]
-async fn delete(State(state): State<AppState>, Path(job_id): Path<String>) -> Result<Response> {
+async fn delete(
+    State(state): State<AppState>,
+    Path(job_id): Path<String>,
+    RemoteUrl(url): RemoteUrl,
+) -> Result<Response> {
     let status = state.drivers.jobs.dismiss(&job_id).await?;
 
     // TODO: cancel execution
 
-    match status {
-        Some(info) => Ok(Json(info).into_response()),
-        None => Err(Error::ApiException(
+    let Some(mut status_info) = status else {
+        return Err(Error::ApiException(
             (StatusCode::NOT_FOUND, format!("No job with id `{job_id}`")).into(),
-        )),
-    }
+        ));
+    };
+
+    add_or_replace_links(
+        &mut status_info.links,
+        [Link::new(url, SELF).mediatype(JSON)],
+    );
+
+    Ok(Json(status_info).into_response())
 }
 
 /// Retrieve the result(s) of a job
@@ -585,9 +608,9 @@ pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
         Link::new("processes", PROCESSES)
             .mediatype(JSON)
             .title("Metadata about the processes"),
-        // Link::new("jobs", JOB_LIST)
-        //     .mediatype(JSON)
-        //     .title("The endpoint for job monitoring"),
+        Link::new("jobs", JOB_LIST)
+            .mediatype(JSON)
+            .title("The endpoint for job monitoring"),
     ]);
 
     write_lock(&state.conformance).extend(&CONFORMANCE);
@@ -599,6 +622,20 @@ pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
         .routes(routes!(jobs))
         .routes(routes!(status, delete))
         .routes(routes!(results))
+}
+
+fn self_link(url: Url) -> Link {
+    Link::new(url, SELF).mediatype(JSON)
+}
+
+fn add_or_replace_links(links: &mut Vec<Link>, new_links: impl IntoIterator<Item = Link>) {
+    for new_link in new_links {
+        if let Some(link) = links.iter_mut().find(|l| l.rel == SELF) {
+            *link = new_link;
+        } else {
+            links.insert(0, new_link);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -724,7 +761,7 @@ mod tests {
         let ProcessExecuteResponse::Asynchronous {
             status_info,
             was_preferred_execution_mode: _,
-            base_url: _,
+            status_url: _,
         } = response
         else {
             panic!("Expected asynchronous response");
@@ -742,5 +779,231 @@ mod tests {
                 assert_eq!(foo.unwrap(), "bar");
             }
         }
+    }
+
+    #[tokio::test]
+    async fn it_sets_the_correct_links() {
+        // Minimal faux job handler to avoid DB dependencies for execution test
+        struct FauxJobHandler;
+        #[async_trait::async_trait]
+        impl JobHandler for FauxJobHandler {
+            async fn register(
+                &self,
+                _job: &StatusInfo,
+                _response_mode: ogcapi_types::processes::Response,
+            ) -> anyhow::Result<String> {
+                Ok("job1".to_string())
+            }
+
+            async fn update(&self, _job: &StatusInfo) -> anyhow::Result<()> {
+                Ok(())
+            }
+
+            async fn status_list(
+                &self,
+                _offset: usize,
+                _limit: usize,
+            ) -> anyhow::Result<Vec<StatusInfo>> {
+                Ok(vec![])
+            }
+
+            async fn status(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
+                let info = StatusInfo {
+                    job_id: "job1".to_string(),
+                    status: JobStatusCode::Accepted,
+                    ..Default::default()
+                };
+                Ok(Some(info))
+            }
+
+            async fn finish(
+                &self,
+                _job_id: &str,
+                _status: &JobStatusCode,
+                _message: Option<String>,
+                _links: Vec<Link>,
+                _results: Option<ogcapi_types::processes::ExecuteResults>,
+            ) -> anyhow::Result<()> {
+                Ok(())
+            }
+
+            async fn dismiss(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
+                let info = StatusInfo {
+                    job_id: "job1".to_string(),
+                    status: JobStatusCode::Dismissed,
+                    ..Default::default()
+                };
+                Ok(Some(info))
+            }
+
+            async fn results(&self, _id: &str) -> anyhow::Result<ProcessResult> {
+                Ok(ProcessResult::Results {
+                    results: Default::default(),
+                    response_mode: ogcapi_types::processes::Response::Document,
+                })
+            }
+        }
+
+        // Create drivers from env and replace jobs with our faux handler.
+        crate::setup_env();
+        let mut drivers = Drivers::try_new_from_env().await.unwrap();
+        drivers.jobs = Box::new(FauxJobHandler);
+
+        let state = AppState::new(drivers)
+            .await
+            .processors(vec![Box::new(Echo)]);
+
+        // First: act like a relative request (RemoteUrl derived from Host/X-Forwarded-Proto)
+        let base_url = Url::parse("http://example.org/subdir/").unwrap();
+
+        // Call `processes` and assert the self link is the base URL
+        let processes_response = processes(
+            State(state.clone()),
+            RemoteUrl(base_url.join("processes").unwrap()),
+            Query(LimitOffsetPagination {
+                limit: Some(10),
+                offset: Some(0),
+            }),
+        )
+        .await
+        .unwrap()
+        .0;
+
+        assert_eq!(
+            processes_response.links[0],
+            Link::new("http://example.org/subdir/processes", SELF).mediatype(JSON)
+        );
+
+        // Call `process` and assert the process description contains the self link
+        let process_response = process(
+            State(state.clone()),
+            RemoteUrl(base_url.join("processes/echo").unwrap()),
+            Path("echo".to_string()),
+        )
+        .await
+        .unwrap()
+        .0;
+
+        assert_eq!(
+            process_response.summary.links[0],
+            Link::new("http://example.org/subdir/processes/echo", SELF).mediatype(JSON)
+        );
+
+        // Call `jobs` and assert the self link
+        let jobs_response = jobs(
+            State(state.clone()),
+            RemoteUrl(base_url.join("jobs?limit=10&offset=0").unwrap()),
+            Query(LimitOffsetPagination {
+                limit: Some(10),
+                offset: Some(0),
+            }),
+        )
+        .await
+        .unwrap()
+        .0;
+
+        assert_eq!(
+            jobs_response.links[0],
+            Link::new("http://example.org/subdir/jobs?limit=10&offset=0", SELF).mediatype(JSON)
+        );
+
+        // Call `execution` (async) and assert the returned status link uses base_url
+        let execution_response = execution(
+            State(state.clone()),
+            RemoteUrl(base_url.join("processes/echo/execution").unwrap()),
+            Path("echo".to_string()),
+            {
+                let mut headers = HeaderMap::new();
+                headers.insert(
+                    "Prefer",
+                    hyper::header::HeaderValue::from_static("respond-async"),
+                );
+                headers
+            },
+            ValidParams(Json(
+                serde_json::from_value(serde_json::json!({
+                    "inputs": {"stringInput": "Value1"},
+                    "outputs": {"stringOutput": {"transmissionMode": "value"}},
+                    "response": "raw"
+                }))
+                .unwrap(),
+            )),
+        )
+        .await
+        .unwrap();
+
+        let ProcessExecuteResponse::Asynchronous {
+            status_info,
+            status_url,
+            ..
+        } = execution_response
+        else {
+            panic!("Expected asynchronous execution response");
+        };
+
+        assert_eq!(
+            status_info.links[0],
+            Link::new("http://example.org/subdir/jobs/job1", STATUS)
+                .mediatype(JSON)
+                .title("Job status")
+        );
+        assert_eq!(
+            status_url,
+            "http://example.org/subdir/jobs/job1".to_string()
+        );
+
+        // call status route and assert
+        let status_response = status(
+            State(state.clone()),
+            Path("job1".to_string()),
+            RemoteUrl(base_url.join("jobs/job1").unwrap()),
+        )
+        .await
+        .unwrap();
+        let status_info: StatusInfo = serde_json::from_slice(
+            &axum::body::to_bytes(status_response.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            status_info.links[0],
+            Link::new("http://example.org/subdir/jobs/job1", SELF)
+                .mediatype(JSON)
+                .title("Job status")
+        );
+
+        // call delete (dismiss) route and assert
+        let delete_response = delete(
+            State(state.clone()),
+            Path("job1".to_string()),
+            RemoteUrl(base_url.join("jobs/job1").unwrap()),
+        )
+        .await
+        .unwrap();
+        let status_info: StatusInfo = serde_json::from_slice(
+            &axum::body::to_bytes(delete_response.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            status_info.links[0],
+            Link::new("http://example.org/subdir/jobs/job1", SELF).mediatype(JSON)
+        );
+
+        // call results and assert we get an empty results map
+        let results_response = results(
+            State(state.clone()),
+            Path("job1".to_string()),
+            Query(ResultsQuery {
+                pagination: Default::default(),
+                outputs: None,
+            }),
+        )
+        .await
+        .unwrap();
+
+        assert!(results_response.results.is_empty());
     }
 }
