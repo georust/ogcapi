@@ -458,21 +458,19 @@ async fn status(
         ));
     };
 
-    add_or_replace_links(
-        &mut info.links,
-        [Link::new(url.clone(), SELF)
-            .mediatype(JSON)
-            .title("Job status")],
-    );
+    let self_link = Link::new(url.clone(), SELF)
+        .mediatype(JSON)
+        .title("Job status");
 
     let mut results_url = url;
     if let Ok(mut path) = results_url.path_segments_mut() {
         path.push("results");
     }
-    add_or_replace_links(
-        &mut info.links,
-        [Link::new(results_url, RESULTS).title("Job result")],
-    );
+    let results_link = Link::new(results_url.clone(), RESULTS)
+        .mediatype(JSON)
+        .title("Job results");
+
+    add_or_replace_links(&mut info.links, [results_link, self_link]);
 
     Ok(Json(info).into_response())
 }
