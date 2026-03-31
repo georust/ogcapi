@@ -465,13 +465,14 @@ async fn status(
             .title("Job status")],
     );
 
-    if info.status == JobStatusCode::Successful {
-        let results_link = url.join("jobs/{}/results/")?.join(&job_id)?;
-        add_or_replace_links(
-            &mut info.links,
-            [Link::new(results_link, RESULTS).title("Job result")],
-        );
+    let mut results_url = url;
+    if let Ok(mut path) = results_url.path_segments_mut() {
+        path.push("results");
     }
+    add_or_replace_links(
+        &mut info.links,
+        [Link::new(results_url, RESULTS).title("Job result")],
+    );
 
     Ok(Json(info).into_response())
 }

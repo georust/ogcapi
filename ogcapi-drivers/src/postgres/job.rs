@@ -96,9 +96,22 @@ impl JobHandler for Db {
     }
 
     async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>> {
+        // Return a list of `StatusInfo` rows. Ensure `links` is always an array
+        // (coalesce NULL to empty array) so deserialization into `StatusInfo`
+        // which expects a list works reliably.
         let status_list: Vec<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
             r#"
-            SELECT row_to_json(jobs) as "status_info!" 
+            SELECT json_object(
+                'process_id': process_id,
+                'job_id': job_id,
+                'status': status,
+                'message': message,
+                'created': created,
+                'finished': finished,
+                'updated': updated,
+                'progress': progress,
+                'links': COALESCE(links, '[]'::jsonb)
+            ) as "status_info!"
             FROM meta.jobs
             ORDER BY created DESC
             OFFSET $1

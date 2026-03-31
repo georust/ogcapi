@@ -86,6 +86,39 @@ mod postgres {
     }
 
     #[sqlx::test]
+    async fn job_status_list(pool: sqlx::PgPool) -> () {
+        use ogcapi_types::common::Link;
+
+        let db = Db { pool };
+
+        let job = StatusInfo {
+            job_id: "test-job-status-list".to_string(),
+            status: StatusCode::Running,
+            links: Vec::<Link>::new(),
+            ..Default::default()
+        };
+
+        // register the job with running status and empty links
+        assert_eq!(
+            db.register(&job, Response::default()).await.unwrap(),
+            job.job_id
+        );
+
+        // query the status list
+        let list = db.status_list(0, 10).await.unwrap();
+
+        // find our job in the returned list
+        let found = list
+            .into_iter()
+            .find(|s| s.job_id == "test-job-status-list");
+
+        assert!(found.is_some());
+        let info = found.unwrap();
+        assert_eq!(info.status, StatusCode::Running);
+        assert!(info.links.is_empty());
+    }
+
+    #[sqlx::test]
     async fn job_result_failed(pool: sqlx::PgPool) -> () {
         let db = Db { pool };
 
