@@ -8,7 +8,7 @@ use futures::TryFutureExt;
 use hyper::HeaderMap;
 use ogcapi_drivers::ProcessResult;
 use tracing::error;
-use url::{Position, Url};
+use url::Url;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
@@ -81,7 +81,7 @@ async fn processes(
         })
         .collect();
 
-    let mut links = vec![Link::new(&url, SELF).mediatype(JSON)];
+    let mut links = vec![self_link(url.clone())];
 
     if query.limit.is_some() {
         if offset != 0 && offset >= limit {
@@ -101,12 +101,12 @@ async fn processes(
         }
     }
 
-    summaries.iter_mut().for_each(|p| {
-        p.links = vec![
-            Link::new(format!("{}/{}", &url[..Position::AfterPath], p.id), SELF)
-                .mediatype(JSON)
-                .title("process description"),
-        ];
+    summaries.iter_mut().for_each(|process| {
+        let mut url = url.clone();
+        if let Ok(mut segments) = url.path_segments_mut() {
+            segments.push(&process.id);
+        }
+        process.links = vec![self_link(url).title("process description")];
     });
 
     let process_list = ProcessList {
@@ -458,11 +458,7 @@ async fn status(
         ));
     };
 
-    let self_link = Link::new(url.clone(), SELF)
-        .mediatype(JSON)
-        .title("Job status");
-
-    let mut results_url = url;
+    let mut results_url = url.clone();
     if let Ok(mut path) = results_url.path_segments_mut() {
         path.push("results");
     }
@@ -470,7 +466,7 @@ async fn status(
         .mediatype(JSON)
         .title("Job results");
 
-    add_or_replace_links(&mut info.links, [results_link, self_link]);
+    add_or_replace_links(&mut info.links, [results_link, self_link(url)]);
 
     Ok(Json(info).into_response())
 }
@@ -508,10 +504,7 @@ async fn delete(
         ));
     };
 
-    add_or_replace_links(
-        &mut status_info.links,
-        [Link::new(url, SELF).mediatype(JSON)],
-    );
+    add_or_replace_links(&mut status_info.links, [self_link(url)]);
 
     Ok(Json(status_info).into_response())
 }
@@ -873,6 +866,13 @@ mod tests {
             Link::new("http://example.org/subdir/processes", SELF).mediatype(JSON)
         );
 
+        assert_eq!(
+            processes_response.processes[0].links[0],
+            Link::new("http://example.org/subdir/processes/echo", SELF)
+                .mediatype(JSON)
+                .title("process description")
+        );
+
         // Call `process` and assert the process description contains the self link
         let process_response = process(
             State(state.clone()),
@@ -967,9 +967,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             status_info.links[0],
-            Link::new("http://example.org/subdir/jobs/job1", SELF)
-                .mediatype(JSON)
-                .title("Job status")
+            Link::new("http://example.org/subdir/jobs/job1", SELF).mediatype(JSON)
         );
 
         // call delete (dismiss) route and assert
