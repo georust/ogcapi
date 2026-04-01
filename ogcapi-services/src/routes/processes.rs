@@ -1,3 +1,4 @@
+use anyhow::bail;
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -13,8 +14,8 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
     common::{
-        Exception, Link,
-        link_rel::{JOB_LIST, NEXT, PREV, PROCESSES, RESULTS, SELF, STATUS},
+        Exception, Link, Linked,
+        link_rel::{EXECUTE, JOB_LIST, NEXT, PREV, PROCESSES, RESULTS, SELF, STATUS},
         media_type::JSON,
         query::LimitOffsetPagination,
     },
@@ -81,7 +82,7 @@ async fn processes(
         })
         .collect();
 
-    let mut links = vec![self_link(url.clone())];
+    let mut links = vec![Link::new(url.clone(), SELF).mediatype(JSON)];
 
     if query.limit.is_some() {
         if offset != 0 && offset >= limit {
@@ -102,11 +103,20 @@ async fn processes(
     }
 
     summaries.iter_mut().for_each(|process| {
-        let mut url = url.clone();
-        if let Ok(mut segments) = url.path_segments_mut() {
-            segments.push(&process.id);
-        }
-        process.links = vec![self_link(url).title("process description")];
+        let Ok(process_description_url) = url_plus_segments(url.clone(), &[&process.id])
+             else {
+                error!("Cannot create process description URL for process `{}`: cannot modify URL without a base", process.id);
+                return;
+             };
+        process
+            .links
+            .insert_or_update(&[
+                Link::new(process_description_url, SELF)
+                    .mediatype(JSON)
+                    .title("process description"), 
+                Link::new(url_plus_segments(url.clone(), &[&process.id, "execution"]).unwrap(), EXECUTE)
+                    .title("Execute endpoint")
+            ]);
     });
 
     let process_list = ProcessList {
@@ -150,7 +160,13 @@ async fn process(
         .and_then(|processor| processor.process().ok())
     {
         Some(mut process) => {
-            add_or_replace_links(&mut process.summary.links, [self_link(url.clone())]);
+            process.summary.links.insert_or_update(&[
+                Link::new(url.clone(), SELF)
+                    .mediatype(JSON)
+                    .title("Process description"),
+                Link::new(url_plus_segments(url, &["execution"])?, EXECUTE)
+                    .title("Execute endpoint"),
+            ]);
 
             Ok(Json(process))
         }
@@ -185,7 +201,7 @@ async fn process(
 )]
 async fn execution(
     State(state): State<AppState>,
-    RemoteUrl(mut url): RemoteUrl,
+    RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
     headers: HeaderMap,
     ValidParams(Json(execute)): ValidParams<Json<Execute>>,
@@ -271,25 +287,19 @@ async fn execution(
         }));
     }
 
-    let status_url = {
-        if let Ok(mut segments) = url.path_segments_mut() {
-            segments.pop();
-            segments.pop();
-        }
-        url.join("jobs/")?.join(&status_info.job_id)?
-    };
+    let status_url = url_replace_segments(url, 3, &["jobs", &status_info.job_id])?;
+    let status_url_string = status_url.to_string();
 
-    add_or_replace_links(
-        &mut status_info.links,
-        [Link::new(status_url.clone(), STATUS)
+    status_info
+        .links
+        .insert_or_update(&[Link::new(status_url, STATUS)
             .title("Job status")
-            .mediatype(JSON)],
-    );
+            .mediatype(JSON)]);
 
     Ok(ProcessExecuteResponse::Asynchronous {
         status_info,
         was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
-        status_url: status_url.to_string(),
+        status_url: status_url_string,
     })
 }
 
@@ -410,7 +420,7 @@ async fn jobs(
 
     let jobs = state.drivers.jobs.status_list(offset, limit).await?;
 
-    let mut links = vec![self_link(url.clone())];
+    let mut links = vec![Link::new(url.clone(), SELF).mediatype(JSON)];
 
     if jobs.len() >= limit {
         let mut next_url = url.clone();
@@ -458,15 +468,12 @@ async fn status(
         ));
     };
 
-    let mut results_url = url.clone();
-    if let Ok(mut path) = results_url.path_segments_mut() {
-        path.push("results");
-    }
-    let results_link = Link::new(results_url.clone(), RESULTS)
-        .mediatype(JSON)
-        .title("Job results");
-
-    add_or_replace_links(&mut info.links, [results_link, self_link(url)]);
+    info.links.insert_or_update(&[
+        Link::new(url.clone(), SELF).mediatype(JSON),
+        Link::new(url_plus_segments(url, &["results"])?, RESULTS)
+            .mediatype(JSON)
+            .title("Job results"),
+    ]);
 
     Ok(Json(info).into_response())
 }
@@ -504,7 +511,9 @@ async fn delete(
         ));
     };
 
-    add_or_replace_links(&mut status_info.links, [self_link(url)]);
+    status_info
+        .links
+        .insert_or_update(&[Link::new(url.clone(), SELF).mediatype(JSON)]);
 
     Ok(Json(status_info).into_response())
 }
@@ -616,18 +625,36 @@ pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
         .routes(routes!(results))
 }
 
-fn self_link(url: Url) -> Link {
-    Link::new(url, SELF).mediatype(JSON)
+/// Helper function to add a path segment to a URL, returning an error if the URL cannot be modified.
+/// Example usage:
+/// `url_plus_segments(Url::parse("http://example.com/foo")?, &["bar", "123"])` would return `http://example.com/foo/bar/123`.
+fn url_plus_segments(mut url: Url, segments_to_add: &[&str]) -> anyhow::Result<Url> {
+    let Ok(mut segments) = url.path_segments_mut() else {
+        bail!("Cannot modify path segments of a URL without a base");
+    };
+    for segment in segments_to_add {
+        segments.push(segment);
+    }
+    drop(segments);
+    Ok(url)
 }
 
-fn add_or_replace_links(links: &mut Vec<Link>, new_links: impl IntoIterator<Item = Link>) {
-    for new_link in new_links {
-        if let Some(link) = links.iter_mut().find(|l| l.rel == SELF) {
-            *link = new_link;
-        } else {
-            links.insert(0, new_link);
-        }
+/// Helper function to replace a path segment in a URL, returning an error if the URL cannot be modified.
+/// Example usage:
+/// `url_replace_segments(Url::parse("http://example.com/foo/bar")?, 1, &["baz"])` would return `http://example.com/foo/baz`.
+fn url_replace_segments(
+    mut url: Url,
+    num_segments_to_remove: usize,
+    segments_to_add: &[&str],
+) -> anyhow::Result<Url> {
+    let Ok(mut segments) = url.path_segments_mut() else {
+        bail!("Cannot modify path segments of a URL without a base");
+    };
+    for _ in 0..num_segments_to_remove {
+        segments.pop();
     }
+    drop(segments);
+    url_plus_segments(url, segments_to_add)
 }
 
 #[cfg(test)]
@@ -636,6 +663,7 @@ mod tests {
     use crate::Drivers;
     use ogcapi_drivers::JobHandler;
     use ogcapi_processes::echo::Echo;
+    use ogcapi_types::common::link_rel::EXECUTE;
     use tokio::task_local;
 
     /// Test that we can pass task-local context into spawned tasks.
@@ -862,15 +890,22 @@ mod tests {
         .0;
 
         assert_eq!(
-            processes_response.links[0],
-            Link::new("http://example.org/subdir/processes", SELF).mediatype(JSON)
+            processes_response.links,
+            &[Link::new("http://example.org/subdir/processes", SELF).mediatype(JSON)]
         );
 
         assert_eq!(
-            processes_response.processes[0].links[0],
-            Link::new("http://example.org/subdir/processes/echo", SELF)
-                .mediatype(JSON)
-                .title("process description")
+            processes_response.processes[0].links,
+            &[
+                Link::new("http://example.org/subdir/processes/echo", SELF)
+                    .mediatype(JSON)
+                    .title("process description"),
+                Link::new(
+                    "http://example.org/subdir/processes/echo/execution",
+                    EXECUTE
+                )
+                .title("Execute endpoint")
+            ]
         );
 
         // Call `process` and assert the process description contains the self link
@@ -884,8 +919,17 @@ mod tests {
         .0;
 
         assert_eq!(
-            process_response.summary.links[0],
-            Link::new("http://example.org/subdir/processes/echo", SELF).mediatype(JSON)
+            process_response.summary.links,
+            &[
+                Link::new("http://example.org/subdir/processes/echo", SELF)
+                    .mediatype(JSON)
+                    .title("Process description"),
+                Link::new(
+                    "http://example.org/subdir/processes/echo/execution",
+                    EXECUTE
+                )
+                .title("Execute endpoint")
+            ]
         );
 
         // Call `jobs` and assert the self link
@@ -902,8 +946,8 @@ mod tests {
         .0;
 
         assert_eq!(
-            jobs_response.links[0],
-            Link::new("http://example.org/subdir/jobs?limit=10&offset=0", SELF).mediatype(JSON)
+            jobs_response.links,
+            &[Link::new("http://example.org/subdir/jobs?limit=10&offset=0", SELF).mediatype(JSON)]
         );
 
         // Call `execution` (async) and assert the returned status link uses base_url
@@ -941,10 +985,10 @@ mod tests {
         };
 
         assert_eq!(
-            status_info.links[0],
-            Link::new("http://example.org/subdir/jobs/job1", STATUS)
+            status_info.links,
+            &[Link::new("http://example.org/subdir/jobs/job1", STATUS)
                 .mediatype(JSON)
-                .title("Job status")
+                .title("Job status")]
         );
         assert_eq!(
             status_url,
@@ -966,8 +1010,13 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            status_info.links[0],
-            Link::new("http://example.org/subdir/jobs/job1", SELF).mediatype(JSON)
+            status_info.links,
+            &[
+                Link::new("http://example.org/subdir/jobs/job1", SELF).mediatype(JSON),
+                Link::new("http://example.org/subdir/jobs/job1/results", RESULTS)
+                    .mediatype(JSON)
+                    .title("Job results")
+            ]
         );
 
         // call delete (dismiss) route and assert
@@ -985,8 +1034,8 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            status_info.links[0],
-            Link::new("http://example.org/subdir/jobs/job1", SELF).mediatype(JSON)
+            status_info.links,
+            &[Link::new("http://example.org/subdir/jobs/job1", SELF).mediatype(JSON)]
         );
 
         // call results and assert we get an empty results map
