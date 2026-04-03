@@ -49,21 +49,22 @@ pub fn geometry() -> Schema {
 }
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
-#[serde_with::skip_serializing_none]
 #[derive(Deserialize, Serialize, ToSchema, Debug, Clone, PartialEq)]
 pub struct Feature {
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<FeatureId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub collection: Option<String>,
     #[serde(default)]
     #[schema(inline = true)]
     pub r#type: Type,
-    #[serialize_always]
+    #[serde(default)]
     pub properties: Option<Map<String, Value>>,
     #[schema(schema_with = geometry)]
     pub geometry: Geometry,
     /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
     #[cfg(feature = "stac")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bbox: Option<Bbox>,
     #[serde(default)]
     pub links: Vec<Link>,
@@ -95,10 +96,18 @@ pub struct Feature {
     #[serde(default)]
     pub trs: Trs,
     #[cfg(feature = "movingfeatures")]
-    #[serde(default, rename = "temporalGeometry")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "temporalGeometry"
+    )]
     pub temporal_geometry: Option<TemporalGeometry>,
     #[cfg(feature = "movingfeatures")]
-    #[serde(default, rename = "temporalProperties")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "temporalProperties"
+    )]
     pub temporal_properties: Option<TemporalProperties>,
 }
 

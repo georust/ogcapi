@@ -3,7 +3,8 @@ use axum::{
     extract::{FromRequestParts, OriginalUri},
     http::{StatusCode, request::Parts},
 };
-use axum_extra::extract::Host;
+use axum_extra::TypedHeader;
+use headers::Host;
 use url::Url;
 
 use crate::Error;
@@ -33,7 +34,7 @@ where
         } else if uri.0.scheme().is_some() {
             uri.0.to_string()
         } else {
-            let host = Host::from_request_parts(parts, state)
+            let host = TypedHeader::<Host>::from_request_parts(parts, state)
                 .await
                 .context("Unable to extract host")?;
 
@@ -43,7 +44,11 @@ where
                 .and_then(|f| f.to_str().ok())
                 .unwrap_or("http");
 
-            format!("{}://{}{}", proto, host.0, uri.0)
+            if let Some(port) = host.port() {
+                format!("{}://{}:{}{}", proto, host.hostname(), port, uri.0)
+            } else {
+                format!("{}://{}{}", proto, host.hostname(), uri.0)
+            }
         };
 
         Ok(RemoteUrl(Url::parse(&url)?))

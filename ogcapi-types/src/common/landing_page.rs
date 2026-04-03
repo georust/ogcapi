@@ -13,7 +13,6 @@ use super::Link;
 /// * the API definition (link relations `service-desc` and `service-doc`),
 /// * the Conformance declaration (path `/conformance`, link relation `conformance`), and
 /// * the Collections (path `/collections`, link relation `data`).
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
 pub struct LandingPage {
     /// Set to `Catalog` if this Catalog only implements the Catalog spec.
@@ -32,10 +31,13 @@ pub struct LandingPage {
     #[cfg(feature = "stac")]
     pub id: String,
     /// The title of the API.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     /// A textual description of the API.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// Attribution for the API.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attribution: Option<String>,
     /// Links to the resources exposed through this API
     #[serde(default)]
@@ -44,8 +46,10 @@ pub struct LandingPage {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keywords: Vec<String>,
     #[cfg(feature = "edr")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider: Option<Provider>,
     #[cfg(feature = "edr")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contact: Option<Contact>,
     #[cfg(feature = "stac")]
     #[serde(default, rename = "conformsTo", skip_serializing_if = "Vec::is_empty")]

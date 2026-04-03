@@ -48,8 +48,6 @@ pub struct TileSetItem {
 
 /// A resource describing a tileset based on the OGC TileSet Metadata Standard.
 /// At least one of the 'TileMatrixSet',  or a link with 'rel' tiling-scheme"
-#[serde_with::serde_as]
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TileSet {
@@ -283,17 +281,17 @@ pub struct TilePoint {
     pub cell_size: Option<f64>,
 }
 
-#[serde_with::serde_as]
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Style {
     /// An identifier for this style. Implementation of 'identifier'
     pub id: String,
     /// A title for this style
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub title: Option<String>,
     /// Brief narrative description of this style
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub description: Option<String>,
     /// Keywords about this style

@@ -5,23 +5,25 @@ use utoipa::ToSchema;
 /// An asset is an object that contains a link to data associated
 /// with the Item that can be downloaded or streamed. It is allowed
 /// to add additional fields.
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Asset {
     /// URI to the asset object. Relative and absolute URI are both allowed.
     pub href: String,
     /// The displayed title for clients and users.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     /// A description of the Asset providing additional details, such as how it was processed or created.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// Media type of the asset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
     /// The semantic roles of the asset, similar to the use of rel in links.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub roles: Vec<String>,
     /// Additional fields on the asset.
-    #[serde(flatten, default)]
+    #[serde(flatten, default, skip_serializing_if = "Map::is_empty")]
     pub additional_properties: Map<String, Value>,
 }
 

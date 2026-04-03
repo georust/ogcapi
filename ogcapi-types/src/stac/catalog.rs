@@ -6,7 +6,6 @@ use crate::common::Link;
 
 /// A STAC Catalog object represents a logical group of other `Catalog`,
 /// `Collection`, and `Item` objects.
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
 pub struct Catalog {
     /// Set to `Catalog` if this Catalog only implements the Catalog spec.
@@ -21,6 +20,7 @@ pub struct Catalog {
     /// Identifier for the Catalog.
     pub id: String,
     /// A short descriptive one-line title for the Catalog.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     /// Detailed multi-line description to fully explain the Catalog.
     /// CommonMark 0.29 syntax MAY be used for rich text representation.
