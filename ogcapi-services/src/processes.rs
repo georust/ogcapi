@@ -32,7 +32,7 @@ pub(crate) enum ProcessExecuteResponse {
     Asynchronous {
         status_info: StatusInfo,
         was_preferred_execution_mode: bool,
-        base_url: String,
+        status_url: String,
     },
 }
 
@@ -86,8 +86,8 @@ impl IntoResponseParts for PreferredResponseHeader {
 struct LocationHeader(Result<HeaderValue, InvalidHeaderValue>);
 
 impl LocationHeader {
-    fn new(base_url: &str, job_id: &str) -> Self {
-        Self(format!("{base_url}/jobs/{job_id}").parse())
+    fn new(status_url: &str) -> Self {
+        Self(status_url.parse())
     }
 }
 
@@ -145,9 +145,9 @@ impl IntoResponse for ProcessExecuteResponse {
             ProcessExecuteResponse::Asynchronous {
                 status_info,
                 was_preferred_execution_mode: _,
-                base_url,
+                status_url,
             } => {
-                let location_header = LocationHeader::new(&base_url, &status_info.job_id);
+                let location_header = LocationHeader::new(&status_url);
 
                 // `/req/core/process-execute-success-async`
                 (

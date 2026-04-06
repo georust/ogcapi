@@ -2,13 +2,10 @@ use std::collections::HashMap;
 
 use crate::Processor;
 use anyhow::Result;
-use ogcapi_types::{
-    common::Link,
-    processes::{
-        Execute, ExecuteResult, ExecuteResults, Format, InlineOrRefData, InputValueNoObject,
-        JobControlOptions, Output, Process, ProcessSummary, TransmissionMode,
-        description::{DescriptionType, InputDescription, OutputDescription},
-    },
+use ogcapi_types::processes::{
+    Execute, ExecuteResult, ExecuteResults, Format, InlineOrRefData, InputValueNoObject,
+    JobControlOptions, Output, Process, ProcessSummary, TransmissionMode,
+    description::{DescriptionType, InputDescription, OutputDescription},
 };
 use schemars::{JsonSchema, generate::SchemaSettings};
 use serde::{Deserialize, Serialize};
@@ -164,13 +161,7 @@ impl Processor for Echo {
                     // TODO: implement reference mode
                     // TransmissionMode::Reference,
                 ],
-                links: vec![
-                    Link::new(
-                        format!("./{}/execution", self.id()),
-                        "http://www.opengis.net/def/rel/ogc/1.0/execute",
-                    )
-                    .title("Execution endpoint"),
-                ],
+                links: vec![],
             },
             inputs: HashMap::from([
                 (
