@@ -1,7 +1,7 @@
+#[cfg(feature = "object")]
+pub mod object;
 #[cfg(feature = "postgres")]
 pub mod postgres;
-#[cfg(feature = "s3")]
-pub mod s3;
 
 #[cfg(feature = "common")]
 use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};

@@ -14,15 +14,16 @@ include = ["/src", "/migrations"]
 default = ["common", "edr", "features", "processes", "tiles"]
 
 # drivers
+object = ["aws-config", "aws-sdk-s3"]
 postgres = ["sqlx", "rink-core", "url"]
-s3 = ["aws-config", "aws-sdk-s3"]
+
 
 # standards
 common = ["ogcapi-types/common"]
 edr = ["common", "ogcapi-types/edr"]
 features = ["common", "ogcapi-types/features"]
 processes = ["common", "ogcapi-types/processes"]
-stac = ["features", "ogcapi-types/stac", "s3"]
+stac = ["features", "ogcapi-types/stac", "object"]
 styles = ["ogcapi-types/styles"]
 tiles = ["common", "ogcapi-types/tiles"]
 
