@@ -9,13 +9,32 @@ use crate::common::{Link, query::LimitOffsetPagination};
 
 use super::execute::InlineOrRefData;
 
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+#[schema(default = "process")]
+pub enum JobType {
+    #[default]
+    Process,
+}
+
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum StatusCode {
+    #[default]
+    Accepted,
+    Running,
+    Successful,
+    Failed,
+    Dismissed,
+}
+
 #[derive(Serialize, Deserialize, ToSchema, Debug, Default)]
 pub struct JobList {
     pub jobs: Vec<StatusInfo>,
     pub links: Vec<Link>,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 pub struct StatusInfo {
     #[schema(nullable = false)]
     #[serde(
@@ -49,23 +68,21 @@ pub struct StatusInfo {
     pub links: Vec<Link>,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-#[schema(default = "process")]
-pub enum JobType {
-    #[default]
-    Process,
-}
-
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum StatusCode {
-    #[default]
-    Accepted,
-    Running,
-    Successful,
-    Failed,
-    Dismissed,
+impl StatusInfo {
+    pub fn new(job_id: impl ToString) -> Self {
+        Self {
+            process_id: None,
+            r#type: JobType::Process,
+            job_id: job_id.to_string(),
+            status: StatusCode::Accepted,
+            message: None,
+            created: Some(Utc::now()),
+            finished: None,
+            updated: None,
+            progress: Some(0),
+            links: vec![],
+        }
+    }
 }
 
 #[serde_with::serde_as]

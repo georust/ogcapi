@@ -14,7 +14,7 @@ include = ["/src", "/migrations"]
 default = ["object", "common", "edr", "features", "processes", "tiles"]
 
 # drivers
-object = ["dep:bytes", "dep:futures", "dep:object_store"]
+object = ["dep:bytes", "dep:chrono", "dep:futures", "dep:object_store"]
 postgres = ["sqlx", "rink-core"]
 
 
@@ -31,6 +31,7 @@ tiles = ["common", "ogcapi-types/tiles"]
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 bytes = { version = "1.11", optional = true }
+chrono = { workspace = true, optional = true }
 futures = { version = "0.3.32", optional = true }
 object_store = { version = "0.13.2", optional = true, features = [] }
 rink-core = { version = "0.8.0", optional = true, features = ["bundle-files"] }

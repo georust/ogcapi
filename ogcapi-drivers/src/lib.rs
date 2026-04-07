@@ -21,7 +21,7 @@ use ogcapi_types::{
 #[cfg(feature = "processes")]
 use ogcapi_types::{
     common::Link,
-    processes::{Response, StatusCode, StatusInfo},
+    processes::{ExecuteResults, Response, StatusCode, StatusInfo},
 };
 
 #[cfg(any(feature = "features", feature = "stac", feature = "edr"))]
@@ -54,6 +54,7 @@ pub trait FeatureTransactions: Send + Sync {
         feature_id: &str,
         crs: &Crs,
     ) -> anyhow::Result<Option<Feature>>;
+
     async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()>;
 
     async fn delete_feature(&self, collection_id: &str, feature_id: &str) -> anyhow::Result<()>;
@@ -102,29 +103,29 @@ pub trait JobHandler: Send + Sync {
 
     async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>>;
 
-    async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
+    async fn status(&self, job_id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
     async fn finish(
         &self,
         job_id: &str,
-        status: &StatusCode,
+        status_code: StatusCode,
         message: Option<String>,
         links: Vec<Link>,
-        results: Option<ogcapi_types::processes::ExecuteResults>,
+        execute_results: Option<ExecuteResults>,
     ) -> anyhow::Result<()>;
 
-    async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
+    async fn dismiss(&self, job_id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
-    async fn results(&self, id: &str) -> anyhow::Result<ProcessResult>;
+    async fn results(&self, job_id: &str) -> anyhow::Result<ProcessResult>;
 }
 
 #[cfg(feature = "processes")]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ProcessResult {
     NoSuchJob,
     NotReady,
     Results {
-        results: ogcapi_types::processes::ExecuteResults,
+        results: ExecuteResults,
         response_mode: Response,
     },
 }
