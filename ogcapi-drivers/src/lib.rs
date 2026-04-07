@@ -33,11 +33,11 @@ use ogcapi_types::features::FeatureCollection;
 pub trait CollectionTransactions: Send + Sync {
     async fn create_collection(&self, collection: &Collection) -> anyhow::Result<String>;
 
-    async fn read_collection(&self, id: &str) -> anyhow::Result<Option<Collection>>;
+    async fn read_collection(&self, collection_id: &str) -> anyhow::Result<Option<Collection>>;
 
     async fn update_collection(&self, collection: &Collection) -> anyhow::Result<()>;
 
-    async fn delete_collection(&self, id: &str) -> anyhow::Result<()>;
+    async fn delete_collection(&self, collection_id: &str) -> anyhow::Result<()>;
 
     async fn list_collections(&self, query: &CollectionQuery) -> anyhow::Result<Collections>;
 }
@@ -51,12 +51,12 @@ pub trait FeatureTransactions: Send + Sync {
     async fn read_feature(
         &self,
         collection_id: &str,
-        id: &str,
+        feature_id: &str,
         crs: &Crs,
     ) -> anyhow::Result<Option<Feature>>;
     async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()>;
 
-    async fn delete_feature(&self, collection_id: &str, id: &str) -> anyhow::Result<()>;
+    async fn delete_feature(&self, collection_id: &str, feature_id: &str) -> anyhow::Result<()>;
 
     async fn list_items(
         &self,

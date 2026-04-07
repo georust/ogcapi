@@ -46,21 +46,29 @@ fn collection_from_geojson(
         crs: Some(storage_crs.clone()),
     });
 
+    //SpatialExtent {
+    //   bbox: vec![
+    //       bbox.as_slice()
+    //           .try_into()
+    //           .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
+    //    ],
+    //      crs: Some(Crs::default2d()), // storage crs?
+    //   }
+
     let extent = spatial_extent.map(|spatial| Extent {
         spatial: Some(spatial),
         ..Default::default()
     });
     tracing::debug!("extent: {extent:#?}");
 
-    Ok(Collection {
-        id: collection_id.to_owned(),
-        extent,
-        crs,
-        storage_crs: Some(storage_crs),
-        // #[cfg(feature = "stac")]
-        // assets: crate::asset::load_asset_from_path(&args.input).await?,
-        ..Default::default()
-    })
+    let mut collection = Collection::new(collection_id);
+    collection.extent = extent;
+    collection.crs = crs;
+    collection.storage_crs = Some(storage_crs);
+    // #[cfg(feature = "stac")]
+    // collection.assets = crate::asset::load_asset_from_path(&args.input).await?;
+
+    Ok(collection)
 }
 
 #[cfg(feature = "client")]

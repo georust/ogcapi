@@ -43,11 +43,8 @@ async fn edr() -> anyhow::Result<()> {
     assert_eq!(fc.number_matched, Some(1));
     assert_eq!(fc.number_returned, Some(1));
     let feature = &fc.features[0];
-    assert_eq!(feature.properties.as_ref().unwrap().len(), 3);
-    assert_eq!(
-        feature.properties.as_ref().unwrap()["NAME"].as_str(),
-        Some("Switzerland")
-    );
+    assert_eq!(feature.properties.len(), 3);
+    assert_eq!(feature.properties["NAME"].as_str(), Some("Switzerland"));
 
     // query area
     let query = Query {
@@ -68,7 +65,7 @@ async fn edr() -> anyhow::Result<()> {
     let feature = &fc
         .features
         .into_iter()
-        .find(|f| f.properties.as_ref().unwrap()["NAME"].as_str() == Some("Bern"));
+        .find(|f| f.properties["NAME"].as_str() == Some("Bern"));
     assert!(feature.is_some());
 
     // query radius
@@ -92,7 +89,7 @@ async fn edr() -> anyhow::Result<()> {
     let feature = &fc
         .features
         .into_iter()
-        .find(|f| f.properties.as_ref().unwrap()["NAME"].as_str() == Some("Bern"));
+        .find(|f| f.properties["NAME"].as_str() == Some("Bern"));
     assert!(feature.is_some());
 
     Ok(())

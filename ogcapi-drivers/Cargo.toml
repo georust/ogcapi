@@ -11,11 +11,11 @@ keywords.workspace = true
 include = ["/src", "/migrations"]
 
 [features]
-default = ["common", "edr", "features", "processes", "tiles"]
+default = ["object", "common", "edr", "features", "processes", "tiles"]
 
 # drivers
-object = ["aws-config", "aws-sdk-s3"]
-postgres = ["sqlx", "rink-core", "url"]
+object = ["dep:bytes", "dep:futures", "dep:object_store"]
+postgres = ["sqlx", "rink-core"]
 
 
 # standards
@@ -29,14 +29,10 @@ tiles = ["common", "ogcapi-types/tiles"]
 
 [dependencies]
 anyhow = { workspace = true }
-aws-config = { version = "1.8", optional = true, default-features = false, features = [
-    "behavior-version-latest",
-] }
-aws-sdk-s3 = { version = "1.128.0", optional = true, default-features = false, features = [
-    "rt-tokio",
-    "behavior-version-latest",
-] }
 async-trait = { workspace = true }
+bytes = { version = "1.11", optional = true }
+futures = { version = "0.3.32", optional = true }
+object_store = { version = "0.13.2", optional = true, features = [] }
 rink-core = { version = "0.8.0", optional = true, features = ["bundle-files"] }
 serde_json = { workspace = true }
 sqlx = { version = "0.8.6", optional = true, features = [
@@ -45,9 +41,13 @@ sqlx = { version = "0.8.6", optional = true, features = [
     "json",
     "migrate",
 ] }
-url = { workspace = true, optional = true }
+url = { workspace = true }
+uuid = { version = "1.23", features = ["v4"]}
 
 ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
+
+[dev-dependencies]
+tokio = { version = "1.51", default-features = false, features = ["macros"] }
 
 [package.metadata.docs.rs]
 all-features = true
