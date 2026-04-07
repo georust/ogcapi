@@ -1,6 +1,6 @@
 use reqwest::{
     Client as ReqwestClient, Url,
-    header::{HeaderMap, HeaderValue, AUTHORIZATION, USER_AGENT},
+    header::{AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT},
 };
 
 use ogcapi_types::common::{
@@ -119,7 +119,10 @@ impl AsyncClient {
 
     /// Fetches the next page of results by following the `next` link.
     /// Returns `None` if there is no next link.
-    pub async fn next_page<T>(&self, links: &[ogcapi_types::common::Link]) -> Result<Option<T>, Error>
+    pub async fn next_page<T>(
+        &self,
+        links: &[ogcapi_types::common::Link],
+    ) -> Result<Option<T>, Error>
     where
         T: serde::de::DeserializeOwned,
     {
