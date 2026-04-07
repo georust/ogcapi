@@ -76,7 +76,7 @@ pub enum InputValue {
 }
 
 /// Process execution output
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Output {
     #[schema(nullable = false)]
@@ -107,7 +107,7 @@ pub enum Schema {
     Object(Map<String, Value>),
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
 #[schema(default = "value")]
 pub enum TransmissionMode {
@@ -116,7 +116,7 @@ pub enum TransmissionMode {
     Reference,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
 #[schema(default = "raw")]
 pub enum Response {
@@ -149,7 +149,7 @@ pub struct Subscriber {
 
 pub type ExecuteResults = HashMap<String, ExecuteResult>;
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 pub struct ExecuteResult {
     pub output: Output,
     pub data: InlineOrRefData,

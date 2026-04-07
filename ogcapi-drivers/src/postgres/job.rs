@@ -1,8 +1,9 @@
+use sqlx::types::Json;
+
 use ogcapi_types::{
     common::Link,
     processes::{ExecuteResults, Response, StatusCode, StatusInfo},
 };
-use sqlx::types::Json;
 
 use crate::{JobHandler, ProcessResult};
 
@@ -11,7 +12,7 @@ use super::Db;
 #[async_trait::async_trait]
 impl JobHandler for Db {
     async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String> {
-        let (id,): (String,) = sqlx::query_as(
+        let (job_id,): (String,) = sqlx::query_as(
             r#"
             INSERT INTO meta.jobs(
                 job_id,
@@ -38,11 +39,11 @@ impl JobHandler for Db {
             RETURNING job_id
             "#,
         )
-        .bind(sqlx::types::Json(job))
-        .bind(sqlx::types::Json(response_mode))
+        .bind(Json(job))
+        .bind(Json(response_mode))
         .fetch_one(&self.pool)
         .await?;
-        Ok(id)
+        Ok(job_id)
     }
 
     async fn update(&self, job: &StatusInfo) -> anyhow::Result<()> {
@@ -58,7 +59,7 @@ impl JobHandler for Db {
             WHERE job_id = $1 ->> 'jobID'
             "#,
         )
-        .bind(sqlx::types::Json(job))
+        .bind(Json(job))
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -67,10 +68,10 @@ impl JobHandler for Db {
     async fn finish(
         &self,
         job_id: &str,
-        status: &StatusCode,
+        status_code: StatusCode,
         message: Option<String>,
         links: Vec<Link>,
-        results: Option<ExecuteResults>,
+        execute_results: Option<ExecuteResults>,
     ) -> anyhow::Result<()> {
         sqlx::query(
             r#"
@@ -86,10 +87,10 @@ impl JobHandler for Db {
             "#,
         )
         .bind(job_id)
-        .bind(Json(status))
+        .bind(Json(status_code))
         .bind(message)
         .bind(Json(links))
-        .bind(results.map(Json))
+        .bind(execute_results.map(Json))
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -99,7 +100,7 @@ impl JobHandler for Db {
         // Return a list of `StatusInfo` rows. Ensure `links` is always an array
         // (coalesce NULL to empty array) so deserialization into `StatusInfo`
         // which expects a list works reliably.
-        let status_list: Vec<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
+        let status_list: Vec<Json<StatusInfo>> = sqlx::query_scalar(
             r#"
             SELECT json_object(
                 'process_id': process_id,
@@ -126,8 +127,8 @@ impl JobHandler for Db {
         Ok(status_list.into_iter().map(|s| s.0).collect())
     }
 
-    async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>> {
-        let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
+    async fn status(&self, job_id: &str) -> anyhow::Result<Option<StatusInfo>> {
+        let status_info: Option<Json<StatusInfo>> = sqlx::query_scalar(
             r#"
             SELECT json_object(
                 'process_id': process_id,
@@ -144,15 +145,15 @@ impl JobHandler for Db {
             WHERE job_id = $1
             "#,
         )
-        .bind(id)
+        .bind(job_id)
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(status.map(|s| s.0))
+        Ok(status_info.map(|s| s.0))
     }
 
-    async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>> {
-        let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
+    async fn dismiss(&self, job_id: &str) -> anyhow::Result<Option<StatusInfo>> {
+        let status_info: Option<Json<StatusInfo>> = sqlx::query_scalar(
             r#"
             UPDATE meta.jobs
             SET status = $2,
@@ -171,15 +172,15 @@ impl JobHandler for Db {
             ) as "status_info!"
             "#,
         )
-        .bind(id)
-        .bind(sqlx::types::Json(StatusCode::Dismissed))
+        .bind(job_id)
+        .bind(Json(StatusCode::Dismissed))
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(status.map(|s| s.0))
+        Ok(status_info.map(|s| s.0))
     }
 
-    async fn results(&self, id: &str) -> anyhow::Result<ProcessResult> {
+    async fn results(&self, job_id: &str) -> anyhow::Result<ProcessResult> {
         let results: Option<(Option<Json<ExecuteResults>>, Json<Response>)> = sqlx::query_as(
             r#"
             SELECT results, to_jsonb(response)
@@ -187,7 +188,7 @@ impl JobHandler for Db {
             WHERE job_id = $1
             "#,
         )
-        .bind(id)
+        .bind(job_id)
         .fetch_optional(&self.pool)
         .await?;
 

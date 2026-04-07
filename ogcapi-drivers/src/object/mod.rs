@@ -1,5 +1,9 @@
+#[cfg(feature = "common")]
 mod collection;
+#[cfg(feature = "features")]
 mod feature;
+#[cfg(feature = "processes")]
+mod job;
 
 use std::sync::Arc;
 

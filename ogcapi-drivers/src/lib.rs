@@ -7,6 +7,7 @@ pub mod postgres;
 use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
 #[cfg(feature = "edr")]
 use ogcapi_types::edr::{Query as EdrQuery, QueryType};
+use ogcapi_types::processes::ExecuteResults;
 #[cfg(feature = "stac")]
 use ogcapi_types::stac::SearchParams;
 #[cfg(feature = "styles")]
@@ -54,6 +55,7 @@ pub trait FeatureTransactions: Send + Sync {
         feature_id: &str,
         crs: &Crs,
     ) -> anyhow::Result<Option<Feature>>;
+
     async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()>;
 
     async fn delete_feature(&self, collection_id: &str, feature_id: &str) -> anyhow::Result<()>;
@@ -98,33 +100,33 @@ pub trait EdrQuerier: Send + Sync {
 pub trait JobHandler: Send + Sync {
     async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String>;
 
-    async fn update(&self, job: &StatusInfo) -> anyhow::Result<()>;
+    async fn update(&self, status_info: &StatusInfo) -> anyhow::Result<()>;
 
     async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>>;
 
-    async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
+    async fn status(&self, job_id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
     async fn finish(
         &self,
         job_id: &str,
-        status: &StatusCode,
+        status_code: StatusCode,
         message: Option<String>,
         links: Vec<Link>,
-        results: Option<ogcapi_types::processes::ExecuteResults>,
+        execute_results: Option<ExecuteResults>,
     ) -> anyhow::Result<()>;
 
-    async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
+    async fn dismiss(&self, job_id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
-    async fn results(&self, id: &str) -> anyhow::Result<ProcessResult>;
+    async fn results(&self, job_id: &str) -> anyhow::Result<ProcessResult>;
 }
 
 #[cfg(feature = "processes")]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ProcessResult {
     NoSuchJob,
     NotReady,
     Results {
-        results: ogcapi_types::processes::ExecuteResults,
+        results: ExecuteResults,
         response_mode: Response,
     },
 }

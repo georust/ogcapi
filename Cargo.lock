@@ -2251,6 +2251,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bytes",
+ "chrono",
  "futures",
  "object_store",
  "ogcapi-types",
