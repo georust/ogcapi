@@ -29,11 +29,16 @@
 //! println!("Found {} items!", items.count());
 //! # }
 
+mod async_client;
+#[cfg(not(target_arch = "wasm32"))]
 mod client;
 mod error;
 
 #[cfg(feature = "processes")]
+#[cfg(not(target_arch = "wasm32"))]
 mod processes;
 
+pub use async_client::AsyncClient;
+#[cfg(not(target_arch = "wasm32"))]
 pub use client::Client;
 pub use error::Error;
