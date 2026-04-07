@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `wasm32-unknown-unknown` support for `ogcapi-client` with new `AsyncClient` and bearer token auth.
 - Dynamic OpenAPI definition extraction.
 - Types for `OGCAPI - Moving Features`
 - Async OGC API - Processes execution (jobs).
