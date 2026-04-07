@@ -12,7 +12,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     use serde_json::json;
 
     use ogcapi_types::{
-        common::{Collection, Crs, media_type::JSON},
+        common::{Collection, media_type::JSON},
         features::Feature,
     };
 
@@ -20,14 +20,8 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let (addr, _) = setup::spawn_app().await?;
     let client = Client::builder(TokioExecutor::new()).build_http();
 
-    let collection = Collection {
-        id: "test.me-_".to_string(),
-        links: vec![],
-        crs: vec![Crs::default2d()],
-        ..Default::default()
-    };
-
     // create collection
+    let collection = Collection::new("test.me-_");
     let res = client
         .request(
             Request::builder()
@@ -41,7 +35,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let (parts, _body) = res.into_parts();
 
     assert_eq!(201, parts.status);
-    println!("{:#?}", parts.headers.get("Location"));
+    // println!("{:#?}", parts.headers.get("Location"));
 
     let feature: Feature = serde_json::from_value(json!({
         "collection": collection.id,
@@ -50,10 +44,6 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
             "type": "Point",
             "coordinates": [7.428959, 1.513394]
         },
-        "links": [{
-            "href": "https://localhost:8080/collections/test/items/{id}",
-            "rel": "self"
-        }]
     }))?;
 
     // create feature
@@ -73,22 +63,14 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     assert_eq!(201, res.status());
 
     let location = res.headers().get("Location").unwrap().to_str()?;
-    println!("{location}");
-
-    let id = location.split('/').next_back().unwrap();
+    // println!("{location}");
 
     // read feauture
     let res = client
         .request(
             Request::builder()
                 .method(Method::GET)
-                .uri(
-                    format!(
-                        "http://{}/collections/{}/items/{}",
-                        addr, collection.id, &id
-                    )
-                    .as_str(),
-                )
+                .uri(location)
                 .body(Body::empty())?,
         )
         .await?;
@@ -103,13 +85,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
         .request(
             Request::builder()
                 .method(Method::DELETE)
-                .uri(
-                    format!(
-                        "http://{}/collections/{}/items/{}",
-                        addr, collection.id, &id
-                    )
-                    .as_str(),
-                )
+                .uri(location)
                 .body(Body::empty())?,
         )
         .await?;

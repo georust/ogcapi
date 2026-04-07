@@ -70,25 +70,22 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
     let storage_crs = Crs::from_srid(spatial_ref_src.auth_code()?);
 
     // Create collection (overwrite/delete existing)
-    let collection = Collection {
-        id: args.collection.to_owned(),
-        crs: Vec::from_iter(HashSet::from([
-            Crs::default2d(),
-            storage_crs.clone(),
-            Crs::from_epsg(3857),
-        ])),
-        extent: layer.try_get_extent()?.map(|e| Extent {
-            spatial: SpatialExtent {
-                bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
-                crs: Some(storage_crs.to_owned()),
-            },
-            ..Default::default()
-        }),
-        storage_crs: Some(storage_crs.to_owned()),
-        #[cfg(feature = "stac")]
-        assets: crate::asset::load_asset_from_path(&args.input).await?,
+    let mut collection = Collection::new(&args.collection);
+    collection.crs = Vec::from_iter(HashSet::from([
+        Crs::default2d(),
+        storage_crs.clone(),
+        Crs::from_epsg(3857),
+    ]));
+    collection.extent = layer.try_get_extent()?.map(|e| Extent {
+        spatial: SpatialExtent {
+            bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
+            crs: Some(storage_crs.to_owned()),
+        },
         ..Default::default()
-    };
+    });
+    collection.storage_crs = Some(storage_crs.to_owned());
+    // #[cfg(feature = "stac")]
+    // collection.assets = crate::asset::load_asset_from_path(&args.input).await?;
 
     db.delete_collection(&collection.id).await?;
     db.create_collection(&collection).await?;

@@ -1,6 +1,4 @@
-#[cfg(feature = "stac")]
-use std::collections::HashMap;
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 #[cfg(feature = "stac")]
 use crate::common::Bbox;
@@ -16,7 +14,7 @@ use chrono::{DateTime, Utc};
 
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use utoipa::{ToSchema, openapi::Schema};
 
 use crate::common::Link;
@@ -58,8 +56,8 @@ pub struct Feature {
     #[serde(default)]
     #[schema(inline = true)]
     pub r#type: Type,
-    #[serde(default)]
-    pub properties: Option<Map<String, Value>>,
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub properties: HashMap<String, Value>,
     #[schema(schema_with = geometry)]
     pub geometry: Geometry,
     /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
@@ -138,14 +136,6 @@ impl Feature {
             temporal_geometry: Default::default(),
             #[cfg(feature = "movingfeatures")]
             temporal_properties: Default::default(),
-        }
-    }
-
-    pub fn append_properties(&mut self, mut other: Map<String, Value>) {
-        if let Some(properties) = self.properties.as_mut() {
-            properties.append(&mut other);
-        } else {
-            self.properties = Some(other);
         }
     }
 }

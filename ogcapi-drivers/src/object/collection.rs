@@ -1,102 +1,129 @@
-use aws_sdk_s3::{error::SdkError, operation::get_object::GetObjectError};
+use futures::StreamExt;
+use object_store::{Error, ObjectStoreExt as _, PutMode, PutOptions, path::Path};
 
-use ogcapi_types::common::{Collection, Collections, Query, media_type::JSON};
+use ogcapi_types::common::{Collection, Collections, Query};
 
 use crate::CollectionTransactions;
 
-use super::S3;
+use super::ObjectDriver;
 
 #[async_trait::async_trait]
-impl CollectionTransactions for S3 {
+impl CollectionTransactions for ObjectDriver {
     async fn create_collection(&self, collection: &Collection) -> Result<String, anyhow::Error> {
-        let key = format!("collections/{}/collection.json", collection.id);
-        let data = serde_json::to_vec(&collection)?;
+        let collection_id = collection.id.clone();
 
-        self.put_object(
-            self.bucket.clone().unwrap_or_default(),
-            &key,
-            data,
-            Some(JSON.to_string()),
-        )
-        .await?;
+        let location = Path::from(format!("collections/{collection_id}/collection.json"));
 
-        Ok(collection.id.to_owned())
+        let payload = serde_json::to_vec(collection)?;
+
+        let options = PutOptions {
+            mode: PutMode::Create,
+            ..Default::default()
+        };
+        self.store
+            .put_opts(&location, payload.into(), options)
+            .await?;
+
+        Ok(collection_id.to_owned())
     }
 
-    async fn read_collection(&self, id: &str) -> Result<Option<Collection>, anyhow::Error> {
-        // TODO: cache
-        let key = format!("collections/{id}/collection.json");
+    async fn read_collection(
+        &self,
+        collection_id: &str,
+    ) -> Result<Option<Collection>, anyhow::Error> {
+        let location = Path::from(format!("collections/{collection_id}/collection.json"));
 
-        match self
-            .get_object(self.bucket.clone().unwrap_or_default(), &key)
-            .await
-        {
-            Ok(r) => Ok(Some(serde_json::from_slice(
-                &r.body.collect().await?.into_bytes(),
-            )?)),
+        match self.store.get(&location).await {
+            Ok(r) => {
+                let v = r.bytes().await?;
+                let collection = serde_json::from_slice(&v)?;
+                Ok(Some(collection))
+            }
             Err(e) => match e {
-                SdkError::ServiceError(err) => match err.err() {
-                    GetObjectError::NoSuchKey(_) => Ok(None),
-                    _ => Err(anyhow::Error::new(err.into_err())),
-                },
+                Error::NotFound { path: _, source: _ } => Ok(None),
                 _ => Err(anyhow::Error::new(e)),
             },
         }
     }
 
     async fn update_collection(&self, collection: &Collection) -> Result<(), anyhow::Error> {
-        let key = format!("collections/{}/collection.json", collection.id);
-        let data = serde_json::to_vec(&collection)?;
+        let collection_id = &collection.id;
 
-        self.put_object(
-            self.bucket.clone().unwrap_or_default(),
-            &key,
-            data,
-            Some(JSON.to_string()),
-        )
-        .await?;
+        let location = Path::from(format!("collections/{collection_id}/collection.json"));
+
+        let payload = serde_json::to_vec(collection)?;
+
+        self.store.put(&location, payload.into()).await?;
 
         Ok(())
     }
 
-    async fn delete_collection(&self, id: &str) -> Result<(), anyhow::Error> {
-        let key = format!("collections/{id}");
+    async fn delete_collection(&self, collection_id: &str) -> Result<(), anyhow::Error> {
+        let prefix = Path::from(format!("collections/{collection_id}"));
 
-        self.delete_object(self.bucket.clone().unwrap_or_default(), &key)
-            .await?;
+        let mut list_stream = self.store.list(Some(&prefix));
+
+        while let Some(result) = list_stream.next().await {
+            let meta = result?;
+            self.store.delete(&meta.location).await?;
+        }
+
+        self.store.delete(&prefix).await?;
 
         Ok(())
     }
 
     async fn list_collections(&self, _query: &Query) -> Result<Collections, anyhow::Error> {
-        let mut collections = Vec::new();
+        let prefix = Path::from("collections");
 
-        let resp = self
-            .client
-            .list_objects()
-            .bucket(self.bucket.clone().unwrap_or_default())
-            .send()
-            .await?;
+        let list_result = self.store.list_with_delimiter(Some(&prefix)).await?;
 
-        for object in resp.contents.unwrap() {
-            if let Some(key) = object.key()
-                && key.ends_with("collection.json")
-            {
-                let r = self
-                    .get_object(self.bucket.clone().unwrap_or_default(), key)
-                    .await?;
+        let mut collections = Vec::with_capacity(list_result.common_prefixes.len());
 
-                let c = serde_json::from_slice(&r.body.collect().await?.into_bytes()[..])?;
-
-                collections.push(c);
-            }
+        for path in list_result.common_prefixes {
+            let collection = self
+                .read_collection(path.parts().next_back().unwrap().as_ref())
+                .await?;
+            collections.push(collection.unwrap());
         }
 
-        let mut collections = Collections::new(collections);
-        collections
-            .number_returned
-            .clone_into(&mut collections.number_matched);
+        Ok(Collections::new(collections))
+    }
+}
 
-        Ok(collections)
+#[cfg(test)]
+mod tests {
+
+    use ogcapi_types::common::Collection;
+
+    use crate::CollectionTransactions;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn collection_crud() {
+        let driver = ObjectDriver::default();
+
+        // create collection
+        let mut collection = Collection::new("test");
+
+        let collection_id = driver.create_collection(&collection).await.unwrap();
+        assert_eq!(collection_id, "test");
+
+        // read collection
+        let collection2 = driver.read_collection(&collection_id).await.unwrap();
+        assert_eq!(collection2.as_ref(), Some(&collection));
+
+        // update collection
+        collection.title = Some("title".to_string());
+        driver.update_collection(&collection).await.unwrap();
+
+        let collection2 = driver.read_collection(&collection_id).await.unwrap();
+        assert_eq!(collection2, Some(collection));
+
+        // delete collection
+        driver.delete_collection(&collection_id).await.unwrap();
+        let collection2 = driver.read_collection(&collection_id).await.unwrap();
+        assert!(collection2.is_none());
     }
 }
