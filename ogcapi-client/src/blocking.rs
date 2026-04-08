@@ -147,6 +147,28 @@ impl BlockingClient {
             })
     }
 
+    /// Returns an iterator over items in a collection, filtered by the given
+    /// query parameters (bbox, datetime, limit, etc.).
+    pub fn items_with_query(
+        &self,
+        id: &str,
+        query: &ogcapi_types::features::Query,
+    ) -> Result<Items, Error> {
+        let base = self.endpoint.join(&format!("collections/{id}/items"))?;
+        let qs = serde_qs::to_string(query)?;
+        let url = if qs.is_empty() {
+            base.to_string()
+        } else {
+            format!("{base}?{qs}")
+        };
+
+        self.fetch::<FeatureCollection>(&url).map(|i| Items {
+            client: self.to_owned(),
+            items: i.features.into_iter(),
+            links: i.links,
+        })
+    }
+
     /// Returns an iterator over the catalogs of the SpatioTemporal Asset Catalog.
     #[cfg(feature = "stac")]
     pub fn walk(&self) -> Result<StacEntities, Error> {

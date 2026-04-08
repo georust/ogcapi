@@ -128,6 +128,29 @@ impl Client {
         })
     }
 
+    /// Returns an async paginating iterator over items in a collection,
+    /// filtered by the given query parameters (bbox, datetime, limit, etc.).
+    pub async fn items_with_query(
+        &self,
+        id: &str,
+        query: &ogcapi_types::features::Query,
+    ) -> Result<Items, Error> {
+        let base = self.endpoint.join(&format!("collections/{id}/items"))?;
+        let qs = serde_qs::to_string(query)?;
+        let url = if qs.is_empty() {
+            base.to_string()
+        } else {
+            format!("{base}?{qs}")
+        };
+        let page = self.fetch::<FeatureCollection>(&url).await?;
+        Ok(Items {
+            client: self.clone(),
+            items: page.features.into_iter(),
+            links: page.links,
+            pending: None,
+        })
+    }
+
     /// Searches items with the given parameters.
     #[cfg(feature = "stac")]
     pub async fn search(&self, params: SearchParams) -> Result<Items, Error> {
