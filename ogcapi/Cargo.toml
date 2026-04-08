@@ -65,6 +65,9 @@ tiles = [
     "ogcapi-services?/tiles",
 ]
 
+# client
+blocking = ["ogcapi-client?/blocking"]
+
 # drivers
 postgres = ["ogcapi-drivers/postgres"]
 

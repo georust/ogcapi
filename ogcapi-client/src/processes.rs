@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 impl Client {
     #[cfg(feature = "processes")]
-    pub fn execute(
+    pub async fn execute(
         &self,
         process_id: &str,
         execute: &Execute,
@@ -15,8 +15,8 @@ impl Client {
             .client
             .post(url)
             .json(execute)
-            // .header("prefer", "respond-async")
             .send()
+            .await
             .and_then(|rsp| rsp.error_for_status())?;
 
         match response.status().as_u16() {
@@ -27,7 +27,7 @@ impl Client {
                         match v.transmission_mode {
                             TransmissionMode::Value => Ok(ProcessResponseBody::Requested {
                                 outputs: execute.outputs.clone(),
-                                parts: vec![response.bytes()?.to_vec()],
+                                parts: vec![response.bytes().await?.to_vec()],
                             }),
                             TransmissionMode::Reference => todo!(),
                         }
@@ -35,10 +35,12 @@ impl Client {
                         unimplemented!()
                     }
                 }
-                Response::Document => Ok(ProcessResponseBody::Results(response.json::<Results>()?)),
+                Response::Document => Ok(ProcessResponseBody::Results(
+                    response.json::<Results>().await?,
+                )),
             },
             201 => Ok(ProcessResponseBody::StatusInfo(
-                response.json::<StatusInfo>()?,
+                response.json::<StatusInfo>().await?,
             )),
             204 => match response.headers().get("link").and_then(|l| l.to_str().ok()) {
                 Some(s) => Ok(ProcessResponseBody::Empty(s.to_string())),
@@ -65,15 +67,13 @@ pub enum ProcessResponseBody {
 }
 
 #[cfg(test)]
+#[cfg(feature = "greeter")]
 mod tests {
-    // use ogcapi_processes::gdal_loader::GdalLoaderOutputs;
-    use ogcapi_types::processes::Execute;
-
     use super::*;
 
-    #[test]
+    #[tokio::test]
     #[ignore = "needs running demo service"]
-    fn execute_greeter() {
+    async fn execute_greeter() {
         use ogcapi_processes::{
             Processor,
             greeter::{Greeter, GreeterInputs, GreeterOutputs},
@@ -92,7 +92,7 @@ mod tests {
             ..Default::default()
         };
 
-        let response = client.execute(Greeter {}.id(), &execute).unwrap();
+        let response = client.execute(Greeter {}.id(), &execute).await.unwrap();
 
         let ProcessResponseBody::Requested {
             outputs: _outputs,
@@ -107,42 +107,4 @@ mod tests {
             "Hello, client!\n"
         )
     }
-
-    // #[test]
-    // #[ignore = "needs running demo service"]
-    // fn execute_gdal_loader() {
-    //     use ogcapi_processes::{
-    //         Processor,
-    //         gdal_loader::{GdalLoader, GdalLoaderInputs},
-    //     };
-
-    //     let endpoint = "http://0.0.0.0:8484/";
-    //     let client = Client::new(endpoint).unwrap();
-
-    //     let input = GdalLoaderInputs {
-    //         input: "/data/ne_10m_railroads_north_america.geojson".to_owned(),
-    //         collection: "streets".to_string(),
-    //         filter: None,
-    //         s_srs: None,
-    //         database_url: "postgresql://postgres:password@db:5432/ogcapi".to_string(),
-    //     };
-
-    //     let execute = Execute {
-    //         inputs: input.execute_input(),
-    //         outputs: GdalLoaderOutputs::execute_output(),
-    //         ..Default::default()
-    //     };
-
-    //     let response = client.execute(GdalLoader {}.id(), &execute).unwrap();
-
-    //     let ProcessResponseBody::Requested {
-    //         outputs: _outputs,
-    //         parts,
-    //     } = response
-    //     else {
-    //         panic!()
-    //     };
-
-    //     assert_eq!(String::from_utf8(parts[0].clone()).unwrap(), "streets");
-    // }
 }

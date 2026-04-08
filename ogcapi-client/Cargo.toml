@@ -16,10 +16,14 @@ processes = ["ogcapi-processes"]
 
 stac = ["ogcapi-types/stac"]
 
+blocking = ["reqwest/blocking"]
+greeter = ["ogcapi-processes?/greeter"]
+
 [dependencies]
+futures-core = "0.3"
 geojson = { workspace = true }
 log = { workspace = true }
-reqwest = { version = "0.12.24", default-features = false, features = ["json", "blocking", "rustls-tls"] }
+reqwest = { version = "0.12.24", default-features = false, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_qs = { workspace = true }
@@ -28,6 +32,14 @@ url = { workspace = true, features = ["serde"] }
 
 ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
 ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.reqwest]
+version = "0.12.24"
+features = ["rustls-tls"]
+
+[dev-dependencies]
+futures-util = "0.3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [package.metadata.docs.rs]
 all-features = true

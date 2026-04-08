@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `wasm32-unknown-unknown` support for `ogcapi-client`.
+- `Client::new_with` and `BlockingClient::new_with` to bring a custom `reqwest` client.
+- `Client::items_with_query` and `BlockingClient::items_with_query` for server-side filtering by bbox, datetime, etc.
 - Dynamic OpenAPI definition extraction.
 - Types for `OGCAPI - Moving Features`
 - Async OGC API - Processes execution (jobs).
@@ -29,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- BREAKING: `ogcapi-client`: `Client` is now async by default. The previous blocking `Client` is available as `BlockingClient` behind the `blocking` feature flag.
 - Make features opt-out rather than opt-in for released standards.
 - Allow integers for feature id.
 - Build documentation for all features.
