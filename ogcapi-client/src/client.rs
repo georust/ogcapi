@@ -1,58 +1,41 @@
-use std::cell::OnceCell;
-
 use reqwest::{
-    Url,
-    blocking::Client as ReqwestClient,
-    header::{HeaderMap, HeaderValue, USER_AGENT},
+    Client as ReqwestClient, Url,
+    header::{AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT},
 };
 
-use ogcapi_types::common::Link;
-#[cfg(not(feature = "stac"))]
-use ogcapi_types::features::Feature;
+use ogcapi_types::common::{
+    Collection, Conformance, LandingPage,
+    link_rel::{CONFORMANCE, DATA, NEXT},
+};
+use ogcapi_types::features::FeatureCollection;
 #[cfg(feature = "stac")]
-use ogcapi_types::{
-    common::link_rel::{CHILD, ITEM, SELF},
-    stac::{Catalog, Item as Feature, SearchParams, StacEntity},
-};
-use ogcapi_types::{
-    common::{
-        Collection, Conformance, LandingPage,
-        link_rel::{CONFORMANCE, DATA, NEXT},
-    },
-    features::FeatureCollection,
-};
+use ogcapi_types::stac::SearchParams;
 
 use crate::Error;
 
 static UA_STRING: &str = "OGCAPI-CLIENT";
 
-/// Client to access OGC APIs and/or SpatioTemporal Asset Catalogs (STAC).
-/// # Example:
+/// Async client to access OGC APIs and/or SpatioTemporal Asset Catalogs (STAC).
 ///
-/// ```rust
+/// # Example
+///
+/// ```rust,ignore
 /// use ogcapi_client::Client;
 ///
-/// let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
-/// let client = Client::new(endpoint).unwrap();
-///
-/// client.collections().unwrap().for_each(|c| match c {
-///     Ok(c) => {
-///         println!("{} ({})", c.id, c.title.unwrap_or("".to_string()))
-///     }
-///     Err(e) => {
-///         eprintln!("{}", e)
-///     }
-/// });
+/// #[tokio::main]
+/// async fn main() {
+///     let client = Client::new("https://example.com/ogc/").unwrap();
+///     let collection = client.collection("my-collection").await.unwrap();
+/// }
 /// ```
 #[derive(Clone)]
 pub struct Client {
     pub(crate) client: ReqwestClient,
     pub(crate) endpoint: Url,
-    root: OnceCell<LandingPage>,
 }
 
 impl Client {
-    /// Creates a Client for a given `OGCAPI`/`STAC` endpoint.
+    /// Creates a Client for a given OGC API endpoint.
     pub fn new(endpoint: &str) -> Result<Self, Error> {
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, HeaderValue::from_static(UA_STRING));
@@ -68,37 +51,51 @@ impl Client {
             format!("{endpoint}/").parse::<Url>()?
         };
 
-        Ok(Self {
-            client,
-            endpoint,
-            root: OnceCell::new(),
-        })
+        Ok(Self { client, endpoint })
     }
 
-    /// Returns the landing page or the root catalog.
-    pub fn root(&self) -> Result<LandingPage, Error> {
-        let root = if let Some(root) = self.root.get() {
-            root
+    /// Creates a Client with bearer token authentication.
+    pub fn with_bearer_token(endpoint: &str, token: &str) -> Result<Self, Error> {
+        let mut headers = HeaderMap::new();
+        headers.insert(USER_AGENT, HeaderValue::from_static(UA_STRING));
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {token}"))
+                .map_err(|e| Error::ClientError(format!("Invalid bearer token: {e}")))?,
+        );
+
+        let client = ReqwestClient::builder()
+            .default_headers(headers)
+            .build()
+            .expect("Build a client");
+
+        let endpoint = if endpoint.ends_with('/') {
+            endpoint.parse::<Url>()?
         } else {
-            let root = self.fetch::<LandingPage>(self.endpoint.as_ref())?;
-            self.root.get_or_init(|| root)
+            format!("{endpoint}/").parse::<Url>()?
         };
-        Ok(root.clone())
+
+        Ok(Self { client, endpoint })
     }
 
-    /// Returns the conformance declaration of the SpatioTemporal Asset Catalog.
-    pub fn conformance(&self) -> Result<Conformance, Error> {
-        let catalog = self.root()?;
+    /// Returns the landing page.
+    pub async fn root(&self) -> Result<LandingPage, Error> {
+        self.fetch::<LandingPage>(self.endpoint.as_ref()).await
+    }
+
+    /// Returns the conformance declaration.
+    pub async fn conformance(&self) -> Result<Conformance, Error> {
+        let root = self.root().await?;
 
         #[cfg(feature = "stac")]
-        if !catalog.conforms_to.is_empty() {
+        if !root.conforms_to.is_empty() {
             return Ok(Conformance {
-                conforms_to: catalog.conforms_to,
+                conforms_to: root.conforms_to,
             });
         }
 
-        if let Some(link) = catalog.links.iter().find(|l| l.rel == CONFORMANCE) {
-            return self.fetch::<Conformance>(&link.href);
+        if let Some(link) = root.links.iter().find(|l| l.rel == CONFORMANCE) {
+            return self.fetch::<Conformance>(&link.href).await;
         }
 
         Err(Error::UnknownConformance(
@@ -106,25 +103,13 @@ impl Client {
         ))
     }
 
-    /// Returns an iterator over the catalogs of the SpatioTemporal Asset Catalog.
-    #[cfg(feature = "stac")]
-    pub fn catalogs(&self) -> Result<Catalogs, Error> {
-        let link = Link::new(&self.endpoint, SELF);
-        Ok(Catalogs {
-            client: self.to_owned(),
-            links: vec![link],
-        })
-    }
+    /// Returns all collections (first page).
+    pub async fn collections(&self) -> Result<ogcapi_types::common::Collections, Error> {
+        let root = self.root().await?;
 
-    /// Returns an iterator over the collections.
-    pub fn collections(&self) -> Result<Collections, Error> {
-        if let Some(link) = self.root()?.links.iter().find(|l| l.rel == DATA) {
+        if let Some(link) = root.links.iter().find(|l| l.rel == DATA) {
             self.fetch::<ogcapi_types::common::Collections>(&link.href)
-                .map(|c| Collections {
-                    client: self.to_owned(),
-                    collections: c.collections.into_iter(),
-                    links: c.links,
-                })
+                .await
         } else {
             Err(Error::ClientError(
                 "No link found with relation `data`!".to_string(),
@@ -132,46 +117,79 @@ impl Client {
         }
     }
 
-    pub fn collection(&self, id: &str) -> Result<Collection, Error> {
+    /// Returns a single collection by id.
+    pub async fn collection(&self, id: &str) -> Result<Collection, Error> {
         let url = self.endpoint.join(&format!("collections/{id}"))?;
-
-        self.fetch::<Collection>(url.as_str())
+        self.fetch::<Collection>(url.as_str()).await
     }
 
-    pub fn items(&self, id: &str) -> Result<Items, Error> {
+    /// Returns items for a collection (first page).
+    pub async fn items(&self, id: &str) -> Result<FeatureCollection, Error> {
         let url = self.endpoint.join(&format!("collections/{id}/items"))?;
-
-        self.fetch::<FeatureCollection>(url.as_str())
-            .map(|i| Items {
-                client: self.to_owned(),
-                items: i.features.into_iter(),
-                links: i.links,
-            })
+        self.fetch::<FeatureCollection>(url.as_str()).await
     }
 
-    /// Returns an iterator over the catalogs of the SpatioTemporal Asset Catalog.
+    /// Searches items with the given parameters.
     #[cfg(feature = "stac")]
-    pub fn walk(&self) -> Result<StacEntities, Error> {
-        let link = Link::new(self.endpoint.to_string(), SELF);
-        Ok(StacEntities {
-            client: self.to_owned(),
-            // entities: vec![StacEntity::Catalog(self.root.clone())].into_iter(),
-            links: vec![link],
-        })
-    }
-
-    #[cfg(feature = "stac")]
-    pub fn search(&self, params: SearchParams) -> Result<Items, Error> {
+    pub async fn search(&self, params: SearchParams) -> Result<FeatureCollection, Error> {
         let url = format!("{}search?{}", self.endpoint, serde_qs::to_string(&params)?);
-
-        self.fetch::<FeatureCollection>(&url).map(|i| Items {
-            client: self.to_owned(),
-            items: i.features.into_iter(),
-            links: i.links,
-        })
+        self.fetch::<FeatureCollection>(&url).await
     }
 
-    fn fetch<T>(&self, url: &str) -> Result<T, Error>
+    /// Fetches the next page of results by following the `next` link.
+    /// Returns `None` if there is no next link.
+    pub async fn next_page<T>(
+        &self,
+        links: &[ogcapi_types::common::Link],
+    ) -> Result<Option<T>, Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        if let Some(link) = links.iter().find(|l| l.rel == NEXT) {
+            Ok(Some(self.fetch::<T>(&link.href).await?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Fetches all items for a collection, following pagination links.
+    pub async fn all_items(&self, id: &str) -> Result<Vec<ogcapi_types::features::Feature>, Error> {
+        let mut all_features = Vec::new();
+        let mut page = self.items(id).await?;
+
+        loop {
+            all_features.extend(page.features);
+
+            match self.next_page::<FeatureCollection>(&page.links).await? {
+                Some(next) => page = next,
+                None => break,
+            }
+        }
+
+        Ok(all_features)
+    }
+
+    /// Fetches all collections, following pagination links.
+    pub async fn all_collections(&self) -> Result<Vec<Collection>, Error> {
+        let mut all_collections = Vec::new();
+        let mut page = self.collections().await?;
+
+        loop {
+            all_collections.extend(page.collections);
+
+            match self
+                .next_page::<ogcapi_types::common::Collections>(&page.links)
+                .await?
+            {
+                Some(next) => page = next,
+                None => break,
+            }
+        }
+
+        Ok(all_collections)
+    }
+
+    pub(crate) async fn fetch<T>(&self, url: &str) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -180,317 +198,61 @@ impl Client {
         self.client
             .get(url)
             .send()
+            .await
             .and_then(|rsp| rsp.error_for_status())
-            .and_then(|rsp| rsp.json::<T>())
+            .map_err(Error::RequestError)?
+            .json::<T>()
+            .await
             .map_err(Error::RequestError)
     }
-}
-
-#[cfg(feature = "stac")]
-pub struct StacEntities {
-    client: Client,
-    // entities: <Vec<StacEntity> as IntoIterator>::IntoIter,
-    links: Vec<Link>,
-}
-
-#[cfg(feature = "stac")]
-pub struct Catalogs {
-    client: Client,
-    links: Vec<Link>,
-}
-
-pub struct Collections {
-    client: Client,
-    collections: <Vec<Collection> as IntoIterator>::IntoIter,
-    links: Vec<Link>,
-}
-
-pub struct Items {
-    client: Client,
-    items: <Vec<Feature> as IntoIterator>::IntoIter,
-    links: Vec<Link>,
-}
-
-trait Pagination<T> {
-    fn try_next(&mut self) -> Result<Option<T>, Error>;
-}
-
-#[cfg(feature = "stac")]
-impl Pagination<StacEntity> for StacEntities {
-    fn try_next(&mut self) -> Result<Option<StacEntity>, Error> {
-        if let Some(link) = self.links.pop() {
-            let entity = self.client.fetch::<serde_json::Value>(&link.href)?;
-
-            match entity.get("type").and_then(|v| v.as_str()) {
-                Some("Catalog") => {
-                    let mut catalog = serde_json::from_value::<Catalog>(entity.clone())
-                        .map_err(Error::DeserializationError)?;
-
-                    resolve_relative_links(&mut catalog.links, &link.href);
-
-                    let mut children = catalog
-                        .links
-                        .iter()
-                        .filter(|l| l.rel == CHILD || l.rel == ITEM)
-                        .cloned()
-                        .collect();
-
-                    self.links.append(&mut children);
-
-                    return Ok(Some(StacEntity::Catalog(Box::new(catalog))));
-                }
-                Some("Collection") => {
-                    let mut collection = serde_json::from_value::<Collection>(entity.clone())
-                        .map_err(Error::DeserializationError)?;
-
-                    resolve_relative_links(&mut collection.links, &link.href);
-
-                    let mut children = collection
-                        .links
-                        .iter()
-                        .filter(|l| l.rel == CHILD || l.rel == ITEM)
-                        .cloned()
-                        .collect();
-
-                    self.links.append(&mut children);
-
-                    return Ok(Some(StacEntity::Collection(Box::new(collection))));
-                }
-                Some("Feature") => {
-                    let mut item = serde_json::from_value::<Feature>(entity.clone())
-                        .map_err(Error::DeserializationError)?;
-
-                    resolve_relative_links(&mut item.links, &link.href);
-
-                    let mut children = item
-                        .links
-                        .iter()
-                        .filter(|l| l.rel == CHILD || l.rel == ITEM)
-                        .cloned()
-                        .collect();
-
-                    self.links.append(&mut children);
-
-                    return Ok(Some(StacEntity::Item(Box::new(item))));
-                }
-                _ => return Err(Error::ClientError("Unknown STAC entity!".to_string())),
-            };
-        }
-        Ok(None)
-    }
-}
-
-#[cfg(feature = "stac")]
-impl Pagination<Catalog> for Catalogs {
-    fn try_next(&mut self) -> Result<Option<Catalog>, Error> {
-        while let Some(link) = self.links.pop() {
-            let mut catalog = self.client.fetch::<Catalog>(&link.href)?;
-
-            if catalog.r#type == "Catalog" {
-                resolve_relative_links(&mut catalog.links, &link.href);
-
-                let mut children = catalog
-                    .links
-                    .iter()
-                    .filter(|l| l.rel == CHILD)
-                    .cloned()
-                    .collect();
-
-                self.links.append(&mut children);
-
-                return Ok(Some(catalog));
-            } else {
-                continue;
-            }
-        }
-        Ok(None)
-    }
-}
-
-impl Pagination<Collection> for Collections {
-    fn try_next(&mut self) -> Result<Option<Collection>, Error> {
-        if let Some(value) = self.collections.next() {
-            return Ok(Some(value));
-        }
-
-        if let Some(link) = self.links.iter().find(|l| l.rel == NEXT) {
-            match self
-                .client
-                .fetch::<ogcapi_types::common::Collections>(&link.href)
-            {
-                Ok(c) => {
-                    self.collections = c.collections.into_iter();
-                    self.links = c.links;
-                    if let Some(value) = self.collections.next() {
-                        Ok(Some(value))
-                    } else {
-                        Ok(None)
-                    }
-                }
-                Err(err) => {
-                    // reset links to prevent loop
-                    self.links = Vec::new();
-                    Err(err)
-                }
-            }
-        } else {
-            Ok(None)
-        }
-    }
-}
-
-impl Pagination<Feature> for Items {
-    fn try_next(&mut self) -> Result<Option<Feature>, Error> {
-        if let Some(value) = self.items.next() {
-            return Ok(Some(value));
-        }
-
-        if let Some(link) = self.links.iter().find(|l| l.rel == NEXT) {
-            match self.client.fetch::<FeatureCollection>(&link.href) {
-                Ok(i) => {
-                    self.items = i.features.into_iter();
-                    self.links = i.links;
-                    if let Some(value) = self.items.next() {
-                        Ok(Some(value))
-                    } else {
-                        Ok(None)
-                    }
-                }
-                Err(err) => {
-                    // reset links to prevent loop
-                    self.links = Vec::new();
-                    Err(err)
-                }
-            }
-        } else {
-            Ok(None)
-        }
-    }
-}
-
-#[cfg(feature = "stac")]
-impl Iterator for StacEntities {
-    type Item = Result<StacEntity, Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.try_next() {
-            Ok(Some(value)) => Some(Ok(value)),
-            Ok(None) => None,
-            Err(err) => Some(Err(err)),
-        }
-    }
-}
-
-impl Iterator for Collections {
-    type Item = Result<Collection, Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.try_next() {
-            Ok(Some(value)) => Some(Ok(value)),
-            Ok(None) => None,
-            Err(err) => Some(Err(err)),
-        }
-    }
-}
-
-impl Iterator for Items {
-    type Item = Result<Feature, Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.try_next() {
-            Ok(Some(value)) => Some(Ok(value)),
-            Ok(None) => None,
-            Err(err) => Some(Err(err)),
-        }
-    }
-}
-
-#[cfg(feature = "stac")]
-impl Iterator for Catalogs {
-    type Item = Result<Catalog, Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.try_next() {
-            Ok(Some(value)) => Some(Ok(value)),
-            Ok(None) => None,
-            Err(err) => Some(Err(err)),
-        }
-    }
-}
-
-#[cfg(feature = "stac")]
-fn resolve_relative_links(links: &mut [Link], base: &str) {
-    let base_url = Url::parse(base).expect("Parse base url from string");
-
-    links.iter_mut().for_each(|l| match Url::parse(&l.href) {
-        Ok(_) => (),
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            l.href = base_url.join(&l.href).unwrap().to_string();
-        }
-        Err(e) => log::error!("{e}"),
-    });
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    #[cfg(feature = "stac")]
-    fn version() {
+    #[tokio::test]
+    async fn conformance() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
-        assert_eq!("0.9.0", client.root().unwrap().stac_version);
-    }
-
-    #[test]
-    fn conformance() {
-        let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
-        let client = Client::new(endpoint).unwrap();
-        let conformance = client.conformance().unwrap();
+        let conformance = client.conformance().await.unwrap();
         println!("{conformance:#?}");
         assert!(!conformance.conforms_to.is_empty());
     }
 
-    #[test]
-    fn collection() {
+    #[tokio::test]
+    async fn collection() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
-        let collection = client.collection("ch.swisstopo.swissalti3d").unwrap();
+        let collection = client.collection("ch.swisstopo.swissalti3d").await.unwrap();
         assert_eq!("ch.swisstopo.swissalti3d", collection.id);
     }
 
-    #[test]
-    fn collections() {
+    #[tokio::test]
+    async fn collections() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
-        let collections = client
-            .collections()
-            .unwrap()
-            .collect::<Vec<Result<ogcapi_types::common::Collection, crate::Error>>>();
-        for collection in &collections {
-            if let Ok(c) = collection.as_ref() {
-                println!("{}", c.id)
-            };
+        let collections = client.all_collections().await.unwrap();
+        for c in &collections {
+            println!("{}", c.id);
         }
         assert!(!collections.is_empty());
     }
 
-    #[test]
+    #[tokio::test]
     #[cfg(feature = "stac")]
-    fn search() {
+    async fn search() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
         let bbox = ogcapi_types::common::Bbox::from([7.4473, 46.9479, 7.4475, 46.9481]);
         let params = ogcapi_types::stac::SearchParams::new()
             .with_bbox(bbox)
             .with_collections(["ch.swisstopo.swissalti3d"]);
-        let mut items = client.search(params).unwrap();
-        let item = items.next().unwrap().unwrap();
-        assert_eq!("swissalti3d_2019_2600-1199", item.id.unwrap().to_string());
+        let result = client.search(params).await.unwrap();
+        let item = &result.features[0];
         assert_eq!(
             Some("ch.swisstopo.swissalti3d".to_string()),
-            item.collection
+            item.collection.clone()
         );
     }
 }

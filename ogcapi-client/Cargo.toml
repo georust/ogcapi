@@ -16,6 +16,8 @@ processes = ["ogcapi-processes"]
 
 stac = ["ogcapi-types/stac"]
 
+blocking = ["reqwest/blocking"]
+
 [dependencies]
 geojson = { workspace = true }
 log = { workspace = true }
@@ -31,7 +33,10 @@ ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = t
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.reqwest]
 version = "0.12.24"
-features = ["blocking", "rustls-tls"]
+features = ["rustls-tls"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [package.metadata.docs.rs]
 all-features = true

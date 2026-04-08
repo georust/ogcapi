@@ -2964,6 +2964,7 @@ dependencies = [
  "serde_json",
  "serde_qs",
  "thiserror 2.0.17",
+ "tokio",
  "url",
 ]
 

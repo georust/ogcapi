@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `wasm32-unknown-unknown` support for `ogcapi-client` with new `AsyncClient` and bearer token auth.
+- `wasm32-unknown-unknown` support for `ogcapi-client`.
+- Bearer token authentication support for `ogcapi-client`.
 - Dynamic OpenAPI definition extraction.
 - Types for `OGCAPI - Moving Features`
 - Async OGC API - Processes execution (jobs).
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- BREAKING: `ogcapi-client`: `Client` is now async by default. The previous blocking `Client` is available as `BlockingClient` behind the `blocking` feature flag.
 - Make features opt-out rather than opt-in for released standards.
 - Allow integers for feature id.
 - Build documentation for all features.
