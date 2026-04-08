@@ -31,7 +31,7 @@ pub mod processes;
 
 pub(crate) static UA_STRING: &str = "OGCAPI-CLIENT";
 
-pub use client::{Client, Collections, Items};
+pub use client::{Client, CollectionsStream, ItemsStream};
 pub use error::Error;
 
 #[cfg(feature = "blocking")]

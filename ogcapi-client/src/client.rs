@@ -90,14 +90,14 @@ impl Client {
     }
 
     /// Returns an async paginating iterator over collections.
-    pub async fn collections(&self) -> Result<Collections, Error> {
+    pub async fn collections(&self) -> Result<CollectionsStream, Error> {
         let root = self.root().await?;
 
         if let Some(link) = root.links.iter().find(|l| l.rel == DATA) {
             let page = self
                 .fetch::<ogcapi_types::common::Collections>(&link.href)
                 .await?;
-            Ok(Collections {
+            Ok(CollectionsStream {
                 client: self.clone(),
                 collections: page.collections.into_iter(),
                 links: page.links,
@@ -117,10 +117,10 @@ impl Client {
     }
 
     /// Returns an async paginating iterator over items in a collection.
-    pub async fn items(&self, id: &str) -> Result<Items, Error> {
+    pub async fn items(&self, id: &str) -> Result<ItemsStream, Error> {
         let url = self.endpoint.join(&format!("collections/{id}/items"))?;
         let page = self.fetch::<FeatureCollection>(url.as_str()).await?;
-        Ok(Items {
+        Ok(ItemsStream {
             client: self.clone(),
             items: page.features.into_iter(),
             links: page.links,
@@ -134,7 +134,7 @@ impl Client {
         &self,
         id: &str,
         query: &ogcapi_types::features::Query,
-    ) -> Result<Items, Error> {
+    ) -> Result<ItemsStream, Error> {
         let base = self.endpoint.join(&format!("collections/{id}/items"))?;
         let qs = serde_qs::to_string(query)?;
         let url = if qs.is_empty() {
@@ -143,7 +143,7 @@ impl Client {
             format!("{base}?{qs}")
         };
         let page = self.fetch::<FeatureCollection>(&url).await?;
-        Ok(Items {
+        Ok(ItemsStream {
             client: self.clone(),
             items: page.features.into_iter(),
             links: page.links,
@@ -153,10 +153,10 @@ impl Client {
 
     /// Searches items with the given parameters.
     #[cfg(feature = "stac")]
-    pub async fn search(&self, params: SearchParams) -> Result<Items, Error> {
+    pub async fn search(&self, params: SearchParams) -> Result<ItemsStream, Error> {
         let url = format!("{}search?{}", self.endpoint, serde_qs::to_string(&params)?);
         let page = self.fetch::<FeatureCollection>(&url).await?;
-        Ok(Items {
+        Ok(ItemsStream {
             client: self.clone(),
             items: page.features.into_iter(),
             links: page.links,
@@ -183,14 +183,14 @@ impl Client {
 }
 
 /// Async paginating iterator over collections. Implements [`Stream`].
-pub struct Collections {
+pub struct CollectionsStream {
     client: Client,
     collections: <Vec<Collection> as IntoIterator>::IntoIter,
     links: Vec<Link>,
     pending: Option<BoxFuture<ogcapi_types::common::Collections>>,
 }
 
-impl Stream for Collections {
+impl Stream for CollectionsStream {
     type Item = Result<Collection, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -233,14 +233,14 @@ impl Stream for Collections {
 }
 
 /// Async paginating iterator over items. Implements [`Stream`].
-pub struct Items {
+pub struct ItemsStream {
     client: Client,
     items: <Vec<Feature> as IntoIterator>::IntoIter,
     links: Vec<Link>,
     pending: Option<BoxFuture<FeatureCollection>>,
 }
 
-impl Stream for Items {
+impl Stream for ItemsStream {
     type Item = Result<Feature, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
