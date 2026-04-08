@@ -24,7 +24,9 @@ mod error;
 mod blocking;
 
 #[cfg(feature = "processes")]
-mod processes;
+pub mod processes;
+
+pub(crate) static UA_STRING: &str = "OGCAPI-CLIENT";
 
 pub use client::Client;
 pub use error::Error;
@@ -32,6 +34,3 @@ pub use error::Error;
 #[cfg(feature = "blocking")]
 #[cfg(not(target_arch = "wasm32"))]
 pub use blocking::BlockingClient;
-
-#[cfg(feature = "processes")]
-pub use processes::ProcessResponseBody;

@@ -3,7 +3,7 @@ use std::cell::OnceCell;
 use reqwest::{
     Url,
     blocking::Client as ReqwestClient,
-    header::{AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT},
+    header::{HeaderMap, HeaderValue, USER_AGENT},
 };
 
 use ogcapi_types::common::Link;
@@ -23,8 +23,6 @@ use ogcapi_types::{
 };
 
 use crate::Error;
-
-static UA_STRING: &str = "OGCAPI-CLIENT";
 
 /// Blocking client to access OGC APIs and/or SpatioTemporal Asset Catalogs (STAC).
 ///
@@ -50,41 +48,18 @@ impl BlockingClient {
     /// Creates a BlockingClient for a given `OGCAPI`/`STAC` endpoint.
     pub fn new(endpoint: &str) -> Result<Self, Error> {
         let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static(UA_STRING));
+        headers.insert(USER_AGENT, HeaderValue::from_static(crate::UA_STRING));
 
         let client = ReqwestClient::builder()
             .default_headers(headers)
             .build()
             .expect("Build a client");
 
-        let endpoint = if endpoint.ends_with('/') {
-            endpoint.parse::<Url>()?
-        } else {
-            format!("{endpoint}/").parse::<Url>()?
-        };
-
-        Ok(Self {
-            client,
-            endpoint,
-            root: OnceCell::new(),
-        })
+        Self::new_with(endpoint, client)
     }
 
-    /// Creates a BlockingClient with bearer token authentication.
-    pub fn with_bearer_token(endpoint: &str, token: &str) -> Result<Self, Error> {
-        let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static(UA_STRING));
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {token}"))
-                .map_err(|e| Error::ClientError(format!("Invalid bearer token: {e}")))?,
-        );
-
-        let client = ReqwestClient::builder()
-            .default_headers(headers)
-            .build()
-            .expect("Build a client");
-
+    /// Creates a BlockingClient with a custom `reqwest::blocking::Client`.
+    pub fn new_with(endpoint: &str, client: ReqwestClient) -> Result<Self, Error> {
         let endpoint = if endpoint.ends_with('/') {
             endpoint.parse::<Url>()?
         } else {

@@ -65,3 +65,46 @@ pub enum ProcessResponseBody {
     Empty(String),
     StatusInfo(StatusInfo),
 }
+
+#[cfg(test)]
+#[cfg(feature = "greeter")]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    #[ignore = "needs running demo service"]
+    async fn execute_greeter() {
+        use ogcapi_processes::{
+            Processor,
+            greeter::{Greeter, GreeterInputs, GreeterOutputs},
+        };
+
+        let endpoint = "http://0.0.0.0:8484/";
+        let client = Client::new(endpoint).unwrap();
+
+        let input = GreeterInputs {
+            name: "client".to_string(),
+        };
+
+        let execute = Execute {
+            inputs: input.execute_input(),
+            outputs: GreeterOutputs::execute_output(),
+            ..Default::default()
+        };
+
+        let response = client.execute(Greeter {}.id(), &execute).await.unwrap();
+
+        let ProcessResponseBody::Requested {
+            outputs: _outputs,
+            parts,
+        } = response
+        else {
+            panic!()
+        };
+
+        assert_eq!(
+            String::from_utf8(parts[0].clone()).unwrap(),
+            "Hello, client!\n"
+        )
+    }
+}

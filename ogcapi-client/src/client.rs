@@ -1,6 +1,6 @@
 use reqwest::{
     Client as ReqwestClient, Url,
-    header::{AUTHORIZATION, HeaderMap, HeaderValue, USER_AGENT},
+    header::{HeaderMap, HeaderValue, USER_AGENT},
 };
 
 use ogcapi_types::common::{
@@ -12,8 +12,6 @@ use ogcapi_types::features::FeatureCollection;
 use ogcapi_types::stac::SearchParams;
 
 use crate::Error;
-
-static UA_STRING: &str = "OGCAPI-CLIENT";
 
 /// Async client to access OGC APIs and/or SpatioTemporal Asset Catalogs (STAC).
 ///
@@ -38,37 +36,18 @@ impl Client {
     /// Creates a Client for a given OGC API endpoint.
     pub fn new(endpoint: &str) -> Result<Self, Error> {
         let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static(UA_STRING));
+        headers.insert(USER_AGENT, HeaderValue::from_static(crate::UA_STRING));
 
         let client = ReqwestClient::builder()
             .default_headers(headers)
             .build()
             .expect("Build a client");
 
-        let endpoint = if endpoint.ends_with('/') {
-            endpoint.parse::<Url>()?
-        } else {
-            format!("{endpoint}/").parse::<Url>()?
-        };
-
-        Ok(Self { client, endpoint })
+        Self::new_with(endpoint, client)
     }
 
-    /// Creates a Client with bearer token authentication.
-    pub fn with_bearer_token(endpoint: &str, token: &str) -> Result<Self, Error> {
-        let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static(UA_STRING));
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!("Bearer {token}"))
-                .map_err(|e| Error::ClientError(format!("Invalid bearer token: {e}")))?,
-        );
-
-        let client = ReqwestClient::builder()
-            .default_headers(headers)
-            .build()
-            .expect("Build a client");
-
+    /// Creates a Client with a custom `reqwest::Client`.
+    pub fn new_with(endpoint: &str, client: ReqwestClient) -> Result<Self, Error> {
         let endpoint = if endpoint.ends_with('/') {
             endpoint.parse::<Url>()?
         } else {

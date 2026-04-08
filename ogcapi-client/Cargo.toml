@@ -17,6 +17,7 @@ processes = ["ogcapi-processes"]
 stac = ["ogcapi-types/stac"]
 
 blocking = ["reqwest/blocking"]
+greeter = ["ogcapi-processes?/greeter"]
 
 [dependencies]
 geojson = { workspace = true }
