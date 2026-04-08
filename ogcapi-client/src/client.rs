@@ -1,17 +1,24 @@
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+use futures_core::Stream;
 use reqwest::{
     Client as ReqwestClient, Url,
     header::{HeaderMap, HeaderValue, USER_AGENT},
 };
 
 use ogcapi_types::common::{
-    Collection, Conformance, LandingPage,
+    Collection, Conformance, LandingPage, Link,
     link_rel::{CONFORMANCE, DATA, NEXT},
 };
-use ogcapi_types::features::FeatureCollection;
+use ogcapi_types::features::{Feature, FeatureCollection};
 #[cfg(feature = "stac")]
 use ogcapi_types::stac::SearchParams;
 
 use crate::Error;
+
+type BoxFuture<T> = Pin<Box<dyn Future<Output = Result<T, Error>>>>;
 
 /// Async client to access OGC APIs and/or SpatioTemporal Asset Catalogs (STAC).
 ///
@@ -82,13 +89,20 @@ impl Client {
         ))
     }
 
-    /// Returns all collections (first page).
-    pub async fn collections(&self) -> Result<ogcapi_types::common::Collections, Error> {
+    /// Returns an async paginating iterator over collections.
+    pub async fn collections(&self) -> Result<Collections, Error> {
         let root = self.root().await?;
 
         if let Some(link) = root.links.iter().find(|l| l.rel == DATA) {
-            self.fetch::<ogcapi_types::common::Collections>(&link.href)
-                .await
+            let page = self
+                .fetch::<ogcapi_types::common::Collections>(&link.href)
+                .await?;
+            Ok(Collections {
+                client: self.clone(),
+                collections: page.collections.into_iter(),
+                links: page.links,
+                pending: None,
+            })
         } else {
             Err(Error::ClientError(
                 "No link found with relation `data`!".to_string(),
@@ -102,70 +116,29 @@ impl Client {
         self.fetch::<Collection>(url.as_str()).await
     }
 
-    /// Returns items for a collection (first page).
-    pub async fn items(&self, id: &str) -> Result<FeatureCollection, Error> {
+    /// Returns an async paginating iterator over items in a collection.
+    pub async fn items(&self, id: &str) -> Result<Items, Error> {
         let url = self.endpoint.join(&format!("collections/{id}/items"))?;
-        self.fetch::<FeatureCollection>(url.as_str()).await
+        let page = self.fetch::<FeatureCollection>(url.as_str()).await?;
+        Ok(Items {
+            client: self.clone(),
+            items: page.features.into_iter(),
+            links: page.links,
+            pending: None,
+        })
     }
 
     /// Searches items with the given parameters.
     #[cfg(feature = "stac")]
-    pub async fn search(&self, params: SearchParams) -> Result<FeatureCollection, Error> {
+    pub async fn search(&self, params: SearchParams) -> Result<Items, Error> {
         let url = format!("{}search?{}", self.endpoint, serde_qs::to_string(&params)?);
-        self.fetch::<FeatureCollection>(&url).await
-    }
-
-    /// Fetches the next page of results by following the `next` link.
-    /// Returns `None` if there is no next link.
-    pub async fn next_page<T>(
-        &self,
-        links: &[ogcapi_types::common::Link],
-    ) -> Result<Option<T>, Error>
-    where
-        T: serde::de::DeserializeOwned,
-    {
-        if let Some(link) = links.iter().find(|l| l.rel == NEXT) {
-            Ok(Some(self.fetch::<T>(&link.href).await?))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Fetches all items for a collection, following pagination links.
-    pub async fn all_items(&self, id: &str) -> Result<Vec<ogcapi_types::features::Feature>, Error> {
-        let mut all_features = Vec::new();
-        let mut page = self.items(id).await?;
-
-        loop {
-            all_features.extend(page.features);
-
-            match self.next_page::<FeatureCollection>(&page.links).await? {
-                Some(next) => page = next,
-                None => break,
-            }
-        }
-
-        Ok(all_features)
-    }
-
-    /// Fetches all collections, following pagination links.
-    pub async fn all_collections(&self) -> Result<Vec<Collection>, Error> {
-        let mut all_collections = Vec::new();
-        let mut page = self.collections().await?;
-
-        loop {
-            all_collections.extend(page.collections);
-
-            match self
-                .next_page::<ogcapi_types::common::Collections>(&page.links)
-                .await?
-            {
-                Some(next) => page = next,
-                None => break,
-            }
-        }
-
-        Ok(all_collections)
+        let page = self.fetch::<FeatureCollection>(&url).await?;
+        Ok(Items {
+            client: self.clone(),
+            items: page.features.into_iter(),
+            links: page.links,
+            pending: None,
+        })
     }
 
     pub(crate) async fn fetch<T>(&self, url: &str) -> Result<T, Error>
@@ -186,9 +159,108 @@ impl Client {
     }
 }
 
+/// Async paginating iterator over collections. Implements [`Stream`].
+pub struct Collections {
+    client: Client,
+    collections: <Vec<Collection> as IntoIterator>::IntoIter,
+    links: Vec<Link>,
+    pending: Option<BoxFuture<ogcapi_types::common::Collections>>,
+}
+
+impl Stream for Collections {
+    type Item = Result<Collection, Error>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+
+        loop {
+            if let Some(fut) = &mut this.pending {
+                match fut.as_mut().poll(cx) {
+                    Poll::Pending => return Poll::Pending,
+                    Poll::Ready(Ok(page)) => {
+                        this.collections = page.collections.into_iter();
+                        this.links = page.links;
+                        this.pending = None;
+                    }
+                    Poll::Ready(Err(err)) => {
+                        this.pending = None;
+                        this.links = Vec::new();
+                        return Poll::Ready(Some(Err(err)));
+                    }
+                }
+            }
+
+            if let Some(value) = this.collections.next() {
+                return Poll::Ready(Some(Ok(value)));
+            }
+
+            if let Some(link) = this.links.iter().find(|l| l.rel == NEXT) {
+                let href = link.href.clone();
+                let client = this.client.clone();
+                this.pending = Some(Box::pin(async move {
+                    client
+                        .fetch::<ogcapi_types::common::Collections>(&href)
+                        .await
+                }));
+            } else {
+                return Poll::Ready(None);
+            }
+        }
+    }
+}
+
+/// Async paginating iterator over items. Implements [`Stream`].
+pub struct Items {
+    client: Client,
+    items: <Vec<Feature> as IntoIterator>::IntoIter,
+    links: Vec<Link>,
+    pending: Option<BoxFuture<FeatureCollection>>,
+}
+
+impl Stream for Items {
+    type Item = Result<Feature, Error>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+
+        loop {
+            if let Some(fut) = &mut this.pending {
+                match fut.as_mut().poll(cx) {
+                    Poll::Pending => return Poll::Pending,
+                    Poll::Ready(Ok(page)) => {
+                        this.items = page.features.into_iter();
+                        this.links = page.links;
+                        this.pending = None;
+                    }
+                    Poll::Ready(Err(err)) => {
+                        this.pending = None;
+                        this.links = Vec::new();
+                        return Poll::Ready(Some(Err(err)));
+                    }
+                }
+            }
+
+            if let Some(value) = this.items.next() {
+                return Poll::Ready(Some(Ok(value)));
+            }
+
+            if let Some(link) = this.links.iter().find(|l| l.rel == NEXT) {
+                let href = link.href.clone();
+                let client = this.client.clone();
+                this.pending = Some(Box::pin(async move {
+                    client.fetch::<FeatureCollection>(&href).await
+                }));
+            } else {
+                return Poll::Ready(None);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures_util::TryStreamExt;
 
     #[tokio::test]
     async fn conformance() {
@@ -211,7 +283,13 @@ mod tests {
     async fn collections() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
-        let collections = client.all_collections().await.unwrap();
+        let collections: Vec<_> = client
+            .collections()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
         for c in &collections {
             println!("{}", c.id);
         }
@@ -227,11 +305,17 @@ mod tests {
         let params = ogcapi_types::stac::SearchParams::new()
             .with_bbox(bbox)
             .with_collections(["ch.swisstopo.swissalti3d"]);
-        let result = client.search(params).await.unwrap();
-        let item = &result.features[0];
+        let item = client
+            .search(params)
+            .await
+            .unwrap()
+            .try_next()
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(
             Some("ch.swisstopo.swissalti3d".to_string()),
-            item.collection.clone()
+            item.collection
         );
     }
 }

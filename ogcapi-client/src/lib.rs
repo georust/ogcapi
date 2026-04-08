@@ -3,6 +3,7 @@
 //! # Example
 //!
 //! ```rust,ignore
+//! use futures_util::TryStreamExt;
 //! use ogcapi_client::Client;
 //!
 //! #[tokio::main]
@@ -11,8 +12,10 @@
 //!     let root = client.root().await.unwrap();
 //!     println!("Root id: {}", root.id);
 //!
-//!     let collections = client.all_collections().await.unwrap();
-//!     println!("Found {} collections!", collections.len());
+//!     let mut collections = client.collections().await.unwrap();
+//!     while let Some(c) = collections.try_next().await.unwrap() {
+//!         println!("{}", c.id);
+//!     }
 //! }
 //! ```
 
@@ -28,7 +31,7 @@ pub mod processes;
 
 pub(crate) static UA_STRING: &str = "OGCAPI-CLIENT";
 
-pub use client::Client;
+pub use client::{Client, Collections, Items};
 pub use error::Error;
 
 #[cfg(feature = "blocking")]

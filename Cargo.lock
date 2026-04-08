@@ -2955,6 +2955,8 @@ dependencies = [
 name = "ogcapi-client"
 version = "0.3.0"
 dependencies = [
+ "futures-core",
+ "futures-util",
  "geojson",
  "log",
  "ogcapi-processes",

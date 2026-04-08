@@ -20,6 +20,7 @@ blocking = ["reqwest/blocking"]
 greeter = ["ogcapi-processes?/greeter"]
 
 [dependencies]
+futures-core = "0.3"
 geojson = { workspace = true }
 log = { workspace = true }
 reqwest = { version = "0.12.24", default-features = false, features = ["json"] }
@@ -37,6 +38,7 @@ version = "0.12.24"
 features = ["rustls-tls"]
 
 [dev-dependencies]
+futures-util = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [package.metadata.docs.rs]
