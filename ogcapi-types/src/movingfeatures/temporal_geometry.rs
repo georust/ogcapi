@@ -17,6 +17,7 @@ pub enum TemporalGeometry {
 mod tests {
 
     use chrono::DateTime;
+    use geojson::Position;
 
     use super::*;
 
@@ -25,7 +26,7 @@ mod tests {
         let mut coordinates = vec![];
         let mut datetimes = vec![];
         for i in 0..3 {
-            coordinates.push(vec![0., i as f64]);
+            coordinates.push(Position::from([0., i as f64]));
             datetimes.push(DateTime::from_timestamp(i, 0).unwrap());
         }
         let primitive_geometry =
@@ -60,7 +61,7 @@ mod tests {
         let mut coordinates = vec![];
         let mut datetimes = vec![];
         for i in 0..3 {
-            coordinates.push(vec![0., i as f64]);
+            coordinates.push(Position::from([0., i as f64]));
             datetimes.push(DateTime::from_timestamp(i, 0).unwrap());
         }
         let geometry: TemporalGeometry = TemporalGeometry::Primitive(

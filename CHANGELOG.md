@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Drop `osm` example.
+- Bump dependencies.
 - Typed `z` edr query parameter.
 - BREAKING: `ogcapi-client`: `Client` is now async by default. The previous blocking `Client` is available as `BlockingClient` behind the `blocking` feature flag.
 - Make features opt-out rather than opt-in for released standards.

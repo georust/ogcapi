@@ -5,7 +5,7 @@ mod setup;
 #[tokio::test]
 async fn edr() -> anyhow::Result<()> {
     use axum::{body::Body, http::Request};
-    use geojson::{Geometry, Value};
+    use geojson::Geometry;
     use http_body_util::BodyExt;
     use hyper_util::{client::legacy::Client, rt::TokioExecutor};
 
@@ -140,7 +140,7 @@ async fn edr() -> anyhow::Result<()> {
     let mut fc: FeatureCollection = serde_json::from_slice(&body)?;
 
     for feature in fc.features.iter_mut() {
-        feature.geometry = Geometry::new(Value::Point(vec![0.0, 0.0]));
+        feature.geometry = Geometry::new_point([0.0, 0.0]);
     }
 
     tracing::debug!("{}", serde_json::to_string_pretty(&fc.number_matched)?);

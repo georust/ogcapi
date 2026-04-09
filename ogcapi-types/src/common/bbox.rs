@@ -37,9 +37,9 @@ use utoipa::ToSchema;
 #[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum Bbox {
-    #[schema(value_type = Vec<f64>)]
+    #[schema(value_type = [f64; 4])]
     Bbox2D([f64; 4]),
-    #[schema(value_type = Vec<f64>)]
+    #[schema(value_type = [f64; 6])]
     Bbox3D([f64; 6]),
 }
 

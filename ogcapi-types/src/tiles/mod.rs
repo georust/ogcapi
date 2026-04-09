@@ -117,8 +117,6 @@ pub struct TileQuery {
 }
 
 /// Minimum bounding rectangle surrounding a 2D resource in the CRS indicated elsewere
-#[serde_with::serde_as]
-#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct BoundingBox2D {

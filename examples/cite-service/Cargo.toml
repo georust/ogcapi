@@ -6,7 +6,7 @@ publish = false
 
 
 [dependencies]
-tokio = { version = "1.48", features = ["full"] }
+tokio = { version = "1.51", features = ["macros", "rt-multi-thread"] }
 
 ogcapi = { path = "../../ogcapi", version = "0.3", default-features = false, features = [
     "services",

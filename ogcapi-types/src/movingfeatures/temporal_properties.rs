@@ -14,9 +14,13 @@ use super::{
 #[serde(rename_all = "camelCase")]
 pub struct TemporalProperties {
     pub temporal_properties: TemporalPropertiesValue,
-    pub links: Option<Vec<Link>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub links: Vec<Link>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_stamp: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_matched: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_returned: Option<u64>,
 }
 
@@ -82,7 +86,7 @@ mod tests {
             temporal_properties: TemporalPropertiesValue::MFJsonTemporalProperties(vec![
                 MFJsonTemporalProperties::new(datetimes, values).unwrap(),
             ]),
-            links: Some(links),
+            links,
             time_stamp: Some("2021-09-01T12:00:00Z".into()),
             number_matched: Some(10),
             number_returned: Some(2),

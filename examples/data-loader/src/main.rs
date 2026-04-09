@@ -24,11 +24,6 @@ async fn main() -> anyhow::Result<()> {
                 tracing::info!("Using geojson loader ...");
                 data_loader::geojson::load(args).await?
             }
-            #[cfg(feature = "osm")]
-            Some("pbf") => {
-                tracing::info!("Using osm loader ...");
-                data_loader::osm::load(args).await?
-            }
             #[cfg(feature = "ogr")]
             _ => {
                 tracing::info!("Using gdal loader ...");

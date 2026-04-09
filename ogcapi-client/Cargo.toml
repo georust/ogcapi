@@ -12,7 +12,7 @@ keywords.workspace = true
 default = ["features", "processes"]
 
 features = ["ogcapi-types/features"]
-processes = ["ogcapi-processes"]
+processes = ["ogcapi-processes", "ogcapi-processes/greeter"]
 
 stac = ["ogcapi-types/stac"]
 
@@ -23,7 +23,7 @@ greeter = ["ogcapi-processes?/greeter"]
 futures-core = "0.3"
 geojson = { workspace = true }
 log = { workspace = true }
-reqwest = { version = "0.12.24", default-features = false, features = ["json"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_qs = { workspace = true }
@@ -34,8 +34,8 @@ ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = f
 ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.reqwest]
-version = "0.12.24"
-features = ["rustls-tls"]
+version = "0.13.2"
+features = ["default-tls"]
 
 [dev-dependencies]
 futures-util = "0.3"
