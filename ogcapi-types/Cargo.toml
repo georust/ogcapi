@@ -25,7 +25,7 @@ coverages = []
 movingfeatures = ["common", "features"]
 
 [dependencies]
-chrono = { version = "0.4.44", features = ["serde"] }
+chrono = { workspace = true, features = ["serde"] }
 geojson = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true }

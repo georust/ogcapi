@@ -1,3 +1,5 @@
+use sqlx::types::Json;
+
 use ogcapi_types::common::{Collection, Collections, Crs, Query};
 
 use crate::CollectionTransactions;
@@ -60,7 +62,7 @@ impl CollectionTransactions for Db {
 
         sqlx::query("INSERT INTO meta.collections ( id, collection ) VALUES ( $1, $2 )")
             .bind(&collection.id)
-            .bind(sqlx::types::Json(collection))
+            .bind(Json(collection))
             .execute(&mut *tx)
             .await?;
 
@@ -69,15 +71,15 @@ impl CollectionTransactions for Db {
         Ok(collection.id.to_owned())
     }
 
-    async fn read_collection(&self, id: &str) -> anyhow::Result<Option<Collection>> {
+    async fn read_collection(&self, collection_id: &str) -> anyhow::Result<Option<Collection>> {
         // TODO: cache
-        let collection: Option<sqlx::types::Json<Collection>> = sqlx::query_scalar(
+        let collection: Option<Json<Collection>> = sqlx::query_scalar(
             r#"
             SELECT collection as "collection!" 
             FROM meta.collections WHERE id = $1
             "#,
         )
-        .bind(id)
+        .bind(collection_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -87,22 +89,22 @@ impl CollectionTransactions for Db {
     async fn update_collection(&self, collection: &Collection) -> anyhow::Result<()> {
         sqlx::query("UPDATE meta.collections SET collection = $2 WHERE id = $1")
             .bind(&collection.id)
-            .bind(sqlx::types::Json(collection))
+            .bind(Json(collection))
             .execute(&self.pool)
             .await?;
 
         Ok(())
     }
 
-    async fn delete_collection(&self, id: &str) -> anyhow::Result<()> {
+    async fn delete_collection(&self, collection_id: &str) -> anyhow::Result<()> {
         let mut tx = self.pool.begin().await?;
 
-        sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{id}""#))
+        sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{collection_id}""#))
             .execute(&mut *tx)
             .await?;
 
         sqlx::query("DELETE FROM meta.collections WHERE id = $1")
-            .bind(id)
+            .bind(collection_id)
             .fetch_optional(&mut *tx)
             .await?;
 

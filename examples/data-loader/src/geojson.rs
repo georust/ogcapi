@@ -21,28 +21,25 @@ pub async fn load(args: Args) -> anyhow::Result<()> {
     let geojson = geojson_str.parse::<FeatureCollection>()?;
 
     // Create collection
-    let collection = Collection {
-        id: args.collection.to_owned(),
-        extent: geojson
-            .bbox
-            .map(|bbox| Extent {
-                spatial: SpatialExtent {
-                    bbox: vec![
-                        bbox.as_slice()
-                            .try_into()
-                            .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
-                    ],
-                    crs: Some(Crs::default2d()),
-                },
-                ..Default::default()
-            })
-            .or_else(|| Some(Extent::default())),
-        crs: vec![Crs::default2d(), Crs::from_epsg(3857)],
-        storage_crs: Some(Crs::default2d()),
-        #[cfg(feature = "stac")]
-        assets: crate::asset::load_asset_from_path(&args.input).await?,
-        ..Default::default()
-    };
+    let mut collection = Collection::new(&args.collection);
+    collection.extent = geojson
+        .bbox
+        .map(|bbox| Extent {
+            spatial: SpatialExtent {
+                bbox: vec![
+                    bbox.as_slice()
+                        .try_into()
+                        .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
+                ],
+                crs: Some(Crs::default2d()),
+            },
+            ..Default::default()
+        })
+        .or_else(|| Some(Extent::default()));
+    collection.crs = vec![Crs::default2d(), Crs::from_epsg(3857)];
+    collection.storage_crs = Some(Crs::default2d());
+    // #[cfg(feature = "stac")]
+    // collection.assets = crate::asset::load_asset_from_path(&args.input).await?;
 
     db.delete_collection(&collection.id).await?;
     db.create_collection(&collection).await?;
