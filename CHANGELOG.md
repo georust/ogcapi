@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `Extent.spatial` and `Extent.temporal` are `Option` again, matching the OGC spec and the published 0.3.0 crate. Regression from #26.
 - Respect process execution `response` parameter.
 - Service URL for OGC API - Features.
 - Minor issues with OGC API - Features conformance.

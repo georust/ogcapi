@@ -9,8 +9,10 @@ use crate::common::{Bbox, Crs};
 /// represent other extents, for example, thermal or pressure ranges.
 #[derive(Serialize, Deserialize, ToSchema, Default, Debug, PartialEq, Clone)]
 pub struct Extent {
-    pub spatial: SpatialExtent,
-    pub temporal: TemporalExtent,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spatial: Option<SpatialExtent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temporal: Option<TemporalExtent>,
 }
 
 /// The spatial extent of the features in the collection.
