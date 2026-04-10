@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Async client transactions (CRUD) suport for JSON resources.
 - `wasm32-unknown-unknown` support for `ogcapi-client`.
 - `Client::new_with` and `BlockingClient::new_with` to bring a custom `reqwest` client.
 - `Client::items_with_query` and `BlockingClient::items_with_query` for server-side filtering by bbox, datetime, etc.
