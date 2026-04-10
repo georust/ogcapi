@@ -14,9 +14,10 @@ default = ["features", "processes"]
 features = ["ogcapi-types/features"]
 processes = ["ogcapi-processes", "ogcapi-processes/greeter"]
 
-stac = ["ogcapi-types/stac"]
+stac = ["features", "ogcapi-types/stac"]
 
 blocking = ["reqwest/blocking"]
+
 greeter = ["ogcapi-processes?/greeter"]
 
 [dependencies]
@@ -30,7 +31,7 @@ serde_qs = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false, features = ["common"] }
 ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.reqwest]
