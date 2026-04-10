@@ -78,10 +78,10 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
             Crs::from_epsg(3857),
         ])),
         extent: layer.try_get_extent()?.map(|e| Extent {
-            spatial: SpatialExtent {
+            spatial: Some(SpatialExtent {
                 bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
                 crs: Some(storage_crs.to_owned()),
-            },
+            }),
             ..Default::default()
         }),
         storage_crs: Some(storage_crs.to_owned()),
