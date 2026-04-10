@@ -71,7 +71,7 @@ tiles = [
 blocking = ["ogcapi-client?/blocking"]
 
 # drivers
-postgres = ["ogcapi-drivers/postgres"]
+postgres = ["drivers", "ogcapi-drivers/postgres"]
 
 # processes
 greeter = ["processes", "ogcapi-processes/greeter"]

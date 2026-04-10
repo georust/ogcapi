@@ -45,7 +45,7 @@ COALESCE(
 #[async_trait::async_trait]
 impl FeatureTransactions for Db {
     async fn create_feature(&self, feature: &Feature) -> anyhow::Result<String> {
-        let collection = feature.collection.as_ref().unwrap();
+        let collection_id = feature.collection.as_ref().unwrap();
 
         let id: (String,) = sqlx::query_as(&format!(
             r#"
@@ -59,14 +59,14 @@ impl FeatureTransactions for Db {
             ) VALUES (
                 COALESCE($1 ->> 'id', gen_random_uuid()::text),
                 $1 -> 'properties',
-                ST_GeomFromGeoJSON($1 -> 'geometry'),
+                ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), (SELECT Find_SRID('items', '{0}', 'geom'))),
                 $1 -> 'links',
                 COALESCE($1 -> 'assets', '{{}}'::jsonb),
                 $1 -> 'bbox'
             )
             RETURNING id
             "#,
-            &collection
+            &collection_id
         ))
         .bind(serde_json::to_value(feature)?)
         .fetch_one(&self.pool)
@@ -149,7 +149,7 @@ impl FeatureTransactions for Db {
             // coordinate system axis order (OGC and Postgis is lng, lat | EPSG is lat, lng)
             let order = match bbox_crs.authority {
                 Authority::OGC => [0, 1, 2, 3],
-                Authority::EPSG => [1, 0, 3, 2],
+                Authority::EPSG => [0, 1, 2, 3], // Use "traditional GIS order". TODO: should follow the crs definition [1, 0, 3, 2]
             };
 
             let collection = self.read_collection(collection_id).await?;

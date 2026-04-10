@@ -5,10 +5,15 @@ edition.workspace = true
 publish = false
 
 [features]
-default = ["geojson"]
+default = ["geojson", "client"]
 
-geojson = ["dep:geojson"]
+# readers
+geojson = ["dep:geojson", "dep:serde_json"]
 ogr = ["dep:gdal", "dep:arrow", "arrow/ffi", "arrow/json"]
+
+# drivers
+client = ["ogcapi/client"]
+postgres = ["ogcapi/postgres", "dep:sqlx"]
 
 stac = ["ogcapi/stac"]
 
@@ -16,18 +21,22 @@ stac = ["ogcapi/stac"]
 anyhow = { workspace = true }
 arrow = { version = "58.1", optional = true, default-features = false }
 clap = { version = "4.6", features = ["derive", "env"] }
+dotenvy = "0.15.7"
+futures = { version = "0.3.32" }
 gdal = { version = "0.19.0", optional = true, features = ["bindgen"] }
 geojson = { workspace = true, optional = true }
-sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres"] }
+serde_json = { workspace = true, optional = true }
+sqlx = { version = "0.8.6", optional = true, features = [
+    "runtime-tokio-rustls",
+    "postgres",
+] }
 tokio = { version = "1.51", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
 
 
-ogcapi = { path = "../../ogcapi", version = "0.3", features = [
-    "common",
+ogcapi = { path = "../../ogcapi", version = "0.3", default-features = false, features = [
+    "features",
     "types",
-    "drivers",
-    "postgres",
 ] }
