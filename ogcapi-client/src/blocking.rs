@@ -6,7 +6,6 @@ use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
 };
 
-use ogcapi_types::common::Link;
 #[cfg(not(feature = "stac"))]
 use ogcapi_types::features::Feature;
 #[cfg(feature = "stac")]
@@ -16,7 +15,7 @@ use ogcapi_types::{
 };
 use ogcapi_types::{
     common::{
-        Collection, Conformance, LandingPage,
+        Collection, Conformance, LandingPage, Link,
         link_rel::{CONFORMANCE, DATA, NEXT},
     },
     features::FeatureCollection,
@@ -208,57 +207,59 @@ impl BlockingClient {
 // --- Processes ---
 
 #[cfg(feature = "processes")]
-impl BlockingClient {
-    pub fn execute(
-        &self,
-        process_id: &str,
-        execute: &ogcapi_types::processes::Execute,
-    ) -> Result<crate::processes::ProcessResponseBody, Error> {
-        use ogcapi_types::processes::{Response, TransmissionMode};
+pub mod processes {
+    use ogcapi_types::processes::{Response, Results, StatusInfo, TransmissionMode};
 
-        let url = format!("{}processes/{}/execution", self.endpoint, process_id);
+    use crate::{BlockingClient, Error, client::processes::ProcessResponseBody};
 
-        let response = self
-            .client
-            .post(url)
-            .json(execute)
-            .send()
-            .and_then(|rsp| rsp.error_for_status())?;
+    impl BlockingClient {
+        pub fn execute(
+            &self,
+            process_id: &str,
+            execute: &ogcapi_types::processes::Execute,
+        ) -> Result<ProcessResponseBody, Error> {
+            let url = format!("{}processes/{}/execution", self.endpoint, process_id);
 
-        match response.status().as_u16() {
-            200 => match execute.response {
-                Response::Raw => {
-                    if execute.outputs.len() == 1 {
-                        let (_k, v) = execute.outputs.iter().next().unwrap();
-                        match v.transmission_mode {
-                            TransmissionMode::Value => {
-                                Ok(crate::processes::ProcessResponseBody::Requested {
+            let response = self
+                .client
+                .post(url)
+                .json(execute)
+                .send()
+                .and_then(|rsp| rsp.error_for_status())?;
+
+            match response.status().as_u16() {
+                200 => match execute.response {
+                    Response::Raw => {
+                        if execute.outputs.len() == 1 {
+                            let (_k, v) = execute.outputs.iter().next().unwrap();
+                            match v.transmission_mode {
+                                TransmissionMode::Value => Ok(ProcessResponseBody::Requested {
                                     outputs: execute.outputs.clone(),
                                     parts: vec![response.bytes()?.to_vec()],
-                                })
+                                }),
+                                TransmissionMode::Reference => todo!(),
                             }
-                            TransmissionMode::Reference => todo!(),
+                        } else {
+                            unimplemented!()
                         }
-                    } else {
-                        unimplemented!()
                     }
-                }
-                Response::Document => Ok(crate::processes::ProcessResponseBody::Results(
-                    response.json::<ogcapi_types::processes::Results>()?,
+                    Response::Document => {
+                        Ok(ProcessResponseBody::Results(response.json::<Results>()?))
+                    }
+                },
+                201 => Ok(ProcessResponseBody::StatusInfo(
+                    response.json::<StatusInfo>()?,
                 )),
-            },
-            201 => Ok(crate::processes::ProcessResponseBody::StatusInfo(
-                response.json::<ogcapi_types::processes::StatusInfo>()?,
-            )),
-            204 => match response.headers().get("link").and_then(|l| l.to_str().ok()) {
-                Some(s) => Ok(crate::processes::ProcessResponseBody::Empty(s.to_string())),
-                None => Err(Error::ServerError(
-                    "Missing or malformed `link` header for 204 status response.".to_string(),
+                204 => match response.headers().get("link").and_then(|l| l.to_str().ok()) {
+                    Some(s) => Ok(ProcessResponseBody::Empty(s.to_string())),
+                    None => Err(Error::ServerError(
+                        "Missing or malformed `link` header for 204 status response.".to_string(),
+                    )),
+                },
+                _ => Err(Error::ServerError(
+                    "Unspecified success status code.".to_string(),
                 )),
-            },
-            _ => Err(Error::ServerError(
-                "Unspecified success status code.".to_string(),
-            )),
+            }
         }
     }
 }

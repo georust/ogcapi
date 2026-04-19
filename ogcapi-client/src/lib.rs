@@ -26,9 +26,6 @@ mod error;
 #[cfg(not(target_arch = "wasm32"))]
 mod blocking;
 
-#[cfg(feature = "processes")]
-pub mod processes;
-
 pub(crate) static UA_STRING: &str = "OGCAPI-CLIENT";
 
 pub use client::{Client, collections::CollectionsStream};

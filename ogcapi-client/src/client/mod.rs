@@ -15,6 +15,9 @@ pub mod collections;
 #[cfg(feature = "features")]
 pub mod features;
 
+#[cfg(feature = "processes")]
+pub mod processes;
+
 type BoxFuture<T> = Pin<Box<dyn Future<Output = Result<T, Error>>>>;
 
 /// Async client to access OGC APIs and/or SpatioTemporal Asset Catalogs (STAC).
