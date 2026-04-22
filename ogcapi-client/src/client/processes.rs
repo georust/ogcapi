@@ -68,7 +68,6 @@ pub enum ProcessResponseBody {
 }
 
 #[cfg(test)]
-#[cfg(feature = "greeter")]
 mod tests {
     use super::*;
 

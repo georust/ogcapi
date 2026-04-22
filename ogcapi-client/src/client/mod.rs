@@ -2,11 +2,13 @@ use std::future::Future;
 use std::pin::Pin;
 
 use reqwest::{
-    Client as ReqwestClient, StatusCode, Url,
-    header::{HeaderMap, HeaderValue, LOCATION, USER_AGENT},
+    Client as ReqwestClient, Response, StatusCode, Url,
+    header::{CONTENT_TYPE, HeaderMap, HeaderValue, LOCATION, USER_AGENT},
 };
 
-use ogcapi_types::common::{Conformance, LandingPage, link_rel::CONFORMANCE};
+use ogcapi_types::common::{
+    Conformance, Exception, LandingPage, link_rel::CONFORMANCE, media_type::PROBLEM_JSON,
+};
 
 use crate::Error;
 
@@ -85,7 +87,7 @@ impl Client {
             return self.fetch::<Conformance>(&link.href).await;
         }
 
-        Err(Error::UnknownConformance(
+        Err(Error::ServerError(
             "Unable to retrieve conformance.".to_string(),
         ))
     }
@@ -96,16 +98,9 @@ impl Client {
         T: serde::de::DeserializeOwned,
     {
         log::debug!("Fetching {url}");
-        // TODO: extract and propagate exception bodies
-        self.client
-            .get(url)
-            .send()
-            .await
-            .and_then(|rsp| rsp.error_for_status())
-            .map_err(Error::RequestError)?
-            .json::<T>()
-            .await
-            .map_err(Error::RequestError)
+        let response = self.client.get(url).send().await?;
+        let response = extract_exeption(response).await?;
+        Ok(response.error_for_status()?.json::<T>().await?)
     }
 
     /// Create a JSON resource returning the `Location` header.
@@ -113,19 +108,12 @@ impl Client {
     where
         T: serde::Serialize,
     {
-        let response = self
-            .client
-            .post(url)
-            .json(data)
-            .send()
-            .await
-            .map_err(Error::RequestError)?
-            .error_for_status()
-            .map_err(Error::RequestError)?;
-        // TODO: extract and propagate exception bodies
+        let response = self.client.post(url).json(data).send().await?;
+        let response = extract_exeption(response).await?;
+        let response = response.error_for_status()?;
         debug_assert_eq!(response.status(), StatusCode::CREATED);
         debug_assert!(response.headers().contains_key(LOCATION));
-        Ok(response.headers()["Location"]
+        Ok(response.headers()[LOCATION]
             .to_str()
             .map_err(|e| Error::ClientError(e.to_string()))?
             .to_owned())
@@ -136,33 +124,31 @@ impl Client {
     where
         T: serde::Serialize,
     {
-        let response = self
-            .client
-            .put(url)
-            .json(data)
-            .send()
-            .await
-            .map_err(Error::RequestError)?
-            .error_for_status()
-            .map_err(Error::RequestError)?;
-        // TODO: extract and propagate exception bodies
+        let response = self.client.put(url).json(data).send().await?;
+        let response = extract_exeption(response).await?;
+        let response = response.error_for_status()?;
         debug_assert_eq!(response.status(), StatusCode::NO_CONTENT);
         Ok(())
     }
 
     /// Delete a resource.
     pub async fn delete(&self, url: &str) -> Result<(), Error> {
-        let response = self
-            .client
-            .delete(url)
-            .send()
-            .await
-            .map_err(Error::RequestError)?
-            .error_for_status()
-            .map_err(Error::RequestError)?;
-        // TODO: extract and propagate exception bodies
+        let response = self.client.delete(url).send().await?;
+        let response = extract_exeption(response).await?;
+        let response = response.error_for_status()?;
         debug_assert_eq!(response.status(), StatusCode::NO_CONTENT);
         Ok(())
+    }
+}
+
+async fn extract_exeption(response: Response) -> Result<Response, Error> {
+    if let Some(content_type) = response.headers().get(CONTENT_TYPE)
+        && content_type == PROBLEM_JSON
+    {
+        let exception = response.json::<Exception>().await?;
+        Err(Error::ExceptionError(Box::new(exception)))
+    } else {
+        Ok(response)
     }
 }
 

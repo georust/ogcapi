@@ -98,7 +98,7 @@ impl BlockingClient {
             return self.fetch::<Conformance>(&link.href);
         }
 
-        Err(Error::UnknownConformance(
+        Err(Error::ServerError(
             "Unable to retrieve conformance.".to_string(),
         ))
     }
@@ -195,12 +195,12 @@ impl BlockingClient {
     {
         log::debug!("Fetching {url}");
 
-        self.client
+        Ok(self
+            .client
             .get(url)
             .send()
             .and_then(|rsp| rsp.error_for_status())
-            .and_then(|rsp| rsp.json::<T>())
-            .map_err(Error::RequestError)
+            .and_then(|rsp| rsp.json::<T>())?)
     }
 }
 
@@ -302,8 +302,7 @@ impl Pagination<StacEntity> for StacEntities {
 
             match entity.get("type").and_then(|v| v.as_str()) {
                 Some("Catalog") => {
-                    let mut catalog = serde_json::from_value::<Catalog>(entity.clone())
-                        .map_err(Error::DeserializationError)?;
+                    let mut catalog = serde_json::from_value::<Catalog>(entity.clone())?;
 
                     resolve_relative_links(&mut catalog.links, &link.href);
 
@@ -319,8 +318,7 @@ impl Pagination<StacEntity> for StacEntities {
                     return Ok(Some(StacEntity::Catalog(Box::new(catalog))));
                 }
                 Some("Collection") => {
-                    let mut collection = serde_json::from_value::<Collection>(entity.clone())
-                        .map_err(Error::DeserializationError)?;
+                    let mut collection = serde_json::from_value::<Collection>(entity.clone())?;
 
                     resolve_relative_links(&mut collection.links, &link.href);
 
@@ -336,8 +334,7 @@ impl Pagination<StacEntity> for StacEntities {
                     return Ok(Some(StacEntity::Collection(Box::new(collection))));
                 }
                 Some("Feature") => {
-                    let mut item = serde_json::from_value::<Feature>(entity.clone())
-                        .map_err(Error::DeserializationError)?;
+                    let mut item = serde_json::from_value::<Feature>(entity.clone())?;
 
                     resolve_relative_links(&mut item.links, &link.href);
 
