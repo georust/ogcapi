@@ -1,9 +1,10 @@
-use crate::{Client, Error};
-use ogcapi_types::processes::{Execute, Output, Response, Results, StatusInfo, TransmissionMode};
 use std::collections::HashMap;
 
+use ogcapi_types::processes::{Execute, Output, Response, Results, StatusInfo, TransmissionMode};
+
+use crate::{Client, Error};
+
 impl Client {
-    #[cfg(feature = "processes")]
     pub async fn execute(
         &self,
         process_id: &str,
@@ -67,7 +68,6 @@ pub enum ProcessResponseBody {
 }
 
 #[cfg(test)]
-#[cfg(feature = "greeter")]
 mod tests {
     use super::*;
 

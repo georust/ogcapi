@@ -39,11 +39,13 @@ common = [
 edr = ["ogcapi-types?/edr", "ogcapi-drivers?/edr", "ogcapi-services?/edr"]
 features = [
     "ogcapi-types?/features",
+    "ogcapi-client?/features",
     "ogcapi-drivers?/features",
     "ogcapi-services?/features",
 ]
 processes = [
     "ogcapi-types?/processes",
+    "ogcapi-client?/processes",
     "ogcapi-drivers?/processes",
     "ogcapi-services?/processes",
     "ogcapi-processes",

@@ -6,7 +6,6 @@ use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
 };
 
-use ogcapi_types::common::Link;
 #[cfg(not(feature = "stac"))]
 use ogcapi_types::features::Feature;
 #[cfg(feature = "stac")]
@@ -16,7 +15,7 @@ use ogcapi_types::{
 };
 use ogcapi_types::{
     common::{
-        Collection, Conformance, LandingPage,
+        Collection, Conformance, LandingPage, Link,
         link_rel::{CONFORMANCE, DATA, NEXT},
     },
     features::FeatureCollection,
@@ -99,7 +98,7 @@ impl BlockingClient {
             return self.fetch::<Conformance>(&link.href);
         }
 
-        Err(Error::UnknownConformance(
+        Err(Error::ServerError(
             "Unable to retrieve conformance.".to_string(),
         ))
     }
@@ -196,69 +195,71 @@ impl BlockingClient {
     {
         log::debug!("Fetching {url}");
 
-        self.client
+        Ok(self
+            .client
             .get(url)
             .send()
             .and_then(|rsp| rsp.error_for_status())
-            .and_then(|rsp| rsp.json::<T>())
-            .map_err(Error::RequestError)
+            .and_then(|rsp| rsp.json::<T>())?)
     }
 }
 
 // --- Processes ---
 
 #[cfg(feature = "processes")]
-impl BlockingClient {
-    pub fn execute(
-        &self,
-        process_id: &str,
-        execute: &ogcapi_types::processes::Execute,
-    ) -> Result<crate::processes::ProcessResponseBody, Error> {
-        use ogcapi_types::processes::{Response, TransmissionMode};
+pub mod processes {
+    use ogcapi_types::processes::{Response, Results, StatusInfo, TransmissionMode};
 
-        let url = format!("{}processes/{}/execution", self.endpoint, process_id);
+    use crate::{BlockingClient, Error, client::processes::ProcessResponseBody};
 
-        let response = self
-            .client
-            .post(url)
-            .json(execute)
-            .send()
-            .and_then(|rsp| rsp.error_for_status())?;
+    impl BlockingClient {
+        pub fn execute(
+            &self,
+            process_id: &str,
+            execute: &ogcapi_types::processes::Execute,
+        ) -> Result<ProcessResponseBody, Error> {
+            let url = format!("{}processes/{}/execution", self.endpoint, process_id);
 
-        match response.status().as_u16() {
-            200 => match execute.response {
-                Response::Raw => {
-                    if execute.outputs.len() == 1 {
-                        let (_k, v) = execute.outputs.iter().next().unwrap();
-                        match v.transmission_mode {
-                            TransmissionMode::Value => {
-                                Ok(crate::processes::ProcessResponseBody::Requested {
+            let response = self
+                .client
+                .post(url)
+                .json(execute)
+                .send()
+                .and_then(|rsp| rsp.error_for_status())?;
+
+            match response.status().as_u16() {
+                200 => match execute.response {
+                    Response::Raw => {
+                        if execute.outputs.len() == 1 {
+                            let (_k, v) = execute.outputs.iter().next().unwrap();
+                            match v.transmission_mode {
+                                TransmissionMode::Value => Ok(ProcessResponseBody::Requested {
                                     outputs: execute.outputs.clone(),
                                     parts: vec![response.bytes()?.to_vec()],
-                                })
+                                }),
+                                TransmissionMode::Reference => todo!(),
                             }
-                            TransmissionMode::Reference => todo!(),
+                        } else {
+                            unimplemented!()
                         }
-                    } else {
-                        unimplemented!()
                     }
-                }
-                Response::Document => Ok(crate::processes::ProcessResponseBody::Results(
-                    response.json::<ogcapi_types::processes::Results>()?,
+                    Response::Document => {
+                        Ok(ProcessResponseBody::Results(response.json::<Results>()?))
+                    }
+                },
+                201 => Ok(ProcessResponseBody::StatusInfo(
+                    response.json::<StatusInfo>()?,
                 )),
-            },
-            201 => Ok(crate::processes::ProcessResponseBody::StatusInfo(
-                response.json::<ogcapi_types::processes::StatusInfo>()?,
-            )),
-            204 => match response.headers().get("link").and_then(|l| l.to_str().ok()) {
-                Some(s) => Ok(crate::processes::ProcessResponseBody::Empty(s.to_string())),
-                None => Err(Error::ServerError(
-                    "Missing or malformed `link` header for 204 status response.".to_string(),
+                204 => match response.headers().get("link").and_then(|l| l.to_str().ok()) {
+                    Some(s) => Ok(ProcessResponseBody::Empty(s.to_string())),
+                    None => Err(Error::ServerError(
+                        "Missing or malformed `link` header for 204 status response.".to_string(),
+                    )),
+                },
+                _ => Err(Error::ServerError(
+                    "Unspecified success status code.".to_string(),
                 )),
-            },
-            _ => Err(Error::ServerError(
-                "Unspecified success status code.".to_string(),
-            )),
+            }
         }
     }
 }
@@ -301,8 +302,7 @@ impl Pagination<StacEntity> for StacEntities {
 
             match entity.get("type").and_then(|v| v.as_str()) {
                 Some("Catalog") => {
-                    let mut catalog = serde_json::from_value::<Catalog>(entity.clone())
-                        .map_err(Error::DeserializationError)?;
+                    let mut catalog = serde_json::from_value::<Catalog>(entity.clone())?;
 
                     resolve_relative_links(&mut catalog.links, &link.href);
 
@@ -318,8 +318,7 @@ impl Pagination<StacEntity> for StacEntities {
                     return Ok(Some(StacEntity::Catalog(Box::new(catalog))));
                 }
                 Some("Collection") => {
-                    let mut collection = serde_json::from_value::<Collection>(entity.clone())
-                        .map_err(Error::DeserializationError)?;
+                    let mut collection = serde_json::from_value::<Collection>(entity.clone())?;
 
                     resolve_relative_links(&mut collection.links, &link.href);
 
@@ -335,8 +334,7 @@ impl Pagination<StacEntity> for StacEntities {
                     return Ok(Some(StacEntity::Collection(Box::new(collection))));
                 }
                 Some("Feature") => {
-                    let mut item = serde_json::from_value::<Feature>(entity.clone())
-                        .map_err(Error::DeserializationError)?;
+                    let mut item = serde_json::from_value::<Feature>(entity.clone())?;
 
                     resolve_relative_links(&mut item.links, &link.href);
 
