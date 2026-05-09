@@ -43,6 +43,7 @@ impl Linked for Vec<Link> {
         for link in others {
             self.iter_mut()
                 .find(|l| l.rel == link.rel)
+                // TODO: document for multiple links with same relation
                 .map(|l| link.href.clone_into(&mut l.href))
                 .unwrap_or_else(|| self.push(link.to_owned()));
         }

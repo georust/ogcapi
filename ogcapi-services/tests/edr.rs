@@ -4,39 +4,25 @@ mod setup;
 #[cfg(feature = "edr")]
 #[tokio::test]
 async fn edr() -> anyhow::Result<()> {
-    use data_loader::Args;
     use ogcapi_client::Client;
     use ogcapi_types::{common::Crs, edr::Query, features::FeatureCollection};
+    use url::Url;
 
-    let (addr, database_url) = setup::spawn_app().await?;
+    let (addr, _database_url) = setup::spawn_app().await?;
 
-    let client = Client::new(format!("http://{addr}"))?;
+    let public_url = Url::parse(&format!("http://{addr}"))?;
 
     // load data
-    let args = Args::new(
-        "../data/ne_110m_admin_0_countries.geojson",
-        "countries",
-        &database_url,
-    );
-    data_loader::geojson::load(args).await?;
+    let input = "../data/ne_110m_admin_0_countries.geojson";
+    data_loader::geojson::client::load(input, "countries", None, &public_url).await?;
 
-    let args = Args::new(
-        "../data/ne_110m_populated_places.geojson",
-        "places",
-        &database_url,
-    );
-    data_loader::geojson::load(args).await?;
+    let input = "../data/ne_110m_populated_places.geojson";
+    data_loader::geojson::client::load(input, "places", None, &public_url).await?;
 
-    // data_loader::geojson::load(
-    //     Args {
-    //         input: PathBuf::from_str("../data/ne_10m_railroads_north_america.geojson")?,
-    //         collection: "railroads".to_string(),
-    //         ..Default::default()
-    //     },
-    //     &database_url,
-    //     false,
-    // )
-    // .await?;
+    // let input = "../data/ne_10m_railroads_north_america.geojson";
+    // data_loader::geojson::db::load_with_client(input, "railroads", None, &public_url).await?;
+
+    let client = Client::new(public_url)?;
 
     // query position
     let query = Query {

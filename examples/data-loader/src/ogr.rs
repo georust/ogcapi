@@ -1,4 +1,9 @@
-use std::{collections::HashSet, ffi::OsStr, path::PathBuf, time::Instant};
+use std::{
+    collections::HashSet,
+    ffi::OsStr,
+    path::{Path, PathBuf},
+    time::Instant,
+};
 
 use arrow::{
     array::{Array, BinaryArray, RecordBatchReader, StringArray},
@@ -10,37 +15,46 @@ use arrow::{
 use gdal::{
     ArrowArrayStream, Dataset, cpl::CslStringList, spatial_ref::SpatialRef, vector::LayerAccess,
 };
+use url::Url;
 
 use ogcapi::{
     drivers::{CollectionTransactions, postgres::Db},
     types::common::{Bbox, Collection, Crs, Extent, SpatialExtent},
 };
 
-use super::Args;
-
-pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
+pub async fn load(
+    input: impl AsRef<Path>,
+    collection_id: &str,
+    filter: &Option<String>,
+    s_srs: Option<u32>,
+    database_url: &Url,
+) -> Result<(), anyhow::Error> {
     let now = Instant::now();
 
     // Setup a db connection pool
-    let db = Db::setup(&args.database_url).await?;
+    let db = Db::setup(database_url).await?;
 
     // Handle http & zip
-    if args.input.starts_with("http") && args.input.extension() == Some(OsStr::new("zip")) {
-        args.input = PathBuf::from(format!(
+    let input = if input.as_ref().starts_with("http")
+        && input.as_ref().extension() == Some(OsStr::new("zip"))
+    {
+        PathBuf::from(format!(
             "/vsizip//vsicurl/{}",
-            args.input.as_path().to_str().unwrap()
+            input.as_ref().to_str().unwrap()
         ))
-    } else if args.input.display().to_string().starts_with("http") {
-        args.input = PathBuf::from("/vsicurl/").join(args.input.as_path())
-    } else if args.input.extension() == Some(OsStr::new("zip")) {
-        args.input = PathBuf::from("/vsizip/").join(args.input.as_path())
-    }
+    } else if input.as_ref().starts_with("http") {
+        PathBuf::from("/vsicurl/").join(input)
+    } else if input.as_ref().extension() == Some(OsStr::new("zip")) {
+        PathBuf::from("/vsizip/").join(input)
+    } else {
+        panic!()
+    };
 
     // Get vector layer
-    let dataset = Dataset::open(&args.input)?;
+    let dataset = Dataset::open(&input)?;
 
-    let mut layer = if let Some(filter) = args.filter {
-        dataset.layer_by_name(&filter)?
+    let mut layer = if let Some(filter) = filter {
+        dataset.layer_by_name(filter)?
     } else if dataset.layer_count() > 1 {
         tracing::warn!(
             "Found multiple layers! Use the '--filter' option to specifiy one of:\n\t- {}",
@@ -56,7 +70,7 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
     };
 
     // Get coordinate reference system
-    let spatial_ref_src = match args.s_srs {
+    let spatial_ref_src = match s_srs {
         Some(epsg) => SpatialRef::from_epsg(epsg)?,
         None => match layer.spatial_ref() {
             Some(srs) => srs,
@@ -71,7 +85,7 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
 
     // Create collection (overwrite/delete existing)
     let collection = Collection {
-        id: args.collection.to_owned(),
+        id: collection_id.to_owned(),
         crs: Vec::from_iter(HashSet::from([
             Crs::default2d(),
             storage_crs.clone(),
@@ -85,12 +99,12 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
             ..Default::default()
         }),
         storage_crs: Some(storage_crs.to_owned()),
-        #[cfg(feature = "stac")]
-        assets: crate::asset::load_asset_from_path(&args.input).await?,
+        // #[cfg(feature = "stac")]
+        // assets: crate::asset::load_asset_from_path(&args.input).await?;
         ..Default::default()
     };
 
-    db.delete_collection(&collection.id).await?;
+    db.delete_collection(collection_id).await?;
     db.create_collection(&collection).await?;
 
     // Set concrete geometry type if possible https://github.com/georust/gdal/blob/00adecc94361228a2197224205fc9260d14d7549/gdal-sys/prebuilt-bindings/gdal_3.4.rs#L3454
@@ -209,9 +223,9 @@ pub async fn load(mut args: Args) -> Result<(), anyhow::Error> {
     }
 
     // stats
-    let elapsed = now.elapsed().as_millis() as f64 / 1000.0;
+    let elapsed = now.elapsed().as_secs_f64();
     tracing::info!(
-        "Loaded {count} features in {elapsed} seconds ({:.2}/s)",
+        "Loaded {count} features in {elapsed:.2} seconds ({:.2}/s)",
         count as f64 / elapsed
     );
 

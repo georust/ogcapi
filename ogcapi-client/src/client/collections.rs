@@ -26,7 +26,8 @@ impl Client {
 
     /// Update a collection.
     pub async fn update_collection(&self, collection: &Collection) -> Result<(), Error> {
-        let url = self.endpoint.join("collections")?;
+        let id = collection.id.as_str();
+        let url = self.endpoint.join(&format!("collections/{id}"))?;
         self.put(url.as_str(), collection).await
     }
 

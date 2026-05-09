@@ -12,7 +12,7 @@ pub const OGC_CRS84: &str = "http://www.opengis.net/def/crs/OGC/1.3/CRS84";
 pub const OGC_CRS84H: &str = "http://www.opengis.net/def/crs/OGC/0/CRS84h";
 
 /// Coordinate Reference System (CRS)
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Crs {
     pub authority: Authority,
     pub version: String,
@@ -122,7 +122,11 @@ impl str::FromStr for Crs {
             s.split(':').collect()
         };
         match parts.len() {
-            3 => Ok(Crs::new(Authority::from_str(parts[0])?, parts[1], parts[2])),
+            3 => Ok(Crs::new(
+                Authority::from_str(parts[0])?,
+                if parts[1].is_empty() { "0" } else { parts[1] },
+                parts[2],
+            )),
             2 => Ok(Crs::new(Authority::from_str(parts[0])?, "0", parts[1])),
             _ => Err(format!("Unable to parse CRS from `{s}`!")),
         }
@@ -168,7 +172,7 @@ impl Serialize for Crs {
 }
 
 /// CRS Authorities
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Authority {
     OGC,
     EPSG,

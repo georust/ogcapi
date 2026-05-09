@@ -121,7 +121,7 @@ impl Default for Collection {
             keywords: Default::default(),
             attribution: Default::default(),
             extent: Default::default(),
-            item_type: Default::default(),
+            item_type: feature(),
             crs: vec![Crs::default2d()],
             storage_crs: Default::default(),
             storage_crs_coordinate_epoch: Default::default(),

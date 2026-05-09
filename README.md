@@ -10,13 +10,13 @@ The `ogcapi` crate provides various [OGC API](https://ogcapi.ogc.org/) building 
 
 The code is organized in modules, respectively crates:
 
-| Module / Crate    | Description     |
-| ----------------- | --------------- |
-| `types`    | Types as defined in various OGC API standards as well as STAC with `serde` support. |
-| `client`   | Client to access HTTP endpoints of OGC API services as well as STAC wrapping `reqwest` |
-| `services` | Server implementation of various OGC API services based on `axum`. |
-| `drivers`  | Drivers for different data provider backends, currently mainly PostgreSQL with PostGIS through `sqlx`. |
-| `processes` | `Processor` trait and implementations. |
+| Module / Crate | Description                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------ |
+| `types`        | Types as defined in various OGC API standards as well as STAC with `serde` support.                    |
+| `client`       | Client to access HTTP endpoints of OGC API services as well as STAC wrapping `reqwest`                 |
+| `services`     | Server implementation of various OGC API services based on `axum`.                                     |
+| `drivers`      | Drivers for different data provider backends, currently mainly PostgreSQL with PostGIS through `sqlx`. |
+| `processes`    | `Processor` trait and implementations.                                                                 |
 
 These modules are reexported within the `ogcapi` crate.
 
@@ -29,7 +29,10 @@ This will take a while and use quite some disk space
 podman compose up --build
 
 # Import administrative bounaries
-podman exec -ti ogcapi cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
+podman exec -ti ogcapi cargo run -p data-loader -- \
+    --input data/ne_110m_admin_0_countries.geojson \
+    --collection countries \
+    client --public-url http://localhost:8484
 
 # Run app
 podman exec -ti ogcapi cargo run -p demo-service
@@ -57,7 +60,10 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 podman compose up db minio minio-mc -d
 
 # Import administrative bounaries
-cargo run -p data-loader -- --input data/ne_110m_admin_0_countries.geojson --collection countries
+cargo run -p data-loader -- \
+    --input data/ne_110m_admin_0_countries.geojson \
+    --collection countries \
+    client --public-url http://localhost:8484
 
 # Start service 
 cargo run -p demo-service

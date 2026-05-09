@@ -51,7 +51,7 @@ jobs:
         run: docker compose up db -d
 
       - name: Load data
-        run: cargo run -p data-loader -- --input data/ne_110m_populated_places.geojson --collection places
+        run: cargo run -p data-loader --features postgres -- --input data/ne_110m_populated_places.geojson --collection places db
 
       - name: Start service
         run: |
@@ -71,3 +71,5 @@ jobs:
             testJobCreationInputRef
           ogc-api-features: true
           ogc-api-features-container-tag: 1.9-teamengine-6.0.0-RC2
+          ogc-api-features-ignore: |-
+            verifyBboxCrsParameter

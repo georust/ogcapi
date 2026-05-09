@@ -1,12 +1,46 @@
+use sqlx::types::Json;
+
 use ogcapi_types::common::{Collection, Collections, Crs, Query};
 
 use crate::CollectionTransactions;
 
 use super::Db;
 
+const COLLECTION: &str = r#"
+CASE
+    WHEN (
+        collection #> '{{extent,spatial}}' IS NULL 
+        AND ST_EstimatedExtent('items', collection ->> 'id', 'geom') IS NOT NULL
+    )
+    THEN collection || (SELECT
+        jsonb_build_object('extent',
+        jsonb_build_object('spatial',
+        jsonb_build_object(
+            'bbox',
+            (
+                WITH extent AS (
+                    SELECT ST_EstimatedExtent('items', collection ->> 'id', 'geom') AS e
+                )
+                SELECT ARRAY[ARRAY[ST_XMin(e), ST_YMin(e), ST_XMax(e), ST_YMax(e)]]
+                FROM extent
+            ),
+            'crs',
+            collection -> 'storageCrs'
+        )))
+    )
+    ELSE collection
+END
+"#;
+
 #[async_trait::async_trait]
 impl CollectionTransactions for Db {
     async fn create_collection(&self, collection: &Collection) -> anyhow::Result<String> {
+        let srid = collection
+            .storage_crs
+            .as_ref()
+            .map(|crs| crs.as_srid())
+            .unwrap_or_else(|| Crs::default2d().as_srid());
+
         let mut tx = self.pool.begin().await?;
 
         sqlx::query(&format!(
@@ -15,7 +49,7 @@ impl CollectionTransactions for Db {
                 id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
                 collection text REFERENCES meta.collections(id) DEFAULT '{0}',
                 properties jsonb,
-                geom geometry NOT NULL,
+                geom geometry(GEOMETRY, {srid}) NOT NULL,
                 links jsonb NOT NULL DEFAULT '[]'::jsonb,
                 assets jsonb NOT NULL DEFAULT '{{}}'::jsonb,
                 bbox jsonb
@@ -47,20 +81,9 @@ impl CollectionTransactions for Db {
         .execute(&mut *tx)
         .await?;
 
-        let srid = collection
-            .storage_crs
-            .as_ref()
-            .map(|crs| crs.as_srid())
-            .unwrap_or_else(|| Crs::default2d().as_srid());
-        sqlx::query("SELECT UpdateGeometrySRID('items', $1, 'geom', $2)")
-            .bind(&collection.id)
-            .bind(srid)
-            .execute(&mut *tx)
-            .await?;
-
         sqlx::query("INSERT INTO meta.collections ( id, collection ) VALUES ( $1, $2 )")
             .bind(&collection.id)
-            .bind(sqlx::types::Json(collection))
+            .bind(Json(collection))
             .execute(&mut *tx)
             .await?;
 
@@ -71,12 +94,13 @@ impl CollectionTransactions for Db {
 
     async fn read_collection(&self, id: &str) -> anyhow::Result<Option<Collection>> {
         // TODO: cache
-        let collection: Option<sqlx::types::Json<Collection>> = sqlx::query_scalar(
+        let collection: Option<Json<Collection>> = sqlx::query_scalar(&format!(
             r#"
-            SELECT collection as "collection!" 
-            FROM meta.collections WHERE id = $1
+            SELECT {COLLECTION} AS "collection!"
+            FROM meta.collections
+            WHERE id = $1
             "#,
-        )
+        ))
         .bind(id)
         .fetch_optional(&self.pool)
         .await?;
@@ -87,7 +111,7 @@ impl CollectionTransactions for Db {
     async fn update_collection(&self, collection: &Collection) -> anyhow::Result<()> {
         sqlx::query("UPDATE meta.collections SET collection = $2 WHERE id = $1")
             .bind(&collection.id)
-            .bind(sqlx::types::Json(collection))
+            .bind(Json(collection))
             .execute(&self.pool)
             .await?;
 
@@ -112,26 +136,16 @@ impl CollectionTransactions for Db {
     }
 
     async fn list_collections(&self, _query: &Query) -> anyhow::Result<Collections> {
-        let collections: Option<sqlx::types::Json<Vec<Collection>>> = if cfg!(feature = "stac") {
-            sqlx::query_scalar(
-                r#"
-                SELECT array_to_json(array_agg(collection))
-                FROM meta.collections
-                WHERE collection ->> 'type' = 'Collection'
-                "#,
-            )
-            .fetch_one(&self.pool)
-            .await?
-        } else {
-            sqlx::query_scalar(
-                r#"
-                SELECT array_to_json(array_agg(collection))
-                FROM meta.collections
-                "#,
-            )
-            .fetch_one(&self.pool)
-            .await?
+        let where_clause = match cfg!(feature = "stac") {
+            true => Some(r#"WHERE collection ->> 'type' = 'Collection'"#),
+            false => None,
         };
+        let collections: Option<Json<Vec<Collection>>> = sqlx::query_scalar(&format!(
+            "SELECT array_to_json(array_agg({COLLECTION})) FROM meta.collections {}",
+            where_clause.unwrap_or_default()
+        ))
+        .fetch_one(&self.pool)
+        .await?;
 
         let collections = collections.map(|c| c.0).unwrap_or_default();
         let mut collections = Collections::new(collections);
