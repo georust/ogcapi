@@ -81,6 +81,14 @@ impl Processor for Greeter {
             summary: ProcessSummary {
                 id: self.id().to_string(),
                 version: self.version().to_string(),
+                description: DescriptionType {
+                    title: Some("Greeter".to_string()),
+                    description: Some(
+                        "A simple process that takes a name as input and returns a greeting."
+                            .to_string(),
+                    ),
+                    ..Default::default()
+                },
                 job_control_options: vec![
                     JobControlOptions::SyncExecute,
                     JobControlOptions::AsyncExecute,

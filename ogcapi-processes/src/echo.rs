@@ -150,6 +150,13 @@ impl Processor for Echo {
             summary: ProcessSummary {
                 id: self.id().to_string(),
                 version: self.version().to_string(),
+                description: DescriptionType {
+                    title: Some("Echo Process".to_string()),
+                    description: Some(
+                        "A simple process that echoes back the inputs it receives.".to_string(),
+                    ),
+                    ..Default::default()
+                },
                 job_control_options: vec![
                     JobControlOptions::SyncExecute,
                     JobControlOptions::AsyncExecute,
