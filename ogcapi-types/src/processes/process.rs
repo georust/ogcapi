@@ -2,7 +2,7 @@ use super::{
     TransmissionMode,
     description::{InputDescription, OutputDescription},
 };
-use crate::common::Link;
+use crate::{common::Link, processes::description::DescriptionType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use utoipa::ToSchema;
@@ -19,6 +19,8 @@ pub struct ProcessSummary {
     pub output_transmission: Vec<TransmissionMode>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub links: Vec<Link>,
+    #[serde(flatten)]
+    pub description: DescriptionType,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
