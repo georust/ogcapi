@@ -20,6 +20,7 @@ pub enum TileMatrixSetId {
     // WorldCRS84Quad,
     // GNOSISGlobalGrid,
     // WorldMercatorWGS84Quad,
+    #[serde(untagged)]
     Custom(String),
 }
 
@@ -188,7 +189,7 @@ pub enum CornerOfOrigin {
 
 #[cfg(test)]
 mod test {
-    use super::TileMatrixSet;
+    use super::*;
 
     #[test]
     fn parse_tms_example() {
@@ -203,5 +204,24 @@ mod test {
         tms_string.retain(|c| !c.is_whitespace());
 
         assert_eq!(content, tms_string);
+    }
+
+    #[test]
+    fn it_serializes_tms_ids() {
+        let id = TileMatrixSetId::WebMercatorQuad;
+        let serialized = serde_json::to_string(&id).unwrap();
+        assert_eq!(serialized, "\"WebMercatorQuad\"");
+        assert_eq!(
+            serde_json::from_str::<TileMatrixSetId>(&serialized).unwrap(),
+            id
+        );
+
+        let custom_id = TileMatrixSetId::Custom("MyCustomTMS".to_string());
+        let serialized_custom = serde_json::to_string(&custom_id).unwrap();
+        assert_eq!(serialized_custom, "\"MyCustomTMS\"");
+        assert_eq!(
+            serde_json::from_str::<TileMatrixSetId>(&serialized_custom).unwrap(),
+            custom_id
+        );
     }
 }
