@@ -3,7 +3,7 @@ mod feature_collection;
 mod query;
 mod queryables;
 
-pub use feature::{Feature, FeatureId, geometry};
+pub use feature::{Feature, FeatureId, coords_iter, geometry};
 pub use feature_collection::FeatureCollection;
 pub use query::Query;
 pub use queryables::Queryables;

@@ -4,7 +4,7 @@ use std::{cmp::Ordering, fmt};
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Datetime {
     Datetime(DateTime<Utc>),
     Interval {
@@ -13,10 +13,31 @@ pub enum Datetime {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum IntervalDatetime {
     Datetime(DateTime<Utc>),
     Open,
+}
+
+impl Datetime {
+    /// Test if the datetime intersects with `other`.
+    pub fn intersects(&self, other: &Datetime) -> bool {
+        match (self, other) {
+            (Datetime::Datetime(dt), Datetime::Datetime(other_dt)) => dt == other_dt,
+            (Datetime::Datetime(dt), Datetime::Interval { from, to })
+            | (Datetime::Interval { from, to }, Datetime::Datetime(dt)) => {
+                let idt = IntervalDatetime::Datetime(*dt);
+                !(idt < *from || idt > *to)
+            }
+            (
+                Datetime::Interval { from, to },
+                Datetime::Interval {
+                    from: other_from,
+                    to: other_to,
+                },
+            ) => !(from > other_to || to < other_from),
+        }
+    }
 }
 
 impl FromStr for IntervalDatetime {

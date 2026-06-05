@@ -2,11 +2,11 @@ use object_store::{Error, ObjectStoreExt, PutMode, PutOptions, path::Path};
 use uuid::Uuid;
 
 use ogcapi_types::{
-    common::Crs,
-    features::{Feature, FeatureCollection, FeatureId, Query},
+    common::{Bbox, Crs, Datetime, Exception},
+    features::{Feature, FeatureCollection, FeatureId, Query, coords_iter},
 };
 
-use crate::FeatureTransactions;
+use crate::{CollectionTransactions as _, FeatureTransactions};
 
 use super::ObjectDriver;
 
@@ -87,10 +87,85 @@ impl FeatureTransactions for ObjectDriver {
 
     async fn list_items(
         &self,
-        _collection_id: &str,
-        _query: &Query,
+        collection_id: &str,
+        query: &Query,
     ) -> anyhow::Result<FeatureCollection> {
-        unimplemented!()
+        let prefix = Path::from(format!("collections/{collection_id}/items"));
+
+        let list_result = self.store.list_with_delimiter(Some(&prefix)).await?;
+
+        let mut features = Vec::with_capacity(list_result.common_prefixes.len());
+
+        let crs = query.crs.clone().unwrap_or_else(Crs::default2d);
+
+        for path in list_result.common_prefixes {
+            let feature = self
+                .read_feature(
+                    collection_id,
+                    path.parts().next_back().unwrap().as_ref(),
+                    &crs,
+                )
+                .await?;
+
+            if let Some(feature) = feature {
+                // bbox
+                if let Some(bbox) = query.bbox.as_ref() {
+                    // crs
+                    let bbox_crs = query.bbox_crs.clone().unwrap_or_else(|| match bbox {
+                        Bbox::Bbox2D(_) => Crs::default2d(),
+                        Bbox::Bbox3D(_) => Crs::default3d(),
+                    });
+
+                    let Some(collection) = self.read_collection(collection_id).await? else {
+                        return Err(Exception::new_from_status(404).into());
+                    };
+
+                    if let Some(storage_crs) = collection.storage_crs
+                        && storage_crs == bbox_crs
+                    {
+                        if let Some(bounds) = &feature.geometry.bbox {
+                            let geometry_bbox = Bbox::try_from(bounds.as_slice())
+                                .map_err(|e| Exception::new_from_status(500).detail(e))?;
+                            if !geometry_bbox.intersects(bbox) {
+                                continue;
+                            }
+                        } else {
+                            let mut extent = Bbox::new_empty_3d();
+                            for position in coords_iter(&feature.geometry) {
+                                extent.extend_point(position.as_slice());
+                            }
+                            if !extent.intersects(bbox) {
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                // datetime
+                if let Some(dt) = &query.datetime
+                    && let Some(value) = feature.properties.get("datetime")
+                {
+                    let feature_datetime = serde_json::from_value::<Datetime>(value.to_owned())?;
+
+                    if !feature_datetime.intersects(dt) {
+                        continue;
+                    }
+                }
+
+                // kv
+                for (k, v) in query.additional_parameters.iter() {
+                    if let Some(value) = feature.properties.get(k)
+                        && v != &serde_json::to_string(value)?
+                    {
+                        continue;
+                    }
+                }
+
+                features.push(feature);
+            }
+        }
+
+        Ok(FeatureCollection::new(features))
     }
 }
 

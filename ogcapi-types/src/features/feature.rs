@@ -12,7 +12,7 @@ use crate::movingfeatures::{
 #[cfg(feature = "movingfeatures")]
 use chrono::{DateTime, Utc};
 
-use geojson::Geometry;
+use geojson::{Geometry, GeometryValue, Position};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use utoipa::{ToSchema, openapi::Schema};
@@ -136,6 +136,39 @@ impl Feature {
             temporal_geometry: Default::default(),
             #[cfg(feature = "movingfeatures")]
             temporal_properties: Default::default(),
+        }
+    }
+}
+
+/// Iterate over the flattended coordinates of a [Geometry].
+pub fn coords_iter(geometry: &Geometry) -> impl Iterator<Item = &Position> {
+    match &geometry.value {
+        GeometryValue::Point { coordinates } => {
+            Box::new(std::iter::once(coordinates)) as Box<dyn Iterator<Item = &Position>>
+        }
+        GeometryValue::MultiPoint { coordinates } | GeometryValue::LineString { coordinates } => {
+            Box::new(coordinates.iter())
+        }
+        GeometryValue::MultiLineString { coordinates } | GeometryValue::Polygon { coordinates } => {
+            Box::new(coordinates.iter().flatten())
+        }
+        GeometryValue::MultiPolygon { coordinates } => {
+            Box::new(coordinates.iter().flatten().flatten())
+        }
+        GeometryValue::GeometryCollection { geometries } => {
+            Box::new(geometries.iter().flat_map(|g| match &g.value {
+                GeometryValue::Point { coordinates } => {
+                    Box::new(std::iter::once(coordinates)) as Box<dyn Iterator<Item = &Position>>
+                }
+                GeometryValue::MultiPoint { coordinates }
+                | GeometryValue::LineString { coordinates } => Box::new(coordinates.iter()),
+                GeometryValue::MultiLineString { coordinates }
+                | GeometryValue::Polygon { coordinates } => Box::new(coordinates.iter().flatten()),
+                GeometryValue::MultiPolygon { coordinates } => {
+                    Box::new(coordinates.iter().flatten().flatten())
+                }
+                _ => unimplemented!("nested geometry collection"),
+            }))
         }
     }
 }

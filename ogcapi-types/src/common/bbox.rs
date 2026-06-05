@@ -1,4 +1,4 @@
-use std::{fmt, str};
+use std::{fmt, ops::RangeInclusive, str};
 
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -34,13 +34,223 @@ use utoipa::ToSchema;
 /// If a feature has multiple spatial geometry properties, it is the decision of the
 /// server whether only a single spatial geometry property is used to determine
 /// the extent or all relevant geometries.
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone, Copy)]
 #[serde(untagged)]
 pub enum Bbox {
     #[schema(value_type = [f64; 4])]
     Bbox2D([f64; 4]),
     #[schema(value_type = [f64; 6])]
     Bbox3D([f64; 6]),
+}
+
+impl Bbox {
+    /// Create an empty 2D bounding box.
+    pub fn new_empty_2d() -> Self {
+        Self::Bbox2D([
+            f64::INFINITY,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+        ])
+    }
+
+    /// Create an empty 3D bounding box.
+    pub fn new_empty_3d() -> Self {
+        Self::Bbox3D([
+            f64::INFINITY,
+            f64::INFINITY,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+        ])
+    }
+
+    /// Get the bounding box numbers as slice.
+    pub fn as_slice(&self) -> &[f64] {
+        match self {
+            Bbox::Bbox2D(bbox) => bbox.as_slice(),
+            Bbox::Bbox3D(bbox) => bbox.as_slice(),
+        }
+    }
+
+    /// Get the bounding box numbers as mutable slice.
+    pub fn as_mut_slice(&mut self) -> &mut [f64] {
+        match self {
+            Bbox::Bbox2D(bbox) => bbox.as_mut_slice(),
+            Bbox::Bbox3D(bbox) => bbox.as_mut_slice(),
+        }
+    }
+
+    /// Get the inclusive interval for an `axis`: 1 = x/easting, 2 = y/northing, 3 = z/height.
+    pub fn interval(&self, axis: usize) -> RangeInclusive<f64> {
+        let numbers = self.as_slice();
+        let offset = numbers.len() / 2;
+        match axis {
+            1 => numbers[0]..=numbers[offset],
+            2 => numbers[1]..=numbers[offset + 1],
+            3 => {
+                if offset == 3 {
+                    numbers[1]..=numbers[offset + 1]
+                } else {
+                    // full / unbound
+                    f64::NEG_INFINITY..=f64::INFINITY
+                }
+            }
+            x => panic!("axis must be 1, 2 or 3, got {x}"),
+        }
+    }
+
+    /// Test if the bounding box intersects with `other`.
+    ///
+    /// Gracefully handles 2D and 3D mixups by ignoring axis 3 if not present in both.
+    pub fn intersects(&self, other: &Bbox) -> bool {
+        match (self, other) {
+            (
+                Bbox::Bbox2D([axmin, aymin, axmax, aymax]),
+                Bbox::Bbox2D([bxmin, bymin, bxmax, bymax]),
+            )
+            | (
+                Bbox::Bbox2D([axmin, aymin, axmax, aymax]),
+                Bbox::Bbox3D([bxmin, bymin, _, bxmax, bymax, _]),
+            )
+            | (
+                Bbox::Bbox3D([axmin, aymin, _, axmax, aymax, _]),
+                Bbox::Bbox2D([bxmin, bymin, bxmax, bymax]),
+            ) => !(axmin > bxmax || axmax < bxmin || aymin > bymax || aymax < bymin),
+            (
+                Bbox::Bbox3D([axmin, aymin, azmin, axmax, aymax, azmax]),
+                Bbox::Bbox3D([bxmin, bymin, bzmin, bxmax, bymax, bzmax]),
+            ) => {
+                !(axmin > bxmax
+                    || axmax < bxmin
+                    || aymin > bymax
+                    || aymax < bymin
+                    || azmin > bzmax
+                    || azmax < bzmin)
+            }
+        }
+    }
+
+    /// Test if the bounding box contains `other`.
+    ///
+    /// Gracefully handles 2D and 3D mixups by ignoring axis 3 if not present in both.
+    pub fn contains(&self, other: &Bbox) -> bool {
+        match (self, other) {
+            (
+                Bbox::Bbox2D([axmin, aymin, axmax, aymax]),
+                Bbox::Bbox2D([bxmin, bymin, bxmax, bymax]),
+            )
+            | (
+                Bbox::Bbox2D([axmin, aymin, axmax, aymax]),
+                Bbox::Bbox3D([bxmin, bymin, _, bxmax, bymax, _]),
+            )
+            | (
+                Bbox::Bbox3D([axmin, aymin, _, axmax, aymax, _]),
+                Bbox::Bbox2D([bxmin, bymin, bxmax, bymax]),
+            ) => !(axmin > bxmin || axmax < bxmax || aymin > bymin || aymax < bymax),
+            (
+                Bbox::Bbox3D([axmin, aymin, azmin, axmax, aymax, azmax]),
+                Bbox::Bbox3D([bxmin, bymin, bzmin, bxmax, bymax, bzmax]),
+            ) => {
+                !(axmin > bxmin
+                    || axmax < bxmax
+                    || aymin > bymin
+                    || aymax < bymax
+                    || azmin > bzmin
+                    || azmax < bzmax)
+            }
+        }
+    }
+
+    /// Test if [Bbox] contains point.
+    ///
+    /// Gracefully handles 2D and 3D mixups by ignoring axis 3 if not present in both,
+    /// but panics if point does have other dimensionality.
+    pub fn contains_point(&self, point: &[f64]) -> bool {
+        match (self, point) {
+            (Bbox::Bbox2D([xmin, ymin, xmax, ymax]), [x, y])
+            | (Bbox::Bbox3D([xmin, ymin, _, xmax, ymax, _]), [x, y]) => {
+                !(xmin..=xmax).contains(&x) || !(ymin..=ymax).contains(&y)
+            }
+            (Bbox::Bbox3D([xmin, ymin, zmin, xmax, ymax, zmax]), [x, y, z]) => {
+                !(xmin..=xmax).contains(&x)
+                    || !(ymin..=ymax).contains(&y)
+                    || !(zmin..=zmax).contains(&z)
+            }
+            _ => panic!("malformed point"),
+        }
+    }
+
+    /// Extend the bounding box to contain `other`.
+    ///
+    /// Gracefully handles 2D and 3D mixups by ignoring axis 3 if not present in both.
+    pub fn extend(&mut self, other: &Bbox) {
+        match (self, other) {
+            (
+                Bbox::Bbox2D([axmin, aymin, axmax, aymax]),
+                Bbox::Bbox2D([bxmin, bymin, bxmax, bymax]),
+            )
+            | (
+                Bbox::Bbox2D([axmin, aymin, axmax, aymax]),
+                Bbox::Bbox3D([bxmin, bymin, _, bxmax, bymax, _]),
+            )
+            | (
+                Bbox::Bbox3D([axmin, aymin, _, axmax, aymax, _]),
+                Bbox::Bbox2D([bxmin, bymin, bxmax, bymax]),
+            ) => {
+                *axmin = axmin.min(*bxmin);
+                *axmax = axmax.max(*bxmax);
+                *aymin = aymin.min(*bymin);
+                *aymax = aymax.max(*bymax);
+            }
+            (
+                Bbox::Bbox3D([axmin, aymin, azmin, axmax, aymax, azmax]),
+                Bbox::Bbox3D([bxmin, bymin, bzmin, bxmax, bymax, bzmax]),
+            ) => {
+                *axmin = axmin.min(*bxmin);
+                *axmax = axmax.max(*bxmax);
+                *aymin = aymin.min(*bymin);
+                *aymax = aymax.max(*bymax);
+                *azmin = azmin.min(*bzmin);
+                *azmax = azmax.max(*bzmax);
+            }
+        }
+    }
+
+    /// Extend the bounding box to contain `point`.
+    ///
+    /// Gracefully handles 2D and 3D mixups by ignoring axis 3 if not present in both.
+    pub fn extend_point(&mut self, point: &[f64]) {
+        match (self, point) {
+            (Bbox::Bbox2D([xmin, ymin, xmax, ymax]), [x, y])
+            | (Bbox::Bbox3D([xmin, ymin, _, xmax, ymax, _]), [x, y]) => {
+                *xmin = xmin.min(*x);
+                *xmax = xmax.max(*x);
+                *ymin = ymin.min(*y);
+                *ymax = ymax.max(*y);
+            }
+            (Bbox::Bbox3D([xmin, ymin, zmin, xmax, ymax, zmax]), [x, y, z]) => {
+                *xmin = xmin.min(*x);
+                *xmax = xmax.max(*x);
+                *ymin = ymin.min(*y);
+                *ymax = ymax.max(*y);
+                *zmin = zmin.min(*z);
+                *zmax = zmax.max(*z);
+            }
+            _ => panic!("malformed point"),
+        }
+    }
+
+    /// Convert to 2D bounding box.
+    pub fn as_2d(&self) -> Self {
+        match self {
+            Bbox::Bbox2D(_) => *self,
+            Bbox::Bbox3D([xmin, ymin, _, xmax, ymax, _]) => {
+                Self::Bbox2D([*xmin, *ymin, *xmax, *ymax])
+            }
+        }
+    }
 }
 
 impl fmt::Display for Bbox {
@@ -114,11 +324,13 @@ impl TryFrom<&[f64]> for Bbox {
     type Error = &'static str;
 
     fn try_from(value: &[f64]) -> Result<Self, Self::Error> {
-        match value.len() {
-            4 => Ok(Bbox::Bbox2D([value[0], value[1], value[2], value[3]])),
-            6 => Ok(Bbox::Bbox3D([
-                value[0], value[1], value[2], value[3], value[4], value[5],
-            ])),
+        match *value {
+            [x, y] => Ok(Bbox::Bbox2D([x, y, x, y])),
+            [x, y, z] => Ok(Bbox::Bbox3D([x, y, z, x, y, z])),
+            [xmin, ymin, xmax, ymax] => Ok(Bbox::Bbox2D([xmin, ymin, xmax, ymax])),
+            [xmin, ymin, zmin, xmax, ymax, zmax] => {
+                Ok(Bbox::Bbox3D([xmin, ymin, zmin, xmax, ymax, zmax]))
+            }
             _ => Err("Bbox can only be of lenth 4 or 6!"),
         }
     }
