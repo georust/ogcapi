@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minor issues with OGC API - Features conformance.
 - Changed enum order when deserializing `processes` inputs, so that the integers would not be deserialized as floats.
 - The description fields were missing in the process summary of the OGC API Processes implementation, so they were added.
+- Fixed serialization of `TileMatrixSetId` in OGC API - Tiles.
 
 ### Changed
 
