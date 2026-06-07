@@ -41,35 +41,32 @@ fn collection_from_geojson(
         None => None,
     };
 
-    let spatial_extent = bbox.map(|bbox| SpatialExtent {
-        bbox: vec![bbox],
-        crs: Some(storage_crs.clone()),
-    });
-
-    let extent = spatial_extent.map(|spatial| Extent {
-        spatial: Some(spatial),
-        ..Default::default()
-    });
+    let extent = bbox
+        .map(|bbox| SpatialExtent {
+            bbox: vec![bbox],
+            crs: Some(storage_crs.clone()),
+        })
+        .map(|spatial| Extent {
+            spatial: Some(spatial),
+            ..Default::default()
+        });
     tracing::debug!("extent: {extent:#?}");
 
-    Ok(Collection {
-        id: collection_id.to_owned(),
-        extent,
-        crs,
-        storage_crs: Some(storage_crs),
-        // #[cfg(feature = "stac")]
-        // assets: crate::asset::load_asset_from_path(&args.input).await?,
-        ..Default::default()
-    })
+    let mut collection = Collection::new(collection_id);
+    collection.extent = extent;
+    collection.crs = crs;
+    collection.storage_crs = Some(storage_crs);
+
+    Ok(collection)
 }
 
 #[cfg(feature = "client")]
 pub mod client {
 
-    use std::{iter, path::Path, sync::Arc, time::Instant};
+    use std::{path::Path, sync::Arc, time::Instant};
 
     use futures::{StreamExt, TryStreamExt};
-    use geojson::{FeatureCollection, Geometry, GeometryValue, Position};
+    use geojson::FeatureCollection;
     use tokio::sync::RwLock;
     use url::Url;
 
@@ -108,14 +105,7 @@ pub mod client {
 
         let stream = futures::stream::iter(geojson.features);
 
-        let bbox = Arc::new(RwLock::new(Bbox::Bbox2D([
-            f64::INFINITY,
-            f64::INFINITY,
-            // f64::INFINITY,
-            f64::NEG_INFINITY,
-            f64::NEG_INFINITY,
-            // f64::NEG_INFINITY,
-        ])));
+        let bbox = Arc::new(RwLock::new(Bbox::new_empty_3d()));
 
         stream
             .map(Ok::<geojson::Feature, Error>)
@@ -131,12 +121,10 @@ pub mod client {
                             .as_ref()
                             .or(feature.geometry.as_ref().and_then(|f| f.bbox.as_ref()))
                         {
-                            let mut bbox = bbox.write().await;
-                            extend_bbox(&mut bbox, coords).await;
+                            bbox.write().await.extend_point(coords);
                         } else if let Some(geometry) = &feature.geometry {
-                            for position in coords_iter(geometry) {
-                                let mut bbox = bbox.write().await;
-                                extend_bbox(&mut bbox, position.as_slice()).await;
+                            for position in ogcapi::types::features::coords_iter(geometry) {
+                                bbox.write().await.extend_point(position.as_slice());
                             }
                         }
 
@@ -151,11 +139,16 @@ pub mod client {
 
         // update bbox
         if collection.extent.is_none() {
+            let mut bbox = *bbox.write().await;
+            if bbox.interval(3).is_empty() {
+                bbox = bbox.as_2d()
+            };
+
             tracing::info!("Set spatial extent: {:#?}", &bbox);
             let mut collection = client.collection(collection_id).await?;
             collection.extent = Some(Extent {
                 spatial: Some(SpatialExtent {
-                    bbox: vec![bbox.read().await.to_owned()],
+                    bbox: vec![bbox],
                     crs: collection.storage_crs.clone(),
                 }),
                 temporal: None,
@@ -171,71 +164,6 @@ pub mod client {
         );
 
         Ok(())
-    }
-
-    fn coords_iter(geometry: &Geometry) -> impl Iterator<Item = &Position> {
-        match &geometry.value {
-            GeometryValue::Point { coordinates } => {
-                Box::new(iter::once(coordinates)) as Box<dyn Iterator<Item = &Position>>
-            }
-            GeometryValue::MultiPoint { coordinates }
-            | GeometryValue::LineString { coordinates } => Box::new(coordinates.iter()),
-            GeometryValue::MultiLineString { coordinates }
-            | GeometryValue::Polygon { coordinates } => Box::new(coordinates.iter().flatten()),
-            GeometryValue::MultiPolygon { coordinates } => {
-                Box::new(coordinates.iter().flatten().flatten())
-            }
-            GeometryValue::GeometryCollection { geometries } => {
-                Box::new(geometries.iter().flat_map(|g| match &g.value {
-                    GeometryValue::Point { coordinates } => {
-                        Box::new(iter::once(coordinates)) as Box<dyn Iterator<Item = &Position>>
-                    }
-                    GeometryValue::MultiPoint { coordinates }
-                    | GeometryValue::LineString { coordinates } => Box::new(coordinates.iter()),
-                    GeometryValue::MultiLineString { coordinates }
-                    | GeometryValue::Polygon { coordinates } => {
-                        Box::new(coordinates.iter().flatten())
-                    }
-                    GeometryValue::MultiPolygon { coordinates } => {
-                        Box::new(coordinates.iter().flatten().flatten())
-                    }
-                    _ => unimplemented!("nested geometry collection"),
-                }))
-            }
-        }
-    }
-
-    /// Extend `Bbox` from coordinate slice (bbox or point)
-    async fn extend_bbox(bbox: &mut Bbox, coords: &[f64]) {
-        let extent = match bbox {
-            Bbox::Bbox2D(c) => c.as_mut_slice(),
-            Bbox::Bbox3D(c) => c.as_mut_slice(),
-        };
-        let length = extent.len();
-        let half_length = length / 2;
-        if coords.len() < 4 {
-            // position
-            for (i, v) in coords.iter().enumerate().take(half_length) {
-                extent[i] = extent[i].min(*v);
-                let i = i + half_length;
-                extent[i] = extent[i].max(*v);
-            }
-        } else {
-            // bbox
-            let half = coords.len() / 2;
-            let offset = half_length / half;
-            for (i, v) in coords.iter().enumerate().take(length + 1) {
-                // bbox
-                if i < half {
-                    // min
-                    extent[i] = extent[i].min(*v);
-                } else {
-                    // max
-                    let i = i + offset;
-                    extent[i] = extent[i].max(*v);
-                }
-            }
-        }
     }
 }
 

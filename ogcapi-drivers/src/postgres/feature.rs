@@ -1,3 +1,5 @@
+use sqlx::types::Json;
+
 use ogcapi_types::{
     common::{Authority, Bbox, Crs, Datetime, Exception, IntervalDatetime},
     features::{Feature, FeatureCollection, Query},
@@ -58,7 +60,7 @@ impl FeatureTransactions for Db {
                 bbox
             ) VALUES (
                 COALESCE($1 ->> 'id', gen_random_uuid()::text),
-                $1 -> 'properties',
+                COALESCE($1 -> 'properties', '{{}}'::jsonb),
                 ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), (SELECT Find_SRID('items', '{0}', 'geom'))),
                 $1 -> 'links',
                 COALESCE($1 -> 'assets', '{{}}'::jsonb),
@@ -77,23 +79,23 @@ impl FeatureTransactions for Db {
 
     async fn read_feature(
         &self,
-        collection: &str,
-        id: &str,
+        collection_id: &str,
+        feature_id: &str,
         crs: &Crs,
     ) -> anyhow::Result<Option<Feature>> {
-        let feature: Option<sqlx::types::Json<Feature>> = sqlx::query_scalar(&format!(
+        let feature: Option<Json<Feature>> = sqlx::query_scalar(&format!(
             r#"
             SELECT row_to_json(t)
             FROM (
                 SELECT {ROWS}
-                FROM items."{collection}" items JOIN meta.collections meta
+                FROM items."{collection_id}" items JOIN meta.collections meta
                     ON items.collection = meta.id
                 WHERE items.id = $2
             ) t
             "#
         ))
         .bind(crs.as_srid())
-        .bind(id)
+        .bind(feature_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -120,11 +122,11 @@ impl FeatureTransactions for Db {
         Ok(())
     }
 
-    async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()> {
+    async fn delete_feature(&self, collection_id: &str, feature_id: &str) -> anyhow::Result<()> {
         sqlx::query(&format!(
-            r#"DELETE FROM items."{collection}" WHERE id = $1"#
+            r#"DELETE FROM items."{collection_id}" WHERE id = $1"#
         ))
-        .bind(id)
+        .bind(feature_id)
         .execute(&self.pool)
         .await?;
 
@@ -289,7 +291,7 @@ impl FeatureTransactions for Db {
             .unwrap_or_else(|| Crs::default2d().as_srid());
 
         // fetch
-        let features: Option<sqlx::types::Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
+        let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
             r#"
             SELECT array_to_json(array_agg(row_to_json(t)))
             FROM (

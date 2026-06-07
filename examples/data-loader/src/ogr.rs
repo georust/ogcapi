@@ -84,27 +84,22 @@ pub async fn load(
     let storage_crs = Crs::from_srid(spatial_ref_src.auth_code()?);
 
     // Create collection (overwrite/delete existing)
-    let collection = Collection {
-        id: collection_id.to_owned(),
-        crs: Vec::from_iter(HashSet::from([
-            Crs::default2d(),
-            storage_crs.clone(),
-            Crs::from_epsg(3857),
-        ])),
-        extent: layer.try_get_extent()?.map(|e| Extent {
-            spatial: Some(SpatialExtent {
-                bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
-                crs: Some(storage_crs.to_owned()),
-            }),
-            ..Default::default()
+    let mut collection = Collection::new(collection_id);
+    collection.crs = Vec::from_iter(HashSet::from([
+        Crs::default2d(),
+        storage_crs.clone(),
+        Crs::from_epsg(3857),
+    ]));
+    collection.extent = layer.try_get_extent()?.map(|e| Extent {
+        spatial: Some(SpatialExtent {
+            bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
+            crs: Some(storage_crs.to_owned()),
         }),
-        storage_crs: Some(storage_crs.to_owned()),
-        // #[cfg(feature = "stac")]
-        // assets: crate::asset::load_asset_from_path(&args.input).await?;
         ..Default::default()
-    };
+    });
+    collection.storage_crs = Some(storage_crs.to_owned());
 
-    db.delete_collection(collection_id).await?;
+    db.delete_collection(&collection.id).await?;
     db.create_collection(&collection).await?;
 
     // Set concrete geometry type if possible https://github.com/georust/gdal/blob/00adecc94361228a2197224205fc9260d14d7549/gdal-sys/prebuilt-bindings/gdal_3.4.rs#L3454
@@ -204,7 +199,7 @@ pub async fn load(
             r#"
                 INSERT INTO items."{}" (id, properties, geom)
                 SELECT * FROM UNNEST(
-                    $1::text[], 
+                    $1::text[],
                     (SELECT
                         array_agg(properties)
                     FROM (

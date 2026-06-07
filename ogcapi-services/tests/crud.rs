@@ -7,7 +7,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
 
     use ogcapi_client::Client;
     use ogcapi_types::{
-        common::{Collection, Crs, link_rel::SELF},
+        common::{Collection, link_rel::SELF},
         features::Feature,
     };
 
@@ -17,12 +17,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     let client = Client::new(format!("http://{addr}"))?;
 
     // create collection
-    let collection = Collection {
-        id: "test.me-_".to_string(),
-        links: vec![],
-        crs: vec![Crs::default2d()],
-        ..Default::default()
-    };
+    let collection = Collection::new("test.me-_");
     let location = client.create_collection(&collection).await?;
     println!("Location: {location}");
 

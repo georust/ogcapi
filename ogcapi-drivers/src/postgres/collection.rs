@@ -92,7 +92,7 @@ impl CollectionTransactions for Db {
         Ok(collection.id.to_owned())
     }
 
-    async fn read_collection(&self, id: &str) -> anyhow::Result<Option<Collection>> {
+    async fn read_collection(&self, collection_id: &str) -> anyhow::Result<Option<Collection>> {
         // TODO: cache
         let collection: Option<Json<Collection>> = sqlx::query_scalar(&format!(
             r#"
@@ -101,7 +101,7 @@ impl CollectionTransactions for Db {
             WHERE id = $1
             "#,
         ))
-        .bind(id)
+        .bind(collection_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -118,15 +118,15 @@ impl CollectionTransactions for Db {
         Ok(())
     }
 
-    async fn delete_collection(&self, id: &str) -> anyhow::Result<()> {
+    async fn delete_collection(&self, collection_id: &str) -> anyhow::Result<()> {
         let mut tx = self.pool.begin().await?;
 
-        sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{id}""#))
+        sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{collection_id}""#))
             .execute(&mut *tx)
             .await?;
 
         sqlx::query("DELETE FROM meta.collections WHERE id = $1")
-            .bind(id)
+            .bind(collection_id)
             .fetch_optional(&mut *tx)
             .await?;
 

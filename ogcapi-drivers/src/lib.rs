@@ -1,7 +1,7 @@
+#[cfg(feature = "object")]
+pub mod object;
 #[cfg(feature = "postgres")]
 pub mod postgres;
-#[cfg(feature = "s3")]
-pub mod s3;
 
 #[cfg(feature = "common")]
 use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
@@ -21,7 +21,7 @@ use ogcapi_types::{
 #[cfg(feature = "processes")]
 use ogcapi_types::{
     common::Link,
-    processes::{Response, StatusCode, StatusInfo},
+    processes::{ExecuteResults, Response, StatusCode, StatusInfo},
 };
 
 #[cfg(any(feature = "features", feature = "stac", feature = "edr"))]
@@ -33,11 +33,11 @@ use ogcapi_types::features::FeatureCollection;
 pub trait CollectionTransactions: Send + Sync {
     async fn create_collection(&self, collection: &Collection) -> anyhow::Result<String>;
 
-    async fn read_collection(&self, id: &str) -> anyhow::Result<Option<Collection>>;
+    async fn read_collection(&self, collection_id: &str) -> anyhow::Result<Option<Collection>>;
 
     async fn update_collection(&self, collection: &Collection) -> anyhow::Result<()>;
 
-    async fn delete_collection(&self, id: &str) -> anyhow::Result<()>;
+    async fn delete_collection(&self, collection_id: &str) -> anyhow::Result<()>;
 
     async fn list_collections(&self, query: &CollectionQuery) -> anyhow::Result<Collections>;
 }
@@ -51,12 +51,13 @@ pub trait FeatureTransactions: Send + Sync {
     async fn read_feature(
         &self,
         collection_id: &str,
-        id: &str,
+        feature_id: &str,
         crs: &Crs,
     ) -> anyhow::Result<Option<Feature>>;
+
     async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()>;
 
-    async fn delete_feature(&self, collection_id: &str, id: &str) -> anyhow::Result<()>;
+    async fn delete_feature(&self, collection_id: &str, feature_id: &str) -> anyhow::Result<()>;
 
     async fn list_items(
         &self,
@@ -102,29 +103,29 @@ pub trait JobHandler: Send + Sync {
 
     async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>>;
 
-    async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
+    async fn status(&self, job_id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
     async fn finish(
         &self,
         job_id: &str,
-        status: &StatusCode,
+        status_code: StatusCode,
         message: Option<String>,
         links: Vec<Link>,
-        results: Option<ogcapi_types::processes::ExecuteResults>,
+        execute_results: Option<ExecuteResults>,
     ) -> anyhow::Result<()>;
 
-    async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>>;
+    async fn dismiss(&self, job_id: &str) -> anyhow::Result<Option<StatusInfo>>;
 
-    async fn results(&self, id: &str) -> anyhow::Result<ProcessResult>;
+    async fn results(&self, job_id: &str) -> anyhow::Result<ProcessResult>;
 }
 
 #[cfg(feature = "processes")]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ProcessResult {
     NoSuchJob,
     NotReady,
     Results {
-        results: ogcapi_types::processes::ExecuteResults,
+        results: ExecuteResults,
         response_mode: Response,
     },
 }

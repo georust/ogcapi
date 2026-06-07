@@ -15,8 +15,6 @@ ogr = ["dep:gdal", "dep:arrow", "arrow/ffi", "arrow/json"]
 client = ["ogcapi/client"]
 postgres = ["ogcapi/postgres", "dep:sqlx"]
 
-stac = ["ogcapi/stac"]
-
 [dependencies]
 anyhow = { workspace = true }
 arrow = { version = "58.1", optional = true, default-features = false }

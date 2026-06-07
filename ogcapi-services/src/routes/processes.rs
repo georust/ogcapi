@@ -7,11 +7,11 @@ use axum::{
 };
 use futures::TryFutureExt;
 use hyper::HeaderMap;
-use ogcapi_drivers::ProcessResult;
 use tracing::error;
 use url::Url;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
+use ogcapi_drivers::ProcessResult;
 use ogcapi_types::{
     common::{
         Exception, Link, Linked,
@@ -218,7 +218,7 @@ async fn execution(
 
     let process_description = processor.process()?;
 
-    let response_mode = execute.response.clone();
+    let response_mode = execute.response;
     let negotiated_execution_mode =
         negotiate_execution_mode(&headers, &process_description.summary.job_control_options);
 
@@ -233,19 +233,13 @@ async fn execution(
         });
     }
 
-    let mut status_info = StatusInfo {
-        process_id: Some(process_id),
-        status: JobStatusCode::Accepted,
-        ..Default::default()
-    };
-
-    let job_id = state
+    let mut status_info = StatusInfo::new("");
+    status_info.process_id = Some(process_id);
+    status_info.job_id = state
         .drivers
         .jobs
         .register(&status_info, response_mode)
         .await?;
-
-    status_info.job_id = job_id;
 
     {
         let mut status_info = status_info.clone();
@@ -278,7 +272,7 @@ async fn execution(
                 .jobs
                 .finish(
                     &status_info.job_id,
-                    &status_info.status,
+                    status_info.status,
                     status_info.message.clone(),
                     status_info.links.clone(),
                     results,
@@ -706,7 +700,7 @@ mod tests {
             async fn finish(
                 &self,
                 _job_id: &str,
-                _status: &ogcapi_types::processes::StatusCode,
+                _status: ogcapi_types::processes::StatusCode,
                 _message: Option<String>,
                 _links: Vec<Link>,
                 _results: Option<ogcapi_types::processes::ExecuteResults>,
@@ -828,18 +822,13 @@ mod tests {
             }
 
             async fn status(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
-                let info = StatusInfo {
-                    job_id: "job1".to_string(),
-                    status: JobStatusCode::Accepted,
-                    ..Default::default()
-                };
-                Ok(Some(info))
+                Ok(Some(StatusInfo::new("job1")))
             }
 
             async fn finish(
                 &self,
                 _job_id: &str,
-                _status: &JobStatusCode,
+                _status: JobStatusCode,
                 _message: Option<String>,
                 _links: Vec<Link>,
                 _results: Option<ogcapi_types::processes::ExecuteResults>,
@@ -848,11 +837,8 @@ mod tests {
             }
 
             async fn dismiss(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
-                let info = StatusInfo {
-                    job_id: "job1".to_string(),
-                    status: JobStatusCode::Dismissed,
-                    ..Default::default()
-                };
+                let mut info = StatusInfo::new("job1");
+                info.status = JobStatusCode::Dismissed;
                 Ok(Some(info))
             }
 

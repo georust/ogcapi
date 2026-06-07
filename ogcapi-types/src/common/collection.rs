@@ -109,13 +109,12 @@ fn collection() -> String {
     "Collection".to_string()
 }
 
-#[allow(clippy::derivable_impls)]
-impl Default for Collection {
-    fn default() -> Self {
+impl Collection {
+    pub fn new(id: impl ToString) -> Self {
         Self {
             #[cfg(feature = "stac")]
             r#type: "Collection".to_string(),
-            id: Default::default(),
+            id: id.to_string(),
             title: Default::default(),
             description: Default::default(),
             keywords: Default::default(),
