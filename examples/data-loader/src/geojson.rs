@@ -41,32 +41,21 @@ fn collection_from_geojson(
         None => None,
     };
 
-    let spatial_extent = bbox.map(|bbox| SpatialExtent {
-        bbox: vec![bbox],
-        crs: Some(storage_crs.clone()),
-    });
-
-    //SpatialExtent {
-    //   bbox: vec![
-    //       bbox.as_slice()
-    //           .try_into()
-    //           .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
-    //    ],
-    //      crs: Some(Crs::default2d()), // storage crs?
-    //   }
-
-    let extent = spatial_extent.map(|spatial| Extent {
-        spatial: Some(spatial),
-        ..Default::default()
-    });
+    let extent = bbox
+        .map(|bbox| SpatialExtent {
+            bbox: vec![bbox],
+            crs: Some(storage_crs.clone()),
+        })
+        .map(|spatial| Extent {
+            spatial: Some(spatial),
+            ..Default::default()
+        });
     tracing::debug!("extent: {extent:#?}");
 
     let mut collection = Collection::new(collection_id);
     collection.extent = extent;
     collection.crs = crs;
     collection.storage_crs = Some(storage_crs);
-    // #[cfg(feature = "stac")]
-    // collection.assets = crate::asset::load_asset_from_path(&args.input).await?;
 
     Ok(collection)
 }

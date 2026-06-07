@@ -98,8 +98,6 @@ pub async fn load(
         ..Default::default()
     });
     collection.storage_crs = Some(storage_crs.to_owned());
-    // #[cfg(feature = "stac")]
-    // collection.assets = crate::asset::load_asset_from_path(&args.input).await?;
 
     db.delete_collection(&collection.id).await?;
     db.create_collection(&collection).await?;
