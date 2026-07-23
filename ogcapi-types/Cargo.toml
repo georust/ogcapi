@@ -11,13 +11,14 @@ keywords.workspace = true
 include = ["/src", "/assets"]
 
 [features]
-default = ["common", "edr", "features", "movingfeatures", "processes", "tiles"]
+default = ["common", "edr", "features", "movingfeatures", "processes", "records", "tiles"]
 
 # standards
 common = []
 edr = ["common", "features"]
 features = ["common"]
 processes = ["common"]
+records = ["common"]
 stac = ["features"]
 styles = []
 tiles = ["common"]

@@ -19,6 +19,14 @@ pub struct Collection {
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Keywords about the elements in the collection.
+    ///
+    /// Defined by OGC API - Records, STAC, and EDR — but not by OGC API - Features
+    /// Part 1, where servers may use the member name for differently-shaped extensions
+    /// (PDOK, for example, returns an array of objects). Gated so builds without these
+    /// standards don't fail deserializing such documents; the raw value then lands in
+    /// `additional_properties` instead.
+    #[cfg(any(feature = "records", feature = "stac", feature = "edr"))]
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keywords: Vec<String>,
     /// Attribution for the collection.
@@ -118,6 +126,7 @@ impl Default for Collection {
             id: Default::default(),
             title: Default::default(),
             description: Default::default(),
+            #[cfg(any(feature = "records", feature = "stac", feature = "edr"))]
             keywords: Default::default(),
             attribution: Default::default(),
             extent: Default::default(),
@@ -148,5 +157,40 @@ impl Default for Collection {
             update_frequency: Default::default(),
             additional_properties: Default::default(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Collection;
+
+    /// `keywords` is not part of OGC API - Features Part 1, so Features-only builds must
+    /// not fail on servers that use the member name for other shapes — PDOK returns an
+    /// array of objects. The value stays available in `additional_properties`.
+    #[cfg(not(any(feature = "records", feature = "stac", feature = "edr")))]
+    #[test]
+    fn tolerates_non_record_keywords() {
+        let collection: Collection = serde_json::from_str(
+            r#"{
+                "id": "pand",
+                "keywords": [{"keyword": "pand"}, {"keyword": "BAG"}],
+                "extent": {"spatial": {"bbox": [[-1.6, 48.0, 12.4, 56.1]]}}
+            }"#,
+        )
+        .unwrap();
+        assert!(collection.extent.is_some());
+        assert!(collection.additional_properties.contains_key("keywords"));
+    }
+
+    #[cfg(any(feature = "records", feature = "stac", feature = "edr"))]
+    #[test]
+    fn keywords_roundtrip() {
+        let collection: Collection = serde_json::from_str(
+            r#"{"id": "test", "keywords": ["a", "b"], "license": "proprietary"}"#,
+        )
+        .unwrap();
+        assert_eq!(collection.keywords, vec!["a", "b"]);
+        let json = serde_json::to_value(&collection).unwrap();
+        assert_eq!(json["keywords"], serde_json::json!(["a", "b"]));
     }
 }

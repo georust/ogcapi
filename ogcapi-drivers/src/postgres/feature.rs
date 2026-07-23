@@ -66,7 +66,7 @@ impl FeatureTransactions for Db {
             )
             RETURNING id
             "#,
-            &collection_id
+            collection_id
         ))
         .bind(serde_json::to_value(feature)?)
         .fetch_one(&self.pool)
@@ -111,7 +111,7 @@ impl FeatureTransactions for Db {
                 assets = COALESCE($1 -> 'assets', '{{}}'::jsonb)
             WHERE id = $1 ->> 'id'
             "#,
-            &feature.collection.as_ref().unwrap()
+            feature.collection.as_ref().unwrap()
         ))
         .bind(serde_json::to_value(feature)?)
         .execute(&self.pool)

@@ -64,7 +64,7 @@ async fn tile_matrix_sets(RemoteUrl(url): RemoteUrl) -> Result<Json<TileMatrixSe
     let tile_matrix_sets = registry
         .iter()
         .map(|tms| {
-            let path = format!("tileMatrixSets/{}", &tms.id);
+            let path = format!("tileMatrixSets/{}", tms.id);
             let url = url.join(&path).expect("failed to parse url");
             let link = Link::new(url, TILING_SCHEME);
             TileMatrixSetItem {

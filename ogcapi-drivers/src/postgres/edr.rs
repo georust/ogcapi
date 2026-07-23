@@ -66,8 +66,8 @@ impl EdrQuerier for Db {
                 let mut ctx = rink_core::simple_context().unwrap();
                 let line = format!(
                     "{} {} -> m",
-                    &query.within.to_owned().unwrap_or_else(|| "0".to_string()),
-                    &query
+                    query.within.to_owned().unwrap_or_else(|| "0".to_string()),
+                    query
                         .within_units
                         .to_owned()
                         .unwrap_or_else(|| "m".to_string())
