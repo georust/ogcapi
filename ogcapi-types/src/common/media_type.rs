@@ -12,6 +12,9 @@ pub const HTML: &str = "text/html";
 /// Media Type for `application/json`
 pub const JSON: &str = "application/json";
 
+/// Media Type for `application/vnd.ogc.fg+json` (JSON-FG)
+pub const JSON_FG: &str = "application/vnd.ogc.fg+json";
+
 /// Media Type for `application/vnd.oai.openapi;version=3.0`
 pub const OPEN_API: &str = "application/vnd.oai.openapi;version=3.0";
 

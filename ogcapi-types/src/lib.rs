@@ -25,5 +25,12 @@ pub mod styles;
 #[cfg(feature = "tiles")]
 pub mod tiles;
 
+/// Types for `OGC Features and Geometries JSON` (JSON-FG), re-exported from the
+/// [`jsonfg`] crate. Use these — most importantly [`jsonfg::Geometry`] (which, unlike
+/// [`geojson::Geometry`], can represent solids and curves) and [`jsonfg::Feature`] — to
+/// produce JSON-FG responses. Enabled by the `json-fg` feature.
+#[cfg(feature = "json-fg")]
+pub use jsonfg;
+
 // #[cfg(feature = "coverages")]
 // mod coverages;

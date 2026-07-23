@@ -66,6 +66,8 @@ tiles = [
     "ogcapi-drivers?/tiles",
     "ogcapi-services?/tiles",
 ]
+# OGC Features and Geometries JSON (JSON-FG) types (types crate only).
+json-fg = ["types", "ogcapi-types?/json-fg"]
 
 # client
 blocking = ["ogcapi-client?/blocking"]

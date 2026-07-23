@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Allow modifying the spawn function (`with_spawn_fn`) in `AppState`, which is used for OGC API - Processes execution, so that it can be adapted, e.g., for applying scopes.
 - Allow modifying the router and OpenAPI definition in the `Service` (`get_router_mut`), e.g., for adding additional paths or for changing the info fields in the OpenAPI definition.
 - Allow modifying the middleware stack in the `Service` (`get_middleware_stack_mut`), e.g., for adding additional middleware or replacing the default ones.
+- Optional JSON-FG (OGC Features and Geometries JSON) support in `ogcapi-types` behind a `json-fg` feature: JSON-FG members on `Feature` and `FeatureCollection` (`place`, `coordRefSys`, `conformsTo`, ...), `into_json_fg` conversions, the `application/vnd.ogc.fg+json` media type, and a re-export of the [`jsonfg`](https://crates.io/crates/jsonfg) crate. By [@georgeboot](https://github.com/georgeboot).
 
 ### Fixed
 
@@ -33,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed enum order when deserializing `processes` inputs, so that the integers would not be deserialized as floats.
 - The description fields were missing in the process summary of the OGC API Processes implementation, so they were added.
 - Fixed serialization of `TileMatrixSetId` in OGC API - Tiles.
+- `Collection.keywords` is now gated behind the standards that define it (new `records` feature flag, `stac`, `edr`), so builds without those standards no longer fail to deserialize collections whose `keywords` use a nonconforming extension shape. By [@georgeboot](https://github.com/georgeboot).
 
 ### Changed
 
