@@ -107,6 +107,11 @@ pub const TILES: &str = "tiles";
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector>
 pub const TILESETS_VECTOR: &str = "http://www.opengis.net/def/rel/ogc/1.0/tilesets-vector";
 
+/// The target IRI points to a resource that describes how to provide tile sets of the context resource in map format.
+///
+/// See: <http://www.opengis.net/def/rel/ogc/1.0/tilesets-map>
+pub const TILESETS_MAP: &str = "http://www.opengis.net/def/rel/ogc/1.0/tilesets-map";
+
 /// The target IRI points to a resource that describes the TileMatrixSet according to the 2D-TMS standard.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme>
