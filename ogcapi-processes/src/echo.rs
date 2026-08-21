@@ -141,7 +141,7 @@ impl Processor for Echo {
         "1.0.0"
     }
 
-    fn process(&self) -> Result<Process> {
+    async fn process(&self) -> Result<Process> {
         let mut settings = SchemaSettings::default();
         settings.meta_schema = None;
 
@@ -292,7 +292,7 @@ mod tests {
 
         eprintln!(
             "Process:\n{}",
-            serde_json::to_string_pretty(&echo.process().unwrap()).unwrap()
+            serde_json::to_string_pretty(&echo.process().await.unwrap()).unwrap()
         );
 
         let execute = Execute {
@@ -329,7 +329,7 @@ mod tests {
 
         eprintln!(
             "Process:\n{}",
-            serde_json::to_string_pretty(&echo.process().unwrap()).unwrap()
+            serde_json::to_string_pretty(&echo.process().await.unwrap()).unwrap()
         );
 
         let execute = Execute {

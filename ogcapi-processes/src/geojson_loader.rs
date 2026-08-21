@@ -110,7 +110,7 @@ impl Processor for GeoJsonLoader {
         "0.1.0"
     }
 
-    fn process(&self) -> Result<Process> {
+    async fn process(&self) -> Result<Process> {
         Process::try_new(
             self.id(),
             self.version(),
@@ -242,7 +242,7 @@ mod tests {
 
         println!(
             "Process:\n{}",
-            serde_json::to_string_pretty(&loader.process().unwrap()).unwrap()
+            serde_json::to_string_pretty(&loader.process().await.unwrap()).unwrap()
         );
 
         let input = GeoJsonLoaderInputs {

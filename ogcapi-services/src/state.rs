@@ -28,7 +28,7 @@ pub struct AppState {
     pub(crate) conformance: Arc<RwLock<Conformance>>,
     pub(crate) drivers: Arc<Drivers>,
     #[cfg(feature = "processes")]
-    pub(crate) processors: Arc<RwLock<HashMap<String, Box<dyn Processor>>>>,
+    pub(crate) processors: Arc<RwLock<HashMap<String, Arc<dyn Processor>>>>,
     #[cfg(feature = "processes")]
     pub(crate) spawn: fn(futures::future::BoxFuture<'static, ()>) -> tokio::task::JoinHandle<()>,
 }
@@ -113,7 +113,7 @@ impl AppState {
     }
 
     #[cfg(feature = "processes")]
-    pub fn processors(self, processors: Vec<Box<dyn Processor>>) -> Self {
+    pub fn processors(self, processors: Vec<Arc<dyn Processor>>) -> Self {
         for p in processors {
             self.processors
                 .write()
