@@ -2,6 +2,7 @@ use ogcapi::{
     processes::echo::Echo,
     services::{AppState, Config, ConfigParser, Drivers, Service},
 };
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
@@ -21,7 +22,7 @@ async fn main() {
     let state = AppState::new(drivers).await;
 
     // Register processes/processors
-    let state = state.processors(vec![Box::new(Echo)]);
+    let state = state.processors(vec![Arc::new(Echo)]);
 
     // Build & run with hyper
     Service::try_new(&config, state)

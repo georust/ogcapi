@@ -12,7 +12,7 @@ pub trait Processor: Send + Sync + DynClone {
     fn version(&self) -> &'static str;
 
     /// Returns the Process description
-    fn process(&self) -> Result<Process>;
+    async fn process(&self) -> Result<Process>;
 
     /// Executes the Process and returns [Results]
     async fn execute(&self, execute: Execute) -> Result<ExecuteResults>;

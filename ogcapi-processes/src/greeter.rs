@@ -76,7 +76,7 @@ impl Processor for Greeter {
         "0.1.0"
     }
 
-    fn process(&self) -> Result<Process> {
+    async fn process(&self) -> Result<Process> {
         Ok(Process {
             summary: ProcessSummary {
                 id: self.id().to_string(),
@@ -150,7 +150,7 @@ mod tests {
 
         println!(
             "Process:\n{}",
-            serde_json::to_string_pretty(&greeter.process().unwrap()).unwrap()
+            serde_json::to_string_pretty(&greeter.process().await.unwrap()).unwrap()
         );
 
         let input = GreeterInputs {

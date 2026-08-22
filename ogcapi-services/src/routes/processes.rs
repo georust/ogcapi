@@ -66,20 +66,32 @@ async fn processes(
     RemoteUrl(mut url): RemoteUrl,
     Query(mut query): Query<LimitOffsetPagination>,
 ) -> Result<Json<ProcessList>> {
-    let processors = read_lock(&state.processors);
-    let limit = query.limit.unwrap_or_else(|| processors.len());
     let offset = query.offset.unwrap_or(0);
+    let limit;
+    let selected_processors = {
+        let processors = read_lock(&state.processors);
+        limit = query.limit.unwrap_or_else(|| processors.len());
+        processors
+            .values()
+            .skip(offset)
+            .take(limit)
+            .cloned()
+            .collect::<Vec<_>>()
+    };
 
-    let mut summaries: Vec<ProcessSummary> = processors
-        .iter()
-        .skip(offset)
-        .take(limit)
-        .filter_map(|(_id, p)| {
-            p.process()
-                .map(|p| p.summary)
-                .inspect_err(|e| error!("Error when accessing process: {e}"))
-                .ok()
-        })
+    let mut summaries: Vec<ProcessSummary> =
+        futures::future::join_all(selected_processors.into_iter().map(|processor| async move {
+            match processor.process().await {
+                Ok(process) => Some(process.summary),
+                Err(e) => {
+                    error!("Error when accessing process: {e}");
+                    None
+                }
+            }
+        }))
+        .await
+        .into_iter()
+        .flatten()
         .collect();
 
     let mut links = vec![Link::new(url.clone(), SELF).mediatype(JSON)];
@@ -102,22 +114,25 @@ async fn processes(
         }
     }
 
-    summaries.iter_mut().for_each(|process| {
-        let Ok(process_description_url) = url_plus_segments(url.clone(), &[&process.id])
-             else {
-                error!("Cannot create process description URL for process `{}`: cannot modify URL without a base", process.id);
-                return;
-             };
-        process
-            .links
-            .insert_or_update(&[
-                Link::new(process_description_url, SELF)
-                    .mediatype(JSON)
-                    .title("process description"), 
-                Link::new(url_plus_segments(url.clone(), &[&process.id, "execution"]).unwrap(), EXECUTE)
-                    .title("Execute endpoint")
-            ]);
-    });
+    for process in &mut summaries {
+        let Ok(process_description_url) = url_plus_segments(url.clone(), &[&process.id]) else {
+            error!(
+                "Cannot create process description URL for process `{}`: cannot modify URL without a base",
+                process.id
+            );
+            continue;
+        };
+        process.links.insert_or_update(&[
+            Link::new(process_description_url, SELF)
+                .mediatype(JSON)
+                .title("process description"),
+            Link::new(
+                url_plus_segments(url.clone(), &[&process.id, "execution"]).unwrap(),
+                EXECUTE,
+            )
+            .title("Execute endpoint"),
+        ]);
+    }
 
     let process_list = ProcessList {
         processes: summaries,
@@ -155,29 +170,28 @@ async fn process(
     RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
 ) -> Result<Json<Process>> {
-    match read_lock(&state.processors)
-        .get(&process_id)
-        .and_then(|processor| processor.process().ok())
-    {
-        Some(mut process) => {
-            process.summary.links.insert_or_update(&[
-                Link::new(url.clone(), SELF)
-                    .mediatype(JSON)
-                    .title("Process description"),
-                Link::new(url_plus_segments(url, &["execution"])?, EXECUTE)
-                    .title("Execute endpoint"),
-            ]);
-
-            Ok(Json(process))
-        }
-        None => Err(Error::ApiException(
+    let Some(processor) = read_lock(&state.processors).get(&process_id).map(
+        Clone::clone, /* Clone the Arc<dyn Processor> to avoid holding the lock across awaits */
+    ) else {
+        return Err(Error::ApiException(
             (
                 StatusCode::NOT_FOUND,
                 format!("No process with id `{process_id}`"),
             )
                 .into(),
-        )),
-    }
+        ));
+    };
+
+    let mut process = processor.process().await?;
+
+    process.summary.links.insert_or_update(&[
+        Link::new(url.clone(), SELF)
+            .mediatype(JSON)
+            .title("Process description"),
+        Link::new(url_plus_segments(url, &["execution"])?, EXECUTE).title("Execute endpoint"),
+    ]);
+
+    Ok(Json(process))
 }
 
 /// Execute a process
@@ -216,7 +230,7 @@ async fn execution(
         ));
     };
 
-    let process_description = processor.process()?;
+    let process_description = processor.process().await?;
 
     let response_mode = execute.response.clone();
     let negotiated_execution_mode =
@@ -256,7 +270,7 @@ async fn execution(
                 .drivers
                 .jobs
                 .update(&status_info)
-                .and_then(|_| processor.execute(execute))
+                .and_then(|()| processor.execute(execute))
                 .await;
             let mut results = None;
 
@@ -271,7 +285,7 @@ async fn execution(
                     status_info.status = JobStatusCode::Failed;
                     status_info.message = e.to_string().into();
                 }
-            };
+            }
 
             let _ = state
                 .drivers
@@ -338,8 +352,8 @@ impl NegotiatedExecutionMode {
 
     fn was_preferred(&self) -> bool {
         match self {
-            NegotiatedExecutionMode::Sync { was_preferred } => *was_preferred,
-            NegotiatedExecutionMode::Async { was_preferred } => *was_preferred,
+            NegotiatedExecutionMode::Sync { was_preferred }
+            | NegotiatedExecutionMode::Async { was_preferred } => *was_preferred,
         }
     }
 }
@@ -368,7 +382,7 @@ fn negotiate_execution_mode(
             .fold((false, false), |(sync, async_), option| match option {
                 JobControlOptions::SyncExecute => (true, async_),
                 JobControlOptions::AsyncExecute => (sync, true),
-                _ => (sync, async_),
+                JobControlOptions::Dismiss => (sync, async_),
             });
     match client_preference {
         ClientExecutionModePreference::Sync if can_be_executed_sync => {
@@ -425,7 +439,7 @@ async fn jobs(
     if jobs.len() >= limit {
         let mut next_url = url.clone();
         let next_offset = offset + limit;
-        next_url.set_query(Some(&format!("limit={}&offset={}", limit, next_offset)));
+        next_url.set_query(Some(&format!("limit={limit}&offset={next_offset}")));
         links.push(Link::new(&next_url, NEXT).mediatype(JSON));
     }
 
@@ -659,6 +673,8 @@ fn url_replace_segments(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use crate::Drivers;
     use ogcapi_drivers::JobHandler;
@@ -733,7 +749,7 @@ mod tests {
         let state = AppState::new(drivers)
             .await
             // 2. Add the Echo process.
-            .processors(vec![Box::new(Echo)])
+            .processors(vec![Arc::new(Echo)])
             // 3. Override the spawn function to pass task-local context.
             .with_spawn_fn(|fut| {
                 let foo = FOO.scope(FOO.get(), fut);
@@ -871,7 +887,7 @@ mod tests {
 
         let state = AppState::new(drivers)
             .await
-            .processors(vec![Box::new(Echo)]);
+            .processors(vec![Arc::new(Echo)]);
 
         // First: act like a relative request (RemoteUrl derived from Host/X-Forwarded-Proto)
         let base_url = Url::parse("http://example.org/subdir/").unwrap();

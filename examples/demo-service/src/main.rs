@@ -2,6 +2,7 @@ use ogcapi::{
     processes::echo::Echo,
     services::{AppState, Config, ConfigParser, Drivers, Service},
 };
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
@@ -22,10 +23,10 @@ async fn main() {
 
     // Register processes/processors
     let state = state.processors(vec![
-        // Box::new(Greeter),
-        // Box::new(GeoJsonLoader),
-        // Box::new(GdalLoader),
-        Box::new(Echo),
+        // Arc::new(Greeter),
+        // Arc::new(GeoJsonLoader),
+        // Arc::new(GdalLoader),
+        Arc::new(Echo),
     ]);
 
     // Build & run with hyper
