@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
+
 #[cfg(feature = "processes")]
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -28,9 +30,51 @@ pub struct AppState {
     pub(crate) conformance: Arc<RwLock<Conformance>>,
     pub(crate) drivers: Arc<Drivers>,
     #[cfg(feature = "processes")]
+    pub(crate) processes: ProcessesState,
+}
+
+/// Application state for OGC API Processes
+#[cfg(feature = "processes")]
+#[derive(Clone)]
+pub struct ProcessesState {
     pub(crate) processors: Arc<RwLock<HashMap<String, Arc<dyn Processor>>>>,
-    #[cfg(feature = "processes")]
     pub(crate) spawn: fn(futures::future::BoxFuture<'static, ()>) -> tokio::task::JoinHandle<()>,
+    pub(crate) sync_process_call_is_job: bool,
+}
+
+#[cfg(feature = "processes")]
+mod process_state {
+    use super::*;
+    use crate::{Error, Result, util::read_lock};
+    use axum::http::StatusCode;
+
+    impl Default for ProcessesState {
+        fn default() -> Self {
+            Self {
+                processors: Arc::new(RwLock::new(HashMap::new())),
+                spawn: tokio::spawn,
+                sync_process_call_is_job: false,
+            }
+        }
+    }
+
+    #[cfg(feature = "processes")]
+    impl ProcessesState {
+        pub fn processor_by_id(&self, process_id: &str) -> Result<Arc<dyn Processor>> {
+            read_lock(&self.processors)
+                .get(process_id)
+                .cloned()
+                .ok_or_else(|| {
+                    Error::ApiException(
+                        (
+                            StatusCode::NOT_FOUND,
+                            format!("No process with id `{process_id}`"),
+                        )
+                            .into(),
+                    )
+                })
+        }
+    }
 }
 
 // TODO: Introduce service trait
@@ -101,9 +145,7 @@ impl AppState {
             conformance: Arc::new(RwLock::new(conformace)),
             drivers: Arc::new(drivers),
             #[cfg(feature = "processes")]
-            processors: Default::default(),
-            #[cfg(feature = "processes")]
-            spawn: tokio::spawn,
+            processes: ProcessesState::default(),
         })
     }
 
@@ -119,10 +161,12 @@ impl AppState {
         self,
         processors: impl IntoIterator<Item = P>,
     ) -> Self {
-        crate::util::write_lock(&self.processors).extend(processors.into_iter().map(|processor| {
-            let processor = processor.into_arc_processor();
-            (processor.id().to_string(), processor)
-        }));
+        crate::util::write_lock(&self.processes.processors).extend(processors.into_iter().map(
+            |processor| {
+                let processor = processor.into_arc_processor();
+                (processor.id().to_string(), processor)
+            },
+        ));
 
         self
     }
@@ -133,7 +177,7 @@ impl AppState {
         mut self,
         spawn_fn: fn(futures::future::BoxFuture<'static, ()>) -> tokio::task::JoinHandle<()>,
     ) -> Self {
-        self.spawn = spawn_fn;
+        self.processes.spawn = spawn_fn;
         self
     }
 }
