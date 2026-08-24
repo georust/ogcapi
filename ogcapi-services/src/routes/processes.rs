@@ -705,7 +705,12 @@ fn url_replace_segments(
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::too_many_lines, clippy::unimplemented, reason = "ok in tests")]
+    #![allow(
+        clippy::panic,
+        clippy::too_many_lines,
+        clippy::unimplemented,
+        reason = "ok in tests"
+    )]
 
     use super::*;
     use crate::Drivers;
