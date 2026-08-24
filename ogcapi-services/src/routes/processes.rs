@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
+
 use anyhow::bail;
 use axum::{
     Json,
@@ -29,6 +31,7 @@ use crate::{
     AppState, Error, Result,
     extractors::RemoteUrl,
     processes::{ProcessExecuteResponse, ProcessResultsResponse, ValidParams},
+    util::{read_lock, write_lock},
 };
 
 const CONFORMANCE: [&str; 5] = [
@@ -127,7 +130,7 @@ async fn processes(
                 .mediatype(JSON)
                 .title("process description"),
             Link::new(
-                url_plus_segments(url.clone(), &[&process.id, "execution"]).unwrap(),
+                url_plus_segments(url.clone(), &[&process.id, "execution"])?,
                 EXECUTE,
             )
             .title("Execute endpoint"),
@@ -232,15 +235,14 @@ async fn execution(
 
     let process_description = processor.process().await?;
 
-    let response_mode = execute.response.clone();
+    let response_mode = execute.response;
     let negotiated_execution_mode =
         negotiate_execution_mode(&headers, &process_description.summary.job_control_options);
 
     if negotiated_execution_mode.is_sync() {
-        let results = processor.execute(execute).await?;
         return Ok(ProcessExecuteResponse::Synchronous {
             results: ProcessResultsResponse {
-                results,
+                results: processor.execute(execute).await?,
                 response_mode,
             },
             was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
@@ -340,20 +342,21 @@ enum ClientExecutionModePreference {
     None,
 }
 
+#[derive(Debug, Copy, Clone)]
 enum NegotiatedExecutionMode {
     Sync { was_preferred: bool },
     Async { was_preferred: bool },
 }
 
 impl NegotiatedExecutionMode {
-    fn is_sync(&self) -> bool {
+    fn is_sync(self) -> bool {
         matches!(self, NegotiatedExecutionMode::Sync { .. })
     }
 
-    fn was_preferred(&self) -> bool {
+    fn was_preferred(self) -> bool {
         match self {
             NegotiatedExecutionMode::Sync { was_preferred }
-            | NegotiatedExecutionMode::Async { was_preferred } => *was_preferred,
+            | NegotiatedExecutionMode::Async { was_preferred } => was_preferred,
         }
     }
 }
@@ -595,28 +598,6 @@ async fn results(
     }
 }
 
-/// Helper function to read-lock a RwLock, recovering from poisoning if necessary.
-fn read_lock<T>(mutex: &std::sync::RwLock<T>) -> std::sync::RwLockReadGuard<'_, T> {
-    match mutex.read() {
-        Ok(guard) => guard,
-        Err(poisoned) => {
-            error!("Mutex was poisoned, attempting to recover.");
-            poisoned.into_inner()
-        }
-    }
-}
-
-/// Helper function to write-lock a RwLock, recovering from poisoning if necessary.
-fn write_lock<T>(mutex: &std::sync::RwLock<T>) -> std::sync::RwLockWriteGuard<'_, T> {
-    match mutex.write() {
-        Ok(guard) => guard,
-        Err(poisoned) => {
-            error!("Mutex was poisoned, attempting to recover.");
-            poisoned.into_inner()
-        }
-    }
-}
-
 pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
     let mut root = write_lock(&state.root);
     root.links.append(&mut vec![
@@ -673,13 +654,15 @@ fn url_replace_segments(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    #![allow(clippy::too_many_lines, clippy::unimplemented, reason = "ok in tests")]
 
     use super::*;
     use crate::Drivers;
+    use axum::http::HeaderValue;
     use ogcapi_drivers::JobHandler;
     use ogcapi_processes::echo::Echo;
     use ogcapi_types::common::link_rel::EXECUTE;
+    use std::sync::Arc;
     use tokio::task_local;
 
     /// Test that we can pass task-local context into spawned tasks.
@@ -758,10 +741,7 @@ mod tests {
 
         // 4. Execute a process asynchronously within a task-local scope.
         let mut headers = HeaderMap::new();
-        headers.insert(
-            "Prefer",
-            hyper::header::HeaderValue::from_static("respond-async"),
-        );
+        headers.insert("Prefer", HeaderValue::from_static("respond-async"));
         let response = FOO
             .scope("bar".to_string(), async {
                 execution(
@@ -808,7 +788,7 @@ mod tests {
 
         // 7. Wait for the job handler to be called and verify the message.
         tokio::select! {
-            _ = tokio::time::sleep(std::time::Duration::from_secs(1)) => {
+            () = tokio::time::sleep(std::time::Duration::from_secs(1)) => {
                 panic!("Timeout waiting for job handler to be called");
             }
             foo = rx.recv() => {
@@ -973,10 +953,7 @@ mod tests {
             Path("echo".to_string()),
             {
                 let mut headers = HeaderMap::new();
-                headers.insert(
-                    "Prefer",
-                    hyper::header::HeaderValue::from_static("respond-async"),
-                );
+                headers.insert("Prefer", HeaderValue::from_static("respond-async"));
                 headers
             },
             ValidParams(Json(

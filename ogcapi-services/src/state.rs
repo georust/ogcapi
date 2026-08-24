@@ -83,7 +83,7 @@ impl Drivers {
 }
 
 impl AppState {
-    pub async fn new(drivers: Drivers) -> Self {
+    pub fn new(drivers: Drivers) -> impl Future<Output = Self> {
         // conformance
         #[allow(unused_mut)]
         let mut conformace = Conformance::default();
@@ -96,7 +96,7 @@ impl AppState {
             "https://api.stacspec.org/v1.0.0-rc.1/browseable",
         ]);
 
-        AppState {
+        std::future::ready(AppState {
             root: Arc::new(RwLock::new(LandingPage::new("root").description("root"))),
             conformance: Arc::new(RwLock::new(conformace)),
             drivers: Arc::new(drivers),
@@ -104,26 +104,31 @@ impl AppState {
             processors: Default::default(),
             #[cfg(feature = "processes")]
             spawn: tokio::spawn,
-        }
+        })
     }
 
+    #[must_use]
     pub fn root(mut self, root: LandingPage) -> Self {
         self.root = Arc::new(RwLock::new(root));
         self
     }
 
     #[cfg(feature = "processes")]
-    pub fn processors(self, processors: Vec<Arc<dyn Processor>>) -> Self {
-        for p in processors {
-            self.processors
-                .write()
-                .unwrap()
-                .insert(p.id().to_string(), p);
-        }
+    #[must_use]
+    pub fn processors<P: crate::processes::IntoArcProcessor>(
+        self,
+        processors: impl IntoIterator<Item = P>,
+    ) -> Self {
+        crate::util::write_lock(&self.processors).extend(processors.into_iter().map(|processor| {
+            let processor = processor.into_arc_processor();
+            (processor.id().to_string(), processor)
+        }));
+
         self
     }
 
     #[cfg(feature = "processes")]
+    #[must_use]
     pub fn with_spawn_fn(
         mut self,
         spawn_fn: fn(futures::future::BoxFuture<'static, ()>) -> tokio::task::JoinHandle<()>,

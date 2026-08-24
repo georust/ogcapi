@@ -1,7 +1,10 @@
+#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
+
+use anyhow::Context;
 use axum::{
     Json,
     extract::{Path, State},
-    http::header::CONTENT_TYPE,
+    http::{HeaderValue, header::CONTENT_TYPE},
 };
 use hyper::HeaderMap;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -15,6 +18,7 @@ use ogcapi_types::{
 use crate::{
     AppState, Result,
     extractors::{Qs, RemoteUrl},
+    util::write_lock,
 };
 
 const CONFORMANCE: [&str; 6] = [
@@ -78,7 +82,7 @@ async fn query(
         .query(&collection_id, &query_type, &query)
         .await?;
 
-    for feature in fc.features.iter_mut() {
+    for feature in &mut fc.features {
         feature.links = vec![
             Link::new(
                 url.join(&format!(
@@ -88,12 +92,17 @@ async fn query(
                 SELF,
             )
             .mediatype(GEO_JSON),
-        ]
+        ];
     }
 
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Crs", crs.to_string().parse().unwrap());
-    headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
+    headers.insert(
+        "Content-Crs",
+        crs.to_string()
+            .parse()
+            .context("cannot parse content CRS")?,
+    );
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static(GEO_JSON));
 
     Ok((headers, Json(fc)))
 }
@@ -103,7 +112,7 @@ async fn query(
 // async fn instance() {}
 
 pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
-    state.conformance.write().unwrap().extend(&CONFORMANCE);
+    write_lock(&state.conformance).extend(&CONFORMANCE);
 
     OpenApiRouter::new().routes(routes!(query))
     // .route("/collections/{collection_id}/instances", get(instances))

@@ -1,7 +1,10 @@
+#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
+
+use anyhow::Context;
 use axum::{
     Json,
     extract::State,
-    http::{HeaderMap, StatusCode},
+    http::{HeaderMap, HeaderValue, StatusCode},
 };
 use hyper::header::CONTENT_TYPE;
 use url::Url;
@@ -170,25 +173,27 @@ pub(crate) async fn search(
         }
     }
 
-    for feature in fc.features.iter_mut() {
-        let collection = feature.collection.as_ref().unwrap();
+    for feature in &mut fc.features {
+        let collection = feature
+            .collection
+            .as_ref()
+            .context("Feature should have collection")?;
         feature.links.insert_or_update(&[
             Link::new(
                 url.join(&format!(
-                    "collections/{}/items/{}",
-                    collection,
-                    feature.id.as_ref().unwrap()
+                    "collections/{collection}/items/{}",
+                    feature.id.as_ref().context("Feature should have id")?
                 ))?,
                 SELF,
             )
             .mediatype(GEO_JSON),
             Link::new(url.join(".")?, ROOT).mediatype(JSON),
             Link::new(url.join(&format!("collections/{collection}"))?, COLLECTION).mediatype(JSON),
-        ])
+        ]);
     }
 
     let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static(GEO_JSON));
 
     Ok((headers, Json(fc)))
 }

@@ -1,4 +1,6 @@
-use axum::{Json, extract::State};
+#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
+
+use axum::{Json, extract::State, http::HeaderValue};
 use hyper::{HeaderMap, header::CONTENT_TYPE};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
@@ -16,6 +18,7 @@ use crate::{
     AppState, Result,
     extractors::RemoteUrl,
     openapi::{OPENAPI, OpenAPI},
+    util::read_lock,
 };
 
 /// Landing page
@@ -47,7 +50,7 @@ pub async fn root(
     State(state): State<AppState>,
     RemoteUrl(url): RemoteUrl,
 ) -> Result<Json<LandingPage>> {
-    let mut root = state.root.read().unwrap().to_owned();
+    let mut root = read_lock(&state.root).to_owned();
 
     root.links.insert_or_update(&[
         Link::new(format!("{}/", url.as_str().trim_end_matches('/')), SELF).mediatype(JSON),
@@ -80,7 +83,7 @@ pub async fn root(
     root.links.resolve_relative_links();
 
     #[cfg(feature = "stac")]
-    let root = root.conforms_to(&state.conformance.read().unwrap().conforms_to[..]);
+    let root = root.conforms_to(&read_lock(&state.conformance).conforms_to[..]);
 
     Ok(Json(root))
 }
@@ -102,7 +105,7 @@ pub async fn root(
 )]
 pub(crate) async fn api(RemoteUrl(url): RemoteUrl) -> (HeaderMap, Json<openapiv3::OpenAPI>) {
     let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, OPEN_API_JSON.parse().unwrap());
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static(OPEN_API_JSON));
 
     let mut open_api = OpenAPI::from_slice(OPENAPI).0;
 
@@ -146,7 +149,7 @@ pub(crate) async fn api(RemoteUrl(url): RemoteUrl) -> (HeaderMap, Json<openapiv3
     )
 )]
 pub(crate) async fn conformance(State(state): State<AppState>) -> Json<Conformance> {
-    Json(state.conformance.read().unwrap().to_owned())
+    Json(read_lock(&state.conformance).to_owned())
 }
 
 pub(crate) fn router() -> OpenApiRouter<AppState> {

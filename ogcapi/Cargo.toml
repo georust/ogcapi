@@ -89,3 +89,6 @@ ogcapi-client = { path = "../ogcapi-client", version = "0.3", optional = true, d
 
 [package.metadata.docs.rs]
 all-features = true
+
+[lints]
+workspace = true

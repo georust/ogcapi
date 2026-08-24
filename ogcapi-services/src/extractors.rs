@@ -10,7 +10,7 @@ use url::Url;
 use crate::Error;
 
 /// Extractor for the remote URL.
-/// This should be the <scheme>://<BASE_URL><ROUTER_PATH>?<QUERY> of the original request, even if the API is behind a reverse proxy.
+/// This should be the `<scheme>://<BASE_URL><ROUTER_PATH>?<QUERY>` of the original request, even if the API is behind a reverse proxy.
 /// The `PUBLIC_URL` environment variable can be set to override the base URL (useful if the API is behind a reverse proxy that doesn't forward the original host or scheme).
 pub(crate) struct RemoteUrl(pub Url);
 
@@ -29,7 +29,8 @@ where
             format!(
                 "{}{}",
                 url.trim_end_matches('/'),
-                uri.path_and_query().unwrap()
+                uri.path_and_query()
+                    .context("Unable to extract path and query")?
             )
         } else if uri.0.scheme().is_some() {
             uri.0.to_string()
@@ -61,18 +62,21 @@ pub(crate) struct Qs<T>(pub(crate) T);
 impl<S, T> FromRequestParts<S> for Qs<T>
 where
     S: Send + Sync,
-    T: serde::de::DeserializeOwned,
+    T: serde::de::DeserializeOwned + Send,
 {
     type Rejection = Error;
 
-    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
+    fn from_request_parts(
+        parts: &mut Parts,
+        _: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> {
         let qs = parts.uri.query().unwrap_or("");
-        match serde_qs::from_str(qs) {
+        std::future::ready(match serde_qs::from_str(qs) {
             Ok(query) => Ok(Self(query)),
             Err(e) => Err(Error::ApiException(
                 (StatusCode::BAD_REQUEST, e.to_string()).into(),
             )),
-        }
+        })
     }
 }
 
@@ -85,7 +89,7 @@ mod tests {
     #[tokio::test]
     async fn it_extracts_remote_urls_all_branches() {
         async fn request_to_remote_url_str(request_builder: Builder) -> String {
-            let (mut parts, _) = request_builder.body(()).unwrap().into_parts();
+            let (mut parts, ()) = request_builder.body(()).unwrap().into_parts();
             RemoteUrl::from_request_parts(&mut parts, &())
                 .await
                 .unwrap()
@@ -120,7 +124,7 @@ mod tests {
             .uri("https://api.example.com/thing?x=2")
             .body(())
             .unwrap();
-        let (mut parts, _) = req.into_parts();
+        let (mut parts, ()) = req.into_parts();
         let remote = RemoteUrl::from_request_parts(&mut parts, &())
             .await
             .unwrap();
@@ -133,7 +137,7 @@ mod tests {
             .header("X-Forwarded-Proto", "https")
             .body(())
             .unwrap();
-        let (mut parts, _) = req.into_parts();
+        let (mut parts, ()) = req.into_parts();
         let remote = RemoteUrl::from_request_parts(&mut parts, &())
             .await
             .unwrap();

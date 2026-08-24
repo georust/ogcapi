@@ -8,6 +8,7 @@ mod routes;
 mod service;
 mod state;
 pub mod telemetry;
+pub(crate) mod util;
 
 pub use config::Config;
 pub use error::Error;

@@ -9,7 +9,7 @@ pub(crate) struct OpenAPI(pub(crate) openapiv3::OpenAPI);
 
 impl OpenAPI {
     pub(crate) fn from_slice(api: &[u8]) -> Self {
-        let openapi: openapiv3::OpenAPI = serde_yaml::from_slice(api).unwrap();
+        let openapi: openapiv3::OpenAPI = serde_yaml::from_slice(api).unwrap_or_default();
         OpenAPI(openapi)
     }
 }

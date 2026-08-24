@@ -1,5 +1,8 @@
+#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
+
 use std::sync::{Arc, OnceLock};
 
+use anyhow::Context;
 use axum::{
     Json,
     extract::{Path, State},
@@ -23,6 +26,7 @@ use ogcapi_types::{
 use crate::{
     AppState, Result,
     extractors::{Qs, RemoteUrl},
+    util::write_lock,
 };
 
 const CONFORMANCE: [&str; 7] = [
@@ -59,7 +63,7 @@ static TMS: OnceLock<Arc<DashMap<TileMatrixSetId, TileMatrixSet>>> = OnceLock::n
     )
 )]
 async fn tile_matrix_sets(RemoteUrl(url): RemoteUrl) -> Result<Json<TileMatrixSets>> {
-    let registry = TMS.get().expect("TMS cell to be inizialized");
+    let registry = TMS.get().expect("TMS cell to be initialized");
 
     let tile_matrix_sets = registry
         .iter()
@@ -68,8 +72,8 @@ async fn tile_matrix_sets(RemoteUrl(url): RemoteUrl) -> Result<Json<TileMatrixSe
             let url = url.join(&path).expect("failed to parse url");
             let link = Link::new(url, TILING_SCHEME);
             TileMatrixSetItem {
-                id: Some(tms.id.to_owned()),
-                title: tms.title.to_owned(),
+                id: Some(tms.id.clone()),
+                title: tms.title.clone(),
                 links: vec![link],
                 ..Default::default()
             }
@@ -118,12 +122,12 @@ async fn tile_matrix_set(Path(id): Path<TileMatrixSetId>) -> Result<Json<TileMat
             Ok(r) => match r.json::<TileMatrixSet>().await {
                 Ok(tms) => {
                     // registry.insert(tms.id.to_owned(), tms);
-                    Ok(Json(tms.to_owned()))
+                    Ok(Json(tms.clone()))
                 }
                 Err(e) => Err(Exception::new_from_status(500).detail(e.to_string()).into()),
             },
             Err(e) => {
-                let status = e.status().map(|s| s.as_u16()).unwrap_or(500);
+                let status = e.status().map_or(500, |s| s.as_u16());
                 Err(Exception::new_from_status(status)
                     .detail(e.to_string())
                     .into())
@@ -170,7 +174,7 @@ async fn tiles(RemoteUrl(url): RemoteUrl) -> Result<Json<TileSets>> {
         let tileset = TileSetItem {
             title: Some(format!("Whole dataset in {}", tms.id)),
             data_type: DataType::Vector,
-            crs: tms.crs.to_owned(),
+            crs: tms.crs.clone(),
             tile_matrix_set_uri: None,
             links: vec![self_link, tiles_link, tms_link],
         };
@@ -234,12 +238,9 @@ async fn tiles_tile_set(
     let tiles_url = url.join(&tiles_path).expect("failed to parse url");
     headers.insert(
         "Link-Template",
-        format!(
-            "<{}>; rel=\"{ITEM}\"; type=\"{MVT}\"; var-base=\"./vars/\"",
-            tiles_url
-        )
-        .parse()
-        .unwrap(),
+        format!("<{tiles_url}>; rel=\"{ITEM}\"; type=\"{MVT}\"; var-base=\"./vars/\"")
+            .parse()
+            .context("cannot parse link template")?,
     );
     let tiles_link = Link::new(tiles_url, ITEM).mediatype(MVT).templated(true);
 
@@ -249,9 +250,9 @@ async fn tiles_tile_set(
         description: Default::default(),
         keywords: Default::default(),
         data_type: DataType::Vector,
-        tile_matrix_set_uri: tms.uri.to_owned(),
+        tile_matrix_set_uri: tms.uri.clone(),
         tile_matrix_set_limits: Default::default(),
-        crs: tms.crs.to_owned(),
+        crs: tms.crs.clone(),
         epoch: Default::default(),
         links: vec![self_link, tms_link, tiles_link],
         layers: Default::default(),
@@ -300,7 +301,7 @@ async fn tiles_tile(
     let tms_id = &params.tile_matrix_set_id;
     let Some(tms) = TMS.get().and_then(|tms| tms.get(tms_id)) else {
         return Err(Exception::new_from_status(404)
-            .detail(format!("Tile matrix set `{tms_id}` not found",))
+            .detail(format!("Tile matrix set `{tms_id}` not found"))
             .into());
     };
 
@@ -318,7 +319,7 @@ async fn tiles_tile(
     let row = params.tile_row;
     let col = params.tile_col;
 
-    if row >= tm.matrix_height.get() as u32 || col >= tm.matrix_width.get() as u32 {
+    if u64::from(row) >= tm.matrix_height.get() || u64::from(col) >= tm.matrix_width.get() {
         return Err(Exception::new_from_status(404)
             .detail(format!("Tile row/col `{row}/{col}` out of bounds"))
             .into());
@@ -381,9 +382,9 @@ async fn collection_tiles(
         let tiles_link = Link::new(tiles_url, ITEM).mediatype(MVT).templated(true);
 
         let tileset = TileSetItem {
-            title: Some(collection_id.to_owned()),
+            title: Some(collection_id.clone()),
             data_type: DataType::Vector,
-            crs: tms.crs.to_owned(),
+            crs: tms.crs.clone(),
             tile_matrix_set_uri: None,
             links: vec![tileset_link, tiles_link, tms_link],
         };
@@ -452,24 +453,21 @@ async fn collection_tile_set(
     let tiles_url = url.join(&tiles_path).expect("failed to parse url");
     headers.insert(
         "Link-Template",
-        format!(
-            "<{}>; rel=\"{ITEM}\"; type=\"{MVT}\"; var-base=\"./vars/\"",
-            tiles_url
-        )
-        .parse()
-        .unwrap(),
+        format!("<{tiles_url}>; rel=\"{ITEM}\"; type=\"{MVT}\"; var-base=\"./vars/\"")
+            .parse()
+            .context("cannot parse link template")?,
     );
     let tiles_link = Link::new(tiles_url, ITEM).mediatype(MVT).templated(true);
 
     // tileset
     let tile_set = TileSet {
-        title: Some(collection_id.to_string()),
+        title: Some(collection_id.clone()),
         description: Default::default(),
         keywords: Default::default(),
         data_type: DataType::Vector,
-        tile_matrix_set_uri: tms.uri.to_owned(),
+        tile_matrix_set_uri: tms.uri.clone(),
         tile_matrix_set_limits: Default::default(),
-        crs: tms.crs.to_owned(),
+        crs: tms.crs.clone(),
         epoch: Default::default(),
         links: vec![self_link, tms_link, tiles_link],
         layers: Default::default(),
@@ -518,7 +516,7 @@ async fn collection_tile(
     let tms_id = &params.tile_params.tile_matrix_set_id;
     let Some(tms) = TMS.get().and_then(|tms| tms.get(tms_id)) else {
         return Err(Exception::new_from_status(404)
-            .detail(format!("Tile matrix set `{tms_id}` not found",))
+            .detail(format!("Tile matrix set `{tms_id}` not found"))
             .into());
     };
 
@@ -536,7 +534,7 @@ async fn collection_tile(
     let row = params.tile_params.tile_row;
     let col = params.tile_params.tile_col;
 
-    if row >= tm.matrix_height.get() as u32 || col >= tm.matrix_width.get() as u32 {
+    if u64::from(row) >= tm.matrix_height.get() || u64::from(col) >= tm.matrix_width.get() {
         return Err(Exception::new_from_status(404)
             .detail(format!("Tile row/col `{row}/{col}` out of bounds"))
             .into());
@@ -567,18 +565,18 @@ async fn collection_tile(
 }
 
 pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
-    let mut root = state.root.write().unwrap();
+    let mut root = write_lock(&state.root);
     root.links.extend([Link::new("tiles", TILESETS_VECTOR)
         .title("List of available vector features tilesets for the dataset")
         .mediatype(JSON)]);
 
-    state.conformance.write().unwrap().extend(&CONFORMANCE);
+    write_lock(&state.conformance).extend(&CONFORMANCE);
 
     // Setup tile matrix sets
     let tms_map = DashMap::new();
     let web_mercartor_quad: TileMatrixSet =
         serde_json::from_slice(WEB_MERCARTOR_QUAD).expect("parse tms");
-    tms_map.insert(web_mercartor_quad.id.to_owned(), web_mercartor_quad);
+    tms_map.insert(web_mercartor_quad.id.clone(), web_mercartor_quad);
     TMS.set(Arc::new(tms_map)).expect("set `TMS` content");
 
     OpenApiRouter::new()
