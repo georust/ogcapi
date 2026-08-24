@@ -718,7 +718,6 @@ mod tests {
     use ogcapi_drivers::JobHandler;
     use ogcapi_processes::echo::Echo;
     use ogcapi_types::common::link_rel::EXECUTE;
-    use std::sync::Arc;
     use tokio::task_local;
 
     /// Test that we can pass task-local context into spawned tasks.
