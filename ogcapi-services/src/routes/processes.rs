@@ -11,7 +11,7 @@ use axum::{
 };
 use hyper::HeaderMap;
 use ogcapi_drivers::ProcessResult;
-use ogcapi_processes::Processor;
+use ogcapi_processes::ProcessExecution;
 use tracing::error;
 use url::Url;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -194,18 +194,39 @@ async fn process(
 /// Create a new job.
 ///
 /// For more information, see [Section 7.11](https://docs.ogc.org/is/18-062/18-062.html#sc_create_job).
+///
+/// Schema: <https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/ogcapi-processes-1.yaml>
 #[utoipa::path(post, path = "/processes/{processID}/execution", tag = "Processes",
     request_body = Execute,
     responses(
-        (
-            status = 200,
+        ( // https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/responses/ExecuteSync.yaml
+            status = StatusCode::OK,
             description = "Result of synchronous execution",
-            body = Results
+            body = Results,
         ),
-        (
-            status = 404, description = "The requested URI was not found.", 
-            body = Exception, example = json!(Exception::new_from_status(404))
-        )
+        ( // https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/responses/ExecuteAsync.yaml
+            status = StatusCode::CREATED,
+            description = "Started asynchronous execution. Created job.",
+            body = StatusInfo,
+        ),
+        ( // https://docs.ogc.org/per/21-044.html
+            status = StatusCode::BAD_REQUEST,
+            description = "The request was invalid.",
+            body = Exception,
+            example = json!(Exception::new_from_status(400)),
+        ),
+        ( // https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/responses/NotFound.yaml
+            status = StatusCode::NOT_FOUND,
+            description = "The requested URI was not found.", 
+            body = Exception,
+            example = json!(Exception::new_from_status(404)),
+        ),
+        ( // https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/responses/ServerError.yaml
+            status = StatusCode::INTERNAL_SERVER_ERROR,
+            description = "A server error occurred.",
+            body = Exception,
+            example = json!(Exception::new_from_status(500)),
+        ),
     )
 )]
 async fn execution(
@@ -225,10 +246,16 @@ async fn execution(
         state.processes.sync_process_call_is_job,
     );
 
+    let execution = processor.prepare(execute).await.map_err(|error| {
+        Exception::new_from_status(StatusCode::BAD_REQUEST.as_u16())
+            .title("Invalid request payload or parameters")
+            .detail(error)
+    })?;
+
     if negotiated_execution_mode.is_sync_and_no_job() {
         return Ok(ProcessExecuteResponse::Synchronous {
             results: ProcessResultsResponse {
-                results: processor.execute(execute).await?,
+                results: execution.await?,
                 response_mode,
             },
             was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
@@ -256,8 +283,7 @@ async fn execution(
         Box::pin(async move {
             *write_lock(&execute_task_result) = execute_as_job(
                 state.drivers.clone(),
-                processor,
-                execute,
+                execution,
                 status_info.clone(),
                 negotiated_execution_mode.is_sync(),
             )
@@ -297,8 +323,7 @@ async fn execution(
 
 async fn execute_as_job(
     drivers: Arc<Drivers>,
-    processor: Arc<dyn Processor>,
-    execute: Execute,
+    processor: ProcessExecution,
     mut status_info: StatusInfo,
     report_back: bool,
 ) -> Option<Result<ExecuteResults>> {
@@ -319,7 +344,7 @@ async fn execute_as_job(
         return None;
     }
 
-    let result = processor.execute(execute).await;
+    let result = processor.await;
 
     match &result {
         Ok(_result) => {

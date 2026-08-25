@@ -19,7 +19,7 @@ use ogcapi_drivers::TileTransactions;
 
 use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 #[cfg(feature = "processes")]
-use ogcapi_processes::Processor;
+use ogcapi_processes::DynProcessor;
 use ogcapi_types::common::{Conformance, LandingPage};
 use url::Url;
 
@@ -37,7 +37,7 @@ pub struct AppState {
 #[cfg(feature = "processes")]
 #[derive(Clone)]
 pub struct ProcessesState {
-    pub(crate) processors: Arc<RwLock<HashMap<String, Arc<dyn Processor>>>>,
+    pub(crate) processors: Arc<RwLock<HashMap<String, Arc<dyn DynProcessor>>>>,
     pub(crate) spawn: fn(futures::future::BoxFuture<'static, ()>) -> tokio::task::JoinHandle<()>,
     pub(crate) sync_process_call_is_job: bool,
 }
@@ -60,7 +60,7 @@ mod process_state {
 
     #[cfg(feature = "processes")]
     impl ProcessesState {
-        pub fn processor_by_id(&self, process_id: &str) -> Result<Arc<dyn Processor>> {
+        pub fn processor_by_id(&self, process_id: &str) -> Result<Arc<dyn DynProcessor>> {
             read_lock(&self.processors)
                 .get(process_id)
                 .cloned()

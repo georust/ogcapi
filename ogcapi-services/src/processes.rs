@@ -11,6 +11,7 @@ use mail_builder::headers::HeaderType;
 use mail_builder::headers::content_type::ContentType;
 use mail_builder::headers::text::Text;
 use mail_builder::mime::{BodyPart, MimePart};
+use ogcapi_processes::DynProcessor;
 use ogcapi_processes::Processor;
 use ogcapi_types::{
     common::{Exception, Link},
@@ -445,15 +446,15 @@ where
 }
 
 pub trait IntoArcProcessor {
-    fn into_arc_processor(self) -> Arc<dyn Processor>;
+    fn into_arc_processor(self) -> Arc<dyn DynProcessor>;
 }
 
 impl<T> IntoArcProcessor for Arc<T>
 where
     T: Processor + Sized + 'static,
 {
-    fn into_arc_processor(self) -> Arc<dyn Processor> {
-        let processor: Arc<dyn Processor> = self;
+    fn into_arc_processor(self) -> Arc<dyn DynProcessor> {
+        let processor: Arc<dyn DynProcessor> = self;
         processor
     }
 }
@@ -462,8 +463,8 @@ impl<T> IntoArcProcessor for Box<T>
 where
     T: Processor + Sized + 'static,
 {
-    fn into_arc_processor(self) -> Arc<dyn Processor> {
-        let processor: Box<dyn Processor> = self;
+    fn into_arc_processor(self) -> Arc<dyn DynProcessor> {
+        let processor: Box<dyn DynProcessor> = self;
         Arc::from(processor)
     }
 }

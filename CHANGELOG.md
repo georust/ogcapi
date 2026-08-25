@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Define numeric feature id as `u64`.
 - Remove default Crs implementation.
 - (`OGCAPI - Processes`): Made `process` functions in `Processor` trait async, so that implementations can perform asynchronous operations.
+- BREAKING: (`OGCAPI - Processes`): Split `Processor` trait into two traits: `Processor` and `DynProcessor`. The `Processor` trait is now generic over the input and output types, while the `DynProcessor` trait is object-safe and can be used for dynamic dispatch. This change allows for more flexibility in implementing processes with different input and output types.
 
 ## [0.3.0] - 2025-04-05
 
