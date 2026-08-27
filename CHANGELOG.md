@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Allow modifying the middleware stack in the `Service` (`get_middleware_stack_mut`), e.g., for adding additional middleware or replacing the default ones.
 - Optional JSON-FG (OGC Features and Geometries JSON) support in `ogcapi-types` behind a `json-fg` feature: JSON-FG members on `Feature` and `FeatureCollection` (`place`, `coordRefSys`, `conformsTo`, ...), `into_json_fg` conversions, the `application/vnd.ogc.fg+json` media type, and a re-export of the [`jsonfg`](https://crates.io/crates/jsonfg) crate. By [@georgeboot](https://github.com/georgeboot).
 - Added `TILESETS_MAP` link relation to `ogcapi-types` for OGC API - Tiles.
+- In OGC API Processes, synchronous execution of a process can now create a job when setting `sync_process_call_is_job` to `true` in the `Service` configuration.
 
 ### Fixed
 
@@ -54,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Define numeric feature id as `u64`.
 - Remove default Crs implementation.
 - (`OGCAPI - Processes`): Made `process` functions in `Processor` trait async, so that implementations can perform asynchronous operations.
+- BREAKING: (`OGCAPI - Processes`): Split `Processor` trait into two traits: `Processor` and `DynProcessor`. The `Processor` trait is now generic over the input and output types, while the `DynProcessor` trait is object-safe and can be used for dynamic dispatch. This change allows for more flexibility in implementing processes with different input and output types.
 
 ## [0.3.0] - 2025-04-05
 

@@ -66,8 +66,34 @@ impl GreeterOutputs {
     }
 }
 
+impl TryFrom<GreeterOutputs> for ExecuteResults {
+    type Error = anyhow::Error;
+
+    fn try_from(value: GreeterOutputs) -> Result<Self, Self::Error> {
+        Ok(HashMap::from([(
+            "greeting".to_string(),
+            ExecuteResult {
+                data: InlineOrRefData::InputValueNoObject(InputValueNoObject::String(
+                    value.greeting,
+                )),
+                output: Output {
+                    format: Some(Format {
+                        media_type: Some("text/plain".to_string()),
+                        encoding: Some("utf8".to_string()),
+                        schema: None,
+                    }),
+                    transmission_mode: TransmissionMode::Value,
+                },
+            },
+        )]))
+    }
+}
+
 #[async_trait::async_trait]
 impl Processor for Greeter {
+    type Input = GreeterInputs;
+    type Output = GreeterOutputs;
+
     fn id(&self) -> &'static str {
         "greet"
     }
@@ -115,25 +141,23 @@ impl Processor for Greeter {
         })
     }
 
-    async fn execute(&self, execute: Execute) -> Result<ExecuteResults> {
-        let value = serde_json::to_value(execute.inputs).unwrap();
-        let inputs: GreeterInputs = serde_json::from_value(value).unwrap();
-        let greeting = format!("Hello, {}!\n", inputs.name);
+    async fn parse(&self, execute: Execute) -> Result<Self::Input> {
+        for output_name in execute.outputs.keys() {
+            if output_name != "greeting" {
+                return Err(anyhow::anyhow!(
+                    "unsupported output requested for Greeter: '{output_name}'"
+                ));
+            }
+        }
 
-        Ok(HashMap::from([(
-            "greeting".to_string(),
-            ExecuteResult {
-                data: InlineOrRefData::InputValueNoObject(InputValueNoObject::String(greeting)),
-                output: Output {
-                    format: Some(Format {
-                        media_type: Some("text/plain".to_string()),
-                        encoding: Some("utf8".to_string()),
-                        schema: None,
-                    }),
-                    transmission_mode: TransmissionMode::Value,
-                },
-            },
-        )]))
+        let value = serde_json::to_value(execute.inputs)?;
+        Ok(serde_json::from_value(value)?)
+    }
+
+    async fn execute(&self, input: Self::Input) -> Result<Self::Output> {
+        Ok(GreeterOutputs {
+            greeting: format!("Hello, {}!\n", input.name),
+        })
     }
 }
 
@@ -159,13 +183,23 @@ mod tests {
 
         let execute = Execute {
             inputs: input.execute_input(),
-            outputs: GreeterOutputs::execute_output(),
+            outputs: HashMap::from([(
+                "greeting".to_string(),
+                Output {
+                    format: None,
+                    transmission_mode: TransmissionMode::Value,
+                },
+            )]),
             ..Default::default()
         };
 
-        let output = greeter.execute(execute).await.unwrap();
+        let output = greeter
+            .execute(greeter.parse(execute).await.unwrap())
+            .await
+            .unwrap();
+        let results: ExecuteResults = output.try_into().unwrap();
 
-        let ExecuteResult { data, output: _ } = output.get("greeting").unwrap();
+        let ExecuteResult { data, output: _ } = results.get("greeting").unwrap();
         let InlineOrRefData::InputValueNoObject(InputValueNoObject::String(greeting)) = data else {
             panic!("Unexpected output data type");
         };

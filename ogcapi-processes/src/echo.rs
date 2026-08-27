@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::Processor;
 use anyhow::Result;
 use ogcapi_types::processes::{
     Execute, ExecuteResult, ExecuteResults, Format, InlineOrRefData, InputValueNoObject,
@@ -9,6 +8,9 @@ use ogcapi_types::processes::{
 };
 use schemars::{JsonSchema, generate::SchemaSettings};
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
+
+use crate::Processor;
 
 /// Echo is a simple process that echoes back the inputs it receives.
 /// It is used to verify that the OGC API Processes implementation is working correctly.
@@ -19,6 +21,12 @@ pub struct Echo;
 
 #[derive(Deserialize, Serialize, Debug, JsonSchema)]
 pub struct StringInput(String);
+
+#[derive(Debug)]
+pub struct EchoParams {
+    inputs: EchoInputs,
+    requested_outputs: EchoRequestedOutputs,
+}
 
 #[derive(Deserialize, Serialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -36,7 +44,50 @@ pub struct EchoInputs {
     pub pause: Option<u64>,
 }
 
-#[derive(Deserialize, Serialize, Debug, JsonSchema)]
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct EchoRequestedOutputs {
+    pub string_output: bool,
+    pub double_output: bool,
+}
+
+impl TryFrom<&Execute> for EchoRequestedOutputs {
+    type Error = anyhow::Error;
+
+    fn try_from(execute: &Execute) -> Result<Self> {
+        if execute.outputs.is_empty() {
+            return Ok(Self {
+                string_output: true,
+                double_output: true,
+            });
+        }
+
+        let mut requested_outputs = Self::default();
+
+        for (output_name, output) in &execute.outputs {
+            if output.format.is_some() {
+                anyhow::bail!("Custom output formats are not supported in echo process");
+            }
+
+            if !matches!(output.transmission_mode, TransmissionMode::Value) {
+                anyhow::bail!("Only 'value' transmission mode is supported in echo process");
+            }
+
+            match output_name.as_str() {
+                "stringOutput" => requested_outputs.string_output = true,
+                "doubleOutput" => requested_outputs.double_output = true,
+                _ => {
+                    anyhow::bail!(
+                        "Requested output '{output_name}' is not available in echo process"
+                    );
+                }
+            }
+        }
+
+        Ok(requested_outputs)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct EchoOutputs {
     pub string_output: Option<String>,
@@ -57,6 +108,15 @@ pub enum StringOutput {
     Value1(String),
     Value2(String),
     Value3(String),
+}
+
+impl TryFrom<EchoOutputs> for ExecuteResults {
+    type Error = anyhow::Error;
+
+    fn try_from(value: EchoOutputs) -> Result<Self, Self::Error> {
+        let outputs = value.compute_output_metadata();
+        Ok(value.to_execute_results(&outputs))
+    }
 }
 
 impl EchoOutputs {
@@ -133,6 +193,9 @@ impl EchoOutputs {
 
 #[async_trait::async_trait]
 impl Processor for Echo {
+    type Input = EchoParams;
+    type Output = EchoOutputs;
+
     fn id(&self) -> &'static str {
         "echo"
     }
@@ -214,76 +277,58 @@ impl Processor for Echo {
                     },
                 ),
             ]),
-            outputs: HashMap::from([(
-                "stringOutput".to_string(),
-                OutputDescription {
-                    description_type: DescriptionType::default(),
-                    schema: generator.root_schema_for::<StringInput>().to_value(),
-                },
-            )]),
+            outputs: HashMap::from([
+                (
+                    "stringOutput".to_string(),
+                    OutputDescription {
+                        description_type: DescriptionType::default(),
+                        schema: generator.root_schema_for::<StringInput>().to_value(),
+                    },
+                ),
+                (
+                    "doubleOutput".to_string(),
+                    OutputDescription {
+                        description_type: DescriptionType::default(),
+                        schema: generator.root_schema_for::<f64>().to_value(),
+                    },
+                ),
+            ]),
         })
     }
 
-    async fn execute(&self, execute: Execute) -> Result<ExecuteResults> {
-        let value = serde_json::to_value(execute.inputs)?;
-        let inputs: EchoInputs = serde_json::from_value(value)?;
+    #[instrument(level = "debug", skip(self), err)]
+    async fn parse(&self, execute: Execute) -> Result<Self::Input> {
+        Ok(EchoParams {
+            inputs: serde_json::from_value(serde_json::to_value(&execute.inputs)?)?,
+            requested_outputs: EchoRequestedOutputs::try_from(&execute)?,
+        })
+    }
 
+    #[instrument(level = "debug", skip(self), err)]
+    async fn execute(&self, params: Self::Input) -> Result<Self::Output> {
+        let EchoParams {
+            inputs,
+            requested_outputs,
+        } = params;
         if let Some(pause_duration) = inputs.pause {
             tokio::time::sleep(std::time::Duration::from_secs(pause_duration)).await;
         }
 
-        let output_values = EchoOutputs {
-            string_output: inputs.string_input,
-            double_output: inputs.double_input,
-        };
-
-        // validate requested outputs
-        if !execute.outputs.is_empty() {
-            for (output_name, output) in &execute.outputs {
-                if !["stringOutput", "doubleOutput"].contains(&output_name.as_str()) {
-                    anyhow::bail!(
-                        "Requested output '{}' is not available in echo process",
-                        output_name
-                    );
-                }
-
-                if output.format.is_some() {
-                    anyhow::bail!("Custom output formats are not supported in echo process");
-                }
-
-                if !matches!(output.transmission_mode, TransmissionMode::Value) {
-                    anyhow::bail!("Only 'value' transmission mode is supported in echo process");
-                }
-            }
-        }
-
-        let all_outputs = output_values.compute_output_metadata();
-        let outputs = if execute.outputs.is_empty() {
-            all_outputs
-        } else {
-            let mut outputs = execute.outputs;
-            for (name, output) in &mut outputs {
-                let Some(default_output) = all_outputs.get(name) else {
-                    anyhow::bail!(
-                        "Requested output '{}' is not available in echo process",
-                        name
-                    );
-                };
-                if output.format.is_none() {
-                    output.format = default_output.format.clone();
-                }
-            }
-            outputs
-        };
-
-        Ok(output_values.to_execute_results(&outputs))
+        Ok(EchoOutputs {
+            string_output: inputs
+                .string_input
+                .filter(|_| requested_outputs.string_output),
+            double_output: inputs
+                .double_input
+                .filter(|_| requested_outputs.double_output),
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ogcapi_types::processes::Input;
+    use ogcapi_types::processes::{Input, Output};
 
     #[tokio::test]
     async fn test_string_value_sync() {
@@ -312,12 +357,16 @@ mod tests {
             ..Default::default()
         };
 
-        let output = echo.execute(execute).await.unwrap();
+        let output = echo
+            .execute(echo.parse(execute).await.unwrap())
+            .await
+            .unwrap();
+        let results: ExecuteResults = output.try_into().unwrap();
 
-        assert_eq!(output.len(), 1);
+        assert_eq!(results.len(), 1);
 
         assert_eq!(
-            output["stringOutput"].data,
+            results["stringOutput"].data,
             InlineOrRefData::InputValueNoObject(InputValueNoObject::String("testtest".to_string()))
         );
     }
@@ -366,15 +415,19 @@ mod tests {
             ..Default::default()
         };
 
-        let output = echo.execute(execute).await.unwrap();
+        let output = echo
+            .execute(echo.parse(execute).await.unwrap())
+            .await
+            .unwrap();
+        let results: ExecuteResults = output.try_into().unwrap();
 
-        assert_eq!(output.len(), 2);
+        assert_eq!(results.len(), 2);
         assert_eq!(
-            output["stringOutput"].data,
+            results["stringOutput"].data,
             InlineOrRefData::InputValueNoObject(InputValueNoObject::String("testtest".to_string()))
         );
         assert_eq!(
-            output["doubleOutput"].data,
+            results["doubleOutput"].data,
             InlineOrRefData::InputValueNoObject(InputValueNoObject::Number(42.0))
         );
     }

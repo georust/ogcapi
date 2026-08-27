@@ -31,7 +31,7 @@ sqlx = { version = "0.8.6", optional = true, features = [
     "postgres",
 ] }
 tokio = { version = "1.51", features = ["macros", "rt-multi-thread"] }
-tracing = "0.1.44"
+tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
 

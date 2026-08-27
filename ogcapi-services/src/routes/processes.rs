@@ -1,15 +1,17 @@
 #![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
 
-use anyhow::bail;
+use std::sync::{Arc, RwLock};
+
+use anyhow::{Context, bail};
 use axum::{
     Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use futures::TryFutureExt;
 use hyper::HeaderMap;
 use ogcapi_drivers::ProcessResult;
+use ogcapi_processes::ProcessExecution;
 use tracing::error;
 use url::Url;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -22,13 +24,13 @@ use ogcapi_types::{
         query::LimitOffsetPagination,
     },
     processes::{
-        Execute, JobControlOptions, JobList, Process, ProcessList, ProcessSummary, Results,
-        ResultsQuery, StatusCode as JobStatusCode, StatusInfo,
+        Execute, ExecuteResults, JobControlOptions, JobList, Process, ProcessList, ProcessSummary,
+        Results, ResultsQuery, StatusCode as JobStatusCode, StatusInfo,
     },
 };
 
 use crate::{
-    AppState, Error, Result,
+    AppState, Drivers, Error, Result,
     extractors::RemoteUrl,
     processes::{ProcessExecuteResponse, ProcessResultsResponse, ValidParams},
     util::{read_lock, write_lock},
@@ -72,7 +74,7 @@ async fn processes(
     let offset = query.offset.unwrap_or(0);
     let limit;
     let selected_processors = {
-        let processors = read_lock(&state.processors);
+        let processors = read_lock(&state.processes.processors);
         limit = query.limit.unwrap_or_else(|| processors.len());
         processors
             .values()
@@ -173,17 +175,7 @@ async fn process(
     RemoteUrl(url): RemoteUrl,
     Path(process_id): Path<String>,
 ) -> Result<Json<Process>> {
-    let Some(processor) = read_lock(&state.processors).get(&process_id).map(
-        Clone::clone, /* Clone the Arc<dyn Processor> to avoid holding the lock across awaits */
-    ) else {
-        return Err(Error::ApiException(
-            (
-                StatusCode::NOT_FOUND,
-                format!("No process with id `{process_id}`"),
-            )
-                .into(),
-        ));
-    };
+    let processor = state.processes.processor_by_id(&process_id)?;
 
     let mut process = processor.process().await?;
 
@@ -202,18 +194,39 @@ async fn process(
 /// Create a new job.
 ///
 /// For more information, see [Section 7.11](https://docs.ogc.org/is/18-062/18-062.html#sc_create_job).
+///
+/// Schema: <https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/ogcapi-processes-1.yaml>
 #[utoipa::path(post, path = "/processes/{processID}/execution", tag = "Processes",
     request_body = Execute,
     responses(
-        (
-            status = 200,
+        ( // https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/responses/ExecuteSync.yaml
+            status = StatusCode::OK,
             description = "Result of synchronous execution",
-            body = Results
+            body = Results,
         ),
-        (
-            status = 404, description = "The requested URI was not found.", 
-            body = Exception, example = json!(Exception::new_from_status(404))
-        )
+        ( // https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/responses/ExecuteAsync.yaml
+            status = StatusCode::CREATED,
+            description = "Started asynchronous execution. Created job.",
+            body = StatusInfo,
+        ),
+        ( // https://docs.ogc.org/per/21-044.html
+            status = StatusCode::BAD_REQUEST,
+            description = "The request was invalid.",
+            body = Exception,
+            example = json!(Exception::new_from_status(400)),
+        ),
+        ( // https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/responses/NotFound.yaml
+            status = StatusCode::NOT_FOUND,
+            description = "The requested URI was not found.", 
+            body = Exception,
+            example = json!(Exception::new_from_status(404)),
+        ),
+        ( // https://schemas.opengis.net/ogcapi/processes/part1/1.0/openapi/responses/ServerError.yaml
+            status = StatusCode::INTERNAL_SERVER_ERROR,
+            description = "A server error occurred.",
+            body = Exception,
+            example = json!(Exception::new_from_status(500)),
+        ),
     )
 )]
 async fn execution(
@@ -223,26 +236,26 @@ async fn execution(
     headers: HeaderMap,
     ValidParams(Json(execute)): ValidParams<Json<Execute>>,
 ) -> Result<ProcessExecuteResponse> {
-    let Some(processor) = read_lock(&state.processors).get(&process_id).cloned() else {
-        return Err(Error::ApiException(
-            (
-                StatusCode::NOT_FOUND,
-                format!("No process with id `{process_id}`"),
-            )
-                .into(),
-        ));
-    };
-
+    let processor = state.processes.processor_by_id(&process_id)?;
     let process_description = processor.process().await?;
 
     let response_mode = execute.response;
-    let negotiated_execution_mode =
-        negotiate_execution_mode(&headers, &process_description.summary.job_control_options);
+    let negotiated_execution_mode = negotiate_execution_mode(
+        &headers,
+        &process_description.summary.job_control_options,
+        state.processes.sync_process_call_is_job,
+    );
 
-    if negotiated_execution_mode.is_sync() {
+    let execution = processor.prepare(execute).await.map_err(|error| {
+        Exception::new_from_status(StatusCode::BAD_REQUEST.as_u16())
+            .title("Invalid request payload or parameters")
+            .detail(error)
+    })?;
+
+    if negotiated_execution_mode.is_sync_and_no_job() {
         return Ok(ProcessExecuteResponse::Synchronous {
             results: ProcessResultsResponse {
-                results: processor.execute(execute).await?,
+                results: execution.await?,
                 response_mode,
             },
             was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
@@ -263,45 +276,20 @@ async fn execution(
 
     status_info.job_id = job_id;
 
-    {
-        let mut status_info = status_info.clone();
-        (state.spawn)(Box::pin(async move {
-            status_info.status = JobStatusCode::Running;
-
-            let result = state
-                .drivers
-                .jobs
-                .update(&status_info)
-                .and_then(|()| processor.execute(execute))
-                .await;
-            let mut results = None;
-
-            match result {
-                Ok(res) => {
-                    status_info.status = JobStatusCode::Successful;
-                    status_info.message = None;
-                    status_info.progress = Some(100);
-                    results = Some(res);
-                }
-                Err(e) => {
-                    status_info.status = JobStatusCode::Failed;
-                    status_info.message = e.to_string().into();
-                }
-            }
-
-            let _ = state
-                .drivers
-                .jobs
-                .finish(
-                    &status_info.job_id,
-                    &status_info.status,
-                    status_info.message.clone(),
-                    status_info.links.clone(),
-                    results,
-                )
-                .await;
-        }));
-    }
+    let execute_task_result = Arc::new(RwLock::new(None)); // `spawn` returns `()`
+    let execute_task = (state.processes.spawn)({
+        let execute_task_result = execute_task_result.clone();
+        let status_info = status_info.clone();
+        Box::pin(async move {
+            *write_lock(&execute_task_result) = execute_as_job(
+                state.drivers.clone(),
+                execution,
+                status_info.clone(),
+                negotiated_execution_mode.is_sync(),
+            )
+            .await;
+        })
+    });
 
     let status_url = url_replace_segments(url, 3, &["jobs", &status_info.job_id])?;
     let status_url_string = status_url.to_string();
@@ -312,11 +300,92 @@ async fn execution(
             .title("Job status")
             .mediatype(JSON)]);
 
+    if negotiated_execution_mode.is_sync() {
+        execute_task.await.context("Failed to execute process")?; // let task finish
+        let results = write_lock(&execute_task_result)
+            .take()
+            .context("Missing execute results")??;
+        return Ok(ProcessExecuteResponse::Synchronous {
+            results: ProcessResultsResponse {
+                results,
+                response_mode,
+            },
+            was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
+        });
+    }
+
     Ok(ProcessExecuteResponse::Asynchronous {
         status_info,
         was_preferred_execution_mode: negotiated_execution_mode.was_preferred(),
         status_url: status_url_string,
     })
+}
+
+async fn execute_as_job(
+    drivers: Arc<Drivers>,
+    processor: ProcessExecution,
+    mut status_info: StatusInfo,
+    report_back: bool,
+) -> Option<Result<ExecuteResults>> {
+    let jobs = &drivers.jobs;
+
+    status_info.status = JobStatusCode::Running;
+    if let Err(error) = jobs.update(&status_info).await {
+        // If we cannot update the job status, we cannot proceed with execution.
+
+        if report_back {
+            return Some(Err(error.into()));
+        }
+
+        error!(
+            "Failed to update job {job_id}: {error}",
+            job_id = status_info.job_id
+        );
+        return None;
+    }
+
+    let result = processor.await;
+
+    match &result {
+        Ok(_result) => {
+            status_info.status = JobStatusCode::Successful;
+            status_info.message = None;
+            status_info.progress = Some(100);
+        }
+        Err(e) => {
+            status_info.status = JobStatusCode::Failed;
+            status_info.message = e.to_string().into();
+        }
+    }
+
+    let (status_result, report_back_result) = match result {
+        Ok(result) if report_back => (Some(result.clone()), Some(Ok(result))),
+        Ok(result) => (Some(result), None),
+        Err(error) if report_back => (None, Some(Err(error.into()))),
+        Err(_error) => (None, None),
+    };
+
+    if let Err(error) = jobs
+        .finish(
+            &status_info.job_id,
+            &status_info.status,
+            status_info.message.clone(),
+            status_info.links.clone(),
+            status_result,
+        )
+        .await
+    {
+        if report_back {
+            return Some(Err(error.into()));
+        }
+
+        error!(
+            "Failed to finish job {job_id}: {error}",
+            job_id = status_info.job_id
+        );
+    }
+
+    report_back_result
 }
 
 /// Determine whether the client prefers synchronous execution
@@ -344,7 +413,7 @@ enum ClientExecutionModePreference {
 
 #[derive(Debug, Copy, Clone)]
 enum NegotiatedExecutionMode {
-    Sync { was_preferred: bool },
+    Sync { was_preferred: bool, as_job: bool },
     Async { was_preferred: bool },
 }
 
@@ -353,9 +422,13 @@ impl NegotiatedExecutionMode {
         matches!(self, NegotiatedExecutionMode::Sync { .. })
     }
 
+    fn is_sync_and_no_job(self) -> bool {
+        matches!(self, NegotiatedExecutionMode::Sync { as_job: false, .. })
+    }
+
     fn was_preferred(self) -> bool {
         match self {
-            NegotiatedExecutionMode::Sync { was_preferred }
+            NegotiatedExecutionMode::Sync { was_preferred, .. }
             | NegotiatedExecutionMode::Async { was_preferred } => was_preferred,
         }
     }
@@ -377,6 +450,7 @@ impl NegotiatedExecutionMode {
 fn negotiate_execution_mode(
     headers: &HeaderMap,
     job_control_options: &[JobControlOptions],
+    sync_process_call_is_job: bool,
 ) -> NegotiatedExecutionMode {
     let client_preference = client_execute_preference(headers);
     let (can_be_executed_sync, can_be_executed_async) =
@@ -391,6 +465,7 @@ fn negotiate_execution_mode(
         ClientExecutionModePreference::Sync if can_be_executed_sync => {
             NegotiatedExecutionMode::Sync {
                 was_preferred: true,
+                as_job: sync_process_call_is_job,
             }
         }
         ClientExecutionModePreference::Async if can_be_executed_async => {
@@ -400,6 +475,7 @@ fn negotiate_execution_mode(
         }
         _ if can_be_executed_sync => NegotiatedExecutionMode::Sync {
             was_preferred: false,
+            as_job: sync_process_call_is_job,
         },
         _ => NegotiatedExecutionMode::Async {
             was_preferred: false,
@@ -654,7 +730,12 @@ fn url_replace_segments(
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::too_many_lines, clippy::unimplemented, reason = "ok in tests")]
+    #![allow(
+        clippy::panic,
+        clippy::too_many_lines,
+        clippy::unimplemented,
+        reason = "ok in tests"
+    )]
 
     use super::*;
     use crate::Drivers;
@@ -662,7 +743,6 @@ mod tests {
     use ogcapi_drivers::JobHandler;
     use ogcapi_processes::echo::Echo;
     use ogcapi_types::common::link_rel::EXECUTE;
-    use std::sync::Arc;
     use tokio::task_local;
 
     /// Test that we can pass task-local context into spawned tasks.
@@ -795,6 +875,115 @@ mod tests {
                 assert_eq!(foo.unwrap(), "bar");
             }
         }
+    }
+
+    #[tokio::test]
+    async fn it_executes_sync_calls_as_jobs_when_configured() {
+        #[derive(Clone)]
+        struct FauxJobHandler {
+            update_tx: tokio::sync::mpsc::Sender<String>,
+            finish_tx: tokio::sync::mpsc::Sender<String>,
+        }
+
+        #[async_trait::async_trait]
+        impl JobHandler for FauxJobHandler {
+            async fn register(
+                &self,
+                _job: &StatusInfo,
+                _response_mode: ogcapi_types::processes::Response,
+            ) -> anyhow::Result<String> {
+                Ok("job1".to_string())
+            }
+
+            async fn update(&self, job: &StatusInfo) -> anyhow::Result<()> {
+                self.update_tx.send(job.job_id.clone()).await.unwrap();
+                Ok(())
+            }
+
+            async fn status_list(
+                &self,
+                _offset: usize,
+                _limit: usize,
+            ) -> anyhow::Result<Vec<StatusInfo>> {
+                Ok(vec![])
+            }
+
+            async fn status(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
+                Ok(None)
+            }
+
+            async fn finish(
+                &self,
+                job_id: &str,
+                _status: &JobStatusCode,
+                _message: Option<String>,
+                _links: Vec<Link>,
+                _results: Option<ogcapi_types::processes::ExecuteResults>,
+            ) -> anyhow::Result<()> {
+                self.finish_tx.send(job_id.to_string()).await.unwrap();
+                Ok(())
+            }
+
+            async fn dismiss(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
+                Ok(None)
+            }
+
+            async fn results(&self, _id: &str) -> anyhow::Result<ProcessResult> {
+                Ok(ProcessResult::Results {
+                    results: Default::default(),
+                    response_mode: ogcapi_types::processes::Response::Document,
+                })
+            }
+        }
+
+        crate::setup_env();
+
+        let mut drivers = Drivers::try_new_from_env().await.unwrap();
+        let (update_tx, mut update_rx) = tokio::sync::mpsc::channel(1);
+        let (finish_tx, mut finish_rx) = tokio::sync::mpsc::channel(1);
+        drivers.jobs = Box::new(FauxJobHandler {
+            update_tx,
+            finish_tx,
+        });
+
+        let mut state = AppState::new(drivers)
+            .await
+            .processors(vec![Arc::new(Echo)]);
+        state.processes.sync_process_call_is_job = true;
+
+        let response = execution(
+            State(state.clone()),
+            RemoteUrl(
+                "http://example.com/processes/echo/execution"
+                    .parse()
+                    .unwrap(),
+            ),
+            Path("echo".to_string()),
+            HeaderMap::new(),
+            ValidParams(Json(
+                serde_json::from_value(serde_json::json!({
+                    "inputs": {"stringInput": "Value1"},
+                    "outputs": {"stringOutput": {"transmissionMode": "value"}},
+                    "response": "raw"
+                }))
+                .unwrap(),
+            )),
+        )
+        .await
+        .unwrap();
+
+        let ProcessExecuteResponse::Synchronous {
+            results,
+            was_preferred_execution_mode,
+        } = response
+        else {
+            panic!("Expected synchronous execution response");
+        };
+
+        assert!(!results.results.is_empty());
+        assert!(!was_preferred_execution_mode);
+        assert_eq!(update_rx.recv().await.unwrap(), "job1");
+        assert_eq!(finish_rx.recv().await.unwrap(), "job1");
     }
 
     #[tokio::test]

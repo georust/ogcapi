@@ -17,7 +17,13 @@ default = ["common", "edr", "features", "processes", "tiles"]
 common = ["ogcapi-types/common", "ogcapi-drivers/common"]
 features = ["ogcapi-types/features", "ogcapi-drivers/features"]
 edr = ["ogcapi-types/edr", "ogcapi-drivers/edr"]
-processes = ["ogcapi-types/processes", "ogcapi-drivers/processes", "ogcapi-processes", "dyn-clone", "schemars", "mail-builder"]
+processes = [
+    "ogcapi-types/processes",
+    "ogcapi-drivers/processes",
+    "ogcapi-processes",
+    "schemars",
+    "mail-builder",
+]
 stac = ["ogcapi-types/stac", "ogcapi-drivers/stac"]
 styles = ["ogcapi-types/styles", "ogcapi-drivers/styles"]
 tiles = ["ogcapi-types/tiles", "ogcapi-drivers/tiles", "dashmap", "reqwest"]
@@ -28,14 +34,15 @@ axum = { version = "0.8.8", features = ["multipart"] }
 axum-extra = { version = "0.12.5", features = ["typed-header"] }
 clap = { version = "4.6", features = ["derive", "env"] }
 dashmap = { version = "6.1", optional = true }
-dyn-clone = { version = "1.0", optional = true }
 dotenvy = "0.15.7"
 futures = "0.3.32"
 headers = "0.4.1"
 hyper = "1.9"
 mail-builder = { version = "0.4.4", optional = true }
 openapiv3 = "2.2"
-reqwest = { version = "0.13.2", optional = true, default-features = false, features = ["json"] }
+reqwest = { version = "0.13.2", optional = true, default-features = false, features = [
+    "json",
+] }
 schemars = { version = "1.2", optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -44,16 +51,31 @@ serde_yaml = "0.9.33"
 thiserror = { workspace = true }
 tokio = { version = "1.51", features = ["macros", "rt-multi-thread", "signal"] }
 tower = { version = "0.5.3", features = ["util"] }
-tower-http = { version = "0.6.8", features = ["compression-gzip", "catch-panic", "cors", "request-id", "sensitive-headers", "trace", "util", "map-response-body"] }
-tracing = "0.1.44"
+tower-http = { version = "0.6.8", features = [
+    "compression-gzip",
+    "catch-panic",
+    "cors",
+    "request-id",
+    "sensitive-headers",
+    "trace",
+    "util",
+    "map-response-body",
+] }
+tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
-utoipa = { workspace = true, features = ["axum_extras", "preserve_order", "preserve_path_order"] }
+utoipa = { workspace = true, features = [
+    "axum_extras",
+    "preserve_order",
+    "preserve_path_order",
+] }
 utoipa-axum = "0.2.0"
 utoipa-swagger-ui = { version = "9.0", features = ["axum"] }
 
 ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
-ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", default-features = false, features = ["postgres"] }
+ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", default-features = false, features = [
+    "postgres",
+] }
 ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
 
 [dev-dependencies]
