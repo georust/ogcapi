@@ -1,3 +1,6 @@
+#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
+
+use anyhow::Context;
 use axum::{
     Json,
     extract::{Path, State},
@@ -17,6 +20,7 @@ use ogcapi_types::common::{
 use crate::{
     AppState, Error, Result,
     extractors::{Qs, RemoteUrl},
+    util::write_lock,
 };
 
 const CONFORMANCE: [&str; 5] = [
@@ -78,7 +82,10 @@ async fn create(
     let location = url.join(&format!("collections/{id}"))?;
 
     let mut headers = HeaderMap::new();
-    headers.insert(LOCATION, location.as_str().parse().unwrap());
+    headers.insert(
+        LOCATION,
+        location.as_str().parse().context("Cannot parse location")?,
+    );
 
     Ok((StatusCode::CREATED, headers))
 }
@@ -276,7 +283,7 @@ async fn collections(
 ) -> Result<Json<Collections>> {
     let mut collections = state.drivers.collections.list_collections(&query).await?;
 
-    for collection in collections.collections.iter_mut() {
+    for collection in &mut collections.collections {
         collection.links.insert_or_update(&[
             Link::new(url.join(&format!("collections/{}", collection.id))?, SELF).mediatype(JSON),
             Link::new(url.join(".")?, ROOT).mediatype(JSON),
@@ -293,7 +300,7 @@ async fn collections(
             .mediatype(JSON),
         ]);
 
-        collection.links.resolve_relative_links()
+        collection.links.resolve_relative_links();
     }
 
     collections.links = vec![
@@ -307,14 +314,14 @@ async fn collections(
 }
 
 pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
-    let mut root = state.root.write().unwrap();
+    let mut root = write_lock(&state.root);
     root.links.push(
         Link::new("collections", DATA)
             .title("Metadata about the resource collections")
             .mediatype(JSON),
     );
 
-    state.conformance.write().unwrap().extend(&CONFORMANCE);
+    write_lock(&state.conformance).extend(&CONFORMANCE);
 
     OpenApiRouter::new()
         .routes(routes!(collections, create))

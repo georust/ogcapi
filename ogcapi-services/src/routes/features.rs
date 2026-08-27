@@ -1,12 +1,15 @@
+#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
+
 use anyhow::Context;
 use axum::{
     Json,
     extract::{Path, State},
     http::{
-        HeaderMap, StatusCode,
+        HeaderMap, HeaderValue, StatusCode,
         header::{CONTENT_TYPE, LOCATION},
     },
 };
+use tracing::instrument;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
@@ -21,6 +24,7 @@ use ogcapi_types::{
 use crate::{
     AppState, Error, Result,
     extractors::{Qs, RemoteUrl},
+    util::write_lock,
 };
 
 const CONFORMANCE: [&str; 4] = [
@@ -66,7 +70,10 @@ async fn create(
     let location = url.join(&format!("items/{id}"))?;
 
     let mut headers = HeaderMap::new();
-    headers.insert(LOCATION, location.as_str().parse().unwrap());
+    headers.insert(
+        LOCATION,
+        location.as_str().parse().context("cannot parse location")?,
+    );
 
     Ok((StatusCode::CREATED, headers))
 }
@@ -111,7 +118,7 @@ async fn read(
         .ok_or(Error::NotFound)?;
 
     let crs = if let Some(crs) = query.crs {
-        is_supported_crs(&collection, &crs).await?;
+        is_supported_crs(&collection, &crs)?;
         crs
     } else {
         Crs::default2d()
@@ -134,11 +141,11 @@ async fn read(
     let mut headers = HeaderMap::new();
     headers.insert(
         "Content-Crs",
-        format!("<{}>", crs)
+        format!("<{crs}>")
             .parse()
             .context("Unable to parse `Content-Crs` header value")?,
     );
-    headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static(GEO_JSON));
 
     Ok((headers, Json(feature)))
 }
@@ -255,26 +262,18 @@ async fn remove(
         )
     )
 )]
+#[instrument(skip(state, url, collection_id), level = "debug", fields(collection_id = %collection_id))]
 async fn items(
     State(state): State<AppState>,
     RemoteUrl(mut url): RemoteUrl,
     Path(collection_id): Path<String>,
     Qs(mut query): Qs<Query>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
-    tracing::debug!("{:#?}", query);
-
     // limit
-    if let Some(limit) = query.limit {
-        // TODO: sync with opanapi specification
-        if limit > 10000 {
-            query.limit = Some(10000);
-        }
-        if limit == 0 {
-            query.limit = Some(1)
-        }
-    } else {
-        query.limit = Some(10);
-    }
+    // TODO: sync with opanapi specification
+    query.limit = query
+        .limit
+        .map_or(Some(10), |limit| Some(limit.clamp(0, 10_000)));
 
     // offset
     if query.offset.is_none() {
@@ -289,7 +288,7 @@ async fn items(
         .await?
         .ok_or(Error::NotFound)?;
     let crs = if let Some(crs) = query.crs.as_ref() {
-        is_supported_crs(&collection, crs).await?;
+        is_supported_crs(&collection, crs)?;
         crs
     } else {
         &Crs::default2d()
@@ -350,21 +349,29 @@ async fn items(
         }
     }
 
-    for feature in fc.features.iter_mut() {
+    for feature in &mut fc.features {
         feature.links.insert_or_update(&[
             Link::new(
-                url.join(&format!("items/{}", feature.id.as_ref().unwrap()))?,
+                url.join(&format!(
+                    "items/{}",
+                    feature.id.as_ref().context("Feature should have id")?
+                ))?,
                 SELF,
             )
             .mediatype(GEO_JSON),
             Link::new(url.join("../..")?, ROOT).mediatype(JSON),
-            Link::new(url.join(&format!("../{}", collection_id))?, COLLECTION).mediatype(JSON),
-        ])
+            Link::new(url.join(&format!("../{collection_id}"))?, COLLECTION).mediatype(JSON),
+        ]);
     }
 
     let mut headers = HeaderMap::new();
-    headers.insert("Content-Crs", format!("<{}>", crs).parse().unwrap());
-    headers.insert(CONTENT_TYPE, GEO_JSON.parse().unwrap());
+    headers.insert(
+        "Content-Crs",
+        format!("<{crs}>")
+            .parse()
+            .context("cannot parse content CRS")?,
+    );
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static(GEO_JSON));
 
     Ok((headers, Json(fc)))
 }
@@ -402,7 +409,7 @@ async fn items(
 //     Ok(Json(queryables))
 // }
 
-async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Error> {
+fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<()> {
     if collection.crs.contains(crs) {
         Ok(())
     } else {
@@ -413,7 +420,7 @@ async fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<(), Erro
 }
 
 pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
-    state.conformance.write().unwrap().extend(&CONFORMANCE);
+    write_lock(&state.conformance).extend(&CONFORMANCE);
 
     OpenApiRouter::new()
         .routes(routes!(items, create))

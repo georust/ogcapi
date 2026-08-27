@@ -1,6 +1,8 @@
+#![allow(clippy::print_stdout, reason = "OK in tests")]
+
 mod setup;
 
-#[ignore]
+#[ignore = "This test is not run by default, because it requires a database connection. It can be run with `cargo test --features edr -- --ignored`"]
 #[cfg(feature = "edr")]
 #[tokio::test]
 async fn edr() -> anyhow::Result<()> {

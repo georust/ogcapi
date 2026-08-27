@@ -116,7 +116,7 @@ pub enum TransmissionMode {
     Reference,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 #[schema(default = "raw")]
 pub enum Response {

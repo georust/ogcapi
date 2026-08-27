@@ -208,7 +208,7 @@ mod tests {
     #[test]
     fn parse_crs() {
         let crs = Crs::from_str(OGC_CRS84).unwrap();
-        assert_eq!(format!("{crs:#}"), OGC_CRS84)
+        assert_eq!(format!("{crs:#}"), OGC_CRS84);
     }
 
     #[test]
@@ -216,7 +216,7 @@ mod tests {
         let original = format!("\"{OGC_CRS84}\"");
         let crs: Crs = serde_json::from_str(&original).unwrap();
         let crs_str = serde_json::to_string(&crs).unwrap();
-        assert_eq!(format!("{crs_str}"), original)
+        assert_eq!(crs_str, original);
     }
 
     #[test]
@@ -238,12 +238,12 @@ mod tests {
         assert_eq!(
             crs.to_string(),
             "http://www.opengis.net/def/crs/EPSG/0/4979".to_string()
-        )
+        );
     }
 
     #[test]
     fn to_epsg() {
         let crs = Crs::from_str("http://www.opengis.net/def/crs/EPSG/0/4979").unwrap();
-        assert_eq!(crs.to_epsg(), Some(Crs::from_epsg(4979)))
+        assert_eq!(crs.to_epsg(), Some(Crs::from_epsg(4979)));
     }
 }

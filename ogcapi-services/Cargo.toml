@@ -48,7 +48,7 @@ tower-http = { version = "0.6.8", features = ["compression-gzip", "catch-panic",
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 url = { workspace = true, features = ["serde"] }
-utoipa = { version = "5.4", features = ["axum_extras", "preserve_order", "preserve_path_order"] }
+utoipa = { workspace = true, features = ["axum_extras", "preserve_order", "preserve_path_order"] }
 utoipa-axum = "0.2.0"
 utoipa-swagger-ui = { version = "9.0", features = ["axum"] }
 
@@ -66,3 +66,6 @@ ogcapi-client = { path = "../ogcapi-client", version = "0.3" }
 
 [package.metadata.docs.rs]
 all-features = true
+
+[lints]
+workspace = true

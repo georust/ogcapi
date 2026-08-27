@@ -11,6 +11,7 @@ use mail_builder::headers::HeaderType;
 use mail_builder::headers::content_type::ContentType;
 use mail_builder::headers::text::Text;
 use mail_builder::mime::{BodyPart, MimePart};
+use ogcapi_processes::Processor;
 use ogcapi_types::{
     common::{Exception, Link},
     processes::{ExecuteResult, ExecuteResults, InlineOrRefData, StatusInfo},
@@ -18,6 +19,7 @@ use ogcapi_types::{
 use std::borrow::Cow;
 use std::convert::Infallible;
 use std::fmt::Write;
+use std::sync::Arc;
 
 pub(crate) struct ProcessResultsResponse {
     pub results: ExecuteResults,
@@ -77,7 +79,7 @@ impl IntoResponseParts for PreferredResponseHeader {
                     .insert(PREFERENCE_KEY, HeaderValue::from_static("respond-async"));
             }
             PreferredResponseHeader::None => { /* nothing to do */ }
-        };
+        }
 
         Ok(res)
     }
@@ -99,7 +101,7 @@ impl IntoResponseParts for LocationHeader {
             Err(e) => {
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("failed to create Location header: {}", e),
+                    format!("failed to create Location header: {e}"),
                 ));
             }
             Ok(location) => res.headers_mut().insert(LOCATION, location),
@@ -120,7 +122,7 @@ impl IntoResponse for ProcessResultsResponse {
                     .collect(),
             };
             return Json(results).into_response();
-        };
+        }
 
         match self.results.len() {
             0 => (StatusCode::NO_CONTENT, Body::empty()).into_response(),
@@ -168,22 +170,18 @@ impl IntoResponse for SingleResponse {
     fn into_response(self) -> Response {
         let ExecuteResult { output: _, data } = self.0;
 
-        match data {
-            InlineOrRefData::Link(link) => {
-                // Cf. link header <https://datatracker.ietf.org/doc/html/rfc8288>
-
-                (StatusCode::NO_CONTENT, LinkHeader(link), Body::empty()).into_response()
-            }
-            _ => {
-                let body = to_binary(data);
-                (
-                    StatusCode::OK,
-                    [(header::CONTENT_TYPE, body.content_type)],
-                    Body::from(body.data),
-                )
-                    .into_response()
-            }
+        if let InlineOrRefData::Link(link) = data {
+            // Cf. link header <https://datatracker.ietf.org/doc/html/rfc8288>
+            return (StatusCode::NO_CONTENT, LinkHeader(link), Body::empty()).into_response();
         }
+
+        let body = to_binary(data);
+        (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, body.content_type)],
+            Body::from(body.data),
+        )
+            .into_response()
     }
 }
 
@@ -226,7 +224,7 @@ impl IntoResponseParts for LinkHeader {
         }
 
         if let Some(length) = link.length {
-            let _ = write!(link_header, "; length={}", length);
+            let _ = write!(link_header, "; length={length}");
         }
 
         match link_header.parse() {
@@ -236,7 +234,7 @@ impl IntoResponseParts for LinkHeader {
             }
             Err(e) => Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to create Link header: {}", e),
+                format!("failed to create Link header: {e}"),
             )),
         }
     }
@@ -291,7 +289,7 @@ impl IntoResponse for MultipartResponse {
         if let Err(e) = write_result {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to write multipart MIME response: {}", e),
+                format!("Failed to write multipart MIME response: {e}"),
             )
                 .into_response();
         }
@@ -446,6 +444,30 @@ where
     }
 }
 
+pub trait IntoArcProcessor {
+    fn into_arc_processor(self) -> Arc<dyn Processor>;
+}
+
+impl<T> IntoArcProcessor for Arc<T>
+where
+    T: Processor + Sized + 'static,
+{
+    fn into_arc_processor(self) -> Arc<dyn Processor> {
+        let processor: Arc<dyn Processor> = self;
+        processor
+    }
+}
+
+impl<T> IntoArcProcessor for Box<T>
+where
+    T: Processor + Sized + 'static,
+{
+    fn into_arc_processor(self) -> Arc<dyn Processor> {
+        let processor: Box<dyn Processor> = self;
+        Arc::from(processor)
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -527,6 +549,6 @@ mod tests {
                 "42\r\n",
                 "--boundary-boundary-boundary--\r\n"
             )
-        )
+        );
     }
 }

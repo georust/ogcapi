@@ -1,3 +1,8 @@
+#![allow(
+    clippy::result_large_err,
+    reason = "S3 errors can be large, but we want to propagate them"
+)]
+
 mod collection;
 mod feature;
 

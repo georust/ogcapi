@@ -1,3 +1,5 @@
+#![allow(clippy::print_stdout, reason = "OK in tests")]
+
 mod setup;
 
 #[cfg(feature = "features")]
@@ -27,7 +29,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     println!("Location: {location}");
 
     // create feature
-    let feature: Feature = Feature::new(Geometry::new_point([7.428959, 1.513394]));
+    let feature: Feature = Feature::new(Geometry::new_point([7.428_959, 1.513_394]));
 
     let location = client.create_item(&collection.id, &feature).await?;
     println!("Location: {location}");

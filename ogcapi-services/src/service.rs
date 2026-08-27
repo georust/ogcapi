@@ -2,13 +2,14 @@ use std::{any::Any, collections::HashSet, convert::Infallible, net::SocketAddr, 
 
 use anyhow::Context;
 use axum::{
+    Json,
     body::Body,
     extract::Request,
     http::{
         StatusCode,
         header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, PROXY_AUTHORIZATION, SET_COOKIE},
     },
-    response::{IntoResponse, Response},
+    response::{AppendHeaders, IntoResponse, Response},
     routing::Route,
 };
 use tokio::net::TcpListener;
@@ -85,6 +86,7 @@ impl Service {
         })
     }
 
+    #[must_use]
     pub fn collections_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Collections) {
             self.router = self.router.merge(routes::collections::router(&self.state));
@@ -93,6 +95,7 @@ impl Service {
     }
 
     #[cfg(feature = "features")]
+    #[must_use]
     pub fn features_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Features) {
             self.router = self.router.merge(routes::features::router(&self.state));
@@ -101,6 +104,7 @@ impl Service {
     }
 
     #[cfg(feature = "edr")]
+    #[must_use]
     pub fn edr_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Edr) {
             self.router = self.router.merge(routes::edr::router(&self.state));
@@ -109,6 +113,7 @@ impl Service {
     }
 
     #[cfg(feature = "styles")]
+    #[must_use]
     pub fn styles_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Styles) {
             self.router = self.router.merge(routes::styles::router(&self.state));
@@ -117,6 +122,7 @@ impl Service {
     }
 
     #[cfg(feature = "stac")]
+    #[must_use]
     pub fn stac_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Stac) {
             self.router = self.router.merge(routes::stac::router());
@@ -125,6 +131,7 @@ impl Service {
     }
 
     #[cfg(feature = "tiles")]
+    #[must_use]
     pub fn tiles_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Tiles) {
             self.router = self.router.merge(routes::tiles::router(&self.state));
@@ -133,6 +140,7 @@ impl Service {
     }
 
     #[cfg(feature = "processes")]
+    #[must_use]
     pub fn processes_api(mut self) -> Self {
         if self.added_apis.insert(ApiType::Processes) {
             self.router = self.router.merge(routes::processes::router(&self.state));
@@ -141,6 +149,7 @@ impl Service {
     }
 
     /// Add all available APIs to the service
+    #[must_use]
     pub fn all_apis(mut self) -> Self {
         self = self.collections_api();
 
@@ -178,7 +187,7 @@ impl Service {
     }
 
     /// Allows modifying the router after the service has been set up, e.g., to add custom routes.
-    /// This can also be used to modify the OpenAPI documentation, e.g., for modifying the [`info`](utoipa::openapi::info) fields or changing the [`server`](utoipa::openapi::server) URLs.
+    /// This can also be used to modify the `OpenAPI` documentation, e.g., for modifying the [`info`](utoipa::openapi::info) fields or changing the [`server`](utoipa::openapi::server) URLs.
     pub fn get_router_mut(&mut self) -> &mut OpenApiRouter<AppState> {
         &mut self.router
     }
@@ -251,10 +260,14 @@ async fn handler_404() -> impl IntoResponse {
 }
 
 /// Custom panic handler
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "required by `CatchPanicLayer`"
+)]
 fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response<Body> {
     let details = if let Some(s) = err.downcast_ref::<String>() {
         s.clone()
-    } else if let Some(s) = err.downcast_ref::<&str>() {
+    } else if let Some(&s) = err.downcast_ref::<&str>() {
         s.to_string()
     } else {
         "Unknown panic message".to_string()
@@ -263,13 +276,12 @@ fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response<Body> {
     let body =
         Exception::new_from_status(StatusCode::INTERNAL_SERVER_ERROR.as_u16()).detail(details);
 
-    let body = serde_json::to_string(&body).unwrap();
-
-    Response::builder()
-        .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .header(CONTENT_TYPE, "application/json")
-        .body(Body::from(body))
-        .unwrap()
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        AppendHeaders([(CONTENT_TYPE, "application/json")]),
+        Json(body),
+    )
+        .into_response()
 }
 
 /// Handle shutdown signals
@@ -292,8 +304,8 @@ async fn shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
+        () = ctrl_c => {},
+        () = terminate => {},
     }
 
     tracing::debug!("signal received, starting graceful shutdown");

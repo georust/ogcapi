@@ -1,6 +1,6 @@
 use axum::{
     Json,
-    http::{StatusCode, header::CONTENT_TYPE},
+    http::{HeaderValue, StatusCode, header::CONTENT_TYPE},
     response::{IntoResponse, Response},
 };
 use hyper::HeaderMap;
@@ -57,7 +57,7 @@ impl IntoResponse for Error {
         let exception = Exception::from(self);
 
         let mut headers = HeaderMap::new();
-        headers.insert(CONTENT_TYPE, PROBLEM_JSON.parse().unwrap());
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static(PROBLEM_JSON));
 
         (status, headers, Json(exception)).into_response()
     }
