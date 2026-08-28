@@ -1,8 +1,3 @@
-#![allow(
-    clippy::result_large_err,
-    reason = "S3 errors can be large, but we want to propagate them"
-)]
-
 mod collection;
 mod feature;
 
@@ -66,7 +61,7 @@ impl S3 {
         key: impl Into<String>,
         data: Vec<u8>,
         content_type: Option<String>,
-    ) -> Result<PutObjectOutput, SdkError<PutObjectError>> {
+    ) -> Result<PutObjectOutput, Box<SdkError<PutObjectError>>> {
         self.client
             .put_object()
             .bucket(bucket)
@@ -75,31 +70,34 @@ impl S3 {
             .set_content_type(content_type)
             .send()
             .await
+            .map_err(Box::new)
     }
 
     pub async fn get_object(
         &self,
         bucket: impl Into<String>,
         key: impl Into<String>,
-    ) -> Result<GetObjectOutput, SdkError<GetObjectError>> {
+    ) -> Result<GetObjectOutput, Box<SdkError<GetObjectError>>> {
         self.client
             .get_object()
             .bucket(bucket)
             .key(key)
             .send()
             .await
+            .map_err(Box::new)
     }
 
     pub async fn delete_object(
         &self,
         bucket: impl Into<String>,
         key: impl Into<String>,
-    ) -> Result<DeleteObjectOutput, SdkError<DeleteObjectError>> {
+    ) -> Result<DeleteObjectOutput, Box<SdkError<DeleteObjectError>>> {
         self.client
             .delete_object()
             .bucket(bucket)
             .key(key)
             .send()
             .await
+            .map_err(Box::new)
     }
 }

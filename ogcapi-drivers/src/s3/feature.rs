@@ -49,7 +49,7 @@ impl FeatureTransactions for S3 {
             Ok(r) => Ok(Some(serde_json::from_slice(
                 &r.body.collect().await?.into_bytes(),
             )?)),
-            Err(e) => match e {
+            Err(e) => match *e {
                 SdkError::ServiceError(err) => match err.err() {
                     GetObjectError::NoSuchKey(_) => Ok(None),
                     _ => Err(anyhow::Error::new(err.into_err())),
