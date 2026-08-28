@@ -36,6 +36,7 @@ aws-sdk-s3 = { version = "1.128.0", optional = true, default-features = false, f
     "behavior-version-latest",
 ] }
 async-trait = { workspace = true }
+log = { workspace = true }
 rink-core = { version = "0.8.0", optional = true, features = ["bundle-files"] }
 serde_json = { workspace = true }
 sqlx = { version = "0.8.6", optional = true, features = [
@@ -50,3 +51,6 @@ ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = f
 
 [package.metadata.docs.rs]
 all-features = true
+
+[lints]
+workspace = true

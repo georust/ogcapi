@@ -43,20 +43,20 @@ pub struct Client {
 
 impl Client {
     /// Creates a Client for a given OGC API endpoint.
-    pub fn new(endpoint: impl ToString) -> Result<Self, Error> {
+    pub fn new(endpoint: &str) -> Result<Self, Error> {
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, HeaderValue::from_static(crate::UA_STRING));
 
         let client = ReqwestClient::builder()
             .default_headers(headers)
             .build()
-            .expect("Build a client");
+            .map_err(|e| Error::ClientError(e.to_string()))?;
 
         Self::new_with(endpoint, client)
     }
 
     /// Creates a Client with a custom `reqwest::Client`.
-    pub fn new_with(endpoint: impl ToString, client: ReqwestClient) -> Result<Self, Error> {
+    pub fn new_with(endpoint: &str, client: ReqwestClient) -> Result<Self, Error> {
         let endpoint = endpoint.to_string();
         let endpoint = if endpoint.ends_with('/') {
             Url::parse(&endpoint)?
@@ -162,7 +162,6 @@ mod tests {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
         let conformance = client.conformance().await.unwrap();
-        println!("{conformance:#?}");
         assert!(!conformance.conforms_to.is_empty());
     }
 }

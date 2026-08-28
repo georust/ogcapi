@@ -44,7 +44,7 @@ pub struct BlockingClient {
 }
 
 impl BlockingClient {
-    /// Creates a BlockingClient for a given `OGCAPI`/`STAC` endpoint.
+    /// Creates a [`BlockingClient`] for a given `OGCAPI`/`STAC` endpoint.
     pub fn new(endpoint: &str) -> Result<Self, Error> {
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, HeaderValue::from_static(crate::UA_STRING));
@@ -52,12 +52,12 @@ impl BlockingClient {
         let client = ReqwestClient::builder()
             .default_headers(headers)
             .build()
-            .expect("Build a client");
+            .map_err(|e| Error::ClientError(e.to_string()))?;
 
         Self::new_with(endpoint, client)
     }
 
-    /// Creates a BlockingClient with a custom `reqwest::blocking::Client`.
+    /// Creates a [`BlockingClient`] with a custom `reqwest::blocking::Client`.
     pub fn new_with(endpoint: &str, client: ReqwestClient) -> Result<Self, Error> {
         let endpoint = if endpoint.ends_with('/') {
             endpoint.parse::<Url>()?
@@ -179,7 +179,7 @@ impl BlockingClient {
     }
 
     #[cfg(feature = "stac")]
-    pub fn search(&self, params: SearchParams) -> Result<Items, Error> {
+    pub fn search(&self, params: &SearchParams) -> Result<Items, Error> {
         let url = format!("{}search?{}", self.endpoint, serde_qs::to_string(&params)?);
 
         self.fetch::<FeatureCollection>(&url).map(|i| Items {
@@ -199,8 +199,8 @@ impl BlockingClient {
             .client
             .get(url)
             .send()
-            .and_then(|rsp| rsp.error_for_status())
-            .and_then(|rsp| rsp.json::<T>())?)
+            .and_then(reqwest::blocking::Response::error_for_status)
+            .and_then(reqwest::blocking::Response::json)?)
     }
 }
 
@@ -225,22 +225,30 @@ pub mod processes {
                 .post(url)
                 .json(execute)
                 .send()
-                .and_then(|rsp| rsp.error_for_status())?;
+                .and_then(reqwest::blocking::Response::error_for_status)?;
 
             match response.status().as_u16() {
                 200 => match execute.response {
                     Response::Raw => {
                         if execute.outputs.len() == 1 {
-                            let (_k, v) = execute.outputs.iter().next().unwrap();
+                            let (_k, v) = execute.outputs.iter().next().ok_or_else(|| {
+                                Error::ClientError(
+                                    "Expected exactly one output for raw response".to_string(),
+                                )
+                            })?;
                             match v.transmission_mode {
                                 TransmissionMode::Value => Ok(ProcessResponseBody::Requested {
                                     outputs: execute.outputs.clone(),
                                     parts: vec![response.bytes()?.to_vec()],
                                 }),
-                                TransmissionMode::Reference => todo!(),
+                                TransmissionMode::Reference => Err(Error::UnsupportedError(
+                                    "Raw response with reference transmission mode is not supported".to_string(),
+                                )),
                             }
                         } else {
-                            unimplemented!()
+                            Err(Error::UnsupportedError(
+                                "Raw response with multiple outputs is not supported".to_string(),
+                            ))
                         }
                     }
                     Response::Document => {
@@ -278,12 +286,20 @@ pub struct Catalogs {
     links: Vec<Link>,
 }
 
+#[allow(
+    clippy::struct_field_names,
+    reason = "TODO: improve naming Collections::collections"
+)]
 pub struct Collections {
     client: BlockingClient,
     collections: <Vec<Collection> as IntoIterator>::IntoIter,
     links: Vec<Link>,
 }
 
+#[allow(
+    clippy::struct_field_names,
+    reason = "TODO: improve naming Items::items"
+)]
 pub struct Items {
     client: BlockingClient,
     items: <Vec<Feature> as IntoIterator>::IntoIter,
@@ -375,8 +391,6 @@ impl Pagination<Catalog> for Catalogs {
                 self.links.append(&mut children);
 
                 return Ok(Some(catalog));
-            } else {
-                continue;
             }
         }
         Ok(None)
@@ -498,13 +512,19 @@ impl Iterator for Catalogs {
 fn resolve_relative_links(links: &mut [Link], base: &str) {
     let base_url = Url::parse(base).expect("Parse base url from string");
 
-    links.iter_mut().for_each(|l| match Url::parse(&l.href) {
-        Ok(_) => (),
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            l.href = base_url.join(&l.href).unwrap().to_string();
+    for link in links.iter_mut() {
+        match Url::parse(&link.href) {
+            Ok(_) => (),
+            Err(url::ParseError::RelativeUrlWithoutBase) => {
+                if let Ok(joined) = base_url.join(&link.href) {
+                    link.href = joined.to_string();
+                } else {
+                    log::error!("Failed to join base url with relative link: {}", link.href);
+                }
+            }
+            Err(e) => log::error!("{e}"),
         }
-        Err(e) => log::error!("{e}"),
-    });
+    }
 }
 
 #[cfg(test)]
@@ -524,7 +544,6 @@ mod tests {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = BlockingClient::new(endpoint).unwrap();
         let conformance = client.conformance().unwrap();
-        println!("{conformance:#?}");
         assert!(!conformance.conforms_to.is_empty());
     }
 
@@ -546,8 +565,8 @@ mod tests {
             .collect::<Vec<Result<ogcapi_types::common::Collection, crate::Error>>>();
         for collection in &collections {
             if let Ok(c) = collection.as_ref() {
-                println!("{}", c.id)
-            };
+                log::info!("{}", c.id);
+            }
         }
         assert!(!collections.is_empty());
     }
@@ -561,7 +580,7 @@ mod tests {
         let params = ogcapi_types::stac::SearchParams::new()
             .with_bbox(bbox)
             .with_collections(["ch.swisstopo.swissalti3d"]);
-        let mut items = client.search(params).unwrap();
+        let mut items = client.search(&params).unwrap();
         let item = items.next().unwrap().unwrap();
         assert_eq!("swissalti3d_2019_2600-1199", item.id.unwrap().to_string());
         assert_eq!(

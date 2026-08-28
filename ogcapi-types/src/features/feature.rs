@@ -44,8 +44,14 @@ impl Display for FeatureId {
 }
 
 /// Geometry schema.
+///
+/// # Panics
+///
+/// Panics if the included JSON is not valid. This should never happen, as the JSON is static and known to be valid.
+#[must_use]
 pub fn geometry() -> Schema {
-    serde_json::from_str(include_str!("../../assets/schema/Geometry.json")).unwrap()
+    serde_json::from_str(include_str!("../../assets/schema/Geometry.json"))
+        .expect("to be valid JSON")
 }
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
@@ -96,16 +102,16 @@ pub struct Feature {
     #[schema(value_type = Object)]
     pub coord_ref_sys: Option<jsonfg::CoordRefSys>,
     /// The geometry in a non-WGS84 CRS (JSON-FG), which may use solids or curves. When
-    /// set, the GeoJSON `geometry` member is `null`.
+    /// set, the `GeoJSON` `geometry` member is `null`.
     #[cfg(feature = "json-fg")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Object)]
     pub place: Option<jsonfg::Geometry>,
-    /// The GeoJSON (WGS 84) geometry.
+    /// The `GeoJSON` (WGS 84) geometry.
     #[cfg(not(feature = "json-fg"))]
     #[schema(schema_with = geometry)]
     pub geometry: Geometry,
-    /// The GeoJSON (WGS 84) geometry, or `null`. Nullable under `json-fg` so it can be
+    /// The `GeoJSON` (WGS 84) geometry, or `null`. Nullable under `json-fg` so it can be
     /// `null` when the geometry is carried in [`place`](Feature::place).
     #[cfg(feature = "json-fg")]
     #[serde(default)]
@@ -161,6 +167,7 @@ pub struct Feature {
 }
 
 impl Feature {
+    #[must_use]
     pub fn new(geometry: Geometry) -> Self {
         Feature {
             id: Default::default(),
@@ -257,15 +264,16 @@ impl Feature {
     /// Rewrite this feature for JSON-FG output given the geometry's `crs`.
     ///
     /// Geometry in a non-WGS 84 CRS is moved into [`place`](Feature::place) with a
-    /// [`coord_ref_sys`](Feature::coord_ref_sys), and the GeoJSON `geometry` member is set
+    /// [`coord_ref_sys`](Feature::coord_ref_sys), and the `GeoJSON` `geometry` member is set
     /// to `null`; WGS 84 (`crs.is_wgs84()`, i.e. CRS84/CRS84h) is kept in `geometry`.
     /// Top-level `conformsTo` is set. Coordinates are not reprojected.
     ///
     /// This is for a single-feature document. For features inside a collection, the
     /// collection carries `conformsTo`/`coordRefSys` — see
     /// [`FeatureCollection::into_json_fg`](crate::features::FeatureCollection::into_json_fg).
-    pub fn into_json_fg(self, crs: jsonfg::CoordRefSys) -> Self {
-        self.into_json_fg_scoped(&crs, true)
+    #[must_use]
+    pub fn into_json_fg(self, crs: &jsonfg::CoordRefSys) -> Self {
+        self.into_json_fg_scoped(crs, true)
     }
 
     /// As [`into_json_fg`](Feature::into_json_fg); `top_level` gates the feature-level

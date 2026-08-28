@@ -1,3 +1,4 @@
+use anyhow::{Context, anyhow, bail};
 use sqlx::types::Json;
 
 use ogcapi_types::{
@@ -10,6 +11,7 @@ use crate::{CollectionTransactions, EdrQuerier};
 
 use super::Db;
 
+#[allow(clippy::too_many_lines, reason = "Complex query logic")]
 #[async_trait::async_trait]
 impl EdrQuerier for Db {
     async fn query(
@@ -21,7 +23,7 @@ impl EdrQuerier for Db {
         let collection = self.read_collection(collection_id).await?;
         let storage_srid = match collection {
             Some(collection) => match collection.storage_crs.map(|crs| crs.as_srid()) {
-                Some(srid) => srid,
+                Some(srid) => srid.context("cannot determine SRID")?,
                 None => {
                     sqlx::query_scalar(&format!(
                         "SELECT Find_SRID('items', '{collection_id}', 'geom')"
@@ -33,7 +35,12 @@ impl EdrQuerier for Db {
             None => return Err(Exception::new_from_status(404).into()),
         };
 
-        let mut geometry_type = query.coords.split('(').next().unwrap().to_uppercase();
+        let mut geometry_type = query
+            .coords
+            .split('(')
+            .next()
+            .context("cannot determine geometry type")?
+            .to_uppercase();
         geometry_type.retain(|c| !c.is_whitespace());
 
         let (spatial_predicate, srid) = match &query_type {
@@ -42,8 +49,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map(|crs| crs.as_srid())
-                        .unwrap_or_else(|| Crs::default3d().as_srid());
+                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_3DIntersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                         srid, query.coords, storage_srid
@@ -53,8 +60,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map(|crs| crs.as_srid())
-                        .unwrap_or_else(|| Crs::default2d().as_srid());
+                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_Intersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                         srid, query.coords, storage_srid
@@ -63,13 +70,13 @@ impl EdrQuerier for Db {
                 }
             }
             QueryType::Radius => {
-                let mut ctx = rink_core::simple_context().unwrap();
+                let mut ctx = rink_core::simple_context().map_err(|error| anyhow!("{error}"))?;
                 let line = format!(
                     "{} {} -> m",
-                    query.within.to_owned().unwrap_or_else(|| "0".to_string()),
+                    query.within.clone().unwrap_or_else(|| "0".to_string()),
                     query
                         .within_units
-                        .to_owned()
+                        .clone()
                         .unwrap_or_else(|| "m".to_string())
                 );
 
@@ -82,8 +89,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map(|crs| crs.as_srid())
-                        .unwrap_or_else(|| Crs::default3d().as_srid());
+                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_3DDWithin(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                         srid, query.coords, storage_srid
@@ -93,8 +100,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map(|crs| crs.as_srid())
-                        .unwrap_or_else(|| Crs::default2d().as_srid());
+                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_DWithin(ST_Transform(geom, 4326)::geography, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), 4326)::geography, {}, false)",
                         srid, query.coords, distance
@@ -108,8 +115,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map(|crs| crs.as_srid())
-                        .unwrap_or_else(|| Crs::default2d().as_srid());
+                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}), {})",
                         query.coords, srid, storage_srid
@@ -119,8 +126,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map(|crs| crs.as_srid())
-                        .unwrap_or_else(|| Crs::default3d().as_srid());
+                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_3DIntersects(
                             geom,
@@ -137,7 +144,7 @@ impl EdrQuerier for Db {
                     (predicate, srid)
                 }
             }
-            qt => unimplemented!("{qt:?}"),
+            qt => bail!("{qt:?}"),
         };
 
         let properties = if let Some(parameters) = &query.parameter_name {
@@ -176,10 +183,10 @@ impl EdrQuerier for Db {
             .rows_affected();
 
         let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
-            r#"
+            r"
             SELECT array_to_json(array_agg(row_to_json(t)))
             FROM ( {sql} ) t
-            "#
+            "
         ))
         .bind(srid)
         .fetch_one(&self.pool)

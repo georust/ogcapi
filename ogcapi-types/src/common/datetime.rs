@@ -90,7 +90,7 @@ mod tests {
     fn parse_datetime() {
         let datetime_str = "2018-02-12T23:20:52Z";
         let datetime = Datetime::from_str(datetime_str).unwrap();
-        assert_eq!(format!("{datetime:#}"), datetime_str)
+        assert_eq!(format!("{datetime:#}"), datetime_str);
     }
 
     #[test]
@@ -105,6 +105,6 @@ mod tests {
 
         let interval_str = "../2018-03-18T12:31:12Z";
         let datetime = Datetime::from_str(interval_str).unwrap();
-        assert_eq!(format!("{datetime:#}"), interval_str)
+        assert_eq!(format!("{datetime:#}"), interval_str);
     }
 }

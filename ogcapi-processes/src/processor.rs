@@ -134,7 +134,7 @@ mod tests {
         }
 
         async fn process(&self) -> anyhow::Result<ogcapi_types::processes::Process> {
-            unreachable!("not used in this unit test")
+            panic!("not used in this unit test")
         }
 
         async fn parse(&self, execute: Execute) -> Result<Self::Input> {
@@ -180,7 +180,7 @@ mod tests {
 
         let results = future.await.unwrap();
 
-        assert!(results.len() == 1);
+        assert_eq!(results.len(), 1);
 
         assert_eq!(
             results["greeting"].data,

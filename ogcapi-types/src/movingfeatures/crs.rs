@@ -5,25 +5,25 @@ use utoipa::ToSchema;
 
 use crate::common;
 
-/// MF-JSON uses a CRS as described in in (GeoJSON:2008)[https://geojson.org/geojson-spec#coordinate-reference-system-objects]
-/// See (7.2.3 CoordinateReferenceSystem Object)[https://docs.ogc.org/is/19-045r3/19-045r3.html#crs]
-/// See (6. Overview of Moving features JSON Encodings)[https://docs.ogc.org/is/19-045r3/19-045r3.html#_overview_of_moving_features_json_encodings_informative]
+/// MF-JSON uses a CRS as described in in [GeoJSON:2008](https://geojson.org/geojson-spec#coordinate-reference-system-objects)
+/// See [7.2.3 CoordinateReferenceSystem Object](https://docs.ogc.org/is/19-045r3/19-045r3.html#crs)
+/// See [6. Overview of Moving features JSON Encodings](https://docs.ogc.org/is/19-045r3/19-045r3.html#_overview_of_moving_features_json_encodings_informative)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(tag = "type", content = "properties")]
 pub enum Crs {
     /// A Named CRS object indicates a coordinate reference system by name. In this case, the value of its "type" member
     /// is the string "Name". The value of its "properties" member is a JSON object containing a "name" member whose
     /// value is a string identifying a coordinate reference system (not JSON null value). The value of "href" and "type"
-    /// is a JSON null value. This standard recommends an EPSG[3] code as the value of "name", such as "EPSG::4326."
+    /// is a JSON null value. This standard recommends an EPSG[3] code as the value of "name", such as `EPSG::4326`.
     ///
-    /// See (7.2.3.1 Named CRS)[https://docs.ogc.org/is/19-045r3/19-045r3.html#_7_2_3_1_named_crs]
+    /// See [7.2.3.1 Named CRS](https://docs.ogc.org/is/19-045r3/19-045r3.html#_7_2_3_1_named_crs)
     Name { name: String },
     /// A linked CRS object has one required member "href" and one optional member "type". The value of the required "href"
     /// member is a dereferenceable URI. The value of the optional "type" member is a string that hints at the format used
     /// to represent CRS parameters at the provided URI. Suggested values are: "Proj4", "OGCWKT", "ESRIWKT", but others can
     /// be used.
     ///
-    /// See (7.2.3.2. Linked CRS)[https://docs.ogc.org/is/19-045r3/19-045r3.html#_7_2_3_2_linked_crs]
+    /// See [7.2.3.2. Linked CRS](https://docs.ogc.org/is/19-045r3/19-045r3.html#_7_2_3_2_linked_crs)
     Link {
         r#type: Option<String>,
         href: String,

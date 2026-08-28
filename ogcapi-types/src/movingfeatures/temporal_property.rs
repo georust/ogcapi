@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 use crate::common::Link;
 
 /// A temporal property object is a collection of dynamic non-spatial attributes and their temporal values with time.
-/// An abbreviated copy of this information is returned for each TemporalProperty in the
+/// An abbreviated copy of this information is returned for each [`TemporalProperty`] in the
 /// [{root}/collections/{collectionId}/items/{mFeatureId}/tproperties](super::temporal_properties::TemporalProperties) response.
 /// The schema for the temporal property object presented in this clause is an extension of the [ParametricValues Object](https://docs.opengeospatial.org/is/19-045r3/19-045r3.html#tproperties) defined in [MF-JSON](https://docs.ogc.org/is/22-003r3/22-003r3.html#OGC_19-045r3).
 ///
@@ -37,8 +37,8 @@ pub enum TemporalPropertyValue {
     TImage(Vec<TemporalPrimitiveValue<String>>),
 }
 
-/// The TemporalPrimitiveValue resource represents the dynamic change of a non-spatial attribute’s value with time. An
-/// abbreviated copy of this information is returned for each TemporalPrimitiveValue in the
+/// The [`TemporalPrimitiveValue`] resource represents the dynamic change of a non-spatial attribute’s value with time. An
+/// abbreviated copy of this information is returned for each [`TemporalPrimitiveValue`] in the
 /// {root}/collections/{collectionId}/items/{mFeatureId}/tproperties/{tPropertyName} response.
 ///
 /// See [8.10. TemporalPrimitiveValue](https://docs.ogc.org/is/22-003r3/22-003r3.html#resource-temporalPrimitiveValue-section)
@@ -70,15 +70,15 @@ impl<T> TryFrom<TemporalPrimitiveValueUnchecked<T>> for TemporalPrimitiveValue<T
 
     fn try_from(value: TemporalPrimitiveValueUnchecked<T>) -> Result<Self, Self::Error> {
         if value.values.len() != value.datetimes.len() {
-            Err("values and datetimes must be of same length")
-        } else {
-            Ok(Self {
-                id: value.id,
-                interpolation: value.interpolation,
-                datetimes: value.datetimes,
-                values: value.values,
-            })
+            return Err("values and datetimes must be of same length");
         }
+
+        Ok(Self {
+            id: value.id,
+            interpolation: value.interpolation,
+            datetimes: value.datetimes,
+            values: value.values,
+        })
     }
 }
 
@@ -88,13 +88,13 @@ impl<T> Serialize for TemporalPrimitiveValue<T> {
         S: Serializer,
     {
         if self.values.len() != self.datetimes.len() {
-            Err(S::Error::custom(
+            return Err(S::Error::custom(
                 "values and datetimes must be of same length",
-            ))
-        } else {
-            let value = json!(self);
-            value.serialize(serializer)
+            ));
         }
+
+        let value = json!(self);
+        value.serialize(serializer)
     }
 }
 

@@ -1,8 +1,3 @@
-#![allow(
-    clippy::result_large_err,
-    reason = "S3 errors can be large, but we want to propagate them"
-)]
-
 mod collection;
 mod feature;
 
@@ -29,14 +24,15 @@ pub struct S3 {
 }
 
 impl S3 {
+    #[must_use]
     pub async fn new() -> Self {
         let mut config = aws_config::load_defaults(BehaviorVersion::latest()).await;
 
         // Use custom enpoint if specified in `AWS_CUSTOM_ENDPOINT` environment variable
         if let Ok(endpoint) = std::env::var("AWS_CUSTOM_ENDPOINT") {
-            println!("Setup client with custom endpoint: {endpoint}");
-            config = config.into_builder().endpoint_url(&endpoint).build()
-        };
+            log::info!("Setup client with custom endpoint: {endpoint}");
+            config = config.into_builder().endpoint_url(&endpoint).build();
+        }
 
         // force path style addressing to work with minio
         let config = Config::from(&config)
@@ -44,18 +40,19 @@ impl S3 {
             .force_path_style(true)
             .build();
 
-        S3::new_with(Client::from_conf(config)).await
+        S3::new_with(Client::from_conf(config))
     }
 
-    pub async fn new_with(client: Client) -> Self {
+    #[must_use]
+    pub fn new_with(client: Client) -> Self {
         S3 {
             client,
             bucket: None,
         }
     }
 
-    pub fn set_default_bucket(&mut self, bucket: impl ToString) {
-        self.bucket = Some(bucket.to_string())
+    pub fn set_default_bucket(&mut self, bucket: &impl ToString) {
+        self.bucket = Some(bucket.to_string());
     }
 
     pub async fn put_object(
@@ -64,7 +61,7 @@ impl S3 {
         key: impl Into<String>,
         data: Vec<u8>,
         content_type: Option<String>,
-    ) -> Result<PutObjectOutput, SdkError<PutObjectError>> {
+    ) -> Result<PutObjectOutput, Box<SdkError<PutObjectError>>> {
         self.client
             .put_object()
             .bucket(bucket)
@@ -73,31 +70,34 @@ impl S3 {
             .set_content_type(content_type)
             .send()
             .await
+            .map_err(Box::new)
     }
 
     pub async fn get_object(
         &self,
         bucket: impl Into<String>,
         key: impl Into<String>,
-    ) -> Result<GetObjectOutput, SdkError<GetObjectError>> {
+    ) -> Result<GetObjectOutput, Box<SdkError<GetObjectError>>> {
         self.client
             .get_object()
             .bucket(bucket)
             .key(key)
             .send()
             .await
+            .map_err(Box::new)
     }
 
     pub async fn delete_object(
         &self,
         bucket: impl Into<String>,
         key: impl Into<String>,
-    ) -> Result<DeleteObjectOutput, SdkError<DeleteObjectError>> {
+    ) -> Result<DeleteObjectOutput, Box<SdkError<DeleteObjectError>>> {
         self.client
             .delete_object()
             .bucket(bucket)
             .key(key)
             .send()
             .await
+            .map_err(Box::new)
     }
 }

@@ -20,7 +20,7 @@ use utoipa::ToSchema;
 /// * Maximum value, coordinate axis 3 (optional)
 ///
 /// The coordinate reference system of the values is WGS 84 longitude/latitude
-/// (http://www.opengis.net/def/crs/OGC/1.3/CRS84) unless a different coordinate
+/// (<http://www.opengis.net/def/crs/OGC/1.3/CRS84>) unless a different coordinate
 /// reference system is specified in `crs`.
 ///
 /// For WGS 84 longitude/latitude the values are in most cases the sequence of

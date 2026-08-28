@@ -1,3 +1,4 @@
+use anyhow::Context;
 use aws_sdk_s3::{error::SdkError, operation::get_object::GetObjectError};
 
 use ogcapi_types::common::{Collection, Collections, Query, media_type::JSON};
@@ -20,7 +21,7 @@ impl CollectionTransactions for S3 {
         )
         .await?;
 
-        Ok(collection.id.to_owned())
+        Ok(collection.id.clone())
     }
 
     async fn read_collection(&self, id: &str) -> Result<Option<Collection>, anyhow::Error> {
@@ -34,7 +35,7 @@ impl CollectionTransactions for S3 {
             Ok(r) => Ok(Some(serde_json::from_slice(
                 &r.body.collect().await?.into_bytes(),
             )?)),
-            Err(e) => match e {
+            Err(e) => match *e {
                 SdkError::ServiceError(err) => match err.err() {
                     GetObjectError::NoSuchKey(_) => Ok(None),
                     _ => Err(anyhow::Error::new(err.into_err())),
@@ -78,7 +79,7 @@ impl CollectionTransactions for S3 {
             .send()
             .await?;
 
-        for object in resp.contents.unwrap() {
+        for object in resp.contents.context("No contents in S3 response")? {
             if let Some(key) = object.key()
                 && key.ends_with("collection.json")
             {

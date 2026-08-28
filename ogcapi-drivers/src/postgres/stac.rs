@@ -8,6 +8,7 @@ use crate::StacSearch;
 
 use super::Db;
 
+#[allow(clippy::too_many_lines, reason = "Complex search logic")]
 #[async_trait::async_trait]
 impl StacSearch for Db {
     async fn search(&self, query: &SearchParams) -> anyhow::Result<FeatureCollection> {
@@ -15,10 +16,10 @@ impl StacSearch for Db {
 
         // WITH
         let mut collection_ids: Vec<String> = sqlx::query_scalar(
-            r#"
+            r"
             SELECT id FROM meta.collections 
             WHERE collection ->> 'type' = 'Collection'
-            "#,
+            ",
         )
         .fetch_all(&mut *tx)
         .await?;
@@ -82,7 +83,7 @@ impl StacSearch for Db {
             };
 
             where_conditions.push(format!(
-                r#"
+                r"
                 (
                     CASE
                         WHEN (properties->'datetime') IS NOT NULL THEN (
@@ -102,13 +103,13 @@ impl StacSearch for Db {
                         ELSE TRUE
                     END
                 )
-                "#
+                "
             ));
         }
 
         // ids
         if !query.ids.is_empty() {
-            where_conditions.push(format!("id IN ('{}')", query.ids.join("','")))
+            where_conditions.push(format!("id IN ('{}')", query.ids.join("','")));
         }
 
         // intersects
@@ -120,18 +121,18 @@ impl StacSearch for Db {
 
         // COUNT
         let number_matched: (i64,) = sqlx::query_as(&format!(
-            r#"
+            r"
             WITH items AS ({union_all_items})
             SELECT count(*) FROM items
             WHERE {conditions}
-            "#,
+            ",
         ))
         .fetch_one(&mut *tx)
         .await?;
 
         // FETCH
         let features: Option<sqlx::types::Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
-            r#"
+            r"
             WITH items AS ({union_all_items})
             SELECT array_to_json(array_agg(row_to_json(t)))
             FROM (
@@ -148,7 +149,7 @@ impl StacSearch for Db {
                 LIMIT {}
                 OFFSET {}
             ) t
-            "#,
+            ",
             query
                 .limit
                 .map_or_else(|| String::from("NULL"), |l| l.to_string()),
@@ -161,7 +162,7 @@ impl StacSearch for Db {
 
         let features = features.map(|f| f.0).unwrap_or_default();
         let mut fc = FeatureCollection::new(features);
-        fc.number_matched = Some(number_matched.0 as u64);
+        fc.number_matched = Some(number_matched.0.cast_unsigned());
 
         Ok(fc)
     }

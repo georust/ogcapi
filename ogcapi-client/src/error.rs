@@ -25,4 +25,7 @@ pub enum Error {
 
     #[error("Encountered an exception: {0}")]
     ExceptionError(#[from] Box<Exception>),
+
+    #[error("Unsupported: {0}")]
+    UnsupportedError(String),
 }

@@ -15,7 +15,7 @@ use crate::Processor;
 /// Echo is a simple process that echoes back the inputs it receives.
 /// It is used to verify that the OGC API Processes implementation is working correctly.
 ///
-/// Definition: https://docs.ogc.org/is/18-062r2/18-062r2.html#_443805da-dfcc-84bd-1820-4a41a69f629a
+/// Definition: <https://docs.ogc.org/is/18-062r2/18-062r2.html#_443805da-dfcc-84bd-1820-4a41a69f629a>
 #[derive(Clone)]
 pub struct Echo;
 
@@ -120,6 +120,7 @@ impl TryFrom<EchoOutputs> for ExecuteResults {
 }
 
 impl EchoOutputs {
+    #[must_use]
     pub fn compute_output_metadata(&self) -> HashMap<String, Output> {
         let mut outputs = HashMap::new();
 
@@ -335,11 +336,6 @@ mod tests {
         let echo = Echo;
         assert_eq!(echo.id(), "echo");
 
-        eprintln!(
-            "Process:\n{}",
-            serde_json::to_string_pretty(&echo.process().await.unwrap()).unwrap()
-        );
-
         let execute = Execute {
             inputs: HashMap::from([(
                 "stringInput".to_string(),
@@ -375,11 +371,6 @@ mod tests {
     async fn test_multi_value_sync() {
         let echo = Echo;
         assert_eq!(echo.id(), "echo");
-
-        eprintln!(
-            "Process:\n{}",
-            serde_json::to_string_pretty(&echo.process().await.unwrap()).unwrap()
-        );
 
         let execute = Execute {
             inputs: HashMap::from([

@@ -1,5 +1,3 @@
-#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
-
 use axum::{Json, extract::State, http::HeaderValue};
 use hyper::{HeaderMap, header::CONTENT_TYPE};
 use utoipa_axum::{router::OpenApiRouter, routes};

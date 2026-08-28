@@ -1,3 +1,4 @@
+use anyhow::{Context, bail};
 use aws_sdk_s3::{error::SdkError, operation::get_object::GetObjectError};
 
 use ogcapi_types::{
@@ -14,8 +15,11 @@ impl FeatureTransactions for S3 {
     async fn create_feature(&self, feature: &Feature) -> anyhow::Result<String> {
         let key = format!(
             "collections/{}/items/{}.json",
-            feature.collection.as_ref().unwrap(),
-            feature.id.as_ref().unwrap()
+            feature
+                .collection
+                .as_ref()
+                .context("collection is required")?,
+            feature.id.as_ref().context("id is required")?
         );
         let data = serde_json::to_vec(&feature)?;
 
@@ -45,7 +49,7 @@ impl FeatureTransactions for S3 {
             Ok(r) => Ok(Some(serde_json::from_slice(
                 &r.body.collect().await?.into_bytes(),
             )?)),
-            Err(e) => match e {
+            Err(e) => match *e {
                 SdkError::ServiceError(err) => match err.err() {
                     GetObjectError::NoSuchKey(_) => Ok(None),
                     _ => Err(anyhow::Error::new(err.into_err())),
@@ -57,8 +61,11 @@ impl FeatureTransactions for S3 {
     async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()> {
         let key = format!(
             "collections/{}/items/{}.json",
-            feature.collection.as_ref().unwrap(),
-            feature.id.as_ref().unwrap()
+            feature
+                .collection
+                .as_ref()
+                .context("collection is required")?,
+            feature.id.as_ref().context("id is required")?
         );
         let data = serde_json::to_vec(&feature)?;
 
@@ -87,6 +94,6 @@ impl FeatureTransactions for S3 {
         _collection: &str,
         _query: &Query,
     ) -> anyhow::Result<FeatureCollection> {
-        unimplemented!()
+        bail!("S3 driver does not support listing items.")
     }
 }

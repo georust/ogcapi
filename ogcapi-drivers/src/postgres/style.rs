@@ -8,12 +8,12 @@ use super::Db;
 impl StyleTransactions for Db {
     async fn list_styles(&self) -> anyhow::Result<Styles> {
         let styles: Option<sqlx::types::Json<Vec<Style>>> = sqlx::query_scalar(
-            r#"
+            r"
             SELECT array_to_json(array_agg(row_to_json(t)))
             FROM (
                 SELECT id, title, links FROM meta.styles
             ) t
-            "#,
+            ",
         )
         .fetch_one(&self.pool)
         .await?;

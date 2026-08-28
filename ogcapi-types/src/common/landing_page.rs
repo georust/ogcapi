@@ -96,29 +96,39 @@ impl LandingPage {
     }
 
     #[cfg(feature = "stac")]
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn id(mut self, id: impl ToString) -> Self {
         self.id = id.to_string();
         self
     }
 
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn title(mut self, title: impl ToString) -> Self {
         self.title = Some(title.to_string());
         self
     }
 
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn description(mut self, description: impl ToString) -> Self {
         self.description = Some(description.to_string());
         self
     }
 
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn links(mut self, links: Vec<Link>) -> Self {
         self.links = links;
         self
     }
 
     #[cfg(feature = "stac")]
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn conforms_to(mut self, classes: &[impl ToString]) -> Self {
-        self.conforms_to = classes.iter().map(|c| c.to_string()).collect();
+        self.conforms_to = classes.iter().map(ToString::to_string).collect();
         self
     }
 }

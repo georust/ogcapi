@@ -29,7 +29,7 @@ pub enum QueryType {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
     /// Well Known Text (WKT) of representation geometry. The representation
-    /// type will depend on the [QueryType] of the API.
+    /// type will depend on the [`QueryType`] of the API.
     #[serde(alias = "bbox")]
     pub coords: String,
     #[serde(default)]
@@ -78,7 +78,7 @@ impl Display for Z {
             Z::Levels(items) => {
                 let mut iter = items.iter().peekable();
                 while let Some(item) = iter.next() {
-                    f.write_fmt(format_args!("{}", item))?;
+                    f.write_fmt(format_args!("{item}"))?;
                     if iter.peek().is_some() {
                         f.write_char(',')?;
                     }
@@ -88,13 +88,13 @@ impl Display for Z {
                 if *start == f64::NEG_INFINITY {
                     f.write_str("../")?;
                 } else {
-                    f.write_fmt(format_args!("{}/", start))?;
+                    f.write_fmt(format_args!("{start}/"))?;
                 }
 
                 if *end == f64::INFINITY {
                     f.write_str("..")?;
                 } else {
-                    f.write_fmt(format_args!("{}", end))?;
+                    f.write_fmt(format_args!("{end}"))?;
                 }
             }
             Z::RInterval {
@@ -122,7 +122,7 @@ impl FromStr for Z {
                 Some(
                     parts
                         .next()
-                        .unwrap()
+                        .ok_or(Exception::new_from_status(400).detail("malformed z parameter"))?
                         .trim_start_matches('R')
                         .parse()
                         .map_err(|e| Exception::new_from_status(400).detail(e))?,
@@ -167,7 +167,7 @@ impl FromStr for Z {
         } else {
             let levels = s
                 .split(',')
-                .map(|p| p.parse())
+                .map(str::parse)
                 .collect::<Result<Vec<f64>, ParseFloatError>>()
                 .map_err(|e| Exception::new_from_status(400).detail(e))?;
             Ok(Self::Levels(levels))

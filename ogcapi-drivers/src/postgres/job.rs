@@ -12,7 +12,7 @@ use super::Db;
 impl JobHandler for Db {
     async fn register(&self, job: &StatusInfo, response_mode: Response) -> anyhow::Result<String> {
         let (id,): (String,) = sqlx::query_as(
-            r#"
+            r"
             INSERT INTO meta.jobs(
                 job_id,
                 process_id,
@@ -36,7 +36,7 @@ impl JobHandler for Db {
                 ($2 #>> '{}')::response_type
             )
             RETURNING job_id
-            "#,
+            ",
         )
         .bind(sqlx::types::Json(job))
         .bind(sqlx::types::Json(response_mode))
@@ -47,7 +47,7 @@ impl JobHandler for Db {
 
     async fn update(&self, job: &StatusInfo) -> anyhow::Result<()> {
         sqlx::query(
-            r#"
+            r"
             UPDATE meta.jobs
             SET status = $1 -> 'status',
                 message = $1 -> 'message',
@@ -56,7 +56,7 @@ impl JobHandler for Db {
                 progress = ($1 -> 'progress')::smallint,
                 links = $1 -> 'links'
             WHERE job_id = $1 ->> 'jobID'
-            "#,
+            ",
         )
         .bind(sqlx::types::Json(job))
         .execute(&self.pool)
@@ -73,7 +73,7 @@ impl JobHandler for Db {
         results: Option<ExecuteResults>,
     ) -> anyhow::Result<()> {
         sqlx::query(
-            r#"
+            r"
             UPDATE meta.jobs
             SET status = $2,
                 message = COALESCE($3, ''),
@@ -83,7 +83,7 @@ impl JobHandler for Db {
                 updated = NOW(),
                 progress = 100
             WHERE job_id = $1
-            "#,
+            ",
         )
         .bind(job_id)
         .bind(Json(status))
@@ -118,8 +118,8 @@ impl JobHandler for Db {
             LIMIT $2
             "#,
         )
-        .bind(offset as i64)
-        .bind(limit as i64)
+        .bind(i64::try_from(offset)?)
+        .bind(i64::try_from(limit)?)
         .fetch_all(&self.pool)
         .await?;
 
@@ -181,11 +181,11 @@ impl JobHandler for Db {
 
     async fn results(&self, id: &str) -> anyhow::Result<ProcessResult> {
         let results: Option<(Option<Json<ExecuteResults>>, Json<Response>)> = sqlx::query_as(
-            r#"
+            r"
             SELECT results, to_jsonb(response)
             FROM meta.jobs
             WHERE job_id = $1
-            "#,
+            ",
         )
         .bind(id)
         .fetch_optional(&self.pool)

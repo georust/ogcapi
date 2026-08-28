@@ -1,3 +1,4 @@
+use anyhow::Context;
 use ogcapi_types::tiles::TileMatrixSet;
 
 use crate::{CollectionTransactions, TileTransactions};
@@ -19,7 +20,7 @@ impl TileTransactions for Db {
         for collection_id in collections {
             if let Some(collection) = self.read_collection(collection_id).await? {
                 let storage_srid = match collection.storage_crs.map(|crs| crs.as_srid()) {
-                    Some(srid) => srid,
+                    Some(srid) => srid.context("cannot determine SRID")?,
                     None => {
                         sqlx::query_scalar(&format!(
                             "SELECT Find_SRID('items', '{collection_id}', 'geom')"
@@ -30,7 +31,7 @@ impl TileTransactions for Db {
                 };
 
                 sql.push(format!(
-                    r#"
+                    r"
                     SELECT ST_AsMVT(mvtgeom, '{collection_id}', 4096, 'geom')
                     FROM (
                         SELECT
@@ -40,15 +41,15 @@ impl TileTransactions for Db {
                         FROM items.{collection_id}
                         WHERE geom && ST_Transform(ST_TileEnvelope($1, $3, $2, margin => (64.0 / 4096)), {storage_srid})
                     ) AS mvtgeom
-                    "#
+                    "
                 ));
-            };
+            }
         }
 
         let tiles: Vec<Vec<u8>> = sqlx::query_scalar(&sql.join(" UNION ALL "))
-            .bind(matrix.parse::<i32>().unwrap())
-            .bind(row as i32)
-            .bind(col as i32)
+            .bind(matrix.parse::<i32>()?)
+            .bind(row.cast_signed())
+            .bind(col.cast_signed())
             .fetch_all(&self.pool)
             .await?;
 

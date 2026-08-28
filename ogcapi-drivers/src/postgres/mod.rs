@@ -47,7 +47,7 @@ impl Db {
     pub async fn setup(url: &Url) -> Result<Self, sqlx::Error> {
         // Create database if not exists
         if !Postgres::database_exists(url.as_str()).await? {
-            Postgres::create_database(url.as_str()).await?
+            Postgres::create_database(url.as_str()).await?;
         }
 
         // Create pool

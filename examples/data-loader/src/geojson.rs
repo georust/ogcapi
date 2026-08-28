@@ -90,7 +90,7 @@ pub mod client {
         let now = Instant::now();
 
         // Setup client
-        let client = Client::new(public_url)?;
+        let client = Client::new(public_url.as_str())?;
 
         // Extract data
         let geojson_str = std::fs::read_to_string(input)?;

@@ -26,7 +26,7 @@ pub enum TilesCrs {
     /// An object defining the CRS using the JSON encoding for Well-known text
     /// representation of coordinate reference systems 2.0
     Wkt { wkt: Map<String, Value> },
-    /// A reference system data structure as defined in the MD_ReferenceSystem of the ISO 19115
+    /// A reference system data structure as defined in the `MD_ReferenceSystem` of the ISO 19115
     ReferenceSystem {
         #[serde(rename = "referenceSystem")]
         reference_system: String,
@@ -37,17 +37,17 @@ pub enum TilesCrs {
 #[derive(Serialize, Deserialize, ToSchema, IntoParams, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct TileParams {
-    /// Identifier selecting one of the TileMatrixSetId supported by the resource.
+    /// Identifier selecting one of the [`TileMatrixSetId`] supported by the resource.
     pub tile_matrix_set_id: TileMatrixSetId,
-    /// Identifier selecting one of the scales defined in the TileMatrixSet
+    /// Identifier selecting one of the scales defined in the [`TileMatrixSet`]
     /// and representing the scaleDenominator the tile.
     pub tile_matrix: String,
-    /// Row index of the tile on the selected TileMatrix. It cannot exceed
-    /// the MatrixWidth-1 for the selected TileMatrix.
+    /// Row index of the tile on the selected [`TileMatrix`]. It cannot exceed
+    /// the MatrixWidth-1 for the selected [`TileMatrix`].
     #[serde_as(as = "DisplayFromStr")]
     pub tile_row: u32,
-    /// Column index of the tile on the selected TileMatrix. It cannot exceed
-    /// the MatrixHeight-1 for the selected TileMatrix.
+    /// Column index of the tile on the selected [`TileMatrix`]. It cannot exceed
+    /// the MatrixHeight-1 for the selected [`TileMatrix`].
     #[serde_as(as = "DisplayFromStr")]
     pub tile_col: u32,
 }

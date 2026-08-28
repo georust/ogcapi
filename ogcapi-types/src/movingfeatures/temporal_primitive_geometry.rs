@@ -6,9 +6,9 @@ use utoipa::ToSchema;
 
 use super::{crs::Crs, trs::Trs};
 
-/// TemporalPrimitiveGeometry Object
+/// [`TemporalPrimitiveGeometry`] Object
 ///
-/// A [TemporalPrimitiveGeometry](https://docs.ogc.org/is/19-045r3/19-045r3.html#tprimitive) object describes the
+/// A [`TemporalPrimitiveGeometry`](https://docs.ogc.org/is/19-045r3/19-045r3.html#tprimitive) object describes the
 /// movement of a geographic feature whose leaf geometry at a time instant is drawn by a primitive geometry such as a
 /// point, linestring, and polygon in the two- or three-dimensional spatial coordinate system, or a point cloud in the
 /// three-dimensional spatial coordinate system.
@@ -24,6 +24,7 @@ pub struct TemporalPrimitiveGeometry {
 }
 
 impl TemporalPrimitiveGeometry {
+    #[must_use]
     pub fn new(value: Value) -> Self {
         Self {
             id: None,
@@ -44,7 +45,7 @@ where
     }
 }
 
-///The value specifies the variants of a TemporalPrimitiveGeometry object with constraints on the interpretation of the
+///The value specifies the variants of a [`TemporalPrimitiveGeometry`] object with constraints on the interpretation of the
 ///array value of the "coordinates" member, the same-length "datetimes" array member and the optional members "base" and
 ///"orientations".
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -55,18 +56,18 @@ pub enum Value {
     ///geometry of a continuous movement of point depicts a set of curves in a spatiotemporal domain.
     ///It supports more complex movements of moving features, as well as linear movement like MF-JSON Trajectory.
     ///For example, the non-linear movement information of people, vehicles, or hurricanes can be shared as a
-    ///TemporalPrimitiveGeometry object with the "MovingPoint" type.
+    ///[`TemporalPrimitiveGeometry`] object with the `MovingPoint` type.
     MovingPoint {
         #[serde(flatten)]
         dt_coords: DateTimeCoords<DateTime<Utc>, PointType>,
         #[serde(flatten)]
         base_representation: Option<BaseRepresentation>,
     },
-    ///The type represents the prism of a time-parametered 1-dimensional (1D) geometric primitive (LineString), whose
+    ///The type represents the prism of a time-parametered 1-dimensional (1D) geometric primitive (`LineString`), whose
     ///leaf geometry at a time position is a 1D linear object in a particular period. Intuitively a temporal geometry
     ///of a continuous movement of curve depicts a set of surfaces in a spatiotemporal domain. For example, the
     ///movement information of weather fronts or traffic congestion on roads can be shared as a
-    ///TemporalPrimitiveGeometry object with the "MovingLineString" type.
+    ///[`TemporalPrimitiveGeometry`] object with the `MovingLineString` type.
     MovingLineString {
         #[serde(flatten)]
         dt_coords: DateTimeCoords<DateTime<Utc>, LineStringType>,
@@ -75,7 +76,7 @@ pub enum Value {
     ///leaf geometry at a time position is a 2D polygonal object in a particular period. The list of points are in
     ///counterclockwise order. Intuitively a temporal geometry of a continuous movement of polygon depicts a set of
     ///volumes in a spatiotemporal domain. For example, the changes of flooding areas or the movement information of
-    ///air pollution can be shared as a TemporalPrimitiveGeometry object with the "MovingPolygon" type.
+    ///air pollution can be shared as a [`TemporalPrimitiveGeometry`] object with the `MovingPolygon` type.
     MovingPolygon {
         #[serde(flatten)]
         dt_coords: DateTimeCoords<DateTime<Utc>, PolygonType>,
@@ -83,7 +84,7 @@ pub enum Value {
     ///The type represents the prism of a time-parameterized point cloud whose leaf geometry at a time position is a
     ///set of points in a particular period. Intuitively a temporal geometry of a continuous movement of point set
     ///depicts a set of curves in a spatiotemporal domain. For example, the tacking information by using Light
-    ///Detection and Ranging (LiDAR) can be shared as a TemporalPrimitiveGeometry object with the "MovingPointCloud"
+    ///Detection and Ranging (`LiDAR`) can be shared as a [`TemporalPrimitiveGeometry`] object with the `MovingPointCloud`
     ///type.
     MovingPointCloud {
         #[serde(flatten)]
@@ -112,13 +113,13 @@ pub struct DateTimeCoords<A, B> {
 impl<A, B> DateTimeCoords<A, B> {
     pub fn new(datetimes: Vec<A>, coordinates: Vec<B>) -> Result<Self, &'static str> {
         if coordinates.len() != datetimes.len() {
-            Err("coordinates and datetimes must be of same length")
-        } else {
-            Ok(Self {
-                datetimes,
-                coordinates,
-            })
+            return Err("coordinates and datetimes must be of same length");
         }
+
+        Ok(Self {
+            datetimes,
+            coordinates,
+        })
     }
 
     pub fn append(&mut self, other: &mut Self) {
@@ -126,10 +127,12 @@ impl<A, B> DateTimeCoords<A, B> {
         self.coordinates.append(&mut other.coordinates);
     }
 
+    #[must_use]
     pub fn datetimes(&self) -> &[A] {
         self.datetimes.as_slice()
     }
 
+    #[must_use]
     pub fn coordinates(&self) -> &[B] {
         self.coordinates.as_slice()
     }
@@ -155,18 +158,18 @@ impl<A, B> Serialize for DateTimeCoords<A, B> {
         S: Serializer,
     {
         if self.coordinates.len() != self.datetimes.len() {
-            Err(ser::Error::custom(
+            return Err(ser::Error::custom(
                 "coordinates and datetimes must be of same length",
-            ))
-        } else {
-            let value = json!(self);
-            value.serialize(serializer)
+            ));
         }
+
+        let value = json!(self);
+        value.serialize(serializer)
     }
 }
 
 ///MF-JSON Prism separates out translational motion and rotational motion. The "interpolation" member is default and
-///represents the translational motion of the geometry described by the "coordinates" value. Its value is a MotionCurve
+///represents the translational motion of the geometry described by the "coordinates" value. Its value is a `MotionCurve`
 ///object described by one of predefined five motion curves (i.e., "Discrete", "Step", "Linear", "Quadratic", and
 ///"Cubic") or a URL (e.g., "<http://www.opengis.net/spec/movingfeatures/json/1.0/prism/example/motioncurve>")
 ///
@@ -195,7 +198,7 @@ pub enum Interpolation {
     ///See [7.2.10 MotionCurve Objects](https://docs.ogc.org/is/19-045r3/19-045r3.html#interpolation)
     Cubic,
     ///If applications need to define their own interpolation methods, the "interpolation" member in the
-    ///TemporalPrimitiveGeometry object has a URL to a JSON array of parametric equations defined on a set of intervals of parameter t-value.
+    ///`TemporalPrimitiveGeometry` object has a URL to a JSON array of parametric equations defined on a set of intervals of parameter t-value.
     ///
     ///See [7.2.10.2 URLs for user-defined parametric curve](https://docs.ogc.org/is/19-045r3/19-045r3.html#_7_2_10_2_urls_for_user_defined_parametric_curve)
     Url(String),
@@ -208,7 +211,7 @@ pub struct BaseRepresentation {
 }
 
 ///The 3D model represents a base geometry of a 3D shape, and the combination of the "base" and "orientations" members
-///represents a 3D temporal geometry of the MF_RigidTemporalGeometry type in ISO 19141.
+///represents a 3D temporal geometry of the `MF_RigidTemporalGeometry` type in ISO 19141.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Base {
     ///The "type" member has a JSON string to represent a 3D File format such as STL, OBJ, PLY, and glTF.
@@ -230,6 +233,7 @@ pub struct Orientation {
 }
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::cast_precision_loss, reason = "ok in test")]
 
     use geojson::{JsonObject, Position};
 
@@ -302,7 +306,7 @@ mod tests {
                     "datetimes": ["1970-01-01T00:00:00Z", "1970-01-01T00:00:01Z", "1970-01-01T00:00:02Z"]
                 }"#,
             );
-        assert!(geometry_too_few_coordinates.is_err())
+        assert!(geometry_too_few_coordinates.is_err());
     }
 
     #[test]

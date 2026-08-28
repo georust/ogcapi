@@ -35,12 +35,12 @@ pub struct Query {
     /// * Maximum value, coordinate axis 3 (optional)
     ///
     /// If the value consists of four numbers, the coordinate reference system
-    /// is WGS 84 longitude/latitude (http://www.opengis.net/def/crs/OGC/1.3/CRS84)
+    /// is WGS 84 longitude/latitude (<http://www.opengis.net/def/crs/OGC/1.3/CRS84>)
     /// unless a different coordinate reference system is specified in the
     /// parameter `bbox-crs`.
     ///
     /// If the value consists of six numbers, the coordinate reference system
-    /// is WGS 84 longitude/latitude/ellipsoidal height (http://www.opengis.net/def/crs/OGC/0/CRS84h)
+    /// is WGS 84 longitude/latitude/ellipsoidal height (<http://www.opengis.net/def/crs/OGC/0/CRS84h>)
     /// unless a different coordinate reference system is specified in the
     /// parameter `bbox-crs`.
     ///

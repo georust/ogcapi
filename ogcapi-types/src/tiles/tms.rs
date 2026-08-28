@@ -10,7 +10,7 @@ use crate::common::Link;
 
 use super::{BoundingBox2D, Point2D, TilesCrs};
 
-/// Identifier for a supported TileMatrixSet
+/// Identifier for a supported [`TileMatrixSet`]
 #[derive(
     Serialize, Deserialize, ToSchema, Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
@@ -115,11 +115,11 @@ pub struct TileMatrixSet {
 }
 
 /// A tile matrix, usually corresponding to a particular zoom level of a
-/// TileMatrixSet.
+/// [`TileMatrixSet`].
 #[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TileMatrix {
-    /// Identifier selecting one of the scales defined in the [TileMatrixSet]
+    /// Identifier selecting one of the scales defined in the [`TileMatrixSet`]
     /// and representing the scaleDenominator the tile.
     pub id: String,
     /// Title of a tile matrix, normally used for display to a human

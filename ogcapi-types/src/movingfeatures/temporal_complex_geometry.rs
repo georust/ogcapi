@@ -9,10 +9,10 @@ pub enum Type {
     MovingGeometryCollection,
 }
 
-/// A TemporalComplexGeometry object represents a set of TemporalPrimitiveGeometry objects. When a TemporalGeometry
-/// object has a "type" member is "MovingGeometryCollection", the object is specialized as a TemporalComplexGeometry
+/// A [`TemporalComplexGeometry`] object represents a set of [`TemporalPrimitiveGeometry`] objects. When a [`TemporalGeometry`]
+/// object has a "type" member is `MovingGeometryCollection`, the object is specialized as a [`TemporalComplexGeometry`]
 /// object with one additional mandatory member named "prisms". The value of the "prisms" member is represented by a
-/// JSON array of a set of TemporalPrimitiveGeometry instances having at least one element in the array.
+/// JSON array of a set of [`TemporalPrimitiveGeometry`] instances having at least one element in the array.
 ///
 /// See [7.2.1.2. TemporalComplexGeometry Object](https://docs.ogc.org/is/19-045r3/19-045r3.html#tcomplex)
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]

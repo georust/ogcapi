@@ -112,12 +112,12 @@ pub const TILESETS_VECTOR: &str = "http://www.opengis.net/def/rel/ogc/1.0/tilese
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/tilesets-map>
 pub const TILESETS_MAP: &str = "http://www.opengis.net/def/rel/ogc/1.0/tilesets-map";
 
-/// The target IRI points to a resource that describes the TileMatrixSet according to the 2D-TMS standard.
+/// The target IRI points to a resource that describes the `TileMatrixSet` according to the 2D-TMS standard.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme>
 pub const TILING_SCHEME: &str = "http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme";
 
-/// The target IRI points to a resource that lists one or more TileMatrixSets according to the 2D-TMS standard.
+/// The target IRI points to a resource that lists one or more `TileMatrixSet`s according to the 2D-TMS standard.
 ///
 /// See: <http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes>
 pub const TILING_SCHEMES: &str = "http://www.opengis.net/def/rel/ogc/1.0/tiling-schemes";
