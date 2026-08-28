@@ -161,7 +161,7 @@ impl FeatureTransactions for Db {
             let collection = self.read_collection(collection_id).await?;
             let storage_srid = match collection {
                 Some(collection) => match collection.storage_crs.map(|crs| crs.as_srid()) {
-                    Some(srid) => srid,
+                    Some(srid) => srid.context("cannot determine SRID")?,
                     None => {
                         sqlx::query_scalar(&format!(
                             "SELECT Find_SRID('items', '{collection_id}', 'geom')"
@@ -181,7 +181,7 @@ impl FeatureTransactions for Db {
                     bbox[order[1]],
                     bbox[order[2]],
                     bbox[order[3]],
-                    bbox_crs.as_srid()
+                    bbox_crs.as_srid().context("cannot determine SRID")?
                 ),
                 Bbox::Bbox3D(bbox) => format!(
                     // FIXME: ensure proper height/box transformation handling
@@ -201,7 +201,7 @@ impl FeatureTransactions for Db {
                     x2 = bbox[order[2] + 1],
                     y2 = bbox[order[3] + 1],
                     z2 = bbox[5],
-                    srid = bbox_crs.as_srid()
+                    srid = bbox_crs.as_srid().context("cannot determine SRID")?
                 ),
             };
 

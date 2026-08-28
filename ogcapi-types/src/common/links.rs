@@ -29,10 +29,9 @@ impl Linked for Vec<Link> {
                     Ok(url) => link.href = url.to_string(),
                     Err(_) => {
                         log::error!(
-                            "Unable to resolve link `{}` with base `{}`",
-                            link.href,
-                            base
-                        )
+                            "Unable to resolve link `{link}` with base `{base}`",
+                            link = link.href
+                        );
                     }
                 }
             }

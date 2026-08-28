@@ -1,3 +1,4 @@
+use anyhow::Context;
 use ogcapi_types::tiles::TileMatrixSet;
 
 use crate::{CollectionTransactions, TileTransactions};
@@ -19,7 +20,7 @@ impl TileTransactions for Db {
         for collection_id in collections {
             if let Some(collection) = self.read_collection(collection_id).await? {
                 let storage_srid = match collection.storage_crs.map(|crs| crs.as_srid()) {
-                    Some(srid) => srid,
+                    Some(srid) => srid.context("cannot determine SRID")?,
                     None => {
                         sqlx::query_scalar(&format!(
                             "SELECT Find_SRID('items', '{collection_id}', 'geom')"

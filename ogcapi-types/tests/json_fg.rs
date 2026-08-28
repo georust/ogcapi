@@ -10,10 +10,10 @@ fn geojson_point_feature() -> Feature {
     serde_json::from_value(serde_json::json!({
         "type": "Feature",
         "id": "f1",
-        "geometry": { "type": "Point", "coordinates": [155000.0, 463000.0] },
+        "geometry": { "type": "Point", "coordinates": [155_000.0, 463_000.0] },
         "properties": {}
     }))
-    .unwrap()
+    .expect("to be valid GeoJSON feature")
 }
 
 #[test]
@@ -24,12 +24,12 @@ fn media_type_available() {
 #[test]
 fn feature_native_crs_goes_to_place() {
     let v =
-        serde_json::to_value(geojson_point_feature().into_json_fg(CoordRefSys::from_epsg(28992)))
+        serde_json::to_value(geojson_point_feature().into_json_fg(&CoordRefSys::from_epsg(28992)))
             .unwrap();
     assert_eq!(v["place"]["type"], "Point");
     assert_eq!(
         v["place"]["coordinates"],
-        serde_json::json!([155000.0, 463000.0])
+        serde_json::json!([155_000.0, 463_000.0])
     );
     assert!(v["geometry"].is_null());
     assert_eq!(
@@ -48,7 +48,7 @@ fn feature_native_crs_goes_to_place() {
 #[test]
 fn feature_wgs84_stays_in_geometry() {
     let v =
-        serde_json::to_value(geojson_point_feature().into_json_fg(CoordRefSys::crs84())).unwrap();
+        serde_json::to_value(geojson_point_feature().into_json_fg(&CoordRefSys::crs84())).unwrap();
     assert_eq!(v["geometry"]["type"], "Point");
     assert!(v.get("place").is_none());
     assert!(v.get("coordRefSys").is_none());
@@ -57,7 +57,7 @@ fn feature_wgs84_stays_in_geometry() {
 #[test]
 fn collection_sets_crs_once_and_features_omit_it() {
     let fc = FeatureCollection::new(vec![geojson_point_feature()]);
-    let v = serde_json::to_value(fc.into_json_fg(CoordRefSys::from_epsg(28992))).unwrap();
+    let v = serde_json::to_value(fc.into_json_fg(&CoordRefSys::from_epsg(28992))).unwrap();
     assert_eq!(
         v["coordRefSys"],
         "http://www.opengis.net/def/crs/EPSG/0/28992"

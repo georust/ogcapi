@@ -32,6 +32,7 @@ pub struct Exception {
 }
 
 impl Exception {
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in constructor")]
     pub fn new(r#type: impl ToString) -> Self {
         Exception {
             r#type: r#type.to_string(),
@@ -39,6 +40,7 @@ impl Exception {
         }
     }
 
+    #[must_use]
     pub fn new_from_status(status: u16) -> Self {
         let exception = Exception::new(format!(
             "https://httpwg.org/specs/rfc7231.html#status.{status}"
@@ -46,21 +48,28 @@ impl Exception {
         exception.status(status)
     }
 
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn title(mut self, title: impl ToString) -> Self {
         self.title = Some(title.to_string());
         self
     }
 
+    #[must_use]
     pub fn status(mut self, status: u16) -> Self {
         self.status = Some(status);
         self
     }
 
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn detail(mut self, detail: impl ToString) -> Self {
         self.detail = Some(detail.to_string());
         self
     }
 
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn instance(mut self, instance: impl ToString) -> Self {
         self.instance = Some(instance.to_string());
         self
@@ -69,7 +78,11 @@ impl Exception {
 
 impl Display for Exception {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_json::to_string_pretty(self).unwrap())
+        write!(
+            f,
+            "{}",
+            serde_json::to_string_pretty(self).unwrap_or_else(|_| "<FALSY JSON>".to_string())
+        )
     }
 }
 

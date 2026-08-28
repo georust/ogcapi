@@ -71,6 +71,7 @@ pub struct FeatureCollection {
 }
 
 impl FeatureCollection {
+    #[must_use]
     pub fn new(features: Vec<Feature>) -> Self {
         let number_returned = features.len();
         FeatureCollection {
@@ -90,7 +91,8 @@ impl FeatureCollection {
     /// into `place` with `geometry` set to `null`. Features inherit the collection CRS, so
     /// they carry neither their own `coordRefSys` nor `conformsTo`. WGS 84
     /// (`crs.is_wgs84()`) is kept in `geometry`. Coordinates are not reprojected.
-    pub fn into_json_fg(mut self, crs: jsonfg::CoordRefSys) -> Self {
+    #[must_use]
+    pub fn into_json_fg(mut self, crs: &jsonfg::CoordRefSys) -> Self {
         self.conforms_to = Some(vec![jsonfg::conformance::CORE.to_owned()]);
         if !crs.is_wgs84() {
             self.coord_ref_sys = Some(crs.clone());
@@ -98,7 +100,7 @@ impl FeatureCollection {
         self.features = self
             .features
             .into_iter()
-            .map(|f| f.into_json_fg_scoped(&crs, false))
+            .map(|f| f.into_json_fg_scoped(crs, false))
             .collect();
         self
     }

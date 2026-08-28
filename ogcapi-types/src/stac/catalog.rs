@@ -23,7 +23,7 @@ pub struct Catalog {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     /// Detailed multi-line description to fully explain the Catalog.
-    /// CommonMark 0.29 syntax MAY be used for rich text representation.
+    /// `CommonMark` 0.29 syntax MAY be used for rich text representation.
     #[serde(default)]
     pub description: String,
     /// A list of references to other documents.
@@ -33,6 +33,7 @@ pub struct Catalog {
     pub additional_properties: Map<String, Value>,
 }
 
+#[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
 impl Catalog {
     pub fn new(id: impl ToString, description: impl ToString) -> Self {
         Catalog {
@@ -47,11 +48,13 @@ impl Catalog {
         }
     }
 
+    #[must_use]
     pub fn title(mut self, title: impl ToString) -> Self {
         self.title = Some(title.to_string());
         self
     }
 
+    #[must_use]
     pub fn links(mut self, links: Vec<Link>) -> Self {
         self.links = links;
         self

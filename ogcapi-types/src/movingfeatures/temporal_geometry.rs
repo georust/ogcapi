@@ -15,6 +15,7 @@ pub enum TemporalGeometry {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::cast_precision_loss, reason = "ok in test")]
 
     use chrono::DateTime;
     use geojson::Position;

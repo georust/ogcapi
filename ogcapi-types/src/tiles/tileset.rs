@@ -31,7 +31,7 @@ pub struct TileSetItem {
     /// Coordinate Reference System (CRS)
     pub crs: TilesCrs,
     /// Reference to a Tile Matrix Set on an offical source for Tile Matrix Sets
-    /// such as the OGC NA definition server (http://www.opengis.net/def/tms/).
+    /// such as the OGC NA definition server (<http://www.opengis.net/def/tms/>).
     /// Required if the tile matrix set is registered on an open official source.
     #[serde(
         default,
@@ -41,13 +41,13 @@ pub struct TileSetItem {
     #[schema(nullable = false, format = Uri)]
     pub tile_matrix_set_uri: Option<String>,
     /// Links to related resources. A 'self' link to the tileset as well as a
-    /// 'http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme' link to a
-    /// definition of the TileMatrixSet are required.
+    /// <http://www.opengis.net/def/rel/ogc/1.0/tiling-scheme> link to a
+    /// definition of the [`TileMatrixSet`] are required.
     pub links: Vec<Link>,
 }
 
-/// A resource describing a tileset based on the OGC TileSet Metadata Standard.
-/// At least one of the 'TileMatrixSet',  or a link with 'rel' tiling-scheme"
+/// A resource describing a tileset based on the OGC Two Dimensional Tile Matrix Set and Tile Set Metadata.
+/// At least one of the [`TileMatrixSet`], or a link with 'rel' tiling-scheme"
 #[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TileSet {
@@ -60,7 +60,7 @@ pub struct TileSet {
     #[schema(nullable = false)]
     pub description: Option<String>,
     /// Unordered list of one or more commonly used or formalized word(s) or
-    /// phrase(s) used to describe a TileSet
+    /// phrase(s) used to describe a [`TileSet`]
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keywords: Vec<String>,
     /// Type of data represented in the tileset
@@ -76,9 +76,9 @@ pub struct TileSet {
     )]
     #[schema(nullable = false, format = Uri)]
     pub tile_matrix_set_uri: Option<String>,
-    /// Limits for the TileRow and TileCol values for each TileMatrix in the
-    /// TileMatrixSet. If missing, there are no limits other that the ones
-    /// imposed by the TileMatrixSet. If present the TileMatrices listed are
+    /// Limits for the [`TileRow`] and [`TileCol`] values for each [`TileMatrix`] in the
+    /// [`TileMatrixSet`]. If missing, there are no limits other that the ones
+    /// imposed by the [`TileMatrixSet`]. If present the tile matrices listed are
     /// limited and the rest not available at all
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tile_matrix_set_limits: Vec<TileMatrixLimits>,
@@ -91,8 +91,8 @@ pub struct TileSet {
     /// Links to related resources. Possible link 'rel' values are: 'dataset'
     /// for a URL pointing to the dataset, 'tiles' for a URL template to get
     /// the tiles; 'alternate' for a URL pointing to another representation of
-    /// the TileSetMetadata (e.g a TileJSON file); 'tiling-scheme' for a
-    /// definition of the TileMatrixSet
+    /// the [`TileSetMetadata`] (e.g a [`TileJSON` file); 'tiling-scheme' for a
+    /// definition of the [`TileMatrixSet`]
     pub links: Vec<Link>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[schema(min_items = 1)]
@@ -206,7 +206,7 @@ pub struct GeospatialData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub min_scale_denominator: Option<f64>,
-    /// aximum scale denominator for usage of the layer
+    /// Maximum scale denominator for usage of the layer
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub max_scale_denominator: Option<f64>,
@@ -218,11 +218,11 @@ pub struct GeospatialData {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub max_cell_size: Option<f64>,
-    /// TileMatrix identifier associated with the minScaleDenominator
+    /// [`TileMatrix`] identifier associated with the minScaleDenominator
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub max_tile_matrix: Option<String>,
-    /// TileMatrix identifier associated with the maxScaleDenominator
+    /// [`TileMatrix`] identifier associated with the maxScaleDenominator
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub min_tile_matrix: Option<String>,
@@ -267,7 +267,7 @@ pub struct TilePoint {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub crs: Option<TilesCrs>,
-    /// TileMatrix identifier associated with the scaleDenominator
+    /// [`TileMatrix`] identifier associated with the scaleDenominator
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub tile_matrix: Option<String>,
@@ -306,7 +306,7 @@ pub struct Style {
 }
 
 /// A resource describing useful to create an array that describes the limits
-/// for a tile set [super::TileMatrixSet] based on the OGC TileSet Metadata Standard
+/// for a tile set [`super::TileMatrixSet`] based on the OGC Two Dimensional Tile Matrix Set and Tile Set Metadata Standard
 #[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TileMatrixLimits {

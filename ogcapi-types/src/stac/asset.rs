@@ -27,6 +27,7 @@ pub struct Asset {
     pub additional_properties: Map<String, Value>,
 }
 
+#[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
 impl Asset {
     pub fn new(href: impl ToString) -> Self {
         Asset {
@@ -39,23 +40,27 @@ impl Asset {
         }
     }
 
+    #[must_use]
     pub fn title(mut self, title: impl ToString) -> Self {
         self.title = Some(title.to_string());
         self
     }
 
+    #[must_use]
     pub fn description(mut self, description: impl ToString) -> Self {
         self.description = Some(description.to_string());
         self
     }
 
+    #[must_use]
     pub fn media_type(mut self, media_type: impl ToString) -> Self {
         self.r#type = Some(media_type.to_string());
         self
     }
 
+    #[must_use]
     pub fn roles(mut self, roles: &[impl ToString]) -> Self {
-        self.roles = roles.iter().map(|r| r.to_string()).collect();
+        self.roles = roles.iter().map(ToString::to_string).collect();
         self
     }
 }

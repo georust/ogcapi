@@ -14,13 +14,13 @@ pub struct Conformance {
 impl Conformance {
     pub fn new(classes: &[impl ToString]) -> Self {
         Conformance {
-            conforms_to: classes.iter().map(|c| c.to_string()).collect(),
+            conforms_to: classes.iter().map(ToString::to_string).collect(),
         }
     }
 
     /// Extend conformance from other classes
     pub fn extend(&mut self, classes: &[impl ToString]) {
         self.conforms_to
-            .extend(classes.iter().map(|c| c.to_string()))
+            .extend(classes.iter().map(ToString::to_string));
     }
 }

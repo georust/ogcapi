@@ -23,7 +23,7 @@ impl EdrQuerier for Db {
         let collection = self.read_collection(collection_id).await?;
         let storage_srid = match collection {
             Some(collection) => match collection.storage_crs.map(|crs| crs.as_srid()) {
-                Some(srid) => srid,
+                Some(srid) => srid.context("cannot determine SRID")?,
                 None => {
                     sqlx::query_scalar(&format!(
                         "SELECT Find_SRID('items', '{collection_id}', 'geom')"
@@ -49,7 +49,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid);
+                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_3DIntersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                         srid, query.coords, storage_srid
@@ -59,7 +60,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid);
+                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_Intersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                         srid, query.coords, storage_srid
@@ -87,7 +89,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid);
+                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_3DDWithin(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
                         srid, query.coords, storage_srid
@@ -97,7 +100,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid);
+                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_DWithin(ST_Transform(geom, 4326)::geography, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), 4326)::geography, {}, false)",
                         srid, query.coords, distance
@@ -111,7 +115,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid);
+                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}), {})",
                         query.coords, srid, storage_srid
@@ -121,7 +126,8 @@ impl EdrQuerier for Db {
                     let srid: i32 = query
                         .crs
                         .as_ref()
-                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid);
+                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid)
+                        .context("cannot determine SRID")?;
                     let predicate = format!(
                         "ST_3DIntersects(
                             geom,

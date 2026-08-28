@@ -20,6 +20,10 @@ pub struct Crs {
 }
 
 impl Crs {
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "This is a constructor, so passing by value is fine."
+    )]
     pub fn new(authority: Authority, version: impl ToString, code: impl ToString) -> Self {
         Crs {
             authority,
@@ -28,18 +32,22 @@ impl Crs {
         }
     }
 
+    #[must_use]
     pub fn default2d() -> Self {
-        Self::new(Authority::OGC, "1.3".to_string(), "CRS84".to_string())
+        Self::new(Authority::OGC, "1.3", "CRS84")
     }
 
+    #[must_use]
     pub fn default3d() -> Self {
         Self::new(Authority::OGC, "0".to_string(), "CRS84h".to_string())
     }
 
+    #[must_use]
     pub fn from_epsg(code: i32) -> Self {
         Crs::new(Authority::EPSG, "0", code)
     }
 
+    #[must_use]
     pub fn from_srid(code: i32) -> Self {
         if code == 4326 {
             Crs::default2d()
@@ -48,6 +56,7 @@ impl Crs {
         }
     }
 
+    #[must_use]
     pub fn to_urn(&self) -> String {
         format!(
             "urn:ogc:def:crs:{authority}:{version}:{code}",
@@ -57,6 +66,7 @@ impl Crs {
         )
     }
 
+    #[must_use]
     pub fn to_epsg(&self) -> Option<Crs> {
         match self.authority {
             Authority::OGC => match self.code.as_str() {
@@ -67,28 +77,38 @@ impl Crs {
         }
     }
 
+    #[must_use]
     pub fn as_epsg(&self) -> Option<i32> {
         match self.authority {
             Authority::OGC => match self.code.as_str() {
+                "CRS84" => Some(4326),
                 "CRS84h" => Some(4979),
-                _ => panic!("Unable to extract epsg code from `{self}`"),
+                _ => {
+                    log::error!("Unable to extract epsg code from `{self}`");
+                    None
+                }
             },
             Authority::EPSG => self.code.parse().ok(),
         }
     }
 
-    pub fn as_srid(&self) -> i32 {
+    #[must_use]
+    pub fn as_srid(&self) -> Option<i32> {
         match self.authority {
             Authority::OGC => match self.code.as_str() {
-                "CRS84" => 4326,
-                "CRS84h" => 4979,
-                _ => panic!("Unable to extract epsg code from `{self}`"),
+                "CRS84" => Some(4326),
+                "CRS84h" => Some(4979),
+                _ => {
+                    log::error!("Unable to extract srid code from `{self}`");
+                    None
+                }
             },
-            Authority::EPSG => self.code.parse().unwrap(),
+            Authority::EPSG => self.code.parse().ok(),
         }
     }
 
     /// "AUTHORITY:CODE", like "EPSG:25832"
+    #[must_use]
     pub fn as_known_crs(&self) -> String {
         format!("{}:{}", self.authority, self.code)
     }
@@ -135,7 +155,7 @@ impl str::FromStr for Crs {
 
 struct StrVisitior;
 
-impl<'de> Visitor<'de> for StrVisitior {
+impl Visitor<'_> for StrVisitior {
     type Value = Crs;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

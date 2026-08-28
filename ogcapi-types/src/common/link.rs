@@ -39,6 +39,7 @@ pub struct Link {
 
 impl Link {
     /// Constructs a new Link with the given href and link relation
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in constructor")]
     pub fn new(href: impl ToString, rel: impl ToString) -> Link {
         Link {
             href: href.to_string(),
@@ -53,36 +54,46 @@ impl Link {
     }
 
     /// Sets the media type of the Link and returns the Value
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
+    #[must_use]
     pub fn mediatype(mut self, mime: impl ToString) -> Link {
         self.r#type = Some(mime.to_string());
         self
     }
 
     /// Sets whether the link is templated
+    #[must_use]
     pub fn templated(mut self, templated: bool) -> Link {
         self.templated = Some(templated);
         self
     }
 
     /// Sets the base path to retreive semantic information about the variables used in URL template
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn var_base(mut self, var_base: impl ToString) -> Link {
         self.var_base = Some(var_base.to_string());
         self
     }
 
     /// Sets the language of the Link and returns the Value
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn language(mut self, language: impl ToString) -> Link {
         self.hreflang = Some(language.to_string());
         self
     }
 
     /// Sets the title of the Link and returns the Value
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value, reason = "Ok in builder")]
     pub fn title(mut self, title: impl ToString) -> Link {
         self.title = Some(title.to_string());
         self
     }
 
     /// Sets the length of the reference resource by the Link and returns the Value
+    #[must_use]
     pub fn length(mut self, length: i64) -> Link {
         self.length = Some(length);
         self

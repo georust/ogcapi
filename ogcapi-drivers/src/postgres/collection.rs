@@ -1,3 +1,4 @@
+use anyhow::Context;
 use sqlx::types::Json;
 
 use ogcapi_types::common::{Collection, Collections, Crs, Query};
@@ -38,7 +39,8 @@ impl CollectionTransactions for Db {
         let srid = collection
             .storage_crs
             .as_ref()
-            .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid);
+            .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
+            .context("cannot determine SRID")?;
 
         let mut tx = self.pool.begin().await?;
 

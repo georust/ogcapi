@@ -7,14 +7,14 @@ use utoipa::ToSchema;
 
 use super::temporal_property::Interpolation;
 
-/// MF-JSON TemporalProperties
+/// MF-JSON [`TemporalProperties`]
 ///
-/// A TemporalProperties object is a JSON array of ParametricValues objects that groups a collection of dynamic
+/// A [`TemporalProperties`] object is a JSON array of [`ParametricValues`] objects that groups a collection of dynamic
 /// non-spatial attributes and its parametric values with time.
 ///
 /// See [7.2.2 MF-JSON TemporalProperties](https://docs.ogc.org/is/19-045r3/19-045r3.html#tproperties)
 ///
-/// Opposed to [TemporalProperty](super::temporal_property::TemporalProperty) values for all
+/// Opposed to [`super::temporal_property::TemporalProperty`] values for all
 /// represented properties are all measured at the same points in time.
 #[derive(Deserialize, Debug, Clone, PartialEq, ToSchema)]
 pub struct MFJsonTemporalProperties {
@@ -36,10 +36,12 @@ impl MFJsonTemporalProperties {
         }
     }
 
+    #[must_use]
     pub fn datetimes(&self) -> &[DateTime<FixedOffset>] {
         &self.datetimes
     }
 
+    #[must_use]
     pub fn values(&self) -> &HashMap<String, ParametricValues> {
         &self.values
     }
@@ -66,7 +68,7 @@ impl Serialize for MFJsonTemporalProperties {
     }
 }
 
-/// A ParametricValues object is a JSON object that represents a collection of parametric values of dynamic non-spatial
+/// A [`ParametricValues`] object is a JSON object that represents a collection of parametric values of dynamic non-spatial
 /// attributes that are ascertained at the same times. A parametric value may be a time-varying measure, a sequence of
 /// texts, or a sequence of images. Even though the parametric value may depend on the spatiotemporal location,
 /// MF-JSON Prism only considers the temporal dependencies of their changes of value.
@@ -109,8 +111,7 @@ impl ParametricValues {
     fn len(&self) -> usize {
         match self {
             Self::Measure { values, .. } => values.len(),
-            Self::Text { values, .. } => values.len(),
-            Self::Image { values, .. } => values.len(),
+            Self::Text { values, .. } | Self::Image { values, .. } => values.len(),
         }
     }
 }

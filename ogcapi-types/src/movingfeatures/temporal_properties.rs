@@ -7,7 +7,7 @@ use super::{
     mfjson_temporal_properties::MFJsonTemporalProperties, temporal_property::TemporalProperty,
 };
 
-/// A TemporalProperties object consists of the set of [TemporalProperty] or a set of [MFJsonTemporalProperties].
+/// A [`TemporalProperties`] object consists of the set of [`TemporalProperty`] or a set of [`MFJsonTemporalProperties`].
 ///
 /// See [8.8 TemporalProperties](https://docs.ogc.org/is/22-003r3/22-003r3.html#resource-temporalProperties-section)
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
@@ -27,9 +27,9 @@ pub struct TemporalProperties {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
 #[serde(untagged)]
 pub enum TemporalPropertiesValue {
-    /// [MFJsonTemporalProperties] allows to represent multiple property values all measured at the same points in time.
+    /// [`MFJsonTemporalProperties`] allows to represent multiple property values all measured at the same points in time.
     MFJsonTemporalProperties(Vec<MFJsonTemporalProperties>),
-    /// [TemporalProperty] allows to represent a property value at independent points in time.
+    /// [`TemporalProperty`] allows to represent a property value at independent points in time.
     TemporalProperty(Vec<TemporalProperty>),
 }
 

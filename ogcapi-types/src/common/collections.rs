@@ -22,6 +22,7 @@ pub struct Collections {
 }
 
 impl Collections {
+    #[must_use]
     pub fn new(collections: Vec<Collection>) -> Self {
         let count = collections.len();
         Collections {

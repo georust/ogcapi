@@ -58,29 +58,34 @@ impl SearchParams {
     ///     .with_collections(["communes"].as_slice())
     ///     .with_bbox(bbox);
     /// ```
+    #[must_use]
     pub fn new() -> SearchParams {
         SearchParams::default()
     }
 
     /// Set the `bbox` property
+    #[must_use]
     pub fn with_bbox(mut self, bbox: Bbox) -> Self {
         self.bbox = Some(bbox);
         self
     }
 
     /// Set the `datetime` property
+    #[must_use]
     pub fn with_datetime(mut self, datetime: Datetime) -> Self {
         self.datetime = Some(datetime);
         self
     }
 
     /// Set the `intersects` property
+    #[must_use]
     pub fn with_intersects(mut self, intersects: Geometry) -> Self {
         self.intersects = Some(intersects);
         self
     }
 
     /// Set the `ids` property
+    #[must_use]
     pub fn with_ids<S, I>(mut self, ids: I) -> Self
     where
         S: std::fmt::Display,
@@ -91,6 +96,7 @@ impl SearchParams {
     }
 
     /// Set the `collections` property
+    #[must_use]
     pub fn with_collections<S, I>(mut self, collections: I) -> Self
     where
         S: std::fmt::Display,
