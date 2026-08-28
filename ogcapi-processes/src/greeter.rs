@@ -34,11 +34,12 @@ pub struct GreeterInputs {
 }
 
 impl GreeterInputs {
+    #[must_use]
     pub fn execute_input(&self) -> HashMap<String, Input> {
         HashMap::from([(
             "name".to_string(),
             Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                InputValueNoObject::String(self.name.to_owned()),
+                InputValueNoObject::String(self.name.clone()),
             )),
         )])
     }
@@ -51,6 +52,7 @@ pub struct GreeterOutputs {
 }
 
 impl GreeterOutputs {
+    #[must_use]
     pub fn execute_output() -> HashMap<String, Output> {
         HashMap::from([(
             "greeting".to_string(),
@@ -171,11 +173,6 @@ mod tests {
     async fn test_greeter() {
         let greeter = Greeter;
         assert_eq!(greeter.id(), "greet");
-
-        println!(
-            "Process:\n{}",
-            serde_json::to_string_pretty(&greeter.process().await.unwrap()).unwrap()
-        );
 
         let input = GreeterInputs {
             name: "Greeter".to_string(),
