@@ -24,7 +24,7 @@ async fn edr() -> anyhow::Result<()> {
     // let input = "../data/ne_10m_railroads_north_america.geojson";
     // data_loader::geojson::db::load_with_client(input, "railroads", None, &public_url).await?;
 
-    let client = Client::new(public_url)?;
+    let client = Client::new(public_url.as_str())?;
 
     // query position
     let query = Query {

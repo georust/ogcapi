@@ -16,7 +16,7 @@ async fn minimal_feature_crud() -> anyhow::Result<()> {
     // setup app
     let (addr, _) = setup::spawn_app().await?;
 
-    let client = Client::new(format!("http://{addr}"))?;
+    let client = Client::new(&format!("http://{addr}"))?;
 
     // create collection
     let collection = Collection {

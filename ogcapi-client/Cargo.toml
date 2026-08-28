@@ -44,3 +44,6 @@ ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", features = [
 
 [package.metadata.docs.rs]
 all-features = true
+
+[lints]
+workspace = true

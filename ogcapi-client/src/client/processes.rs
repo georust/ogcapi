@@ -18,22 +18,31 @@ impl Client {
             .json(execute)
             .send()
             .await
-            .and_then(|rsp| rsp.error_for_status())?;
+            .and_then(reqwest::Response::error_for_status)?;
 
         match response.status().as_u16() {
             200 => match execute.response {
                 Response::Raw => {
                     if execute.outputs.len() == 1 {
-                        let (_k, v) = execute.outputs.iter().next().unwrap();
+                        let (_k, v) = execute.outputs.iter().next().ok_or_else(|| {
+                            Error::ClientError(
+                                "Expected exactly one output for raw response".to_string(),
+                            )
+                        })?;
                         match v.transmission_mode {
                             TransmissionMode::Value => Ok(ProcessResponseBody::Requested {
                                 outputs: execute.outputs.clone(),
                                 parts: vec![response.bytes().await?.to_vec()],
                             }),
-                            TransmissionMode::Reference => todo!(),
+                            TransmissionMode::Reference => Err(Error::UnsupportedError(
+                                "Raw response with reference transmission mode is not supported"
+                                    .to_string(),
+                            )),
                         }
                     } else {
-                        unimplemented!()
+                        Err(Error::UnsupportedError(
+                            "Raw response with multiple outputs is not supported".to_string(),
+                        ))
                     }
                 }
                 Response::Document => Ok(ProcessResponseBody::Results(
@@ -105,6 +114,6 @@ mod tests {
         assert_eq!(
             String::from_utf8(parts[0].clone()).unwrap(),
             "Hello, client!\n"
-        )
+        );
     }
 }
