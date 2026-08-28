@@ -6,7 +6,7 @@ use crate::CollectionTransactions;
 
 use super::Db;
 
-const COLLECTION: &str = r#"
+const COLLECTION: &str = r"
 CASE
     WHEN (
         collection #> '{{extent,spatial}}' IS NULL 
@@ -30,7 +30,7 @@ CASE
     )
     ELSE collection
 END
-"#;
+";
 
 #[async_trait::async_trait]
 impl CollectionTransactions for Db {
@@ -38,8 +38,7 @@ impl CollectionTransactions for Db {
         let srid = collection
             .storage_crs
             .as_ref()
-            .map(|crs| crs.as_srid())
-            .unwrap_or_else(|| Crs::default2d().as_srid());
+            .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid);
 
         let mut tx = self.pool.begin().await?;
 
@@ -89,7 +88,7 @@ impl CollectionTransactions for Db {
 
         tx.commit().await?;
 
-        Ok(collection.id.to_owned())
+        Ok(collection.id.clone())
     }
 
     async fn read_collection(&self, id: &str) -> anyhow::Result<Option<Collection>> {
@@ -136,10 +135,8 @@ impl CollectionTransactions for Db {
     }
 
     async fn list_collections(&self, _query: &Query) -> anyhow::Result<Collections> {
-        let where_clause = match cfg!(feature = "stac") {
-            true => Some(r#"WHERE collection ->> 'type' = 'Collection'"#),
-            false => None,
-        };
+        let where_clause =
+            cfg!(feature = "stac").then_some(r"WHERE collection ->> 'type' = 'Collection'");
         let collections: Option<Json<Vec<Collection>>> = sqlx::query_scalar(&format!(
             "SELECT array_to_json(array_agg({COLLECTION})) FROM meta.collections {}",
             where_clause.unwrap_or_default()

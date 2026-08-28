@@ -1,3 +1,4 @@
+use anyhow::Context;
 use ogcapi_types::{
     common::{Authority, Bbox, Crs, Datetime, Exception, IntervalDatetime},
     features::{Feature, FeatureCollection, Query},
@@ -42,14 +43,18 @@ COALESCE(
 ) as bbox
 ";
 
+#[allow(clippy::too_many_lines, reason = "Complex transaction logic")]
 #[async_trait::async_trait]
 impl FeatureTransactions for Db {
     async fn create_feature(&self, feature: &Feature) -> anyhow::Result<String> {
-        let collection_id = feature.collection.as_ref().unwrap();
+        let collection_id = feature
+            .collection
+            .as_ref()
+            .context("feature.collection is required")?;
 
         let id: (String,) = sqlx::query_as(&format!(
             r#"
-            INSERT INTO items."{0}" (
+            INSERT INTO items."{collection_id}" (
                 id,
                 properties,
                 geom,
@@ -59,14 +64,13 @@ impl FeatureTransactions for Db {
             ) VALUES (
                 COALESCE($1 ->> 'id', gen_random_uuid()::text),
                 $1 -> 'properties',
-                ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), (SELECT Find_SRID('items', '{0}', 'geom'))),
+                ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), (SELECT Find_SRID('items', '{collection_id}', 'geom'))),
                 $1 -> 'links',
                 COALESCE($1 -> 'assets', '{{}}'::jsonb),
                 $1 -> 'bbox'
             )
             RETURNING id
             "#,
-            collection_id
         ))
         .bind(serde_json::to_value(feature)?)
         .fetch_one(&self.pool)
@@ -111,7 +115,10 @@ impl FeatureTransactions for Db {
                 assets = COALESCE($1 -> 'assets', '{{}}'::jsonb)
             WHERE id = $1 ->> 'id'
             "#,
-            feature.collection.as_ref().unwrap()
+            feature
+                .collection
+                .as_ref()
+                .context("feature.collection is required")?
         ))
         .bind(serde_json::to_value(feature)?)
         .execute(&self.pool)
@@ -148,8 +155,7 @@ impl FeatureTransactions for Db {
 
             // coordinate system axis order (OGC and Postgis is lng, lat | EPSG is lat, lng)
             let order = match bbox_crs.authority {
-                Authority::OGC => [0, 1, 2, 3],
-                Authority::EPSG => [0, 1, 2, 3], // Use "traditional GIS order". TODO: should follow the crs definition [1, 0, 3, 2]
+                Authority::OGC | Authority::EPSG => [0, 1, 2, 3], // Use "traditional GIS order". TODO: should follow the crs definition [1, 0, 3, 2]
             };
 
             let collection = self.read_collection(collection_id).await?;
@@ -179,7 +185,7 @@ impl FeatureTransactions for Db {
                 ),
                 Bbox::Bbox3D(bbox) => format!(
                     // FIXME: ensure proper height/box transformation handling
-                    r#"ST_3DIntersects(geom, ST_Envelope(ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY[
+                    r"ST_3DIntersects(geom, ST_Envelope(ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY[
                         ST_MakePoint({x1}, {y1}, {z1}), 
                         ST_MakePoint({x2}, {y1}, {z1}),
                         ST_MakePoint({x1}, {y2}, {z1}), 
@@ -188,7 +194,7 @@ impl FeatureTransactions for Db {
                         ST_MakePoint({x2}, {y1}, {z2}),
                         ST_MakePoint({x1}, {y2}, {z2}), 
                         ST_MakePoint({x2}, {y2}, {z2})
-                    ]), {srid}), {storage_srid})))"#,
+                    ]), {srid}), {storage_srid})))",
                     x1 = bbox[order[0]],
                     y1 = bbox[order[1]],
                     z1 = bbox[2],
@@ -227,7 +233,7 @@ impl FeatureTransactions for Db {
             };
 
             where_conditions.push(format!(
-                r#"
+                r"
                 (
                     CASE
                         WHEN (properties->'datetime') IS NOT NULL THEN (
@@ -247,14 +253,14 @@ impl FeatureTransactions for Db {
                         ELSE TRUE
                     END
                 )
-                "#
+                "
             ));
         }
 
         // kv
-        for (k, v) in query.additional_parameters.iter() {
+        for (k, v) in &query.additional_parameters {
             where_conditions.push(format!(
-                r#"
+                r"
                 CASE
                     WHEN properties ? '{k}' THEN (
                         CASE
@@ -265,7 +271,7 @@ impl FeatureTransactions for Db {
                     ) 
                     ELSE TRUE
                 END
-                "#
+                "
             ));
         }
 
@@ -285,8 +291,7 @@ impl FeatureTransactions for Db {
         let srid = query
             .crs
             .as_ref()
-            .map(|crs| crs.as_srid())
-            .unwrap_or_else(|| Crs::default2d().as_srid());
+            .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid);
 
         // fetch
         let features: Option<sqlx::types::Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
@@ -312,7 +317,7 @@ impl FeatureTransactions for Db {
 
         let features = features.map(|f| f.0).unwrap_or_default();
         let mut fc = FeatureCollection::new(features);
-        fc.number_matched = Some(number_matched.0 as u64);
+        fc.number_matched = Some(number_matched.0.cast_unsigned());
 
         Ok(fc)
     }

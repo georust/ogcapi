@@ -29,14 +29,15 @@ pub struct S3 {
 }
 
 impl S3 {
+    #[must_use]
     pub async fn new() -> Self {
         let mut config = aws_config::load_defaults(BehaviorVersion::latest()).await;
 
         // Use custom enpoint if specified in `AWS_CUSTOM_ENDPOINT` environment variable
         if let Ok(endpoint) = std::env::var("AWS_CUSTOM_ENDPOINT") {
-            println!("Setup client with custom endpoint: {endpoint}");
-            config = config.into_builder().endpoint_url(&endpoint).build()
-        };
+            log::info!("Setup client with custom endpoint: {endpoint}");
+            config = config.into_builder().endpoint_url(&endpoint).build();
+        }
 
         // force path style addressing to work with minio
         let config = Config::from(&config)
@@ -44,18 +45,19 @@ impl S3 {
             .force_path_style(true)
             .build();
 
-        S3::new_with(Client::from_conf(config)).await
+        S3::new_with(Client::from_conf(config))
     }
 
-    pub async fn new_with(client: Client) -> Self {
+    #[must_use]
+    pub fn new_with(client: Client) -> Self {
         S3 {
             client,
             bucket: None,
         }
     }
 
-    pub fn set_default_bucket(&mut self, bucket: impl ToString) {
-        self.bucket = Some(bucket.to_string())
+    pub fn set_default_bucket(&mut self, bucket: &impl ToString) {
+        self.bucket = Some(bucket.to_string());
     }
 
     pub async fn put_object(

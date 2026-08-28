@@ -28,7 +28,7 @@ mod postgres {
         // dismiss
         let info = db.dismiss(&job.job_id).await.unwrap();
 
-        assert_eq!(info.unwrap().status, StatusCode::Dismissed)
+        assert_eq!(info.unwrap().status, StatusCode::Dismissed);
     }
 
     #[sqlx::test]

@@ -30,7 +30,7 @@ impl TileTransactions for Db {
                 };
 
                 sql.push(format!(
-                    r#"
+                    r"
                     SELECT ST_AsMVT(mvtgeom, '{collection_id}', 4096, 'geom')
                     FROM (
                         SELECT
@@ -40,15 +40,15 @@ impl TileTransactions for Db {
                         FROM items.{collection_id}
                         WHERE geom && ST_Transform(ST_TileEnvelope($1, $3, $2, margin => (64.0 / 4096)), {storage_srid})
                     ) AS mvtgeom
-                    "#
+                    "
                 ));
-            };
+            }
         }
 
         let tiles: Vec<Vec<u8>> = sqlx::query_scalar(&sql.join(" UNION ALL "))
-            .bind(matrix.parse::<i32>().unwrap())
-            .bind(row as i32)
-            .bind(col as i32)
+            .bind(matrix.parse::<i32>()?)
+            .bind(row.cast_signed())
+            .bind(col.cast_signed())
             .fetch_all(&self.pool)
             .await?;
 
