@@ -1,5 +1,3 @@
-#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
-
 use std::sync::{Arc, RwLock};
 
 use anyhow::{Context, bail};
@@ -551,14 +549,13 @@ async fn status(
     let status = state.drivers.jobs.status(&job_id).await?;
 
     let Some(mut info) = status else {
-        return Err(Error::ApiException(
-            Exception::new(
-                "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job",
-            )
-            .status(StatusCode::NOT_FOUND.as_u16())
-            .title("NoSuchJob")
-            .detail(format!("No job with id `{job_id}`")),
-        ));
+        return Err(Exception::new(
+            "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job",
+        )
+        .status(StatusCode::NOT_FOUND.as_u16())
+        .title("NoSuchJob")
+        .detail(format!("No job with id `{job_id}`"))
+        .into());
     };
 
     info.links.insert_or_update(&[
@@ -644,25 +641,23 @@ async fn results(
     match results {
         ProcessResult::NoSuchJob => {
             // `/req/core/job-results-exception/no-such-job`
-            Err(Error::ApiException(
-                Exception::new(
-                    "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job",
-                )
-                .status(404)
-                .title("NoSuchJob")
-                .detail(format!("No job with id `{job_id}`")),
-            ))
+            Err(Exception::new(
+                "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job",
+            )
+            .status(404)
+            .title("NoSuchJob")
+            .detail(format!("No job with id `{job_id}`"))
+            .into())
         }
         ProcessResult::NotReady => {
             // `/req/core/job-results-exception/results-not-ready`
-            Err(Error::ApiException(
-                Exception::new(
-                    "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/result-not-ready",
-                )
-                .status(404)
-                .title("NotReady")
-                .detail(format!("Results for job `{job_id}` are not ready yet")),
-            ))
+            Err(Exception::new(
+                "http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/result-not-ready",
+            )
+            .status(404)
+            .title("NotReady")
+            .detail(format!("Results for job `{job_id}` are not ready yet"))
+            .into())
         }
         ProcessResult::Results {
             results,

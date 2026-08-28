@@ -88,8 +88,8 @@ impl Display for Exception {
 
 impl Error for Exception {}
 
-impl<T: Into<u16>> From<(T, String)> for Exception {
+impl<T: Into<u16>> From<(T, String)> for Box<Exception> {
     fn from((status_code, message): (T, String)) -> Self {
-        Exception::new_from_status(status_code.into()).detail(message)
+        Box::new(Exception::new_from_status(status_code.into()).detail(message))
     }
 }

@@ -1,5 +1,3 @@
-#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
-
 use std::sync::{Arc, OnceLock};
 
 use anyhow::Context;

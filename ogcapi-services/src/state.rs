@@ -1,5 +1,3 @@
-#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
-
 #[cfg(feature = "processes")]
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};

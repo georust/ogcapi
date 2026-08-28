@@ -1,5 +1,3 @@
-#![allow(clippy::result_large_err, reason = "TODO: make error smaller")]
-
 use anyhow::Context;
 use axum::{
     Json,
@@ -299,10 +297,9 @@ async fn items(
     if !queryables.additional_properties {
         for prop in query.additional_parameters.keys() {
             if !queryables.queryables.contains_key(prop) {
-                return Err(Error::ApiException(
-                    Exception::new_from_status(StatusCode::BAD_REQUEST.as_u16())
-                        .detail(format!("Property {prop} is not queryable!")),
-                ));
+                return Err(Exception::new_from_status(StatusCode::BAD_REQUEST.as_u16())
+                    .detail(format!("Property {prop} is not queryable!"))
+                    .into());
             }
         }
     }

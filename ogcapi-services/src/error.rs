@@ -30,7 +30,7 @@ pub enum Error {
 
     /// Custom Exception
     #[error("an OGC API exception occurred")]
-    ApiException(#[from] Exception),
+    ApiException(Box<Exception>),
 }
 
 impl Error {
@@ -43,6 +43,12 @@ impl Error {
                 .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
+    }
+}
+
+impl From<Exception> for Error {
+    fn from(value: Exception) -> Self {
+        Self::ApiException(Box::new(value))
     }
 }
 
@@ -81,7 +87,7 @@ impl From<Error> for Exception {
             }
             Error::ApiException(exception) => {
                 tracing::debug!("OGCAPI exception: {exception}");
-                return exception;
+                return *exception;
             }
         };
 

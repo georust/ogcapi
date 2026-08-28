@@ -432,14 +432,13 @@ where
             Ok(value) => Ok(ValidParams(value)),
             Err(rejection) => {
                 // let response_body = rejection.body_text();
-                Err(Error::ApiException(
-                    Exception::new("InvalidParameterValue")
-                        .status(404)
-                        .title("InvalidParameterValue")
-                        .detail(format!(
-                            "The following parameters are not recognized: {rejection}",
-                        )),
-                ))
+                Err(Exception::new("InvalidParameterValue")
+                    .status(404)
+                    .title("InvalidParameterValue")
+                    .detail(format!(
+                        "The following parameters are not recognized: {rejection}",
+                    ))
+                    .into())
             }
         }
     }
