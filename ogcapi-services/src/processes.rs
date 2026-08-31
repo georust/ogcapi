@@ -468,6 +468,19 @@ where
     }
 }
 
+impl IntoArcProcessor for Box<dyn DynProcessor> {
+    fn into_arc_processor(self) -> Arc<dyn DynProcessor> {
+        let processor: Box<dyn DynProcessor> = self;
+        Arc::from(processor)
+    }
+}
+
+impl IntoArcProcessor for Arc<dyn DynProcessor> {
+    fn into_arc_processor(self) -> Arc<dyn DynProcessor> {
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
