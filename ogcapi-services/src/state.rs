@@ -147,12 +147,14 @@ impl AppState {
         })
     }
 
+    /// Override the default root landing page for the application.
     #[must_use]
     pub fn root(mut self, root: LandingPage) -> Self {
         self.root = Arc::new(RwLock::new(root));
         self
     }
 
+    /// Configure the processors for the application.
     #[cfg(feature = "processes")]
     #[must_use]
     pub fn processors<P: crate::processes::IntoArcProcessor>(
@@ -169,6 +171,8 @@ impl AppState {
         self
     }
 
+    /// Configure a custom spawn function for asynchronous tasks.
+    /// This allows passing on custom tracing spans or task local variables.
     #[cfg(feature = "processes")]
     #[must_use]
     pub fn with_spawn_fn(
@@ -176,6 +180,15 @@ impl AppState {
         spawn_fn: fn(futures::future::BoxFuture<'static, ()>) -> tokio::task::JoinHandle<()>,
     ) -> Self {
         self.processes.spawn = spawn_fn;
+        self
+    }
+
+    /// Configure whether synchronous process calls will create jobs
+    /// in the background
+    #[cfg(feature = "processes")]
+    #[must_use]
+    pub fn sync_process_calls_are_jobs(mut self, sync: bool) -> Self {
+        self.processes.sync_process_call_is_job = sync;
         self
     }
 }

@@ -873,6 +873,121 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn it_allows_creating_jobs_for_synchronous_calls() {
+        #[derive(Clone)]
+        struct FauxJobHandler {
+            update_tx: tokio::sync::mpsc::Sender<String>,
+            finish_tx: tokio::sync::mpsc::Sender<String>,
+        }
+
+        #[async_trait::async_trait]
+        impl JobHandler for FauxJobHandler {
+            async fn register(
+                &self,
+                _job: &StatusInfo,
+                _response_mode: ogcapi_types::processes::Response,
+            ) -> anyhow::Result<String> {
+                Ok("job1".to_string())
+            }
+
+            async fn update(&self, job: &StatusInfo) -> anyhow::Result<()> {
+                self.update_tx.send(job.job_id.clone()).await.unwrap();
+                Ok(())
+            }
+
+            async fn status_list(
+                &self,
+                _offset: usize,
+                _limit: usize,
+            ) -> anyhow::Result<Vec<StatusInfo>> {
+                Ok(vec![])
+            }
+
+            async fn status(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
+                Ok(None)
+            }
+
+            async fn finish(
+                &self,
+                job_id: &str,
+                _status: &JobStatusCode,
+                _message: Option<String>,
+                _links: Vec<Link>,
+                _results: Option<ogcapi_types::processes::ExecuteResults>,
+            ) -> anyhow::Result<()> {
+                self.finish_tx.send(job_id.to_string()).await.unwrap();
+                Ok(())
+            }
+
+            async fn dismiss(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
+                Ok(None)
+            }
+
+            async fn results(&self, _id: &str) -> anyhow::Result<ProcessResult> {
+                Ok(ProcessResult::Results {
+                    results: Default::default(),
+                    response_mode: ogcapi_types::processes::Response::Document,
+                })
+            }
+        }
+
+        crate::setup_env();
+
+        // 1. Create drivers with our faux job handler.
+        let mut drivers = Drivers::try_new_from_env().await.unwrap();
+        let (update_tx, mut update_rx) = tokio::sync::mpsc::channel(1);
+        let (finish_tx, mut finish_rx) = tokio::sync::mpsc::channel(1);
+        drivers.jobs = Box::new(FauxJobHandler {
+            update_tx,
+            finish_tx,
+        });
+
+        let state = AppState::new(drivers)
+            .await
+            // 2. Add the Echo process.
+            .processors(vec![Arc::new(Echo)])
+            // 3. Configure synchronous calls to be executed as jobs.
+            .sync_process_calls_are_jobs(true);
+
+        // 4. Execute a process synchronously with the job flag enabled.
+        let response = execution(
+            State(state.clone()),
+            RemoteUrl(
+                "http://example.com/processes/echo/execution"
+                    .parse()
+                    .unwrap(),
+            ),
+            Path("echo".to_string()),
+            HeaderMap::new(),
+            ValidParams(Json(
+                serde_json::from_value(serde_json::json!({
+                    "inputs": {"stringInput": "Value1"},
+                    "outputs": {"stringOutput": {"transmissionMode": "value"}},
+                    "response": "raw"
+                }))
+                .unwrap(),
+            )),
+        )
+        .await
+        .unwrap();
+
+        // 5. Verify that the execution still returns synchronous results.
+        let ProcessExecuteResponse::Synchronous {
+            results,
+            was_preferred_execution_mode,
+        } = response
+        else {
+            panic!("Expected synchronous execution response");
+        };
+
+        assert!(!results.results.is_empty());
+        assert!(!was_preferred_execution_mode);
+        // 6. Verify that the job lifecycle hooks were invoked.
+        assert_eq!(update_rx.recv().await.unwrap(), "job1");
+        assert_eq!(finish_rx.recv().await.unwrap(), "job1");
+    }
+
+    #[tokio::test]
     async fn it_executes_sync_calls_as_jobs_when_configured() {
         #[derive(Clone)]
         struct FauxJobHandler {
