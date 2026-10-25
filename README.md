@@ -57,7 +57,7 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 ```bash
 # Run services
-podman compose up db minio minio-mc -d
+podman compose up db rustfs rustfs-init -d
 
 # Import administrative bounaries
 cargo run -p data-loader -- \

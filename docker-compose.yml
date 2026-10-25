@@ -27,7 +27,7 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION}
-      AWS_CUSTOM_ENDPOINT: http://minio:9000
+      AWS_CUSTOM_ENDPOINT: http://rustfs:9000
       AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
     volumes:
       - ./data:/data
@@ -48,27 +48,50 @@ services:
     ports:
       - ${APP_PORT}:${APP_PORT}
 
-  minio:
-    image: docker.io/minio/minio
-    container_name: minio
+  rustfs:
+    image: docker.io/rustfs/rustfs
+    container_name: rustfs
+    environment:
+      RUSTFS_ACCESS_KEY: ${AWS_ACCESS_KEY_ID}
+      RUSTFS_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY}
+      RUSTFS_CONSOLE_ENABLE: "true"
     volumes:
-      - ./data/minio:/data
-    command: server /data --console-address ":9001"
+      - rustfs:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-fs", "http://localhost:9000/health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     ports:
       - 9000:9000
       - 9001:9001
 
-  minio-mc:
-    image: docker.io/minio/mc
-    container_name: minio-mc
+  rustfs-init:
+    image: docker.io/amazon/aws-cli
+    container_name: rustfs-init
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_ENDPOINT_URL: http://rustfs:9000
     depends_on:
-      - minio
-    entrypoint: >
-      /bin/sh -c "
-        /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
-        /usr/bin/mc mb myminio/${AWS_S3_BUCKET_NAME};
-        /usr/bin/mc anonymous set public myminio/${AWS_S3_BUCKET_NAME};
-        /usr/bin/mc admin user add myminio ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY};
-        /usr/bin/mc admin policy attach myminio readwrite --user ${AWS_ACCESS_KEY_ID};
-        exit 0;
-      "
+      rustfs:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        aws s3 mb s3://${AWS_S3_BUCKET_NAME}
+        aws s3api put-bucket-policy --bucket ${AWS_S3_BUCKET_NAME} --policy '{
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"AWS": ["*"]},
+            "Action": ["s3:GetObject"],
+            "Resource": ["arn:aws:s3:::${AWS_S3_BUCKET_NAME}/*"]
+          }]
+        }'
+        exit 0
+
+volumes:
+  rustfs:

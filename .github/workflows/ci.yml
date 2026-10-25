@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup
-        run: docker compose up db minio minio-mc -d
+        run: docker compose up db rustfs rustfs-init -d
 
       - name: Build
         run: rustup update stable && rustup default stable && cargo build --workspace --all-targets
