@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Drop `osm` example.
 - Bump dependencies.
+- BREAKING: `utoipa` 6, `utoipa-axum` 0.3 and `utoipa-swagger-ui` 10; the `ToSchema` impls in `ogcapi-types` now target `utoipa` 6.
 - Replace MinIO with RustFS for local S3 in `docker-compose.yml` and CI, as the MinIO images are no longer on Docker Hub.
 - Typed `z` edr query parameter.
 - BREAKING: `ogcapi-client`: `Client` is now async by default. The previous blocking `Client` is available as `BlockingClient` behind the `blocking` feature flag.

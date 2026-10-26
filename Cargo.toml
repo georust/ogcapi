@@ -32,7 +32,7 @@ serde_qs = "1.1"
 thiserror = "2.0"
 tracing = "0.1"
 url = "2.5"
-utoipa = "5.5"
+utoipa = "6.0"
 
 [workspace.lints.clippy]
 # Set group priorities to -1 so individual lints (default priority 0) override them cleanly
