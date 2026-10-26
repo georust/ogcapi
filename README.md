@@ -1,4 +1,4 @@
-# ogcapi
+g# ogcapi
 
 [![Documentation](https://docs.rs/ogcapi/badge.svg)](https://docs.rs/ogcapi)
 [![Crate](https://img.shields.io/crates/v/ogcapi.svg)](https://crates.io/crates/ogcapi)
@@ -57,7 +57,7 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 
 ```bash
 # Run services
-podman compose up db rustfs rustfs-init -d
+podman compose up db minio minio-mc -d
 
 # Import administrative bounaries
 cargo run -p data-loader -- \
@@ -82,7 +82,7 @@ cargo doc --workspace --all-features --no-deps --open
 cargo fmt
 
 # Clippy
-cargo clippy --workspace --all-features --all-targets
+cargo clippy --workspace --all-features --all-targets -- -D warnings
 ```
 
 ### Teamengine

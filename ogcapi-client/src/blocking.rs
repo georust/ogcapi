@@ -544,7 +544,7 @@ mod tests {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = BlockingClient::new(endpoint).unwrap();
         let conformance = client.conformance().unwrap();
-        assert!(!conformance.conforms_to.is_empty());
+        assert_ne!(conformance.conforms_to, [] as [String; 0]);
     }
 
     #[test]

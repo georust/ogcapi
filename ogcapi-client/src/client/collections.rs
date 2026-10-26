@@ -138,6 +138,6 @@ mod tests {
         // for c in &collections {
         //     println!("{}", c.id);
         // }
-        assert!(!collections.is_empty());
+        assert_ne!(collections, [] as [Collection; 0]);
     }
 }

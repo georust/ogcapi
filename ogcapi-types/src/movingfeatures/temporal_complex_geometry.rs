@@ -25,7 +25,7 @@ pub struct TemporalComplexGeometry {
 
 impl From<Vec<TemporalPrimitiveGeometry>> for TemporalComplexGeometry {
     fn from(value: Vec<TemporalPrimitiveGeometry>) -> Self {
-        debug_assert!(!value.is_empty());
+        debug_assert_ne!(value, [] as [TemporalPrimitiveGeometry; 0]);
         Self {
             r#type: Default::default(),
             prisms: value,
