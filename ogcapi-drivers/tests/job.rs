@@ -1,4 +1,4 @@
-#[cfg(feature = "processes")]
+#[cfg(all(feature = "processes", feature = "postgres"))]
 mod postgres {
     use std::collections::HashMap;
 
@@ -115,7 +115,7 @@ mod postgres {
         assert!(found.is_some());
         let info = found.unwrap();
         assert_eq!(info.status, StatusCode::Running);
-        assert!(info.links.is_empty());
+        assert_eq!(info.links, [] as [Link; 0]);
     }
 
     #[sqlx::test]

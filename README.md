@@ -1,4 +1,4 @@
-# ogcapi
+g# ogcapi
 
 [![Documentation](https://docs.rs/ogcapi/badge.svg)](https://docs.rs/ogcapi)
 [![Crate](https://img.shields.io/crates/v/ogcapi.svg)](https://crates.io/crates/ogcapi)
@@ -82,7 +82,7 @@ cargo doc --workspace --all-features --no-deps --open
 cargo fmt
 
 # Clippy
-cargo clippy --workspace --all-features --all-targets
+cargo clippy --workspace --all-features --all-targets -- -D warnings
 ```
 
 ### Teamengine
