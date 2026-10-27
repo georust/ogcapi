@@ -54,6 +54,7 @@ pub trait FeatureTransactions: Send + Sync {
         id: &str,
         crs: &Crs,
     ) -> anyhow::Result<Option<Feature>>;
+
     async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()>;
 
     async fn delete_feature(&self, collection_id: &str, id: &str) -> anyhow::Result<()>;

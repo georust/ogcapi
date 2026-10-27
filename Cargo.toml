@@ -22,7 +22,7 @@ keywords = ["geography", "geo", "geospatial", "gis", "api"]
 
 [workspace.dependencies]
 anyhow = "1.0"
-async-trait = "0.1.89"
+async-trait = "0.1.92"
 geojson = { version = "1.0", default-features = false }
 jsonfg = { version = "0.1", default-features = false }
 log = "0.4.29"

@@ -34,7 +34,7 @@ impl S3 {
             config = config.into_builder().endpoint_url(&endpoint).build();
         }
 
-        // force path style addressing to work with minio
+        // force path style addressing to work with RustFS
         let config = Config::from(&config)
             .to_builder()
             .force_path_style(true)
