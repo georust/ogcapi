@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed enum order when deserializing `processes` inputs, so that the integers would not be deserialized as floats.
 - The description fields were missing in the process summary of the OGC API Processes implementation, so they were added.
 - Fixed serialization of `TileMatrixSetId` in OGC API - Tiles.
+- `TileMatrixSet.uri` is omitted when unset instead of serialized as `null`, which the TMS schema rejects. Regression from #26.
+- `VariableMatrixWidth` fields are renamed to `coalesce` and `max_tile_row`, matching the TMS spec, so registry definitions such as `GNOSISGlobalGrid` parse.
 - `Collection.keywords` is now gated behind the standards that define it (new `records` feature flag, `stac`, `edr`), so builds without those standards no longer fail to deserialize collections whose `keywords` use a nonconforming extension shape. By [@georgeboot](https://github.com/georgeboot).
 
 ### Changed

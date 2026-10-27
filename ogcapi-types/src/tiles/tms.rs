@@ -93,6 +93,7 @@ pub struct TileMatrixSet {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keywords: Vec<String>,
     /// Reference to an official source for this tile matrix set
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(nullable = false)]
     pub uri: Option<String>,
     /// Coordinate Reference System (CRS)
@@ -172,11 +173,11 @@ pub struct TileMatrix {
 pub struct VariableMatrixWidth {
     /// Number of tiles in width that coalesce in a single tile for these rows
     #[schema(value_type = usize, minimum = 2)]
-    pub coalesc: NonZeroU64,
+    pub coalesce: NonZeroU64,
     /// First tile row where the coalescence factor applies for this tilematrix
     pub min_tile_row: u64,
     /// Last tile row where the coalescence factor applies for this tilematrix
-    pub smax_tile_row: u64,
+    pub max_tile_row: u64,
 }
 
 #[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, PartialEq)]
@@ -223,5 +224,19 @@ mod test {
             serde_json::from_str::<TileMatrixSetId>(&serialized_custom).unwrap(),
             custom_id
         );
+    }
+
+    #[test]
+    fn it_omits_the_uri_of_an_unregistered_tms() {
+        let content = r#"{"id":"MyCustomTMS","crs":"http://www.opengis.net/def/crs/EPSG/0/3857","tileMatrices":[]}"#;
+        let tms: TileMatrixSet = serde_json::from_str(content).unwrap();
+        assert_eq!(serde_json::to_string(&tms).unwrap(), content);
+    }
+
+    #[test]
+    fn it_uses_the_spec_names_of_variable_matrix_widths() {
+        let content = r#"{"coalesce":2,"minTileRow":0,"maxTileRow":0}"#;
+        let width: VariableMatrixWidth = serde_json::from_str(content).unwrap();
+        assert_eq!(serde_json::to_string(&width).unwrap(), content);
     }
 }
