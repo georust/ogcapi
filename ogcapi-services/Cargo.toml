@@ -83,10 +83,12 @@ ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = t
 [dev-dependencies]
 async-trait = { workspace = true }
 geojson = { workspace = true }
+insta = { version = "1.48", features = ["json"] }
 uuid = { version = "1.23", features = ["serde", "v4"] }
 
 data-loader = { path = "../examples/data-loader" }
 ogcapi-client = { path = "../ogcapi-client", version = "0.3" }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3", features = ["json-fg"] }
 
 [package.metadata.docs.rs]
 all-features = true
