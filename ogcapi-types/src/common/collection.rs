@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use utoipa::ToSchema;
 
 use super::{Crs, Extent, Link};
 
 // const CRS_REF: &str = "#/crs";
 
 /// A body of resources that belong or are used together. An aggregate, set, or group of related resources.
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct Collection {
     pub id: String,
@@ -39,10 +39,10 @@ pub struct Collection {
     pub item_type: String,
     /// The list of coordinate reference systems supported by the API; the first item is the default coordinate reference system.
     #[serde(default)]
-    #[schema(value_type = Vec<String>)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Vec<String>))]
     pub crs: Vec<Crs>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = String)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub storage_crs: Option<Crs>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage_crs_coordinate_epoch: Option<f32>,

@@ -3,7 +3,9 @@ mod feature_collection;
 mod query;
 mod queryables;
 
-pub use feature::{Feature, FeatureId, geometry};
+#[cfg(feature = "utoipa")]
+pub use feature::geometry;
+pub use feature::{Feature, FeatureId};
 pub use feature_collection::FeatureCollection;
 pub use query::Query;
 pub use queryables::Queryables;

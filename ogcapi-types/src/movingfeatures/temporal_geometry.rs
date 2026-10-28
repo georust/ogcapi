@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use super::{
     temporal_complex_geometry::TemporalComplexGeometry,
     temporal_primitive_geometry::TemporalPrimitiveGeometry,
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(untagged)]
 pub enum TemporalGeometry {
     Primitive(TemporalPrimitiveGeometry),

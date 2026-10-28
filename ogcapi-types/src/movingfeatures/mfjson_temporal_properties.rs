@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize, Serializer, ser::Error};
 use serde_json::json;
-use utoipa::ToSchema;
 
 use super::temporal_property::Interpolation;
 
@@ -16,7 +15,8 @@ use super::temporal_property::Interpolation;
 ///
 /// Opposed to [`super::temporal_property::TemporalProperty`] values for all
 /// represented properties are all measured at the same points in time.
-#[derive(Deserialize, Debug, Clone, PartialEq, ToSchema)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct MFJsonTemporalProperties {
     datetimes: Vec<DateTime<FixedOffset>>,
     #[serde(flatten)]
@@ -74,7 +74,8 @@ impl Serialize for MFJsonTemporalProperties {
 /// MF-JSON Prism only considers the temporal dependencies of their changes of value.
 ///
 /// See [7.2.2.1 MF-JSON ParametricValues](https://docs.ogc.org/is/19-045r3/19-045r3.html#pvalues)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(tag = "type")]
 pub enum ParametricValues {
     /// The "values" member contains any numeric values.

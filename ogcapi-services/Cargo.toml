@@ -72,7 +72,9 @@ utoipa = { workspace = true, features = [
 utoipa-axum = "0.3.0"
 utoipa-swagger-ui = { version = "10.0", features = ["axum"] }
 
-ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false }
+ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false, features = [
+    "utoipa",
+] }
 ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", default-features = false, features = [
     "postgres",
 ] }

@@ -2,7 +2,6 @@ use chrono::{DateTime, Utc};
 use geojson::{LineStringType, PointType, PolygonType};
 use serde::{Deserialize, Serialize, Serializer, ser};
 use serde_json::json;
-use utoipa::ToSchema;
 
 use super::{crs::Crs, trs::Trs};
 
@@ -12,7 +11,8 @@ use super::{crs::Crs, trs::Trs};
 /// movement of a geographic feature whose leaf geometry at a time instant is drawn by a primitive geometry such as a
 /// point, linestring, and polygon in the two- or three-dimensional spatial coordinate system, or a point cloud in the
 /// three-dimensional spatial coordinate system.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct TemporalPrimitiveGeometry {
     pub id: Option<String>,
     #[serde(flatten)]
@@ -174,7 +174,8 @@ impl<A, B> Serialize for DateTimeCoords<A, B> {
 ///"Cubic") or a URL (e.g., "<http://www.opengis.net/spec/movingfeatures/json/1.0/prism/example/motioncurve>")
 ///
 ///See [7.2.10 MotionCurve Objects](https://docs.ogc.org/is/19-045r3/19-045r3.html#interpolation)
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum Interpolation {
     ///The positions are NOT connected. The position is valid only at the time instant in datetimes
     Discrete,

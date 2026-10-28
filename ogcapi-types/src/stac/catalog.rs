@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use utoipa::ToSchema;
 
 use crate::common::Link;
 
 /// A STAC Catalog object represents a logical group of other `Catalog`,
 /// `Collection`, and `Item` objects.
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Catalog {
     /// Set to `Catalog` if this Catalog only implements the Catalog spec.
     #[serde(default = "crate::stac::catalog")]

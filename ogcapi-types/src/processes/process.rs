@@ -5,10 +5,10 @@ use super::{
 use crate::{common::Link, processes::description::DescriptionType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use utoipa::ToSchema;
 
 /// Process summary
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct ProcessSummary {
     pub id: String,
@@ -23,7 +23,8 @@ pub struct ProcessSummary {
     pub description: DescriptionType,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "kebab-case")]
 pub enum JobControlOptions {
     SyncExecute,
@@ -32,19 +33,21 @@ pub enum JobControlOptions {
 }
 
 /// Information about the available processes
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct ProcessList {
     pub processes: Vec<ProcessSummary>,
     pub links: Vec<Link>,
 }
 
 /// Full process description
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Process {
     #[serde(flatten)]
     pub summary: ProcessSummary,
-    #[schema(required = false)]
+    #[cfg_attr(feature = "utoipa", schema(required = false))]
     pub inputs: HashMap<String, InputDescription>,
-    #[schema(required = false)]
+    #[cfg_attr(feature = "utoipa", schema(required = false))]
     pub outputs: HashMap<String, OutputDescription>,
 }

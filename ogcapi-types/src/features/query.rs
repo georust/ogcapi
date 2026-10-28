@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
-use utoipa::{IntoParams, ToSchema};
 
 use crate::common::{Bbox, Crs, Datetime};
 
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, IntoParams, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::IntoParams))]
 #[serde(rename_all = "kebab-case")]
 pub struct Query {
     /// The optional limit parameter limits the number of items that are
@@ -17,10 +17,10 @@ pub struct Query {
     /// in the response document. Nested objects contained
     /// within the explicitly requested items shall not be counted.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[param(nullable = false)]
+    #[cfg_attr(feature = "utoipa", param(nullable = false))]
     pub limit: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[param(nullable = false)]
+    #[cfg_attr(feature = "utoipa", param(nullable = false))]
     pub offset: Option<usize>,
     /// Only features that have a geometry that intersects the bounding box
     /// are selected. The bounding box is provided as four or six numbers,
@@ -61,10 +61,10 @@ pub struct Query {
     /// is used to determine the extent or all relevant geometries.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<DisplayFromStr>")]
-    #[param(value_type = Bbox, style = Form, explode = false, nullable = false)]
+    #[cfg_attr(feature = "utoipa", param(value_type = Bbox, style = Form, explode = false, nullable = false))]
     pub bbox: Option<Bbox>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[param(value_type = String, nullable = false)]
+    #[cfg_attr(feature = "utoipa", param(value_type = String, nullable = false))]
     pub bbox_crs: Option<Crs>,
     /// Either a date-time or an interval. Date and time expressions adhere to
     /// RFC 3339. Intervals may be bounded or half-bounded (double-dots at start or end).
@@ -83,26 +83,27 @@ pub struct Query {
     /// the extent or all relevant temporal properties.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[serde_as(as = "Option<DisplayFromStr>")]
-    #[param(value_type = String)]
+    #[cfg_attr(feature = "utoipa", param(value_type = String))]
     pub datetime: Option<Datetime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[param(value_type = String)]
+    #[cfg_attr(feature = "utoipa", param(value_type = String))]
     pub crs: Option<Crs>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[param(nullable = false)]
+    #[cfg_attr(feature = "utoipa", param(nullable = false))]
     pub filter: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[param(inline, nullable = false)]
+    #[cfg_attr(feature = "utoipa", param(inline, nullable = false))]
     pub filter_lang: Option<FilterLang>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[param(value_type = String)]
+    #[cfg_attr(feature = "utoipa", param(value_type = String))]
     pub filter_crs: Option<Crs>,
     /// Parameters for filtering on feature properties
     #[serde(default, flatten)]
     pub additional_parameters: HashMap<String, String>,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "kebab-case")]
 pub enum FilterLang {
     #[default]

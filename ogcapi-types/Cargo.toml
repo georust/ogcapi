@@ -11,7 +11,7 @@ keywords.workspace = true
 include = ["/src", "/assets"]
 
 [features]
-default = ["common", "edr", "features", "movingfeatures", "processes", "records", "tiles"]
+default = ["common", "edr", "features", "movingfeatures", "processes", "records", "tiles", "utoipa"]
 
 # standards
 common = []
@@ -27,6 +27,9 @@ movingfeatures = ["common", "features"]
 # OGC Features and Geometries JSON (JSON-FG) types, re-exported as `ogcapi_types::jsonfg`.
 json-fg = ["features", "dep:jsonfg"]
 
+# OpenAPI generation.
+utoipa = ["dep:utoipa"]
+
 [dependencies]
 chrono = { version = "0.4.44", features = ["serde"] }
 geojson = { workspace = true }
@@ -38,7 +41,7 @@ serde_repr = "0.1.20"
 serde_with = { version = "3.18.0", features = ["json"] }
 serde_qs = { workspace = true }
 url = { workspace = true }
-utoipa = { workspace = true, features = ["preserve_order", "chrono", "url", "repr"] }
+utoipa = { workspace = true, optional = true, features = ["preserve_order", "chrono", "url", "repr"] }
 
 [dev-dependencies]
 serde_json = { workspace = true }

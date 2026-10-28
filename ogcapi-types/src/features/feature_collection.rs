@@ -1,6 +1,5 @@
 use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::common::Link;
 
@@ -9,18 +8,20 @@ use crate::common::Bbox;
 
 use super::Feature;
 
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum Type {
     #[default]
     FeatureCollection,
 }
 
 /// A set of Features from a dataset
-#[derive(Serialize, Deserialize, ToSchema, Debug, Default, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCollection {
     #[serde(default)]
-    #[schema(inline = true)]
+    #[cfg_attr(feature = "utoipa", schema(inline = true))]
     pub r#type: Type,
     pub features: Vec<Feature>,
     #[serde(default)]
@@ -48,12 +49,12 @@ pub struct FeatureCollection {
     /// Default coordinate reference system for the features' `place` geometries (JSON-FG).
     #[cfg(feature = "json-fg")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = Object)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub coord_ref_sys: Option<jsonfg::CoordRefSys>,
     /// JSON-FG feature classifier(s) shared by the collection.
     #[cfg(feature = "json-fg")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = Object)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub feature_type: Option<jsonfg::FeatureType>,
     /// Dimension (0–3) of the geometries in this collection, if uniform (JSON-FG).
     #[cfg(feature = "json-fg")]

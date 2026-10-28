@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize, Serializer, ser::Error};
 use serde_json::json;
-use utoipa::ToSchema;
 
 use crate::common::Link;
 
@@ -11,7 +10,8 @@ use crate::common::Link;
 /// The schema for the temporal property object presented in this clause is an extension of the [ParametricValues Object](https://docs.opengeospatial.org/is/19-045r3/19-045r3.html#tproperties) defined in [MF-JSON](https://docs.ogc.org/is/22-003r3/22-003r3.html#OGC_19-045r3).
 ///
 /// See [8.9. TemporalProperty](https://docs.ogc.org/is/22-003r3/22-003r3.html#resource-temporalProperty-section)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct TemporalProperty {
     /// An identifier for the resource assigned by an external entity.
@@ -27,7 +27,8 @@ pub struct TemporalProperty {
 
 /// A predefined temporal property type.
 ///
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(tag = "type", content = "valueSequence")]
 pub enum TemporalPropertyValue {
     TBoolean(Vec<TemporalPrimitiveValue<bool>>),
@@ -42,7 +43,8 @@ pub enum TemporalPropertyValue {
 /// {root}/collections/{collectionId}/items/{mFeatureId}/tproperties/{tPropertyName} response.
 ///
 /// See [8.10. TemporalPrimitiveValue](https://docs.ogc.org/is/22-003r3/22-003r3.html#resource-temporalPrimitiveValue-section)
-#[derive(Deserialize, Debug, Default, Clone, PartialEq, ToSchema)]
+#[derive(Deserialize, Debug, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(try_from = "TemporalPrimitiveValueUnchecked<T>")]
 pub struct TemporalPrimitiveValue<T> {
     /// A unique identifier to the temporal primitive value.
@@ -99,7 +101,8 @@ impl<T> Serialize for TemporalPrimitiveValue<T> {
 }
 
 /// See [ParametricValues Object -> "interpolation"](https://docs.opengeospatial.org/is/19-045r3/19-045r3.html#tproperties)
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum Interpolation {
     /// The sampling of the attribute occurs such that it is not possible to regard the series as continuous; thus,
     /// there is no interpolated value if t is not an element in "datetimes".

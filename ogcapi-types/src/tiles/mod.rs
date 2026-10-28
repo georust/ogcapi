@@ -7,7 +7,6 @@ mod tms;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use serde_with::DisplayFromStr;
-use utoipa::{IntoParams, ToSchema};
 
 use crate::common::Crs;
 
@@ -15,11 +14,12 @@ use crate::common::Crs;
 type Point2D = [f64; 2];
 
 /// Coordinate Reference System (CRS)
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(untagged)]
 pub enum TilesCrs {
     /// Simplification of the object into a url if the other properties are not present
-    #[schema(value_type = String)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     Simple(Crs),
     /// Reference to one coordinate reference system (CRS)
     Uri { uri: String },
@@ -34,7 +34,8 @@ pub enum TilesCrs {
 }
 
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, ToSchema, IntoParams, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema, utoipa::IntoParams))]
 #[serde(rename_all = "camelCase")]
 pub struct TileParams {
     /// Identifier selecting one of the [`TileMatrixSetId`] supported by the resource.
@@ -52,7 +53,8 @@ pub struct TileParams {
     pub tile_col: u32,
 }
 
-#[derive(Serialize, Deserialize, IntoParams, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::IntoParams))]
 #[serde(rename_all = "camelCase")]
 pub struct CollectionTileParams {
     /// Local identifier of a vector tile collection
@@ -61,9 +63,10 @@ pub struct CollectionTileParams {
     pub tile_params: TileParams,
 }
 
-#[derive(Serialize, Deserialize, IntoParams, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::IntoParams))]
 #[serde(rename_all = "kebab-case")]
-#[into_params(parameter_in = Query)]
+#[cfg_attr(feature = "utoipa", into_params(parameter_in = Query))]
 pub struct TileQuery {
     // /// Either a date-time or an interval, half-bounded or bounded. Date and
     // /// time expressions adhere to RFC 3339. Half-bounded intervals are
@@ -95,7 +98,7 @@ pub struct TileQuery {
         with = "serde_qs::helpers::comma_separated",
         skip_serializing_if = "Vec::is_empty"
     )]
-    #[param(style = Form, explode = false, required = false)]
+    #[cfg_attr(feature = "utoipa", param(style = Form, explode = false, required = false))]
     pub collections: Vec<String>,
     // /// Retrieve only part of the data by slicing or trimming along one or more
     // /// axis For trimming: {axisAbbrev}({low}:{high}) (preserves dimensionality)
@@ -117,19 +120,20 @@ pub struct TileQuery {
 }
 
 /// Minimum bounding rectangle surrounding a 2D resource in the CRS indicated elsewere
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct BoundingBox2D {
     /// A 2DPoint in the CRS indicated elsewere
-    #[schema(value_type = Vec<f64>, min_items = 2, max_items = 2, inline = true)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Vec<f64>, min_items = 2, max_items = 2, inline = true))]
     pub lower_left: Point2D,
-    #[schema(value_type = Vec<f64>, min_items = 2, max_items = 2, inline = true)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Vec<f64>, min_items = 2, max_items = 2, inline = true))]
     pub upper_right: Point2D,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(nullable = false)]
+    #[cfg_attr(feature = "utoipa", schema(nullable = false))]
     pub crs: Option<TilesCrs>,
     /// Ordered list of names of the dimensions defined in the CRS
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = Vec<String>, min_items = 2, max_items = 2, nullable = false, inline = true)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Vec<String>, min_items = 2, max_items = 2, nullable = false, inline = true))]
     pub ordered_axes: Option<[String; 2]>,
 }

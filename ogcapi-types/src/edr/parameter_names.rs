@@ -1,16 +1,16 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use utoipa::ToSchema;
 
 use crate::common::Extent;
 
 use super::{ObservedPropertyCollection, Units};
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct ParameterNames {
     #[serde(default)]
-    #[schema(inline)]
+    #[cfg_attr(feature = "utoipa", schema(inline))]
     pub r#type: Type,
     /// Unique ID of the parameter, this is the value used for querying the data
     pub id: Option<String>,
@@ -25,13 +25,15 @@ pub struct ParameterNames {
     pub measurement_type: Option<MeasurementType>,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum Type {
     #[default]
     Parameter,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum DataType {
     Integer,
@@ -39,7 +41,8 @@ pub enum DataType {
     String,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct MeasurementType {
     /// Approach to calculating the data values
     pub method: String,
