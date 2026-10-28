@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `TILESETS_MAP` link relation to `ogcapi-types` for OGC API - Tiles.
 - In OGC API Processes, synchronous execution of a process can now create a job when setting `sync_process_call_is_job` to `true` in the `Service` configuration.
 - Added function to services builder for configuring synchronous process calls to be executed as jobs.
+- `utoipa` derives (`ToSchema`, `IntoParams`) in `ogcapi-types` are now behind the default-enabled `utoipa` feature, so the types can be used without pulling in `utoipa`. `ogcapi-types::features::geometry` is only available with this feature.
 
 ### Fixed
 

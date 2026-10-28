@@ -22,6 +22,8 @@ default = [
     "features",
     "processes",
     "tiles",
+    # integrations
+    "utoipa",
 ]
 
 # components
@@ -68,6 +70,9 @@ tiles = [
 ]
 # OGC Features and Geometries JSON (JSON-FG) types (types crate only).
 json-fg = ["types", "ogcapi-types?/json-fg"]
+
+# openapi spec generation
+utoipa = ["ogcapi-types?/utoipa"]
 
 # client
 blocking = ["ogcapi-client?/blocking"]

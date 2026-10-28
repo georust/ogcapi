@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use crate::common::Link;
 
@@ -10,7 +9,8 @@ use super::{
 /// A [`TemporalProperties`] object consists of the set of [`TemporalProperty`] or a set of [`MFJsonTemporalProperties`].
 ///
 /// See [8.8 TemporalProperties](https://docs.ogc.org/is/22-003r3/22-003r3.html#resource-temporalProperties-section)
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct TemporalProperties {
     pub temporal_properties: TemporalPropertiesValue,
@@ -24,7 +24,8 @@ pub struct TemporalProperties {
     pub number_returned: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(untagged)]
 pub enum TemporalPropertiesValue {
     /// [`MFJsonTemporalProperties`] allows to represent multiple property values all measured at the same points in time.

@@ -17,17 +17,18 @@ use chrono::{DateTime, Utc};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use utoipa::{ToSchema, openapi::Schema};
 
 use crate::common::Link;
 
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub enum Type {
     #[default]
     Feature,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(untagged)]
 pub enum FeatureId {
     String(String),
@@ -48,21 +49,23 @@ impl Display for FeatureId {
 /// # Panics
 ///
 /// Panics if the included JSON is not valid. This should never happen, as the JSON is static and known to be valid.
+#[cfg(feature = "utoipa")]
 #[must_use]
-pub fn geometry() -> Schema {
+pub fn geometry() -> utoipa::openapi::Schema {
     serde_json::from_str(include_str!("../../assets/schema/Geometry.json"))
         .expect("to be valid JSON")
 }
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
-#[derive(Deserialize, Serialize, ToSchema, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Feature {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<FeatureId>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub collection: Option<String>,
     #[serde(default)]
-    #[schema(inline = true)]
+    #[cfg_attr(feature = "utoipa", schema(inline = true))]
     pub r#type: Type,
     #[serde(default)]
     pub properties: Option<Map<String, Value>>,
@@ -81,7 +84,7 @@ pub struct Feature {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schema(value_type = Object)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub feature_type: Option<jsonfg::FeatureType>,
     /// Link to the schema of the feature's `properties` (JSON-FG).
     #[cfg(feature = "json-fg")]
@@ -90,7 +93,7 @@ pub struct Feature {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schema(value_type = Object)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub feature_schema: Option<jsonfg::FeatureSchema>,
     /// Coordinate reference system of `place` (JSON-FG).
     #[cfg(feature = "json-fg")]
@@ -99,23 +102,23 @@ pub struct Feature {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schema(value_type = Object)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub coord_ref_sys: Option<jsonfg::CoordRefSys>,
     /// The geometry in a non-WGS84 CRS (JSON-FG), which may use solids or curves. When
     /// set, the `GeoJSON` `geometry` member is `null`.
     #[cfg(feature = "json-fg")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = Object)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub place: Option<jsonfg::Geometry>,
     /// The `GeoJSON` (WGS 84) geometry.
     #[cfg(not(feature = "json-fg"))]
-    #[schema(schema_with = geometry)]
+    #[cfg_attr(feature = "utoipa", schema(schema_with = geometry))]
     pub geometry: Geometry,
     /// The `GeoJSON` (WGS 84) geometry, or `null`. Nullable under `json-fg` so it can be
     /// `null` when the geometry is carried in [`place`](Feature::place).
     #[cfg(feature = "json-fg")]
     #[serde(default)]
-    #[schema(schema_with = geometry)]
+    #[cfg_attr(feature = "utoipa", schema(schema_with = geometry))]
     pub geometry: Option<Geometry>,
     /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
     #[cfg(feature = "stac")]

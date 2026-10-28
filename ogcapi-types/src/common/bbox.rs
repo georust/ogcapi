@@ -1,7 +1,6 @@
 use std::{fmt, str};
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 /// Each bounding box is provided as four or six numbers, depending on
 /// whether the coordinate reference system includes a vertical axis
@@ -34,12 +33,13 @@ use utoipa::ToSchema;
 /// If a feature has multiple spatial geometry properties, it is the decision of the
 /// server whether only a single spatial geometry property is used to determine
 /// the extent or all relevant geometries.
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(untagged)]
 pub enum Bbox {
-    #[schema(value_type = [f64; 4])]
+    #[cfg_attr(feature = "utoipa", schema(value_type = [f64; 4]))]
     Bbox2D([f64; 4]),
-    #[schema(value_type = [f64; 6])]
+    #[cfg_attr(feature = "utoipa", schema(value_type = [f64; 6]))]
     Bbox3D([f64; 6]),
 }
 

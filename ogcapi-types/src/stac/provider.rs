@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 /// A provider is any of the organizations that captures or processes the content
 /// of the collection and therefore influences the data offered by this collection.
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Provider {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -14,7 +14,8 @@ pub struct Provider {
     pub url: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderRole {
     Licensor,

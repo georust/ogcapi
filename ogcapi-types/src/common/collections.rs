@@ -1,10 +1,10 @@
 use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 use super::{Collection, Crs, Link};
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct Collections {
     #[serde(default)]
@@ -17,7 +17,7 @@ pub struct Collections {
     pub number_returned: Option<u64>,
     pub collections: Vec<Collection>,
     #[serde(default)]
-    #[schema(value_type = Vec<String>)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = Vec<String>))]
     pub crs: Vec<Crs>,
 }
 

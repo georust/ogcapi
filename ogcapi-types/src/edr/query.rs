@@ -6,11 +6,11 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
-use utoipa::{IntoParams, ToSchema};
 
 use crate::common::{Crs, Datetime, Exception};
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "lowercase")]
 pub enum QueryType {
     Position,
@@ -25,7 +25,8 @@ pub enum QueryType {
 }
 
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, IntoParams, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::IntoParams))]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Query {
     /// Well Known Text (WKT) of representation geometry. The representation
@@ -34,16 +35,16 @@ pub struct Query {
     pub coords: String,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
-    #[param(value_type = String)]
+    #[cfg_attr(feature = "utoipa", param(value_type = String))]
     pub datetime: Option<Datetime>,
     pub parameter_name: Option<String>,
     #[serde(default)]
-    #[param(value_type = String)]
+    #[cfg_attr(feature = "utoipa", param(value_type = String))]
     pub crs: Option<Crs>,
     pub f: Option<String>,
     #[serde(default)]
     #[serde_as(as = "Option<DisplayFromStr>")]
-    #[param(value_type = String)]
+    #[cfg_attr(feature = "utoipa", param(value_type = String))]
     pub z: Option<Z>,
     pub within: Option<String>,
     pub within_units: Option<String>,

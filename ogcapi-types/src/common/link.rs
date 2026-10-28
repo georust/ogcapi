@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
 /// Hyperlink to enable Hypermedia Access
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct Link {
     /// Supplies the URI to a remote resource (or resource fragment).
@@ -12,28 +12,28 @@ pub struct Link {
     /// A hint indicating what the media type of the result of dereferencing
     /// the link should be.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(nullable = false)]
+    #[cfg_attr(feature = "utoipa", schema(nullable = false))]
     pub r#type: Option<String>,
     /// This flag set to true if the link is a URL template.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(nullable = false)]
+    #[cfg_attr(feature = "utoipa", schema(nullable = false))]
     pub templated: Option<bool>,
     /// A base path to retrieve semantic information about the variables used in URL template.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(nullable = false)]
+    #[cfg_attr(feature = "utoipa", schema(nullable = false))]
     pub var_base: Option<String>,
     /// A hint indicating what the language of the result of dereferencing the
     /// link should be.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(nullable = false)]
+    #[cfg_attr(feature = "utoipa", schema(nullable = false))]
     pub hreflang: Option<String>,
     /// Used to label the destination of a link such that it can be used as a
     /// human-readable identifier.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(nullable = false)]
+    #[cfg_attr(feature = "utoipa", schema(nullable = false))]
     pub title: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(nullable = false)]
+    #[cfg_attr(feature = "utoipa", schema(nullable = false))]
     pub length: Option<i64>,
 }
 

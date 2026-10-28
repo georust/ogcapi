@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use utoipa::ToSchema;
 
 #[cfg(feature = "edr")]
 use crate::edr::{Contact, Provider};
@@ -13,7 +12,8 @@ use super::Link;
 /// * the API definition (link relations `service-desc` and `service-doc`),
 /// * the Conformance declaration (path `/conformance`, link relation `conformance`), and
 /// * the Collections (path `/collections`, link relation `data`).
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct LandingPage {
     /// Set to `Catalog` if this Catalog only implements the Catalog spec.
     #[cfg(feature = "stac")]

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 
-#[derive(Serialize, Deserialize, ToSchema, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Queryables {
     #[serde(flatten)]
     pub queryables: HashMap<String, Queryable>,
@@ -11,7 +11,8 @@ pub struct Queryables {
     pub additional_properties: bool,
 }
 
-#[derive(Serialize, Deserialize, ToSchema, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Queryable {
     title: Option<String>,
     description: Option<String>,

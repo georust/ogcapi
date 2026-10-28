@@ -1,13 +1,13 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize, ser::SerializeSeq, ser::Serializer};
-use utoipa::ToSchema;
 
 use crate::common::{Bbox, Crs};
 
 /// The extent of the features in the collection. In the Core only spatial and
 /// temporal extents are specified. Extensions may add additional members to
 /// represent other extents, for example, thermal or pressure ranges.
-#[derive(Serialize, Deserialize, ToSchema, Default, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Extent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spatial: Option<SpatialExtent>,
@@ -16,7 +16,8 @@ pub struct Extent {
 }
 
 /// The spatial extent of the features in the collection.
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct SpatialExtent {
     /// One or more bounding boxes that describe the spatial extent of the
     /// dataset. In the Core only a single bounding box is supported. Extensions
@@ -30,7 +31,7 @@ pub struct SpatialExtent {
     /// Extensions may support additional coordinate reference systems and add
     /// additional enum values.
     #[serde(default)]
-    #[schema(value_type = String)]
+    #[cfg_attr(feature = "utoipa", schema(value_type = String))]
     pub crs: Option<Crs>,
 }
 
@@ -45,7 +46,8 @@ impl Default for SpatialExtent {
 
 /// The temporal extent of the features in the collection.
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, ToSchema, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct TemporalExtent {
     /// One or more time intervals that describe the temporal extent of the
     /// dataset. The value `null` is supported and indicates an unbounded
