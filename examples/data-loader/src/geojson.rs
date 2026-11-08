@@ -63,10 +63,10 @@ fn collection_from_geojson(
 #[cfg(feature = "client")]
 pub mod client {
 
-    use std::{iter, path::Path, sync::Arc, time::Instant};
+    use std::{path::Path, sync::Arc, time::Instant};
 
     use futures::{StreamExt, TryStreamExt};
-    use geojson::{FeatureCollection, Geometry, GeometryValue, Position};
+    use geojson::FeatureCollection;
     use tokio::sync::RwLock;
     use url::Url;
 
@@ -109,14 +109,8 @@ pub mod client {
 
         let stream = futures::stream::iter(geojson.features);
 
-        let bbox = Arc::new(RwLock::new(Bbox::Bbox2D([
-            f64::INFINITY,
-            f64::INFINITY,
-            // f64::INFINITY,
-            f64::NEG_INFINITY,
-            f64::NEG_INFINITY,
-            // f64::NEG_INFINITY,
-        ])));
+        // the extent of the features, none until one has a geometry or a box
+        let bbox: Arc<RwLock<Option<Bbox>>> = Arc::new(RwLock::new(None));
 
         stream
             .map(Ok::<geojson::Feature, Error>)
@@ -127,18 +121,18 @@ pub mod client {
                     let bbox = bbox.clone();
                     async move {
                         // extract extent
-                        if let Some(coords) = feature
+                        let feature_bbox = feature
                             .bbox
-                            .as_ref()
-                            .or(feature.geometry.as_ref().and_then(|f| f.bbox.as_ref()))
-                        {
+                            .as_deref()
+                            .or(feature.geometry.as_ref().and_then(|g| g.bbox.as_deref()))
+                            .and_then(|b| Bbox::try_from(b).ok())
+                            .or_else(|| Bbox::of_geometry(feature.geometry.as_ref()?));
+                        if let Some(feature_bbox) = feature_bbox {
                             let mut bbox = bbox.write().await;
-                            extend_bbox(&mut bbox, coords).await;
-                        } else if let Some(geometry) = &feature.geometry {
-                            for position in coords_iter(geometry) {
-                                let mut bbox = bbox.write().await;
-                                extend_bbox(&mut bbox, position.as_slice()).await;
-                            }
+                            *bbox = Some(match bbox.as_ref() {
+                                Some(bbox) => bbox.union(&feature_bbox),
+                                None => feature_bbox,
+                            });
                         }
 
                         let value = serde_json::to_value(feature)?;
@@ -151,12 +145,14 @@ pub mod client {
             .await?;
 
         // update bbox
-        if collection.extent.is_none() {
+        if collection.extent.is_none()
+            && let Some(bbox) = bbox.read().await.clone()
+        {
             tracing::info!("Set spatial extent: {:#?}", &bbox);
             let mut collection = client.collection(collection_id).await?;
             collection.extent = Some(Extent {
                 spatial: Some(SpatialExtent {
-                    bbox: vec![bbox.read().await.to_owned()],
+                    bbox: vec![bbox],
                     crs: collection.storage_crs.clone(),
                 }),
                 temporal: None,
@@ -172,71 +168,6 @@ pub mod client {
         );
 
         Ok(())
-    }
-
-    fn coords_iter(geometry: &Geometry) -> impl Iterator<Item = &Position> {
-        match &geometry.value {
-            GeometryValue::Point { coordinates } => {
-                Box::new(iter::once(coordinates)) as Box<dyn Iterator<Item = &Position>>
-            }
-            GeometryValue::MultiPoint { coordinates }
-            | GeometryValue::LineString { coordinates } => Box::new(coordinates.iter()),
-            GeometryValue::MultiLineString { coordinates }
-            | GeometryValue::Polygon { coordinates } => Box::new(coordinates.iter().flatten()),
-            GeometryValue::MultiPolygon { coordinates } => {
-                Box::new(coordinates.iter().flatten().flatten())
-            }
-            GeometryValue::GeometryCollection { geometries } => {
-                Box::new(geometries.iter().flat_map(|g| match &g.value {
-                    GeometryValue::Point { coordinates } => {
-                        Box::new(iter::once(coordinates)) as Box<dyn Iterator<Item = &Position>>
-                    }
-                    GeometryValue::MultiPoint { coordinates }
-                    | GeometryValue::LineString { coordinates } => Box::new(coordinates.iter()),
-                    GeometryValue::MultiLineString { coordinates }
-                    | GeometryValue::Polygon { coordinates } => {
-                        Box::new(coordinates.iter().flatten())
-                    }
-                    GeometryValue::MultiPolygon { coordinates } => {
-                        Box::new(coordinates.iter().flatten().flatten())
-                    }
-                    _ => unimplemented!("nested geometry collection"),
-                }))
-            }
-        }
-    }
-
-    /// Extend `Bbox` from coordinate slice (bbox or point)
-    async fn extend_bbox(bbox: &mut Bbox, coords: &[f64]) {
-        let extent = match bbox {
-            Bbox::Bbox2D(c) => c.as_mut_slice(),
-            Bbox::Bbox3D(c) => c.as_mut_slice(),
-        };
-        let length = extent.len();
-        let half_length = length / 2;
-        if coords.len() < 4 {
-            // position
-            for (i, v) in coords.iter().enumerate().take(half_length) {
-                extent[i] = extent[i].min(*v);
-                let i = i + half_length;
-                extent[i] = extent[i].max(*v);
-            }
-        } else {
-            // bbox
-            let half = coords.len() / 2;
-            let offset = half_length / half;
-            for (i, v) in coords.iter().enumerate().take(length + 1) {
-                // bbox
-                if i < half {
-                    // min
-                    extent[i] = extent[i].min(*v);
-                } else {
-                    // max
-                    let i = i + offset;
-                    extent[i] = extent[i].max(*v);
-                }
-            }
-        }
     }
 }
 

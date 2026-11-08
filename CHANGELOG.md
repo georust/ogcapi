@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In OGC API Processes, synchronous execution of a process can now create a job with `AppState::sync_process_calls_are_jobs(true)`.
 - Added function to services builder for configuring synchronous process calls to be executed as jobs.
 - `utoipa` derives (`ToSchema`, `IntoParams`) in `ogcapi-types` are now behind the default-enabled `utoipa` feature, so the types can be used without pulling in `utoipa`. `ogcapi-types::features::geometry` is only available with this feature.
+- `Bbox::union` and `Bbox::of_geometry`.
 - `ogcapi-services` has a `postgres` feature, on by default; without it the services build with drivers of their own.
 
 ### Fixed
@@ -42,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PostgreSQL: fix ingres crs transformation.
 - Stable float roundtripp.
 - Fix `update_item` feature address in `ogcapi-client`.
+- data-loader: extent from the features' boxes, none without geometries.
 - `Extent.spatial` and `Extent.temporal` are `Option` again, matching the OGC spec and the published 0.3.0 crate. Regression from #26.
 - Respect process execution `response` parameter.
 - Service URL for OGC API - Features.
