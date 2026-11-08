@@ -153,7 +153,7 @@ pub mod client {
             let mut collection = client.collection(collection_id).await?;
             collection.extent = Some(Extent {
                 spatial: Some(SpatialExtent {
-                    bbox: vec![bbox],
+                    bbox: vec![crate::rounded_outward(&bbox)],
                     crs: collection.storage_crs.clone(),
                 }),
                 temporal: None,

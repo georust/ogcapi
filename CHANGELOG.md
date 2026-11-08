@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PostgreSQL: a written geometry is transformed from CRS84 into the collection's storage CRS.
 - Floats round-trip exactly.
 - Fix `update_item` feature address in `ogcapi-client`.
-- data-loader: extent from the features' boxes, none without geometries.
+- data-loader: extent from the features' boxes, rounded outward, none without geometries.
 - `Extent.spatial` and `Extent.temporal` are `Option` again, matching the OGC spec and the published 0.3.0 crate. Regression from #26.
 - Respect process execution `response` parameter.
 - Service URL for OGC API - Features.
