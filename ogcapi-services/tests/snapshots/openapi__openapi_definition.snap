@@ -3953,7 +3953,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -3967,7 +3967,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4006,7 +4006,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4041,7 +4041,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4055,7 +4055,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4099,7 +4099,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 409,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.409"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.409"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4113,7 +4113,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4162,7 +4162,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4176,7 +4176,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4221,7 +4221,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4235,7 +4235,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4282,7 +4282,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4296,7 +4296,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4441,7 +4441,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4455,7 +4455,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4510,7 +4510,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 409,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.409"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.409"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4524,7 +4524,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4572,7 +4572,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4586,7 +4586,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4640,7 +4640,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4654,7 +4654,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4710,7 +4710,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4724,7 +4724,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4770,7 +4770,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4825,7 +4825,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4921,7 +4921,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5139,7 +5139,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5153,7 +5153,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5189,7 +5189,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5203,7 +5203,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5267,7 +5267,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5313,7 +5313,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5357,7 +5357,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5403,7 +5403,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5439,7 +5439,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5485,7 +5485,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5551,7 +5551,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5565,7 +5565,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5579,7 +5579,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5900,7 +5900,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5944,7 +5944,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5979,7 +5979,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6025,7 +6025,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6039,7 +6039,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6074,7 +6074,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6120,7 +6120,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6216,7 +6216,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
