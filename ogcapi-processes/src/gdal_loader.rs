@@ -220,23 +220,20 @@ impl Processor for GdalLoader {
             };
             let storage_crs = Crs::from_srid(spatial_ref_src.auth_code()?);
 
-            let collection = Collection {
-                id: inputs.collection.clone(),
-                crs: Vec::from_iter(HashSet::from([
-                    Crs::default2d(),
-                    storage_crs.clone(),
-                    Crs::from_epsg(3857),
-                ])),
-                extent: layer.try_get_extent()?.map(|e| Extent {
-                    spatial: Some(SpatialExtent {
-                        bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
-                        crs: Some(storage_crs.clone()),
-                    }),
-                    temporal: None,
+            let mut collection = Collection::new(inputs.collection.clone());
+            collection.crs = Vec::from_iter(HashSet::from([
+                Crs::default2d(),
+                storage_crs.clone(),
+                Crs::from_epsg(3857),
+            ]));
+            collection.extent = layer.try_get_extent()?.map(|e| Extent {
+                spatial: Some(SpatialExtent {
+                    bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
+                    crs: Some(storage_crs.clone()),
                 }),
-                storage_crs: Some(storage_crs),
-                ..Default::default()
-            };
+                temporal: None,
+            });
+            collection.storage_crs = Some(storage_crs);
 
             // A concrete geometry type where there is one, https://github.com/georust/gdal/blob/00adecc94361228a2197224205fc9260d14d7549/gdal-sys/prebuilt-bindings/gdal_3.4.rs#L3454
             let geometry_type = match layer

@@ -117,13 +117,14 @@ fn collection() -> String {
     "Collection".to_string()
 }
 
-#[allow(clippy::derivable_impls)]
-impl Default for Collection {
-    fn default() -> Self {
+impl Collection {
+    /// A collection of `id`, of features, in CRS84, with nothing else set.
+    #[must_use]
+    pub fn new(id: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "stac")]
             r#type: "Collection".to_string(),
-            id: Default::default(),
+            id: id.into(),
             title: Default::default(),
             description: Default::default(),
             #[cfg(any(feature = "records", feature = "stac", feature = "edr"))]

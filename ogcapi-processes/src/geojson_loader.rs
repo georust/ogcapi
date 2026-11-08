@@ -155,12 +155,9 @@ impl Processor for GeoJsonLoader {
         let geojson = geojson_str.parse::<FeatureCollection>()?;
 
         // Create collection (replace an existing one)
-        let mut collection = Collection {
-            id: inputs.collection.clone(),
-            crs: vec![Crs::default2d(), Crs::from_epsg(3857)],
-            storage_crs: Some(Crs::default2d()),
-            ..Default::default()
-        };
+        let mut collection = Collection::new(inputs.collection.clone());
+        collection.crs = vec![Crs::default2d(), Crs::from_epsg(3857)];
+        collection.storage_crs = Some(Crs::default2d());
         collection.extent = geojson
             .bbox
             .as_deref()
