@@ -65,11 +65,8 @@ impl From<anyhow::Error> for Error {
     }
 }
 
-/// Axum allows you to return `Result` from handler functions, but the error type
-/// also must be some sort of response type.
-///
-/// By default, the generated `Display` impl is used to return a plaintext error message
-/// to the client.
+/// An error answered as a problem document (`application/problem+json`, RFC
+/// 9457) of its exception, with its status.
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let status = self.status_code();
