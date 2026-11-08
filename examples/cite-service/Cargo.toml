@@ -4,15 +4,19 @@ version = "0.1.0"
 edition.workspace = true
 publish = false
 
+[features]
+default = ["postgres"]
+# the drivers: a PostgreSQL database (`DATABASE_URL`), with tiles, or an
+# object store in memory, which the data-loader fills through the API
+postgres = ["ogcapi/postgres", "ogcapi/tiles"]
+object = ["ogcapi/object"]
 
 [dependencies]
 tokio = { version = "1.51", features = ["macros", "rt-multi-thread"] }
 
 ogcapi = { path = "../../ogcapi", version = "0.3", default-features = false, features = [
     "services",
-    "postgres",
     "common",
     "features",
     "processes",
-    "tiles",
 ] }

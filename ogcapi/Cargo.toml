@@ -80,6 +80,8 @@ utoipa = ["ogcapi-types?/utoipa"]
 blocking = ["ogcapi-client?/blocking"]
 
 # drivers
+object = ["drivers", "ogcapi-drivers/object"]
+s3 = ["object", "ogcapi-drivers/s3"]
 postgres = ["drivers", "ogcapi-drivers/postgres", "ogcapi-services?/postgres"]
 
 # processes

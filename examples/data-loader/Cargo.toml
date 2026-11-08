@@ -14,8 +14,7 @@ ogr = ["dep:gdal", "dep:arrow", "arrow/ffi", "arrow/json"]
 # drivers
 client = ["ogcapi/client"]
 postgres = ["ogcapi/postgres", "dep:sqlx"]
-
-stac = ["ogcapi/stac"]
+stac = ["ogcapi/stac", "ogcapi/s3"]
 
 [dependencies]
 anyhow = { workspace = true }
