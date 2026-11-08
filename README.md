@@ -15,7 +15,7 @@ The code is organized in modules, respectively crates:
 | `types`        | Types as defined in various OGC API standards as well as STAC with `serde` support.                    |
 | `client`       | Client to access HTTP endpoints of OGC API services as well as STAC wrapping `reqwest`                 |
 | `services`     | Server implementation of various OGC API services based on `axum`.                                     |
-| `drivers`      | Drivers for different data provider backends, currently mainly PostgreSQL with PostGIS through `sqlx`. |
+| `drivers`      | Drivers for different data provider backends: PostgreSQL with PostGIS through `sqlx`, and an object store (in memory, local files or S3) laid out as a static STAC catalog. |
 | `processes`    | `Processor` trait and implementations.                                                                 |
 
 These modules are reexported within the `ogcapi` crate.
@@ -56,18 +56,17 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 ### Setup
 
 ```bash
-# Run the database, until it is healthy, and the object store with its bucket
+# Run the database, until it is healthy
 podman compose up db -d --wait
-podman compose up rustfs-init -d
-
-# Import administrative boundaries
-cargo run -p data-loader --features postgres -- \
-    --input data/ne_110m_admin_0_countries.geojson \
-    --collection countries \
-    db
 
 # Start service
-cargo run -p demo-service
+cargo run -p demo-service &
+
+# Import administrative boundaries through the client
+cargo run -p data-loader -- \
+    --input data/ne_110m_admin_0_countries.geojson \
+    --collection countries \
+    client --public-url http://localhost:8484/
 
 # Run tests
 cargo test --workspace --all-features --all-targets

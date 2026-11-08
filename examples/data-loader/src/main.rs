@@ -20,16 +20,16 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     tracing::debug!("{args:#?}");
 
-    match args.command {
+    match &args.command {
         #[cfg(feature = "client")]
         Commands::Client { public_url } => {
             if is_geojson_file(&args.input) && cfg!(feature = "geojson") {
                 #[cfg(feature = "geojson")]
                 data_loader::geojson::client::load(
-                    args.input,
+                    &args.input,
                     &args.collection,
                     args.s_srs,
-                    &public_url,
+                    public_url,
                 )
                 .await?
             } else {
@@ -41,24 +41,29 @@ async fn main() -> anyhow::Result<()> {
             if is_geojson_file(&args.input) && cfg!(feature = "geojson") {
                 #[cfg(feature = "geojson")]
                 data_loader::geojson::db::load(
-                    args.input,
+                    &args.input,
                     &args.collection,
                     args.s_srs,
-                    &database_url,
+                    database_url,
                 )
                 .await?
             } else if cfg!(feature = "ogr") {
                 #[cfg(feature = "ogr")]
                 data_loader::ogr::load(
-                    args.input,
+                    &args.input,
                     &args.collection,
                     &args.filter,
                     args.s_srs,
-                    &database_url,
+                    database_url,
                 )
                 .await?
             }
         }
+    }
+
+    #[cfg(feature = "stac")]
+    if let Some(store) = &args.assets {
+        data_loader::asset::attach(&args.input, &args.collection, store, args.url()).await?;
     }
 
     Ok(())

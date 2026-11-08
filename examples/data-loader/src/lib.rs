@@ -1,8 +1,8 @@
 mod args;
 pub use args::{Args, Commands};
 
-// #[cfg(feature = "stac")]
-// mod asset;
+#[cfg(feature = "stac")]
+pub mod asset;
 #[cfg(feature = "geojson")]
 pub mod geojson;
 #[cfg(all(feature = "ogr", feature = "postgres"))]
