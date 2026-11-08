@@ -1,3 +1,4 @@
+#![cfg(feature = "postgres")]
 #![allow(clippy::print_stdout, reason = "OK in tests")]
 
 mod setup;

@@ -723,7 +723,7 @@ fn url_replace_segments(
     url_plus_segments(url, segments_to_add)
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "postgres"))]
 mod tests {
     #![allow(
         clippy::panic,
