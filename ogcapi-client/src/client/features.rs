@@ -34,14 +34,18 @@ impl Client {
         self.fetch::<Feature>(url.as_str()).await
     }
 
-    /// Update an item of a collection.
+    /// Replace an item of a collection, the one of the feature's id.
     pub async fn update_item(&self, collection_id: &str, feature: &Feature) -> Result<(), Error> {
-        let input = format!("collections/{collection_id}/items");
+        let feature_id = feature
+            .id
+            .as_ref()
+            .ok_or_else(|| Error::ClientError("an item to update needs an id".to_string()))?;
+        let input = format!("collections/{collection_id}/items/{feature_id}");
         let url = self.endpoint.join(&input)?;
         self.put(url.as_str(), feature).await
     }
 
-    /// Returns a single collection by id.
+    /// Delete an item of a collection.
     pub async fn delete_item(&self, collection_id: &str, feature_id: &str) -> Result<(), Error> {
         let input = format!("collections/{collection_id}/items/{feature_id}");
         let url = self.endpoint.join(&input)?;
