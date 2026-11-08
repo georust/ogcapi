@@ -65,7 +65,7 @@ impl FeatureTransactions for Db {
             ) VALUES (
                 COALESCE($1 ->> 'id', gen_random_uuid()::text),
                 $1 -> 'properties',
-                ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), (SELECT Find_SRID('items', $2, 'geom'))),
+                ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), 4326), (SELECT Find_SRID('items', $2, 'geom'))),
                 $1 -> 'links',
                 COALESCE($1 -> 'assets', '{{}}'::jsonb),
                 $1 -> 'bbox'
@@ -122,13 +122,14 @@ impl FeatureTransactions for Db {
             UPDATE {table}
             SET
                 properties = $1 -> 'properties',
-                geom = ST_GeomFromGeoJSON($1 -> 'geometry'),
+                geom = ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), 4326), (SELECT Find_SRID('items', $2, 'geom'))),
                 links = $1 -> 'links',
                 assets = COALESCE($1 -> 'assets', '{{}}'::jsonb)
             WHERE id = $1 ->> 'id'
             "
         ))
         .bind(serde_json::to_value(feature)?)
+        .bind(collection_id)
         .execute(&self.pool)
         .await?;
 
