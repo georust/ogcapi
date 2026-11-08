@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use reqwest::{
-    Client as ReqwestClient, Response, StatusCode, Url,
+    Client as ReqwestClient, RequestBuilder, Response, Url,
     header::{CONTENT_TYPE, HeaderMap, HeaderValue, LOCATION, USER_AGENT},
 };
 
@@ -98,9 +98,7 @@ impl Client {
         T: serde::de::DeserializeOwned,
     {
         log::debug!("Fetching {url}");
-        let response = self.client.get(url).send().await?;
-        let response = extract_exeption(response).await?;
-        Ok(response.error_for_status()?.json::<T>().await?)
+        json(self.client.get(url)).await
     }
 
     /// Create a JSON resource returning the `Location` header.
@@ -108,12 +106,12 @@ impl Client {
     where
         T: serde::Serialize,
     {
-        let response = self.client.post(url).json(data).send().await?;
-        let response = extract_exeption(response).await?;
-        let response = response.error_for_status()?;
-        debug_assert_eq!(response.status(), StatusCode::CREATED);
-        debug_assert!(response.headers().contains_key(LOCATION));
-        Ok(response.headers()[LOCATION]
+        let response = send(self.client.post(url).json(data)).await?;
+        let location = response
+            .headers()
+            .get(LOCATION)
+            .ok_or_else(|| Error::ServerError(format!("{url} answered no Location")))?;
+        Ok(location
             .to_str()
             .map_err(|e| Error::ClientError(e.to_string()))?
             .to_owned())
@@ -124,28 +122,64 @@ impl Client {
     where
         T: serde::Serialize,
     {
-        let response = self.client.put(url).json(data).send().await?;
-        let response = extract_exeption(response).await?;
-        let response = response.error_for_status()?;
-        debug_assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        send(self.client.put(url).json(data)).await?;
         Ok(())
     }
 
     /// Delete a resource.
     pub async fn delete(&self, url: &str) -> Result<(), Error> {
-        let response = self.client.delete(url).send().await?;
-        let response = extract_exeption(response).await?;
-        let response = response.error_for_status()?;
-        debug_assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        send(self.client.delete(url)).await?;
         Ok(())
+    }
+
+    /// The URL of `segments` below the endpoint.
+    pub(crate) fn url(&self, segments: &[&str]) -> Result<Url, Error> {
+        url_below(&self.endpoint, segments)
     }
 }
 
-async fn extract_exeption(response: Response) -> Result<Response, Error> {
-    if let Some(content_type) = response.headers().get(CONTENT_TYPE)
-        && content_type == PROBLEM_JSON
-    {
-        let exception = response.json::<Exception>().await?;
+/// The URL of `segments` below `endpoint`, each a path segment of its own (an
+/// id holding `/`, `?` or `#` addresses no other resource); a refusal of a
+/// segment that is empty, `.` or `..`.
+pub(crate) fn url_below(endpoint: &Url, segments: &[&str]) -> Result<Url, Error> {
+    if let Some(segment) = segments.iter().find(|s| matches!(**s, "" | "." | "..")) {
+        return Err(Error::ClientError(format!("`{segment}` is no id")));
+    }
+    let mut url = endpoint.clone();
+    url.path_segments_mut()
+        .map_err(|()| Error::ClientError(format!("{endpoint} has no path")))?
+        .pop_if_empty()
+        .extend(segments);
+    Ok(url)
+}
+
+/// The answer to `request`, an error for an error status: the server's
+/// exception where it answers a problem document.
+pub(crate) async fn send(request: RequestBuilder) -> Result<Response, Error> {
+    let response = extract_exception(request.send().await?).await?;
+    Ok(response.error_for_status()?)
+}
+
+/// The JSON answer to `request`.
+pub(crate) async fn json<T: serde::de::DeserializeOwned>(
+    request: RequestBuilder,
+) -> Result<T, Error> {
+    Ok(send(request).await?.json::<T>().await?)
+}
+
+/// The exception of a response that is a problem document (RFC 9457), with
+/// its status where the document leaves it out (section 3.1.2).
+pub(crate) async fn extract_exception(response: Response) -> Result<Response, Error> {
+    let problem = response
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|content_type| content_type.to_str().ok())
+        .and_then(|content_type| content_type.split(';').next())
+        .is_some_and(|essence| essence.trim().eq_ignore_ascii_case(PROBLEM_JSON));
+    if problem {
+        let status = response.status().as_u16();
+        let mut exception = response.json::<Exception>().await?;
+        exception.status.get_or_insert(status);
         Err(Error::ExceptionError(Box::new(exception)))
     } else {
         Ok(response)
@@ -154,6 +188,17 @@ async fn extract_exeption(response: Response) -> Result<Response, Error> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn an_id_is_a_path_segment_of_its_own() {
+        let endpoint = super::Url::parse("http://example.org/api/").unwrap();
+        let url = super::url_below(&endpoint, &["collections", "a/b?c#d", "items"]).unwrap();
+        assert_eq!(
+            url.as_str(),
+            "http://example.org/api/collections/a%2Fb%3Fc%23d/items"
+        );
+        assert!(super::url_below(&endpoint, &["collections", ".."]).is_err());
+        assert!(super::url_below(&endpoint, &["collections", ""]).is_err());
+    }
 
     use super::*;
 
