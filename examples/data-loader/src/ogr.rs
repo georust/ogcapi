@@ -92,7 +92,9 @@ pub async fn load(
     ]));
     collection.extent = layer.try_get_extent()?.map(|e| Extent {
         spatial: Some(SpatialExtent {
-            bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
+            bbox: vec![crate::rounded_outward(&Bbox::Bbox2D([
+                e.MinX, e.MinY, e.MaxX, e.MaxY,
+            ]))],
             crs: Some(storage_crs.to_owned()),
         }),
         ..Default::default()
