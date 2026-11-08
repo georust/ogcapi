@@ -12,7 +12,7 @@ The `ogcapi-client` crate provides a client for accessing geospatial datasets se
 ## Example
 
 The asynchronous `Client` is the default; this example uses the `BlockingClient` of the
-`blocking` feature.
+`blocking` feature, and the `stac` feature for its search.
 
 ```rust
 use ogcapi_client::BlockingClient;

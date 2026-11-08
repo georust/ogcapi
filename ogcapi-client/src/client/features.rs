@@ -21,16 +21,13 @@ impl Client {
         collection_id: &str,
         feature: &Feature,
     ) -> Result<String, Error> {
-        let url = self
-            .endpoint
-            .join(&format!("collections/{collection_id}/items"))?;
+        let url = self.url(&["collections", collection_id, "items"])?;
         self.post(url.as_str(), feature).await
     }
 
     /// Fetch a single item of a collection.
     pub async fn item(&self, collection_id: &str, feature_id: &str) -> Result<Feature, Error> {
-        let input = format!("collections/{collection_id}/items/{feature_id}");
-        let url = self.endpoint.join(&input)?;
+        let url = self.url(&["collections", collection_id, "items", feature_id])?;
         self.fetch::<Feature>(url.as_str()).await
     }
 
@@ -40,21 +37,20 @@ impl Client {
             .id
             .as_ref()
             .ok_or_else(|| Error::ClientError("an item to update needs an id".to_string()))?;
-        let input = format!("collections/{collection_id}/items/{feature_id}");
-        let url = self.endpoint.join(&input)?;
+        let feature_id = feature_id.to_string();
+        let url = self.url(&["collections", collection_id, "items", &feature_id])?;
         self.put(url.as_str(), feature).await
     }
 
     /// Delete an item of a collection.
     pub async fn delete_item(&self, collection_id: &str, feature_id: &str) -> Result<(), Error> {
-        let input = format!("collections/{collection_id}/items/{feature_id}");
-        let url = self.endpoint.join(&input)?;
+        let url = self.url(&["collections", collection_id, "items", feature_id])?;
         self.delete(url.as_str()).await
     }
 
     /// Returns an async paginating iterator over items in a collection.
     pub async fn items(&self, id: &str) -> Result<ItemsStream, Error> {
-        let url = self.endpoint.join(&format!("collections/{id}/items"))?;
+        let url = self.url(&["collections", id, "items"])?;
         let page = self.fetch::<FeatureCollection>(url.as_str()).await?;
         Ok(ItemsStream {
             client: self.clone(),
@@ -71,7 +67,7 @@ impl Client {
         id: &str,
         query: &ogcapi_types::features::Query,
     ) -> Result<ItemsStream, Error> {
-        let base = self.endpoint.join(&format!("collections/{id}/items"))?;
+        let base = self.url(&["collections", id, "items"])?;
         let qs = serde_qs::to_string(query)?;
         let url = if qs.is_empty() {
             base.to_string()
