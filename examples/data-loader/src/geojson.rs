@@ -98,7 +98,11 @@ pub mod client {
 
         // Create collection
         let collection = collection_from_geojson(collection_id, &geojson, s_srs)?;
-        client.delete_collection(&collection.id).await?;
+        match client.delete_collection(&collection.id).await {
+            // nothing to replace
+            Err(Error::RequestError(e)) if e.status().is_some_and(|s| s.as_u16() == 404) => {}
+            result => result?,
+        }
         client.create_collection(&collection).await?;
 
         // Load features
@@ -271,7 +275,9 @@ pub mod db {
 
         // Create collection
         let collection = collection_from_geojson(collection_id, &geojson, s_srs)?;
-        db.delete_collection(&collection.id).await?;
+        if db.read_collection(&collection.id).await?.is_some() {
+            db.delete_collection(&collection.id).await?;
+        }
         db.create_collection(&collection).await?;
 
         // Load features

@@ -104,7 +104,9 @@ pub async fn load(
         ..Default::default()
     };
 
-    db.delete_collection(collection_id).await?;
+    if db.read_collection(collection_id).await?.is_some() {
+        db.delete_collection(collection_id).await?;
+    }
     db.create_collection(&collection).await?;
 
     // Set concrete geometry type if possible https://github.com/georust/gdal/blob/00adecc94361228a2197224205fc9260d14d7549/gdal-sys/prebuilt-bindings/gdal_3.4.rs#L3454
