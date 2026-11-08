@@ -6,7 +6,7 @@ use ogcapi_types::{
 
 use crate::StacSearch;
 
-use super::Db;
+use super::{Db, items_table};
 
 #[allow(clippy::too_many_lines, reason = "Complex search logic")]
 #[async_trait::async_trait]
@@ -30,15 +30,16 @@ impl StacSearch for Db {
 
         let union_all_items = collection_ids
             .iter()
-            .map(|collection_id| {
-                format!(
-                    r#"
-                    SELECT * FROM items."{collection_id}"
-                    "#
-                )
-            })
+            .filter_map(|collection_id| items_table(collection_id))
+            .map(|table| format!("SELECT * FROM {table}"))
             .collect::<Vec<String>>()
             .join(" UNION ALL ");
+
+        if union_all_items.is_empty() {
+            let mut fc = FeatureCollection::new(Vec::new());
+            fc.number_matched = Some(0);
+            return Ok(fc);
+        }
 
         // WHERE
         let mut where_conditions = vec!["TRUE".to_string()];
@@ -55,7 +56,11 @@ impl StacSearch for Db {
                     bbox[0], bbox[1], bbox[3], bbox[4]
                 ),
             };
-            where_conditions.push(format!("geom && {envelope}"));
+            // CRS84, as the search's geometry (STAC API), compared in each item's
+            // storage system
+            where_conditions.push(format!(
+                "ST_Intersects(geom, ST_Transform({envelope}, ST_SRID(geom)))"
+            ));
         }
 
         // datetime
@@ -107,31 +112,44 @@ impl StacSearch for Db {
             ));
         }
 
-        // ids
-        if !query.ids.is_empty() {
-            where_conditions.push(format!("id IN ('{}')", query.ids.join("','")));
+        // ids and intersects, bound in this order
+        let ids = (!query.ids.is_empty()).then_some(&query.ids);
+        let intersects = query
+            .intersects
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()?;
+        if ids.is_some() {
+            where_conditions.push("id = ANY($1)".to_owned());
         }
-
-        // intersects
-        if let Some(intersects) = query.intersects.as_ref() {
-            where_conditions.push(format!("geom && ST_GeomFromGeoJSON('{intersects}')"));
+        if intersects.is_some() {
+            let n = 1 + usize::from(ids.is_some());
+            where_conditions.push(format!(
+                "ST_Intersects(geom, ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(${n}), 4326), ST_SRID(geom)))"
+            ));
         }
 
         let conditions = where_conditions.join(" AND ");
 
         // COUNT
-        let number_matched: (i64,) = sqlx::query_as(&format!(
+        let sql = format!(
             r"
             WITH items AS ({union_all_items})
             SELECT count(*) FROM items
             WHERE {conditions}
             ",
-        ))
-        .fetch_one(&mut *tx)
-        .await?;
+        );
+        let mut count = sqlx::query_as(&sql);
+        if let Some(ids) = ids {
+            count = count.bind(ids);
+        }
+        if let Some(intersects) = &intersects {
+            count = count.bind(intersects);
+        }
+        let number_matched: (i64,) = count.fetch_one(&mut *tx).await?;
 
         // FETCH
-        let features: Option<sqlx::types::Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
+        let sql = format!(
             r"
             WITH items AS ({union_all_items})
             SELECT array_to_json(array_agg(row_to_json(t)))
@@ -154,9 +172,15 @@ impl StacSearch for Db {
                 .limit
                 .map_or_else(|| String::from("NULL"), |l| l.to_string()),
             query.offset.unwrap_or(0)
-        ))
-        .fetch_one(&mut *tx)
-        .await?;
+        );
+        let mut fetch = sqlx::query_scalar(&sql);
+        if let Some(ids) = ids {
+            fetch = fetch.bind(ids);
+        }
+        if let Some(intersects) = &intersects {
+            fetch = fetch.bind(intersects);
+        }
+        let features: Option<sqlx::types::Json<Vec<Feature>>> = fetch.fetch_one(&mut *tx).await?;
 
         tx.commit().await?;
 

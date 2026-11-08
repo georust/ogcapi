@@ -25,6 +25,25 @@ pub struct Db {
     pub pool: PgPool,
 }
 
+/// The table of a collection's items, `items."<id>"`, or `None` for an id
+/// that no collection can have.
+///
+/// A collection's id goes into SQL as an identifier, and as a literal in its
+/// table's definition and a tile's layer name, so an id holding a quote, a
+/// backslash or a control character is refused, and so is one longer than the
+/// 63 bytes of an identifier, which Postgres would cut short, giving two ids
+/// one table.
+#[cfg(feature = "common")]
+fn items_table(collection_id: &str) -> Option<String> {
+    let valid = !collection_id.is_empty()
+        && collection_id.len() <= 63
+        && !collection_id
+            .chars()
+            .any(|c| c.is_control() || matches!(c, '"' | '\'' | '\\'));
+
+    valid.then(|| format!(r#"items."{collection_id}""#))
+}
+
 impl Db {
     /// Create driver from env `DATABASE_URL` or else `PGUSER` and friends
     pub async fn new() -> Result<Self, sqlx::Error> {
