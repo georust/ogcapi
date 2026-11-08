@@ -1,47 +1,42 @@
 use anyhow::Context;
 use ogcapi_types::{
-    common::{Authority, Bbox, Crs, Datetime, Exception, IntervalDatetime},
+    common::{Bbox, Crs, Exception},
     features::{Feature, FeatureCollection, Query},
 };
 
-use crate::{CollectionTransactions, FeatureTransactions};
+use crate::{CollectionTransactions, FeatureTransactions, not_found};
 
-use super::{Db, items_table};
+use super::{Db, datetime_condition, envelopes, items_table};
+
+/// The columns of a feature, in the system of `$1`.
+macro_rules! rows {
+    () => {
+        "items.id, items.collection, properties, \
+        ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb AS geometry, links"
+    };
+}
 
 #[cfg(not(feature = "stac"))]
-static ROWS: &str = "
-items.id,
-items.collection,
-properties,
-ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb AS geometry,
-links
-";
+const ROWS: &str = rows!();
 
+/// With `stac`, those of an item too: its box, where it has a geometry.
 #[cfg(feature = "stac")]
-static ROWS: &str = "
-items.id,
-items.collection,
-properties,
-ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb AS geometry,
-links,
-meta.collection ->> 'stac_version' AS stac_version,
-COALESCE(
-    (meta.collection -> 'stac_extensions'),
-    '[]'::jsonb
-) AS stac_extensions,
-assets,
-COALESCE(
-    bbox,
-    array_to_json(
-        ARRAY[
-            st_xmin(st_transform(geom, 4326)::box2d),
-            st_ymin(st_transform(geom, 4326)::box2d),
-            st_xmax(st_transform(geom, 4326)::box2d),
-            st_ymax(st_transform(geom, 4326)::box2d)
-        ]
-    )::jsonb
-) as bbox
-";
+const ROWS: &str = concat!(
+    rows!(),
+    ", meta.collection ->> 'stac_version' AS stac_version, \
+    COALESCE(meta.collection -> 'stac_extensions', '[]'::jsonb) AS stac_extensions, \
+    assets, \
+    COALESCE(bbox, CASE WHEN geom IS NOT NULL THEN array_to_json(ARRAY[ \
+        st_xmin(st_transform(geom, 4326)::box2d), \
+        st_ymin(st_transform(geom, 4326)::box2d), \
+        st_xmax(st_transform(geom, 4326)::box2d), \
+        st_ymax(st_transform(geom, 4326)::box2d) \
+    ])::jsonb END) AS bbox"
+);
+
+/// A feature's geometry from its `GeoJSON` in `$1`, CRS84 (Part 4,
+/// /req/features/default-crs), in the system of the collection `$2`.
+const GEOMETRY: &str = "ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($1 -> 'geometry', 'null')), 4326), (SELECT Find_SRID('items', $2, 'geom')))";
 
 #[allow(clippy::too_many_lines, reason = "Complex transaction logic")]
 #[async_trait::async_trait]
@@ -65,7 +60,7 @@ impl FeatureTransactions for Db {
             ) VALUES (
                 COALESCE($1 ->> 'id', gen_random_uuid()::text),
                 $1 -> 'properties',
-                ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($1 -> 'geometry', 'null')), 4326), (SELECT Find_SRID('items', $2, 'geom'))),
+                {GEOMETRY},
                 $1 -> 'links',
                 COALESCE($1 -> 'assets', '{{}}'::jsonb),
                 $1 -> 'bbox'
@@ -76,7 +71,8 @@ impl FeatureTransactions for Db {
         .bind(serde_json::to_value(feature)?)
         .bind(collection_id)
         .fetch_one(&self.pool)
-        .await?;
+        .await
+        .map_err(conflict)?;
 
         Ok(id.0)
     }
@@ -122,7 +118,7 @@ impl FeatureTransactions for Db {
             UPDATE {table}
             SET
                 properties = $1 -> 'properties',
-                geom = ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($1 -> 'geometry', 'null')), 4326), (SELECT Find_SRID('items', $2, 'geom'))),
+                geom = {GEOMETRY},
                 links = $1 -> 'links',
                 assets = COALESCE($1 -> 'assets', '{{}}'::jsonb)
             WHERE id = $1 ->> 'id'
@@ -166,41 +162,30 @@ impl FeatureTransactions for Db {
 
         // bbox
         if let Some(bbox) = query.bbox.as_ref() {
-            // crs
+            // crs; coordinates in the order PostGIS takes them, the longitude
+            // first, whatever the order of the system's definition
             let bbox_crs = query.bbox_crs.clone().unwrap_or_else(|| match bbox {
                 Bbox::Bbox2D(_) => Crs::default2d(),
                 Bbox::Bbox3D(_) => Crs::default3d(),
             });
+            let srid = bbox_crs.as_srid().context("cannot determine SRID")?;
 
-            // coordinate system axis order (OGC and Postgis is lng, lat | EPSG is lat, lng)
-            let order = match bbox_crs.authority {
-                Authority::OGC | Authority::EPSG => [0, 1, 2, 3], // Use "traditional GIS order". TODO: should follow the crs definition [1, 0, 3, 2]
-            };
+            let collection = self
+                .read_collection(collection_id)
+                .await?
+                .ok_or_else(not_found)?;
+            let storage_srid = self.storage_srid(&collection).await?;
 
-            let collection = self.read_collection(collection_id).await?;
-            let storage_srid = match collection {
-                Some(collection) => match collection.storage_crs.map(|crs| crs.as_srid()) {
-                    Some(srid) => srid.context("cannot determine SRID")?,
-                    None => {
-                        sqlx::query_scalar("SELECT Find_SRID('items', $1, 'geom')")
-                            .bind(collection_id)
-                            .fetch_one(&self.pool)
-                            .await?
-                    }
-                },
-                None => return Err(not_found()),
-            };
-
-            // TODO: handle antimeridian (lower > upper on axis 1)
             let intersection = match bbox {
-                Bbox::Bbox2D(bbox) => format!(
-                    "(geom IS NULL OR ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}, {}, {}, {}), {storage_srid})))",
-                    bbox[order[0]],
-                    bbox[order[1]],
-                    bbox[order[2]],
-                    bbox[order[3]],
-                    bbox_crs.as_srid().context("cannot determine SRID")?
-                ),
+                Bbox::Bbox2D(_) => {
+                    let intersects: Vec<String> = envelopes(bbox, srid)
+                        .iter()
+                        .map(|envelope| {
+                            format!("ST_Intersects(geom, ST_Transform({envelope}, {storage_srid}))")
+                        })
+                        .collect();
+                    format!("(geom IS NULL OR {})", intersects.join(" OR "))
+                }
                 Bbox::Bbox3D(bbox) => format!(
                     // FIXME: ensure proper height/box transformation handling
                     r"(geom IS NULL OR ST_3DIntersects(geom, ST_Envelope(ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY[
@@ -213,13 +198,12 @@ impl FeatureTransactions for Db {
                         ST_MakePoint({x1}, {y2}, {z2}), 
                         ST_MakePoint({x2}, {y2}, {z2})
                     ]), {srid}), {storage_srid}))))",
-                    x1 = bbox[order[0]],
-                    y1 = bbox[order[1]],
+                    x1 = bbox[0],
+                    y1 = bbox[1],
                     z1 = bbox[2],
-                    x2 = bbox[order[2] + 1],
-                    y2 = bbox[order[3] + 1],
+                    x2 = bbox[3],
+                    y2 = bbox[4],
                     z2 = bbox[5],
-                    srid = bbox_crs.as_srid().context("cannot determine SRID")?
                 ),
             };
 
@@ -228,51 +212,7 @@ impl FeatureTransactions for Db {
 
         // datetime
         if let Some(datetime) = query.datetime.as_ref() {
-            let (from, to) = match datetime {
-                Datetime::Datetime(_) => (
-                    format!("CAST('{datetime}' AS timestamptz)"),
-                    format!("CAST('{datetime}' AS timestamptz)"),
-                ),
-                Datetime::Interval { from, to } => {
-                    let from = match from {
-                        IntervalDatetime::Datetime(_) => {
-                            format!("CAST('{from}' AS timestamptz)")
-                        }
-                        IntervalDatetime::Open => "to_timestamp('-infinity')".to_owned(),
-                    };
-                    let to = match to {
-                        IntervalDatetime::Datetime(_) => {
-                            format!("CAST('{to}' AS timestamptz)")
-                        }
-                        IntervalDatetime::Open => "NOW()".to_owned(),
-                    };
-                    (from, to)
-                }
-            };
-
-            where_conditions.push(format!(
-                r"
-                (
-                    CASE
-                        WHEN (properties->'datetime') IS NOT NULL THEN (
-                            CAST(properties->>'datetime' AS timestamptz)
-                            BETWEEN {from} AND {to}
-                        )
-                        WHEN (
-                            (properties->'datetime') IS NULL
-                            AND (properties->'start_datetime') IS NOT NULL
-                            AND (properties->'end_datetime') IS NOT NULL
-                        ) THEN (
-                            ({from}, {to}) OVERLAPS (
-                                CAST(properties->>'start_datetime' AS timestamptz),
-                                CAST(properties->>'end_datetime' AS timestamptz)
-                            )
-                        )
-                        ELSE TRUE
-                    END
-                )
-                "
-            ));
+            where_conditions.push(datetime_condition(datetime));
         }
 
         // kv, each key and value bound, from placeholder `first` on
@@ -311,6 +251,7 @@ impl FeatureTransactions for Db {
                 FROM {table} items JOIN meta.collections meta
                     ON items.collection = meta.id
                 WHERE {}
+                ORDER BY items.id
                 LIMIT {}
                 OFFSET {}
             ) t
@@ -335,7 +276,16 @@ impl FeatureTransactions for Db {
     }
 }
 
-/// A collection or feature that doesn't exist.
-fn not_found() -> anyhow::Error {
-    Exception::new_from_status(404).into()
+/// A write's error, a refusal (409) of a feature whose id another has.
+fn conflict(error: sqlx::Error) -> anyhow::Error {
+    if error
+        .as_database_error()
+        .is_some_and(sqlx::error::DatabaseError::is_unique_violation)
+    {
+        Exception::new_from_status(409)
+            .detail("a feature of this id exists")
+            .into()
+    } else {
+        error.into()
+    }
 }

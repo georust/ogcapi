@@ -3,7 +3,7 @@ use sqlx::types::Json;
 
 use ogcapi_types::common::{Collection, Collections, Crs, Exception, Query};
 
-use crate::CollectionTransactions;
+use crate::{CollectionTransactions, not_found};
 
 use super::{Db, items_table};
 
@@ -109,7 +109,7 @@ impl CollectionTransactions for Db {
             .await?;
 
         if updated.rows_affected() == 0 {
-            return Err(Exception::new_from_status(404).into());
+            return Err(not_found());
         }
 
         Ok(())
@@ -117,7 +117,7 @@ impl CollectionTransactions for Db {
 
     async fn delete_collection(&self, id: &str) -> anyhow::Result<()> {
         let Some(table) = items_table(id) else {
-            return Err(Exception::new_from_status(404).into());
+            return Err(not_found());
         };
 
         let mut tx = self.pool.begin().await?;
@@ -132,7 +132,7 @@ impl CollectionTransactions for Db {
             .await?;
 
         if deleted.rows_affected() == 0 {
-            return Err(Exception::new_from_status(404).into());
+            return Err(not_found());
         }
 
         tx.commit().await?;

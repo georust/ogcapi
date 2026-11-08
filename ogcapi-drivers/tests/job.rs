@@ -34,20 +34,20 @@ mod postgres {
 
         let job = StatusInfo::new("test-job");
 
-        matches!(
+        assert!(matches!(
             db.results(&job.job_id).await.unwrap(),
             ProcessResult::NoSuchJob
-        );
+        ));
 
         assert_eq!(
             db.register(&job, Response::Document).await.unwrap(),
             job.job_id
         );
 
-        matches!(
+        assert!(matches!(
             db.results(&job.job_id).await.unwrap(),
             ProcessResult::NotReady
-        );
+        ));
 
         db.finish(
             &job.job_id,
@@ -70,13 +70,13 @@ mod postgres {
         .await
         .unwrap();
 
-        matches!(
+        assert!(matches!(
             db.results(&job.job_id).await.unwrap(),
             ProcessResult::Results {
                 results: _,
                 response_mode: Response::Document,
             }
-        );
+        ));
     }
 
     #[sqlx::test]
@@ -120,12 +120,10 @@ mod postgres {
             .await
             .unwrap();
 
-        matches!(
+        // a job that failed keeps no results
+        assert!(matches!(
             db.results(&job.job_id).await.unwrap(),
-            ProcessResult::Results {
-                results: _,
-                response_mode: Response::Document,
-            }
-        );
+            ProcessResult::NotReady
+        ));
     }
 }

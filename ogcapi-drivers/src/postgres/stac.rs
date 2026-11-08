@@ -1,12 +1,11 @@
 use ogcapi_types::{
-    common::{Bbox, Datetime, IntervalDatetime},
     features::{Feature, FeatureCollection},
     stac::SearchParams,
 };
 
 use crate::StacSearch;
 
-use super::{Db, items_table};
+use super::{Db, datetime_condition, envelopes, items_table};
 
 #[allow(clippy::too_many_lines, reason = "Complex search logic")]
 #[async_trait::async_trait]
@@ -46,70 +45,20 @@ impl StacSearch for Db {
 
         // bbox
         if let Some(bbox) = query.bbox.as_ref() {
-            let envelope = match bbox {
-                Bbox::Bbox2D(bbox) => format!(
-                    "ST_MakeEnvelope({}, {}, {}, {}, 4326)",
-                    bbox[0], bbox[1], bbox[2], bbox[3]
-                ),
-                Bbox::Bbox3D(bbox) => format!(
-                    "ST_MakeEnvelope({}, {}, {}, {}, 4326)",
-                    bbox[0], bbox[1], bbox[3], bbox[4]
-                ),
-            };
             // CRS84, as the search's geometry (STAC API), compared in each item's
             // storage system
-            where_conditions.push(format!(
-                "ST_Intersects(geom, ST_Transform({envelope}, ST_SRID(geom)))"
-            ));
+            let intersects: Vec<String> = envelopes(bbox, 4326)
+                .iter()
+                .map(|envelope| {
+                    format!("ST_Intersects(geom, ST_Transform({envelope}, ST_SRID(geom)))")
+                })
+                .collect();
+            where_conditions.push(format!("({})", intersects.join(" OR ")));
         }
 
         // datetime
         if let Some(datetime) = query.datetime.as_ref() {
-            let (from, to) = match datetime {
-                Datetime::Datetime(_) => (
-                    format!("CAST('{datetime}' AS timestamptz)"),
-                    format!("CAST('{datetime}' AS timestamptz)"),
-                ),
-                Datetime::Interval { from, to } => {
-                    let from = match from {
-                        IntervalDatetime::Datetime(_) => {
-                            format!("CAST('{from}' AS timestamptz)")
-                        }
-                        IntervalDatetime::Open => "to_timestamp('-infinity')".to_owned(),
-                    };
-                    let to = match to {
-                        IntervalDatetime::Datetime(_) => {
-                            format!("CAST('{to}' AS timestamptz)")
-                        }
-                        IntervalDatetime::Open => "NOW()".to_owned(),
-                    };
-                    (from, to)
-                }
-            };
-
-            where_conditions.push(format!(
-                r"
-                (
-                    CASE
-                        WHEN (properties->'datetime') IS NOT NULL THEN (
-                            CAST(properties->>'datetime' AS timestamptz)
-                            BETWEEN {from} AND {to}
-                        )
-                        WHEN (
-                            (properties->'datetime') IS NULL
-                            AND (properties->'start_datetime') IS NOT NULL
-                            AND (properties->'end_datetime') IS NOT NULL
-                        ) THEN (
-                            ({from}, {to}) OVERLAPS (
-                                CAST(properties->>'start_datetime' AS timestamptz),
-                                CAST(properties->>'end_datetime' AS timestamptz)
-                            )
-                        )
-                        ELSE TRUE
-                    END
-                )
-                "
-            ));
+            where_conditions.push(datetime_condition(datetime));
         }
 
         // ids and intersects, bound in this order

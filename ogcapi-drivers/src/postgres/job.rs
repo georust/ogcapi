@@ -4,9 +4,22 @@ use ogcapi_types::{
 };
 use sqlx::types::Json;
 
-use crate::{JobHandler, ProcessResult};
+use crate::{JobHandler, ProcessResult, not_found};
 
 use super::Db;
+
+/// A job's status as `StatusInfo` reads it, `links` always a list.
+const STATUS: &str = "json_object(
+    'process_id': process_id,
+    'job_id': job_id,
+    'status': status,
+    'message': message,
+    'created': created,
+    'finished': finished,
+    'updated': updated,
+    'progress': progress,
+    'links': COALESCE(links, '[]'::jsonb)
+)";
 
 #[async_trait::async_trait]
 impl JobHandler for Db {
@@ -46,12 +59,11 @@ impl JobHandler for Db {
     }
 
     async fn update(&self, job: &StatusInfo) -> anyhow::Result<()> {
-        sqlx::query(
+        let updated = sqlx::query(
             r"
             UPDATE meta.jobs
             SET status = $1 -> 'status',
-                message = $1 -> 'message',
-                finished = NOW(), -- TODO: only set if status is successful or failed
+                message = $1 ->> 'message',
                 updated = NOW(),
                 progress = ($1 -> 'progress')::smallint,
                 links = $1 -> 'links'
@@ -61,6 +73,9 @@ impl JobHandler for Db {
         .bind(sqlx::types::Json(job))
         .execute(&self.pool)
         .await?;
+        if updated.rows_affected() == 0 {
+            return Err(not_found());
+        }
         Ok(())
     }
 
@@ -96,28 +111,15 @@ impl JobHandler for Db {
     }
 
     async fn status_list(&self, offset: usize, limit: usize) -> anyhow::Result<Vec<StatusInfo>> {
-        // Return a list of `StatusInfo` rows. Ensure `links` is always an array
-        // (coalesce NULL to empty array) so deserialization into `StatusInfo`
-        // which expects a list works reliably.
-        let status_list: Vec<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
+        let status_list: Vec<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(&format!(
             r#"
-            SELECT json_object(
-                'process_id': process_id,
-                'job_id': job_id,
-                'status': status,
-                'message': message,
-                'created': created,
-                'finished': finished,
-                'updated': updated,
-                'progress': progress,
-                'links': COALESCE(links, '[]'::jsonb)
-            ) as "status_info!"
+            SELECT {STATUS} as "status_info!"
             FROM meta.jobs
             ORDER BY created DESC
             OFFSET $1
             LIMIT $2
-            "#,
-        )
+            "#
+        ))
         .bind(i64::try_from(offset)?)
         .bind(i64::try_from(limit)?)
         .fetch_all(&self.pool)
@@ -127,23 +129,13 @@ impl JobHandler for Db {
     }
 
     async fn status(&self, id: &str) -> anyhow::Result<Option<StatusInfo>> {
-        let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
+        let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(&format!(
             r#"
-            SELECT json_object(
-                'process_id': process_id,
-                'job_id': job_id,
-                'status': status,
-                'message': message,
-                'created': created,
-                'finished': finished,
-                'updated': updated,
-                'progress': progress,
-                'links': COALESCE(links, '[]'::jsonb)
-            ) as "status_info!"
+            SELECT {STATUS} as "status_info!"
             FROM meta.jobs
             WHERE job_id = $1
-            "#,
-        )
+            "#
+        ))
         .bind(id)
         .fetch_optional(&self.pool)
         .await?;
@@ -152,25 +144,15 @@ impl JobHandler for Db {
     }
 
     async fn dismiss(&self, id: &str) -> anyhow::Result<Option<StatusInfo>> {
-        let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(
+        let status: Option<sqlx::types::Json<StatusInfo>> = sqlx::query_scalar(&format!(
             r#"
             UPDATE meta.jobs
             SET status = $2,
                 message = 'Job dismissed'
             WHERE job_id = $1 AND status <@ '["accepted", "running"]'::jsonb
-            RETURNING json_object(
-                'process_id': process_id,
-                'job_id': job_id,
-                'status': status,
-                'message': message,
-                'created': created,
-                'finished': finished,
-                'updated': updated,
-                'progress': progress,
-                'links': COALESCE(links, '[]'::jsonb)
-            ) as "status_info!"
-            "#,
-        )
+            RETURNING {STATUS} as "status_info!"
+            "#
+        ))
         .bind(id)
         .bind(sqlx::types::Json(StatusCode::Dismissed))
         .fetch_optional(&self.pool)
