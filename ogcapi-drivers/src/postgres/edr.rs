@@ -7,7 +7,7 @@ use ogcapi_types::{
     features::{Feature, FeatureCollection},
 };
 
-use crate::{CollectionTransactions, EdrQuerier};
+use crate::{CollectionTransactions, EdrQuerier, not_found};
 
 use super::{Db, items_table};
 
@@ -20,21 +20,13 @@ impl EdrQuerier for Db {
         query_type: &QueryType,
         query: &Query,
     ) -> anyhow::Result<(FeatureCollection, Crs)> {
-        let table = items_table(collection_id).ok_or_else(|| Exception::new_from_status(404))?;
+        let table = items_table(collection_id).ok_or_else(not_found)?;
 
-        let collection = self.read_collection(collection_id).await?;
-        let storage_srid: i32 = match collection {
-            Some(collection) => match collection.storage_crs.map(|crs| crs.as_srid()) {
-                Some(srid) => srid.context("cannot determine SRID")?,
-                None => {
-                    sqlx::query_scalar("SELECT Find_SRID('items', $1, 'geom')")
-                        .bind(collection_id)
-                        .fetch_one(&self.pool)
-                        .await?
-                }
-            },
-            None => return Err(Exception::new_from_status(404).into()),
-        };
+        let collection = self
+            .read_collection(collection_id)
+            .await?
+            .ok_or_else(not_found)?;
+        let storage_srid = self.storage_srid(&collection).await?;
 
         let mut geometry_type = query
             .coords
@@ -142,7 +134,7 @@ impl EdrQuerier for Db {
                     }
                 }
             }
-            _ => return Err(Exception::new_from_status(404).into()),
+            _ => return Err(not_found()),
         };
 
         let names: Vec<&str> = query
@@ -175,14 +167,15 @@ impl EdrQuerier for Db {
             "
         );
 
-        let mut count = sqlx::query(&sql).bind(srid);
+        let count_sql = format!("SELECT count(*) FROM ( {sql} ) t");
+        let mut count = sqlx::query_scalar(&count_sql).bind(srid);
         if wkt {
             count = count.bind(&query.coords);
         }
         for name in &names {
             count = count.bind(*name);
         }
-        let number_matched = count.execute(&self.pool).await?.rows_affected();
+        let number_matched: i64 = count.fetch_one(&self.pool).await?;
 
         let sql = format!("SELECT array_to_json(array_agg(row_to_json(t))) FROM ( {sql} ) t");
         let mut fetch = sqlx::query_scalar(&sql).bind(srid);
@@ -196,7 +189,7 @@ impl EdrQuerier for Db {
 
         let features = features.map(|f| f.0).unwrap_or_default();
         let mut fc = FeatureCollection::new(features);
-        fc.number_matched = Some(number_matched);
+        fc.number_matched = Some(number_matched.cast_unsigned());
 
         Ok((fc, Crs::from_srid(srid)))
     }

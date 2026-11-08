@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- PostgreSQL pages items in the order of their ids.
 - A driver's `Exception` keeps its status and varius other status corrections.
 - `limit=0` answers 400, and the next page's offset saturates.
 - `bbox-crs` must be a CRS the collection offers.
