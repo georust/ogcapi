@@ -18,7 +18,7 @@ use ogcapi_types::common::{
 use crate::{
     AppState, Error, Result,
     extractors::{Qs, RemoteUrl},
-    util::write_lock,
+    util::{url_plus_segments, write_lock},
 };
 
 const CONFORMANCE: [&str; 5] = [
@@ -77,7 +77,7 @@ async fn create(
         .create_collection(&collection)
         .await?;
 
-    let location = url.join(&format!("collections/{id}"))?;
+    let location = url_plus_segments(url, &[&id])?;
 
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -147,21 +147,21 @@ async fn read(
 
     #[cfg(not(feature = "stac"))]
     {
-        let items_url = url.join(&format!("{}/items", collection.id))?;
+        let items_url = url_plus_segments(url.clone(), &["items"])?;
         let items_link = Link::new(items_url, ITEMS).mediatype(GEO_JSON);
         collection.links.insert_or_update(&[items_link]);
     }
 
     #[cfg(feature = "tiles")]
     {
-        let tiles_url = url.join(&format!("{}/tiles", collection.id))?;
+        let tiles_url = url_plus_segments(url.clone(), &["tiles"])?;
         let tiles_link = Link::new(tiles_url, TILESETS_VECTOR).mediatype(JSON);
         collection.links.insert_or_update(&[tiles_link]);
     }
 
     #[cfg(feature = "stac")]
     if collection.r#type == "Collection" {
-        let items_url = url.join(&format!("{}/items", collection.id))?;
+        let items_url = url_plus_segments(url.clone(), &["items"])?;
         let items_link = Link::new(items_url, ITEMS).mediatype(GEO_JSON);
         collection.links.insert_or_update(&[items_link]);
     }
@@ -291,16 +291,16 @@ async fn collections(
 
     for collection in &mut collections.collections {
         collection.links.insert_or_update(&[
-            Link::new(url.join(&format!("collections/{}", collection.id))?, SELF).mediatype(JSON),
+            Link::new(url_plus_segments(url.clone(), &[&collection.id])?, SELF).mediatype(JSON),
             Link::new(url.join(".")?, ROOT).mediatype(JSON),
             Link::new(
-                url.join(&format!("collections/{}/items", collection.id))?,
+                url_plus_segments(url.clone(), &[&collection.id, "items"])?,
                 ITEMS,
             )
             .mediatype(GEO_JSON),
             #[cfg(feature = "tiles")]
             Link::new(
-                url.join(&format!("collections/{}/tiles", collection.id))?,
+                url_plus_segments(url.clone(), &[&collection.id, "tiles"])?,
                 TILESETS_VECTOR,
             )
             .mediatype(JSON),
