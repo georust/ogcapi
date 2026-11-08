@@ -12,10 +12,7 @@ mod postgres {
     async fn job_handling(pool: sqlx::PgPool) -> () {
         let db = Db { pool };
 
-        let job = StatusInfo {
-            job_id: "test-job".to_string(),
-            ..Default::default()
-        };
+        let job = StatusInfo::new("test-job");
 
         // register
         let job_id = db.register(&job, Response::default()).await.unwrap();
@@ -35,10 +32,7 @@ mod postgres {
     async fn job_result(pool: sqlx::PgPool) -> () {
         let db = Db { pool };
 
-        let job = StatusInfo {
-            job_id: "test-job".to_string(),
-            ..Default::default()
-        };
+        let job = StatusInfo::new("test-job");
 
         matches!(
             db.results(&job.job_id).await.unwrap(),
@@ -91,12 +85,8 @@ mod postgres {
 
         let db = Db { pool };
 
-        let job = StatusInfo {
-            job_id: "test-job-status-list".to_string(),
-            status: StatusCode::Running,
-            links: Vec::<Link>::new(),
-            ..Default::default()
-        };
+        let mut job = StatusInfo::new("test-job-status-list");
+        job.status = StatusCode::Running;
 
         // register the job with running status and empty links
         assert_eq!(
@@ -122,10 +112,7 @@ mod postgres {
     async fn job_result_failed(pool: sqlx::PgPool) -> () {
         let db = Db { pool };
 
-        let job = StatusInfo {
-            job_id: "test-job".to_string(),
-            ..Default::default()
-        };
+        let job = StatusInfo::new("test-job");
 
         let _ = db.register(&job, Response::Document).await.unwrap();
 

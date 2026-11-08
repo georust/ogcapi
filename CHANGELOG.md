@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - BREAKING: `Feature.geometry` is an `Option`.
 - BREAKING: `Service` and `AppState` construction return a `Result`.
+- BREAKING: `Collection` and `StatusInfo` have no `Default` use `Collection::new(id)`, `StatusInfo::new(job_id)` instead.
 - BREAKING: `Error::Exception(StatusCode, String)` is `Error::ApiException(Box<Exception>)`.
 - `ogcapi-client`'s `processes` feature no longer builds `ogcapi-processes`.
 - Problem types link for 428.

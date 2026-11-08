@@ -52,15 +52,12 @@ fn collection_from_geojson(
     });
     tracing::debug!("extent: {extent:#?}");
 
-    Ok(Collection {
-        id: collection_id.to_owned(),
-        extent,
-        crs,
-        storage_crs: Some(storage_crs),
-        // #[cfg(feature = "stac")]
-        // assets: crate::asset::load_asset_from_path(&args.input).await?,
-        ..Default::default()
-    })
+    let mut collection = Collection::new(collection_id);
+    collection.extent = extent;
+    collection.crs = crs;
+    collection.storage_crs = Some(storage_crs);
+
+    Ok(collection)
 }
 
 #[cfg(feature = "client")]

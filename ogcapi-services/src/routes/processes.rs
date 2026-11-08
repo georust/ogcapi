@@ -260,11 +260,8 @@ async fn execution(
         });
     }
 
-    let mut status_info = StatusInfo {
-        process_id: Some(process_id),
-        status: JobStatusCode::Accepted,
-        ..Default::default()
-    };
+    let mut status_info = StatusInfo::new("");
+    status_info.process_id = Some(process_id);
 
     let job_id = state
         .drivers
@@ -1123,12 +1120,7 @@ mod tests {
             }
 
             async fn status(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
-                let info = StatusInfo {
-                    job_id: "job1".to_string(),
-                    status: JobStatusCode::Accepted,
-                    ..Default::default()
-                };
-                Ok(Some(info))
+                Ok(Some(StatusInfo::new("job1")))
             }
 
             async fn finish(
@@ -1143,11 +1135,8 @@ mod tests {
             }
 
             async fn dismiss(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
-                let info = StatusInfo {
-                    job_id: "job1".to_string(),
-                    status: JobStatusCode::Dismissed,
-                    ..Default::default()
-                };
+                let mut info = StatusInfo::new("job1");
+                info.status = JobStatusCode::Dismissed;
                 Ok(Some(info))
             }
 
