@@ -158,6 +158,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "reaches data.geo.admin.ch"]
     async fn conformance() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();

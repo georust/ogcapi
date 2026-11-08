@@ -117,6 +117,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "reaches data.geo.admin.ch"]
     async fn collection() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
@@ -125,6 +126,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "reaches data.geo.admin.ch"]
     async fn collections() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
