@@ -26,7 +26,7 @@ const CONFORMANCE: [&str; 5] = [
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/landingPage",
     "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30",
     // "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/html",
-    "http://www.opengis.net/spec/ogcapi_common-2/1.0/conf/json",
+    "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/json",
     "http://www.opengis.net/spec/ogcapi-common-2/1.0/conf/collections",
 ];
 
