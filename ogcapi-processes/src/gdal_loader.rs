@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use arrow::{
     array::{Array, BinaryArray, RecordBatchReader, StringArray},
     compute::cast,
@@ -17,18 +17,20 @@ use url::Url;
 
 use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_types::{
-    common::{Bbox, Collection, Crs, Exception, Extent, SpatialExtent},
+    common::{Bbox, Collection, Crs, Extent, SpatialExtent},
     processes::{
-        Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process,
-        TransmissionMode,
+        Execute, ExecuteResult, ExecuteResults, Format, InlineOrRefData, Input, InputValueNoObject,
+        JobControlOptions, Output, Process, ProcessSummary, TransmissionMode,
+        description::{DescriptionType, InputDescription, OutputDescription},
     },
 };
 
-use crate::{ProcessResponseBody, Processor};
+use crate::Processor;
 
 /// GDAL loader `Processor`
 ///
-/// Process to load vector data.
+/// Process to load a layer of vector data GDAL reads into a collection of a
+/// Postgres database, which it replaces.
 #[derive(Clone)]
 pub struct GdalLoader;
 
@@ -38,10 +40,10 @@ pub struct GdalLoaderInputs {
     /// Input file
     pub input: String,
 
-    /// Set the collection name, defaults to layer name or `osm`
+    /// Set the collection name
     pub collection: String,
 
-    /// Filter input by layer name, imports all if not present
+    /// Filter input by layer name, required where it has several
     pub filter: Option<String>,
 
     /// Source srs, if omitted tries to derive from the input layer
@@ -52,46 +54,26 @@ pub struct GdalLoaderInputs {
 }
 
 impl GdalLoaderInputs {
+    #[must_use]
     pub fn execute_input(&self) -> HashMap<String, Input> {
-        let mut input = HashMap::from_iter([
-            (
-                "input".to_string(),
-                Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                    InputValueNoObject::String(self.input.to_owned()),
-                )),
-            ),
-            (
-                "collection".to_string(),
-                Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                    InputValueNoObject::String(self.collection.to_owned()),
-                )),
-            ),
-            (
-                "database_url".to_string(),
-                Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                    InputValueNoObject::String(self.database_url.to_owned()),
-                )),
-            ),
+        let value = |value: InputValueNoObject| {
+            Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(value))
+        };
+        let text = |text: &str| value(InputValueNoObject::String(text.to_owned()));
+        let mut input = HashMap::from([
+            ("input".to_string(), text(&self.input)),
+            ("collection".to_string(), text(&self.collection)),
+            ("database_url".to_string(), text(&self.database_url)),
         ]);
-
         if let Some(filter) = &self.filter {
-            input.insert(
-                "filter".to_owned(),
-                Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                    InputValueNoObject::String(filter.to_owned()),
-                )),
-            );
+            input.insert("filter".to_owned(), text(filter));
         }
-
-        if let Some(s_srs) = &self.s_srs {
+        if let Some(s_srs) = self.s_srs {
             input.insert(
                 "s_srs".to_owned(),
-                Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                    InputValueNoObject::Integer(*s_srs as i64),
-                )),
+                value(InputValueNoObject::Integer(i64::from(s_srs))),
             );
         }
-
         input
     }
 }
@@ -99,27 +81,38 @@ impl GdalLoaderInputs {
 /// Outputs for the `gdal-loader` process
 #[derive(Clone, Debug, JsonSchema)]
 pub struct GdalLoaderOutputs {
+    /// The id of the collection loaded
     pub collection: String,
 }
 
-impl GdalLoaderOutputs {
-    pub fn execute_output() -> HashMap<String, Output> {
-        HashMap::from([(
-            "greeting".to_string(),
-            Output {
-                format: Some(Format {
-                    media_type: Some("text/plain".to_string()),
-                    encoding: Some("utf8".to_string()),
-                    schema: None,
-                }),
-                transmission_mode: TransmissionMode::Value,
+impl TryFrom<GdalLoaderOutputs> for ExecuteResults {
+    type Error = anyhow::Error;
+
+    fn try_from(value: GdalLoaderOutputs) -> Result<Self, Self::Error> {
+        Ok(HashMap::from([(
+            "collection".to_string(),
+            ExecuteResult {
+                data: InlineOrRefData::InputValueNoObject(InputValueNoObject::String(
+                    value.collection,
+                )),
+                output: Output {
+                    format: Some(Format {
+                        media_type: Some("text/plain".to_string()),
+                        encoding: Some("utf8".to_string()),
+                        schema: None,
+                    }),
+                    transmission_mode: TransmissionMode::Value,
+                },
             },
-        )])
+        )]))
     }
 }
 
 #[async_trait::async_trait]
 impl Processor for GdalLoader {
+    type Input = GdalLoaderInputs;
+    type Output = GdalLoaderOutputs;
+
     fn id(&self) -> &'static str {
         "gdal-loader"
     }
@@ -129,17 +122,59 @@ impl Processor for GdalLoader {
     }
 
     async fn process(&self) -> Result<Process> {
-        Process::try_new(
-            self.id(),
-            self.version(),
-            &schema_for!(GdalLoaderInputs),
-            &schema_for!(GdalLoaderOutputs),
-        )
-        .map_err(Into::into)
+        let input = |title: &str, schema: serde_json::Value| InputDescription {
+            description_type: DescriptionType {
+                title: Some(title.to_string()),
+                ..Default::default()
+            },
+            schema,
+            ..Default::default()
+        };
+        let text = || schema_for!(String).to_value();
+        Ok(Process {
+            summary: ProcessSummary {
+                id: self.id().to_string(),
+                version: self.version().to_string(),
+                description: DescriptionType {
+                    title: Some("GDAL loader".to_string()),
+                    description: Some(
+                        "Loads a layer of vector data GDAL reads into a collection, which it \
+                        replaces."
+                            .to_string(),
+                    ),
+                    ..Default::default()
+                },
+                job_control_options: vec![
+                    JobControlOptions::SyncExecute,
+                    JobControlOptions::AsyncExecute,
+                ],
+                output_transmission: vec![TransmissionMode::Value],
+                links: Vec::new(),
+            },
+            inputs: HashMap::from([
+                ("input".to_string(), input("Input file or URL", text())),
+                ("collection".to_string(), input("Collection id", text())),
+                ("filter".to_string(), input("Layer name", text())),
+                (
+                    "s_srs".to_string(),
+                    input("Source EPSG code", schema_for!(u32).to_value()),
+                ),
+                (
+                    "database_url".to_string(),
+                    input("PostgreSQL database URL", text()),
+                ),
+            ]),
+            outputs: HashMap::from([(
+                "collection".to_string(),
+                OutputDescription {
+                    description_type: DescriptionType::default(),
+                    schema: text(),
+                },
+            )]),
+        })
     }
 
-    async fn execute(&self, execute: Execute) -> Result<ProcessResponseBody> {
-        // Parse input
+    async fn parse(&self, execute: Execute) -> Result<Self::Input> {
         let value = serde_json::to_value(execute.inputs)?;
         let mut inputs: GdalLoaderInputs = serde_json::from_value(value)?;
 
@@ -150,126 +185,122 @@ impl Processor for GdalLoader {
         if inputs.input.to_lowercase().ends_with("zip") {
             inputs.input = format!("/vsizip/{}", inputs.input);
         }
+        Ok(inputs)
+    }
 
-        // Get collection
-        let collection = {
+    #[allow(clippy::too_many_lines, reason = "Complex loading logic")]
+    async fn execute(&self, inputs: Self::Input) -> Result<Self::Output> {
+        // GDAL's dataset can't be sent between threads, so it is opened in a
+        // block that awaits nothing, and again for the features
+        let (layer_name, collection, geometry_type) = {
             let dataset = Dataset::open(&inputs.input)?;
 
-            // Get layer
-            if dataset.layer_count() >= 1 && inputs.filter.is_none() {
-                inputs.filter = Some(dataset.layer(0)?.name());
-            }
-
-            if inputs.filter.is_none() {
-                return Err(Exception::new(format!(
-                    "Found multiple layers! Use the 'filter' option to specifiy one of:\n\t- {}",
+            let layer_name = match &inputs.filter {
+                Some(filter) => filter.clone(),
+                None if dataset.layer_count() == 1 => dataset.layer(0)?.name(),
+                None => bail!(
+                    "Found multiple layers! Use the 'filter' option to specify one of:\n\t- {}",
                     dataset
                         .layers()
                         .map(|l| l.name())
                         .collect::<Vec<String>>()
                         .join("\n\t- ")
-                ))
-                .into());
-            }
-
-            let layer = dataset.layer_by_name(inputs.filter.as_ref().unwrap())?;
+                ),
+            };
+            let layer = dataset.layer_by_name(&layer_name)?;
 
             // Get coordinate reference system
-            let spatial_ref_src = match inputs.s_srs {
-                Some(epsg) => SpatialRef::from_epsg(epsg)?,
-                None => match layer.spatial_ref() {
-                    Some(srs) => srs,
-                    None => {
-                        println!("Unknown spatial reference, falling back to `4326`");
-                        SpatialRef::from_epsg(4326)?
-                    }
-                },
+            let spatial_ref_src = if let Some(epsg) = inputs.s_srs {
+                SpatialRef::from_epsg(epsg)?
+            } else if let Some(srs) = layer.spatial_ref() {
+                srs
+            } else {
+                tracing::warn!("Unknown spatial reference, falling back to `4326`");
+                SpatialRef::from_epsg(4326)?
             };
-
             let storage_crs = Crs::from_srid(spatial_ref_src.auth_code()?);
 
-            // Create collection (overwrite/delete existing)
-            Collection {
-                id: inputs.collection.clone(),
-                crs: Vec::from_iter(HashSet::from([
-                    Crs::default(),
-                    storage_crs.clone(),
-                    Crs::from_epsg(3857),
-                ])),
-                extent: layer.try_get_extent().unwrap().map(|e| Extent {
-                    spatial: SpatialExtent {
-                        bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
-                        crs: storage_crs.to_owned(),
-                    },
-                    ..Default::default()
+            let mut collection = Collection::new(inputs.collection.clone());
+            collection.crs = Vec::from_iter(HashSet::from([
+                Crs::default2d(),
+                storage_crs.clone(),
+                Crs::from_epsg(3857),
+            ]));
+            collection.extent = layer.try_get_extent()?.map(|e| Extent {
+                spatial: Some(SpatialExtent {
+                    bbox: vec![Bbox::Bbox2D([e.MinX, e.MinY, e.MaxX, e.MaxY])],
+                    crs: Some(storage_crs.clone()),
                 }),
-                storage_crs: Some(storage_crs.to_owned()),
-                ..Default::default()
-            }
-        };
+                temporal: None,
+            });
+            collection.storage_crs = Some(storage_crs);
 
-        // Setup driver
-        let db = Db::setup(&Url::parse(&inputs.database_url)?).await?;
-
-        db.delete_collection(&collection.id).await.unwrap();
-        db.create_collection(&collection).await.unwrap();
-
-        // Set concrete geometry type if possible https://github.com/georust/gdal/blob/00adecc94361228a2197224205fc9260d14d7549/gdal-sys/prebuilt-bindings/gdal_3.4.rs#L3454
-        if let Some((geometry_type, dimensions)) = {
-            let dataset = Dataset::open(&inputs.input)?;
-            let layer = dataset
-                .layer_by_name(inputs.filter.as_ref().unwrap())
-                .unwrap();
-
-            match layer.defn().geom_fields().next().unwrap().field_type() {
-                0 => {
-                    panic!("Unknown gemetry type.")
-                }
+            // A concrete geometry type where there is one, https://github.com/georust/gdal/blob/00adecc94361228a2197224205fc9260d14d7549/gdal-sys/prebuilt-bindings/gdal_3.4.rs#L3454
+            let geometry_type = match layer
+                .defn()
+                .geom_fields()
+                .next()
+                .context("the layer has no geometry")?
+                .field_type()
+            {
                 1 => Some(("POINT", 2)),
                 2 => Some(("LINESTRING", 2)),
                 3 => Some(("POLYGON", 2)),
                 4 => Some(("MULTIPOINT", 2)),
                 5 => Some(("MULTILINESTRING", 2)),
                 6 => Some(("MULTIPOLYGON", 2)),
-                2147483653 => Some(("MULTILINESTRINGZ", 3)),
-                2147483654 => Some(("MULTIPOLYGONZ", 3)),
-                i => {
-                    panic!("Unmaped geometry type `{i}`");
-                }
-            }
-        } {
+                2_147_483_653 => Some(("MULTILINESTRINGZ", 3)),
+                2_147_483_654 => Some(("MULTIPOLYGONZ", 3)),
+                // any geometry
+                _ => None,
+            };
+
+            (layer_name, collection, geometry_type)
+        };
+
+        // Setup driver, and create the collection (replace an existing one);
+        // the driver refuses an id that can't be a table's, so the tables
+        // below are named safely
+        let db = Db::setup(&Url::parse(&inputs.database_url)?).await?;
+        if db.read_collection(&collection.id).await?.is_some() {
+            db.delete_collection(&collection.id).await?;
+        }
+        db.create_collection(&collection).await?;
+
+        if let Some((geometry_type, dimensions)) = geometry_type {
+            let srid = collection
+                .storage_crs
+                .as_ref()
+                .and_then(Crs::as_srid)
+                .context("cannot determine SRID")?;
             sqlx::query("SELECT DropGeometryColumn ('items', $1, 'geom')")
                 .bind(&collection.id)
                 .execute(&db.pool)
                 .await?;
-
             sqlx::query("SELECT AddGeometryColumn ('items', $1, 'geom', $2, $3, $4)")
                 .bind(&collection.id)
-                .bind(collection.storage_crs.unwrap().as_srid())
+                .bind(srid)
                 .bind(geometry_type)
                 .bind(dimensions)
                 .execute(&db.pool)
                 .await?;
-
             sqlx::query(&format!(
                 r#"CREATE INDEX ON items."{}" USING gist (geom)"#,
-                &collection.id
+                collection.id
             ))
             .execute(&db.pool)
             .await?;
         }
 
         // Load features
-        // let _count = layer.lock().unwrap().feature_count();
-
         let dataset = Dataset::open(&inputs.input)?;
-        let mut layer = dataset.layer_by_name(inputs.filter.as_ref().unwrap())?;
+        let mut layer = dataset.layer_by_name(&layer_name)?;
 
         // Instantiate an `ArrowArrayStream` for OGR to write into
         let mut output_stream = FFI_ArrowArrayStream::empty();
 
         // Take a pointer to it
-        let output_stream_ptr = &mut output_stream as *mut FFI_ArrowArrayStream;
+        let output_stream_ptr = &raw mut output_stream;
 
         // GDAL includes its own copy of the ArrowArrayStream struct definition. These are guaranteed
         // to be the same across implementations, but we need to manually cast between the two for Rust
@@ -283,8 +314,14 @@ impl Processor for GdalLoader {
         let schema = arrow_stream_reader.schema();
 
         // Get the index of the fid and geom column
-        let fid_column_index = schema.column_with_name("OGC_FID").unwrap().0;
-        let mut geom_column_index = schema.column_with_name("wkb_geometry").unwrap().0;
+        let fid_column_index = schema
+            .column_with_name("OGC_FID")
+            .context("no column OGC_FID")?
+            .0;
+        let mut geom_column_index = schema
+            .column_with_name("wkb_geometry")
+            .context("no column wkb_geometry")?
+            .0;
 
         // adjust for later column removal
         if fid_column_index < geom_column_index {
@@ -300,39 +337,46 @@ impl Processor for GdalLoader {
             // Get the id column
             let fid_column = batch.remove_column(fid_column_index);
             let fid_column = cast(&fid_column, &DataType::Utf8)?;
-            let fid_array = fid_column.as_any().downcast_ref::<StringArray>().unwrap();
-            let mut fid_vec = Vec::with_capacity(fid_array.len());
-            (0..fid_array.len()).for_each(|i| fid_vec.push(fid_array.value(i).to_owned()));
+            let fid_array = fid_column
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .context("OGC_FID as text")?;
+            let fid_vec: Vec<String> = (0..fid_array.len())
+                .map(|i| fid_array.value(i).to_owned())
+                .collect();
 
             // Get the geometry column
             let geom_column = batch.remove_column(geom_column_index);
-            let geom_array = geom_column.as_any().downcast_ref::<BinaryArray>().unwrap();
-            let mut geom_vec = Vec::with_capacity(geom_array.len());
-            (0..geom_array.len()).for_each(|i| geom_vec.push(geom_array.value(i).to_owned()));
+            let geom_array = geom_column
+                .as_any()
+                .downcast_ref::<BinaryArray>()
+                .context("wkb_geometry as WKB")?;
+            let geom_vec: Vec<Vec<u8>> = (0..geom_array.len())
+                .map(|i| geom_array.value(i).to_owned())
+                .collect();
 
             // Get the properties
-            let buf = Vec::new();
-            let mut writer = ArrayWriter::new(buf);
+            let mut writer = ArrayWriter::new(Vec::new());
             writer.write_batches(&[&batch])?;
             writer.finish()?;
-
             let properties = String::from_utf8(writer.into_inner())?;
 
+            // no await while the dataset is open
             tokio::task::block_in_place(move || {
                 tokio::runtime::Handle::current().block_on(
                     sqlx::query(&format!(
                         r#"
-                INSERT INTO items."{id}" (id, properties, geom)
-                SELECT * FROM UNNEST(
-                    $1::text[],
-                    (SELECT
-                        array_agg(properties)
-                    FROM (
-                        SELECT jsonb_array_elements($2::jsonb) AS properties
-                    )),
-                    $3::bytea[]
-                )
-                "#
+                        INSERT INTO items."{id}" (id, properties, geom)
+                        SELECT * FROM UNNEST(
+                            $1::text[],
+                            (SELECT
+                                array_agg(properties)
+                            FROM (
+                                SELECT jsonb_array_elements($2::jsonb) AS properties
+                            )),
+                            $3::bytea[]
+                        )
+                        "#
                     ))
                     .bind(fid_vec)
                     .bind(properties)
@@ -342,30 +386,23 @@ impl Processor for GdalLoader {
             })?;
         }
 
-        Ok(ProcessResponseBody::Requested {
-            outputs: GdalLoaderOutputs::execute_output(),
-            parts: vec![inputs.collection.as_bytes().to_owned()],
+        Ok(GdalLoaderOutputs {
+            collection: inputs.collection,
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use ogcapi_types::processes::Execute;
-
-    use crate::{ProcessResponseBody, Processor};
+    use crate::Processor;
 
     use super::*;
 
     #[tokio::test(flavor = "multi_thread")]
+    #[ignore = "needs a PostgreSQL database"]
     async fn test_loader() {
         let loader = GdalLoader;
         assert_eq!(loader.id(), "gdal-loader");
-
-        println!(
-            "Process:\n{}",
-            serde_json::to_string_pretty(&loader.process().await.unwrap()).unwrap()
-        );
 
         let input = GdalLoaderInputs {
             input: "../data/ne_10m_railroads_north_america.geojson".to_owned(),
@@ -380,16 +417,11 @@ mod tests {
             ..Default::default()
         };
 
-        let output = loader.execute(execute).await.unwrap();
+        let output = loader
+            .execute(loader.parse(execute).await.unwrap())
+            .await
+            .unwrap();
 
-        let ProcessResponseBody::Requested {
-            outputs: _outputs,
-            parts,
-        } = output
-        else {
-            panic!()
-        };
-
-        assert_eq!(String::from_utf8(parts[0].clone()).unwrap(), "streets-gdal");
+        assert_eq!(output.collection, "streets-gdal");
     }
 }

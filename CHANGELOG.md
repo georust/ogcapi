@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Async client transactions (CRUD) suport for JSON resources.
+- Async client transactions (CRUD) support for JSON resources.
 - `wasm32-unknown-unknown` support for `ogcapi-client`.
 - `Client::new_with` and `BlockingClient::new_with` to bring a custom `reqwest` client.
 - `Client::items_with_query` and `BlockingClient::items_with_query` for server-side filtering by bbox, datetime, etc.
@@ -18,19 +18,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Async OGC API - Processes execution (jobs).
 - Multipart/related response support for raw OGC API - Processes results with multiple outputs.
 - Echo process for testing.
-- Dedicate `cite-service` for OGC Cite testsuite in CI.
+- Dedicated `cite-service` for OGC Cite testsuite in CI.
 - Make public base url configurable via `PUBLIC_URL` environment variable.
 - Allow modifying the spawn function (`with_spawn_fn`) in `AppState`, which is used for OGC API - Processes execution, so that it can be adapted, e.g., for applying scopes.
 - Allow modifying the router and OpenAPI definition in the `Service` (`get_router_mut`), e.g., for adding additional paths or for changing the info fields in the OpenAPI definition.
-- Allow modifying the middleware stack in the `Service` (`get_middleware_stack_mut`), e.g., for adding additional middleware or replacing the default ones.
+- Allow modifying the middleware stack in the `Service` (`get_middleware_mut`), e.g., for adding additional middleware or replacing the default ones.
 - Optional JSON-FG (OGC Features and Geometries JSON) support in `ogcapi-types` behind a `json-fg` feature: JSON-FG members on `Feature` and `FeatureCollection` (`place`, `coordRefSys`, `conformsTo`, ...), `into_json_fg` conversions, the `application/vnd.ogc.fg+json` media type, and a re-export of the [`jsonfg`](https://crates.io/crates/jsonfg) crate. By [@georgeboot](https://github.com/georgeboot).
 - Added `TILESETS_MAP` link relation to `ogcapi-types` for OGC API - Tiles.
-- In OGC API Processes, synchronous execution of a process can now create a job when setting `sync_process_call_is_job` to `true` in the `Service` configuration.
-- Added function to services builder for configuring synchronous process calls to be executed as jobs.
+- In OGC API - Processes, a synchronous execution can create a job, with `AppState::sync_process_calls_are_jobs(true)`.
 - `utoipa` derives (`ToSchema`, `IntoParams`) in `ogcapi-types` are now behind the default-enabled `utoipa` feature, so the types can be used without pulling in `utoipa`. `ogcapi-types::features::geometry` is only available with this feature.
+- `Bbox::union` and `Bbox::of_geometry`.
 
 ### Fixed
 
+- PostgreSQL pages items in the order of their ids.
+- A driver's `Exception` keeps its status, and various other status corrections.
+- `limit=0` answers 400, and the next page's offset saturates.
+- `bbox-crs` must be a CRS the collection offers.
+- A second `Service` with the tiles API no longer panics.
+- EDR query fixes.
+- A STAC search over no collections answers an empty collection, and `bbox` and `intersects` select the items they intersect, whatever their storage CRS.
+- The initial migration is as released in 0.3.0 again, so a 0.3 database migrates.
+- PostgreSQL: a written geometry is transformed from CRS84 into the collection's storage CRS.
+- Floats round-trip exactly.
+- Fix `update_item` feature address in `ogcapi-client`.
+- data-loader: extent from the features' boxes, rounded outward, none without geometries.
 - `Extent.spatial` and `Extent.temporal` are `Option` again, matching the OGC spec and the published 0.3.0 crate. Regression from #26.
 - Respect process execution `response` parameter.
 - Service URL for OGC API - Features.
@@ -44,23 +56,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- BREAKING: `Feature.geometry` is an `Option`.
+- BREAKING: `Service::try_new_from_env` and `Service::try_new` replace `new` and `new_with` and return a `Result`; `AppState::new` takes the `Drivers`, which `Drivers::try_new_from_env` and `Drivers::try_new_db` set up.
+- BREAKING: `Collection` and `StatusInfo` have no `Default`; use `Collection::new(id)` and `StatusInfo::new(job_id)` instead.
+- BREAKING: `Error::Exception(StatusCode, String)` is `Error::ApiException(Box<Exception>)`.
+- `ogcapi-client`'s `processes` feature no longer builds `ogcapi-processes`.
+- BREAKING: `ogcapi-services` has a `postgres` feature, on by default.
+- BREAKING: `ogcapi-processes`' default features are `greeter` only.
+- An exception's `type` links its status' section of RFC 9110, or of RFC 6585 for 428, 429, 431 and 511.
 - Drop `osm` example.
 - Bump dependencies.
 - BREAKING: `utoipa` 6, `utoipa-axum` 0.3 and `utoipa-swagger-ui` 10; the `ToSchema` impls in `ogcapi-types` now target `utoipa` 6.
 - Replace MinIO with RustFS for local S3 in `docker-compose.yml` and CI, as the MinIO images are no longer on Docker Hub.
 - Typed `z` edr query parameter.
 - BREAKING: `ogcapi-client`: `Client` is now async by default. The previous blocking `Client` is available as `BlockingClient` behind the `blocking` feature flag.
-- Make features opt-out rather than opt-in for released standards.
-- Allow integers for feature id.
+- BREAKING: Make features opt-out rather than opt-in for released standards.
+- BREAKING: Allow integers for feature id.
 - Build documentation for all features.
 - Output type for OGC API - Processes trait (execute).
-- Changed fields to status database model for OGC API - Processes.
+- BREAKING: Changed fields to status database model for OGC API - Processes.
 - Consolidate API definition for OGC cite validation.
-- Decouple drivers from app state.
 - Set default item type of collection as `feature`.
-- Define numeric feature id as `u64`.
-- Remove default Crs implementation.
-- (`OGCAPI - Processes`): Made `process` functions in `Processor` trait async, so that implementations can perform asynchronous operations.
+- BREAKING: Define numeric feature id as `u64`.
+- BREAKING: Remove default Crs implementation.
+- BREAKING: (`OGCAPI - Processes`): Made `process` functions in `Processor` trait async, so that implementations can perform asynchronous operations.
 - BREAKING: (`OGCAPI - Processes`): Split `Processor` trait into two traits: `Processor` and `DynProcessor`. The `Processor` trait is now generic over the input and output types, while the `DynProcessor` trait is object-safe and can be used for dynamic dispatch. This change allows for more flexibility in implementing processes with different input and output types.
 
 ## [0.3.0] - 2025-04-05

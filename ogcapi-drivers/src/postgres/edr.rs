@@ -1,4 +1,4 @@
-use anyhow::{Context, anyhow, bail};
+use anyhow::Context;
 use sqlx::types::Json;
 
 use ogcapi_types::{
@@ -7,9 +7,9 @@ use ogcapi_types::{
     features::{Feature, FeatureCollection},
 };
 
-use crate::{CollectionTransactions, EdrQuerier};
+use crate::{CollectionTransactions, EdrQuerier, not_found};
 
-use super::Db;
+use super::{Db, items_table};
 
 #[allow(clippy::too_many_lines, reason = "Complex query logic")]
 #[async_trait::async_trait]
@@ -20,20 +20,13 @@ impl EdrQuerier for Db {
         query_type: &QueryType,
         query: &Query,
     ) -> anyhow::Result<(FeatureCollection, Crs)> {
-        let collection = self.read_collection(collection_id).await?;
-        let storage_srid = match collection {
-            Some(collection) => match collection.storage_crs.map(|crs| crs.as_srid()) {
-                Some(srid) => srid.context("cannot determine SRID")?,
-                None => {
-                    sqlx::query_scalar(&format!(
-                        "SELECT Find_SRID('items', '{collection_id}', 'geom')"
-                    ))
-                    .fetch_one(&self.pool)
-                    .await?
-                }
-            },
-            None => return Err(Exception::new_from_status(404).into()),
-        };
+        let table = items_table(collection_id).ok_or_else(not_found)?;
+
+        let collection = self
+            .read_collection(collection_id)
+            .await?
+            .ok_or_else(not_found)?;
+        let storage_srid = self.storage_srid(&collection).await?;
 
         let mut geometry_type = query
             .coords
@@ -42,159 +35,161 @@ impl EdrQuerier for Db {
             .context("cannot determine geometry type")?
             .to_uppercase();
         geometry_type.retain(|c| !c.is_whitespace());
+        let has_zm = geometry_type.ends_with('Z') || geometry_type.ends_with('M');
 
-        let (spatial_predicate, srid) = match &query_type {
+        let srid: i32 = query
+            .crs
+            .as_ref()
+            .map_or_else(
+                || {
+                    if has_zm
+                        || (matches!(query_type, QueryType::Cube)
+                            && query.coords.split(',').count() == 6)
+                    {
+                        Crs::default3d().as_srid()
+                    } else {
+                        Crs::default2d().as_srid()
+                    }
+                },
+                Crs::as_srid,
+            )
+            .context("cannot determine SRID")?;
+
+        // `$1` is the response's SRID, `$2` the coordinates as WKT where a
+        // query has them, then the parameters' names
+        let wkt = !matches!(query_type, QueryType::Cube);
+        let coords = format!("ST_Transform(ST_GeomFromText($2, {srid}), {storage_srid})");
+        let spatial_predicate = match &query_type {
             QueryType::Position | QueryType::Area | QueryType::Trajectory => {
-                if geometry_type.ends_with('Z') || geometry_type.ends_with('M') {
-                    let srid: i32 = query
-                        .crs
-                        .as_ref()
-                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid)
-                        .context("cannot determine SRID")?;
-                    let predicate = format!(
-                        "ST_3DIntersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
-                        srid, query.coords, storage_srid
-                    );
-                    (predicate, srid)
+                if has_zm {
+                    format!("ST_3DIntersects(geom, {coords})")
                 } else {
-                    let srid: i32 = query
-                        .crs
-                        .as_ref()
-                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
-                        .context("cannot determine SRID")?;
-                    let predicate = format!(
-                        "ST_Intersects(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
-                        srid, query.coords, storage_srid
-                    );
-                    (predicate, srid)
+                    format!("ST_Intersects(geom, {coords})")
                 }
             }
             QueryType::Radius => {
-                let mut ctx = rink_core::simple_context().map_err(|error| anyhow!("{error}"))?;
-                let line = format!(
-                    "{} {} -> m",
-                    query.within.clone().unwrap_or_else(|| "0".to_string()),
-                    query
-                        .within_units
-                        .clone()
-                        .unwrap_or_else(|| "m".to_string())
-                );
-
-                let distance = rink_core::one_line(&mut ctx, &line)
+                let within = query.within.as_deref().unwrap_or("0").trim();
+                let units = query.within_units.as_deref().unwrap_or("m").trim();
+                let refused = || {
+                    Exception::new_from_status(400)
+                        .detail(format!("cannot take `{within} {units}` as a distance"))
+                };
+                // only a number and a unit's name reach rink, no other
+                // expression of its language
+                let number = within
+                    .parse::<f64>()
                     .ok()
-                    .and_then(|s| s.split(' ').next().and_then(|s| s.parse::<f64>().ok()))
-                    .expect("Failed to parse & convert distance");
+                    .filter(|d| d.is_finite() && *d >= 0.0)
+                    .ok_or_else(refused)?;
+                if units.is_empty()
+                    || !units
+                        .chars()
+                        .all(|c| c.is_alphabetic() || c == ' ' || c == '_')
+                {
+                    return Err(refused().into());
+                }
+                let mut ctx =
+                    rink_core::simple_context().map_err(|error| anyhow::anyhow!("{error}"))?;
+                // "1609.344 meter (length)", or "approx. 0.333 meter (length)"
+                let distance = rink_core::one_line(&mut ctx, &format!("{number} {units} -> m"))
+                    .ok()
+                    .and_then(|answer| {
+                        answer
+                            .split_whitespace()
+                            .find_map(|word| word.parse::<f64>().ok())
+                    })
+                    .ok_or_else(refused)?;
 
-                if geometry_type.ends_with('Z') || geometry_type.ends_with('M') {
-                    let srid: i32 = query
-                        .crs
-                        .as_ref()
-                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid)
-                        .context("cannot determine SRID")?;
-                    let predicate = format!(
-                        "ST_3DDWithin(geom, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), {}))",
-                        srid, query.coords, storage_srid
-                    );
-                    (predicate, srid)
+                if has_zm {
+                    // in the storage system's units, as PostGIS measures in 3D
+                    format!("ST_3DDWithin(geom, {coords}, {distance})")
                 } else {
-                    let srid: i32 = query
-                        .crs
-                        .as_ref()
-                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
-                        .context("cannot determine SRID")?;
-                    let predicate = format!(
-                        "ST_DWithin(ST_Transform(geom, 4326)::geography, ST_Transform(ST_GeomFromEWKT('SRID={};{}'), 4326)::geography, {}, false)",
-                        srid, query.coords, distance
-                    );
-                    (predicate, srid)
+                    format!(
+                        "ST_DWithin(ST_Transform(geom, 4326)::geography, \
+                        ST_Transform(ST_GeomFromText($2, {srid}), 4326)::geography, {distance}, false)"
+                    )
                 }
             }
             QueryType::Cube => {
-                let bbox: Vec<&str> = query.coords.split(',').collect();
-                if bbox.len() == 4 {
-                    let srid: i32 = query
-                        .crs
-                        .as_ref()
-                        .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
-                        .context("cannot determine SRID")?;
-                    let predicate = format!(
-                        "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}), {})",
-                        query.coords, srid, storage_srid
-                    );
-                    (predicate, srid)
-                } else {
-                    let srid: i32 = query
-                        .crs
-                        .as_ref()
-                        .map_or_else(|| Crs::default3d().as_srid(), Crs::as_srid)
-                        .context("cannot determine SRID")?;
-                    let predicate = format!(
-                        "ST_3DIntersects(
-                            geom,
-                            ST_Transform(
-                                ST_SetSRID(
-                                    ST_3DMakeBox(ST_MakePoint({}, {}, {}), ST_MakePoint({} , {}, {})),
-                                    {}
-                                ),
-                                {}
-                            )
-                        )",
-                        bbox[0], bbox[1], bbox[2], bbox[3], bbox[4], bbox[5], srid, storage_srid
-                    );
-                    (predicate, srid)
+                let bbox = query
+                    .coords
+                    .split(',')
+                    .map(|n| n.trim().parse::<f64>().ok().filter(|n| n.is_finite()))
+                    .collect::<Option<Vec<f64>>>()
+                    .unwrap_or_default();
+                match bbox[..] {
+                    [xmin, ymin, xmax, ymax] => format!(
+                        "ST_Intersects(geom, ST_Transform(\
+                        ST_MakeEnvelope({xmin}, {ymin}, {xmax}, {ymax}, {srid}), {storage_srid}))"
+                    ),
+                    [xmin, ymin, zmin, xmax, ymax, zmax] => format!(
+                        "ST_3DIntersects(geom, ST_Transform(ST_SetSRID(ST_3DMakeBox(\
+                        ST_MakePoint({xmin}, {ymin}, {zmin}), ST_MakePoint({xmax}, {ymax}, {zmax})), \
+                        {srid}), {storage_srid}))"
+                    ),
+                    _ => {
+                        return Err(Exception::new_from_status(400)
+                            .detail("a cube's `bbox` holds four or six numbers")
+                            .into());
+                    }
                 }
             }
-            qt => bail!("{qt:?}"),
+            _ => return Err(not_found()),
         };
 
-        let properties = if let Some(parameters) = &query.parameter_name {
-            format!(
-                "{0} as properties",
-                parameters
-                    .split(',')
-                    .map(|s| format!(
-                        "('{{\"{s}\":' || (properties -> '{s}')::text || '}}')::jsonb"
-                    ))
-                    .collect::<Vec<String>>()
-                    .join("||")
-            )
-        } else {
+        let names: Vec<&str> = query
+            .parameter_name
+            .as_deref()
+            .map(|names| names.split(',').collect())
+            .unwrap_or_default();
+        let properties = if names.is_empty() {
             "properties".to_string()
+        } else {
+            let first = 2 + usize::from(wkt);
+            let selected = (first..first + names.len())
+                .map(|i| format!("jsonb_build_object(${i}, properties -> ${i})"))
+                .collect::<Vec<String>>()
+                .join(" || ");
+            format!("{selected} AS properties")
         };
 
         let sql = format!(
-            r#"
+            r"
             SELECT
                 id,
                 {properties},
                 ST_AsGeoJSON(ST_Transform(geom, $1))::jsonb as geometry,
                 links,
-                '{collection_id}' as collection,
+                collection,
                 assets
-            FROM items."{collection_id}"
+            FROM {table}
             WHERE {spatial_predicate}
-            "#
+            "
         );
 
-        let number_matched = sqlx::query(&sql)
-            .bind(srid)
-            .execute(&self.pool)
-            .await?
-            .rows_affected();
+        let count_sql = format!("SELECT count(*) FROM ( {sql} ) t");
+        let mut count = sqlx::query_scalar(&count_sql).bind(srid);
+        if wkt {
+            count = count.bind(&query.coords);
+        }
+        for name in &names {
+            count = count.bind(*name);
+        }
+        let number_matched: i64 = count.fetch_one(&self.pool).await?;
 
-        let features: Option<Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
-            r"
-            SELECT array_to_json(array_agg(row_to_json(t)))
-            FROM ( {sql} ) t
-            "
-        ))
-        .bind(srid)
-        .fetch_one(&self.pool)
-        .await?;
+        let sql = format!("SELECT array_to_json(array_agg(row_to_json(t))) FROM ( {sql} ) t");
+        let mut fetch = sqlx::query_scalar(&sql).bind(srid);
+        if wkt {
+            fetch = fetch.bind(&query.coords);
+        }
+        for name in &names {
+            fetch = fetch.bind(*name);
+        }
+        let features: Option<Json<Vec<Feature>>> = fetch.fetch_one(&self.pool).await?;
 
         let features = features.map(|f| f.0).unwrap_or_default();
         let mut fc = FeatureCollection::new(features);
-        fc.number_matched = Some(number_matched);
+        fc.number_matched = Some(number_matched.cast_unsigned());
 
         Ok((fc, Crs::from_srid(srid)))
     }

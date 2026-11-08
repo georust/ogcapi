@@ -16,9 +16,10 @@ pub enum Error {
     #[error("not found")]
     NotFound,
 
-    /// Return `500 Internal Server Error` on a `anyhow::Error`.
+    /// Return `500 Internal Server Error` on a `anyhow::Error`, unless it holds an
+    /// [`Exception`], which keeps its status (see `From<anyhow::Error>`).
     #[error("an internal server error occurred")]
-    Anyhow(#[from] anyhow::Error),
+    Anyhow(anyhow::Error),
 
     /// Return `500 Internal Server Error` on a `url::ParseError`.
     #[error("an internal server error occurred")]
@@ -52,11 +53,20 @@ impl From<Exception> for Error {
     }
 }
 
-/// Axum allows you to return `Result` from handler functions, but the error type
-/// also must be some sort of response type.
-///
-/// By default, the generated `Display` impl is used to return a plaintext error message
-/// to the client.
+/// A driver refuses a request with an [`Exception`] in its `anyhow::Error`,
+/// answered with its status: a `404` for a feature that doesn't exist, say,
+/// or a `412` for a write whose `If-Match` doesn't hold.
+impl From<anyhow::Error> for Error {
+    fn from(value: anyhow::Error) -> Self {
+        match value.downcast::<Exception>() {
+            Ok(exception) => Self::ApiException(Box::new(exception)),
+            Err(error) => Self::Anyhow(error),
+        }
+    }
+}
+
+/// An error answered as a problem document (`application/problem+json`, RFC
+/// 9457) of its exception, with its status.
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let status = self.status_code();
@@ -91,6 +101,6 @@ impl From<Error> for Exception {
             }
         };
 
-        Exception::new(status.as_u16()).detail(message)
+        Exception::new_from_status(status.as_u16()).detail(message)
     }
 }

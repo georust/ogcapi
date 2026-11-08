@@ -1,28 +1,28 @@
-use std::{collections::HashMap, io::Cursor};
+use std::collections::HashMap;
 
 use anyhow::Result;
-use geo::Geometry;
 use geojson::FeatureCollection;
 use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
 use sqlx::types::Json;
 use url::Url;
-use wkb::{Endianness, writer::WriteOptions};
 
 use ogcapi_drivers::{CollectionTransactions, postgres::Db};
 use ogcapi_types::{
-    common::{Collection, Crs, Extent, SpatialExtent},
+    common::{Bbox, Collection, Crs, Extent, SpatialExtent},
     processes::{
-        Execute, Format, InlineOrRefData, Input, InputValueNoObject, Output, Process,
-        TransmissionMode,
+        Execute, ExecuteResult, ExecuteResults, Format, InlineOrRefData, Input, InputValueNoObject,
+        JobControlOptions, Output, Process, ProcessSummary, TransmissionMode,
+        description::{DescriptionType, InputDescription, OutputDescription},
     },
 };
 
-use crate::{ProcessResponseBody, Processor};
+use crate::Processor;
 
-/// GeoJson loader `Processor`
+/// `GeoJSON` loader `Processor`
 ///
-/// Process to load vector data.
+/// Process to load a `GeoJSON` feature collection, in CRS84, into a
+/// collection of a Postgres database, which it replaces.
 #[derive(Clone)]
 pub struct GeoJsonLoader;
 
@@ -35,73 +35,61 @@ pub struct GeoJsonLoaderInputs {
     /// Set the collection name
     pub collection: String,
 
-    /// Source srs, if omitted tries to derive from the input layer
-    pub s_srs: Option<u32>,
-
     /// Postgres database url
     pub database_url: String,
 }
 
 impl GeoJsonLoaderInputs {
+    #[must_use]
     pub fn execute_input(&self) -> HashMap<String, Input> {
-        let mut input = HashMap::from_iter([
-            (
-                "input".to_string(),
-                Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                    InputValueNoObject::String(self.input.to_owned()),
-                )),
-            ),
-            (
-                "collection".to_string(),
-                Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                    InputValueNoObject::String(self.collection.to_owned()),
-                )),
-            ),
-            (
-                "database_url".to_string(),
-                Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                    InputValueNoObject::String(self.database_url.to_owned()),
-                )),
-            ),
-        ]);
-
-        if let Some(s_srs) = &self.s_srs {
-            input.insert(
-                "s_srs".to_owned(),
-                Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
-                    InputValueNoObject::Integer(*s_srs as i64),
-                )),
-            );
-        }
-
-        input
+        let text = |value: &str| {
+            Input::InlineOrRefData(InlineOrRefData::InputValueNoObject(
+                InputValueNoObject::String(value.to_owned()),
+            ))
+        };
+        HashMap::from([
+            ("input".to_string(), text(&self.input)),
+            ("collection".to_string(), text(&self.collection)),
+            ("database_url".to_string(), text(&self.database_url)),
+        ])
     }
 }
 
-/// Outputs for the `gdal-loader` process
+/// Outputs for the `geojson-loader` process
 #[derive(Clone, Debug, JsonSchema)]
 pub struct GeoJsonLoaderOutputs {
-    pub collection_id: String,
+    /// The id of the collection loaded
+    pub collection: String,
 }
 
-impl GeoJsonLoaderOutputs {
-    pub fn execute_output() -> HashMap<String, Output> {
-        HashMap::from([(
-            "greeting".to_string(),
-            Output {
-                format: Some(Format {
-                    media_type: Some("text/plain".to_string()),
-                    encoding: Some("utf8".to_string()),
-                    schema: None,
-                }),
-                transmission_mode: TransmissionMode::Value,
+impl TryFrom<GeoJsonLoaderOutputs> for ExecuteResults {
+    type Error = anyhow::Error;
+
+    fn try_from(value: GeoJsonLoaderOutputs) -> Result<Self, Self::Error> {
+        Ok(HashMap::from([(
+            "collection".to_string(),
+            ExecuteResult {
+                data: InlineOrRefData::InputValueNoObject(InputValueNoObject::String(
+                    value.collection,
+                )),
+                output: Output {
+                    format: Some(Format {
+                        media_type: Some("text/plain".to_string()),
+                        encoding: Some("utf8".to_string()),
+                        schema: None,
+                    }),
+                    transmission_mode: TransmissionMode::Value,
+                },
             },
-        )])
+        )]))
     }
 }
 
 #[async_trait::async_trait]
 impl Processor for GeoJsonLoader {
+    type Input = GeoJsonLoaderInputs;
+    type Output = GeoJsonLoaderOutputs;
+
     fn id(&self) -> &'static str {
         "geojson-loader"
     }
@@ -111,144 +99,138 @@ impl Processor for GeoJsonLoader {
     }
 
     async fn process(&self) -> Result<Process> {
-        Process::try_new(
-            self.id(),
-            self.version(),
-            &schema_for!(GeoJsonLoaderInputs),
-            &schema_for!(GeoJsonLoaderOutputs),
-        )
-        .map_err(Into::into)
+        let input = |title: &str| InputDescription {
+            description_type: DescriptionType {
+                title: Some(title.to_string()),
+                ..Default::default()
+            },
+            schema: schema_for!(String).to_value(),
+            ..Default::default()
+        };
+        Ok(Process {
+            summary: ProcessSummary {
+                id: self.id().to_string(),
+                version: self.version().to_string(),
+                description: DescriptionType {
+                    title: Some("GeoJSON loader".to_string()),
+                    description: Some(
+                        "Loads a GeoJSON feature collection into a collection, which it replaces."
+                            .to_string(),
+                    ),
+                    ..Default::default()
+                },
+                job_control_options: vec![
+                    JobControlOptions::SyncExecute,
+                    JobControlOptions::AsyncExecute,
+                ],
+                output_transmission: vec![TransmissionMode::Value],
+                links: Vec::new(),
+            },
+            inputs: HashMap::from([
+                ("input".to_string(), input("Input file")),
+                ("collection".to_string(), input("Collection id")),
+                ("database_url".to_string(), input("PostgreSQL database URL")),
+            ]),
+            outputs: HashMap::from([(
+                "collection".to_string(),
+                OutputDescription {
+                    description_type: DescriptionType::default(),
+                    schema: schema_for!(String).to_value(),
+                },
+            )]),
+        })
     }
 
-    async fn execute(&self, execute: Execute) -> Result<ProcessResponseBody> {
+    async fn parse(&self, execute: Execute) -> Result<Self::Input> {
         let value = serde_json::to_value(execute.inputs)?;
-        let inputs: GeoJsonLoaderInputs = serde_json::from_value(value)?;
+        Ok(serde_json::from_value(value)?)
+    }
 
+    async fn execute(&self, inputs: Self::Input) -> Result<Self::Output> {
         // Setup driver
-        let db = Db::setup(&Url::parse(&inputs.database_url).unwrap()).await?;
+        let db = Db::setup(&Url::parse(&inputs.database_url)?).await?;
 
         // Extract data
         let geojson_str = std::fs::read_to_string(&inputs.input)?;
         let geojson = geojson_str.parse::<FeatureCollection>()?;
 
-        // Create collection
-        let collection = Collection {
-            id: inputs.collection.to_owned(),
-            item_type: Some("Feature".to_string()),
-            extent: geojson
-                .bbox
-                .map(|bbox| Extent {
-                    spatial: SpatialExtent {
-                        bbox: vec![
-                            bbox.as_slice()
-                                .try_into()
-                                .unwrap_or_else(|_| [-180.0, -90.0, 180.0, 90.0].into()),
-                        ],
-                        crs: Crs::default(),
-                    },
-                    ..Default::default()
-                })
-                .or_else(|| Some(Extent::default())),
-            crs: vec![Crs::default(), Crs::from_epsg(3857), Crs::from_epsg(2056)],
-            storage_crs: Some(Crs::default()),
-            // #[cfg(feature = "stac")]
-            // assets: crate::asset::load_asset_from_path(&args.input).await?,
-            ..Default::default()
-        };
+        // Create collection (replace an existing one)
+        let mut collection = Collection::new(inputs.collection.clone());
+        collection.crs = vec![Crs::default2d(), Crs::from_epsg(3857)];
+        collection.storage_crs = Some(Crs::default2d());
+        collection.extent = geojson
+            .bbox
+            .as_deref()
+            .and_then(|bbox| Bbox::try_from(bbox).ok())
+            .map(|bbox| Extent {
+                spatial: Some(SpatialExtent {
+                    bbox: vec![bbox],
+                    crs: Some(Crs::default2d()),
+                }),
+                temporal: None,
+            });
 
-        db.delete_collection(&collection.id).await?;
+        if db.read_collection(&collection.id).await?.is_some() {
+            db.delete_collection(&collection.id).await?;
+        }
+        // the driver refuses an id that can't be a table's, so the table
+        // below is named safely
         db.create_collection(&collection).await?;
 
-        // Load features
+        // Load features, a thousand at a time
         let chunk_size = 1000;
-        let chunks: Vec<_> = geojson
-            .features
-            .chunks(chunk_size)
-            .enumerate()
-            .map(|(i, chunk)| {
-                let mut ids = Vec::with_capacity(chunk_size);
-                let mut properties = Vec::with_capacity(chunk_size);
-                let mut geoms = Vec::with_capacity(chunk_size);
+        for (i, chunk) in geojson.features.chunks(chunk_size).enumerate() {
+            let mut ids = Vec::with_capacity(chunk.len());
+            let mut properties = Vec::with_capacity(chunk.len());
+            let mut geometries = Vec::with_capacity(chunk.len());
 
-                for (ii, feature) in chunk.iter().enumerate() {
-                    // id
-                    let id = if let Some(id) = &feature.id {
-                        match id {
-                            geojson::feature::Id::String(s) => s.to_owned(),
-                            geojson::feature::Id::Number(n) => n.to_string(),
-                        }
-                    } else {
-                        ((i * chunk_size) + ii).to_string()
-                    };
-                    ids.push(id);
+            for (ii, feature) in chunk.iter().enumerate() {
+                ids.push(match &feature.id {
+                    Some(geojson::feature::Id::String(s)) => s.to_owned(),
+                    Some(geojson::feature::Id::Number(n)) => n.to_string(),
+                    None => (i * chunk_size + ii).to_string(),
+                });
+                properties.push(feature.properties.clone().map(Json));
+                // a feature without a geometry keeps none
+                geometries.push(feature.geometry.clone().map(Json));
+            }
 
-                    // properties
-                    let props = feature.properties.to_owned().map(Json);
-                    properties.push(props);
-
-                    // geometry
-                    let geom =
-                        Geometry::try_from(feature.geometry.to_owned().unwrap().value).unwrap();
-
-                    let mut wkb = Cursor::new(Vec::new());
-                    wkb::writer::write_geometry(
-                        &mut wkb,
-                        &geom,
-                        &WriteOptions {
-                            endianness: Endianness::LittleEndian,
-                        },
-                    )
-                    .unwrap();
-                    geoms.push(wkb.into_inner());
-                }
-
-                (ids, properties, geoms)
-            })
-            .collect();
-
-        for (ids, properties, geoms) in chunks {
             sqlx::query(&format!(
                 r#"
-            INSERT INTO items."{}" (id, properties, geom)
-            SELECT * FROM UNNEST($1::text[], $2::jsonb[], $3::bytea[])
-            "#,
+                INSERT INTO items."{}" (id, properties, geom)
+                SELECT id, properties, ST_SetSRID(ST_GeomFromGeoJSON(geometry), 4326)
+                FROM UNNEST($1::text[], $2::jsonb[], $3::jsonb[]) AS t(id, properties, geometry)
+                "#,
                 collection.id
             ))
             .bind(ids)
             .bind(properties)
-            .bind(geoms)
+            .bind(geometries)
             .execute(&db.pool)
             .await?;
         }
-        Ok(ProcessResponseBody::Requested {
-            outputs: GeoJsonLoaderOutputs::execute_output(),
-            parts: vec![inputs.collection.as_bytes().to_owned()],
+
+        Ok(GeoJsonLoaderOutputs {
+            collection: inputs.collection,
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use ogcapi_types::processes::Execute;
-
     use crate::Processor;
 
     use super::*;
 
     #[tokio::test]
+    #[ignore = "needs a PostgreSQL database"]
     async fn test_loader() {
         let loader = GeoJsonLoader;
         assert_eq!(loader.id(), "geojson-loader");
 
-        println!(
-            "Process:\n{}",
-            serde_json::to_string_pretty(&loader.process().await.unwrap()).unwrap()
-        );
-
         let input = GeoJsonLoaderInputs {
             input: "../data/ne_10m_railroads_north_america.geojson".to_owned(),
             collection: "streets-geojson".to_string(),
-            s_srs: None,
             database_url: "postgresql://postgres:password@localhost:5432/ogcapi".to_string(),
         };
 
@@ -257,19 +239,11 @@ mod tests {
             ..Default::default()
         };
 
-        let output = loader.execute(execute).await.unwrap();
+        let output = loader
+            .execute(loader.parse(execute).await.unwrap())
+            .await
+            .unwrap();
 
-        let ProcessResponseBody::Requested {
-            outputs: _outputs,
-            parts,
-        } = output
-        else {
-            panic!()
-        };
-
-        assert_eq!(
-            String::from_utf8(parts[0].clone()).unwrap(),
-            "streets-geojson"
-        );
+        assert_eq!(output.collection, "streets-geojson");
     }
 }
