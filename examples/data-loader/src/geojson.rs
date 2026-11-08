@@ -97,6 +97,7 @@ pub mod client {
         let collection = collection_from_geojson(collection_id, &geojson, s_srs)?;
         match client.delete_collection(&collection.id).await {
             // nothing to replace
+            Err(Error::ExceptionError(exception)) if exception.status == Some(404) => {}
             Err(Error::RequestError(e)) if e.status().is_some_and(|s| s.as_u16() == 404) => {}
             result => result?,
         }
