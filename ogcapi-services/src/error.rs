@@ -16,9 +16,10 @@ pub enum Error {
     #[error("not found")]
     NotFound,
 
-    /// Return `500 Internal Server Error` on a `anyhow::Error`.
+    /// Return `500 Internal Server Error` on a `anyhow::Error`, unless it holds an
+    /// [`Exception`], which keeps its status (see `From<anyhow::Error>`).
     #[error("an internal server error occurred")]
-    Anyhow(#[from] anyhow::Error),
+    Anyhow(anyhow::Error),
 
     /// Return `500 Internal Server Error` on a `url::ParseError`.
     #[error("an internal server error occurred")]
@@ -49,6 +50,18 @@ impl Error {
 impl From<Exception> for Error {
     fn from(value: Exception) -> Self {
         Self::ApiException(Box::new(value))
+    }
+}
+
+/// A driver refuses a request with an [`Exception`] in its `anyhow::Error`,
+/// answered with its status: a `404` for a feature that doesn't exist, say,
+/// or a `412` for a write whose `If-Match` doesn't hold.
+impl From<anyhow::Error> for Error {
+    fn from(value: anyhow::Error) -> Self {
+        match value.downcast::<Exception>() {
+            Ok(exception) => Self::ApiException(Box::new(exception)),
+            Err(error) => Self::Anyhow(error),
+        }
     }
 }
 
