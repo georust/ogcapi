@@ -123,7 +123,7 @@ impl Collection {
     pub fn new(id: impl Into<String>) -> Self {
         Self {
             #[cfg(feature = "stac")]
-            r#type: "Collection".to_string(),
+            r#type: collection(),
             id: id.into(),
             title: Default::default(),
             description: Default::default(),

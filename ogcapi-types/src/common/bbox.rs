@@ -43,6 +43,66 @@ pub enum Bbox {
     Bbox3D([f64; 6]),
 }
 
+impl Bbox {
+    /// The box of `positions`, in three dimensions where every position has a
+    /// height; `None` for no positions. A position of fewer than two values
+    /// is left out.
+    #[cfg(feature = "features")]
+    #[must_use]
+    pub(crate) fn extent<'a>(positions: impl IntoIterator<Item = &'a [f64]>) -> Option<Bbox> {
+        let mut min = [f64::INFINITY; 3];
+        let mut max = [f64::NEG_INFINITY; 3];
+        let mut any = false;
+        let mut heights = true;
+        for position in positions {
+            let [x, y, rest @ ..] = position else {
+                continue;
+            };
+            any = true;
+            heights &= !rest.is_empty();
+            for (axis, value) in [x, y].into_iter().chain(rest.first()).enumerate() {
+                min[axis] = min[axis].min(*value);
+                max[axis] = max[axis].max(*value);
+            }
+        }
+        any.then(|| {
+            if heights {
+                Bbox::Bbox3D([min[0], min[1], min[2], max[0], max[1], max[2]])
+            } else {
+                Bbox::Bbox2D([min[0], min[1], max[0], max[1]])
+            }
+        })
+    }
+
+    /// The box holding this one and `other`, in three dimensions where both
+    /// are; every longitude where one of them crosses the antimeridian (its
+    /// west east of its east).
+    #[must_use]
+    pub fn union(&self, other: &Bbox) -> Bbox {
+        let [aw, a_s, ae, an] = self.horizontal();
+        let [bw, b_s, be, bn] = other.horizontal();
+        let (west, east) = if aw > ae || bw > be {
+            (-180.0, 180.0)
+        } else {
+            (aw.min(bw), ae.max(be))
+        };
+        let (south, north) = (a_s.min(b_s), an.max(bn));
+        if let (Bbox::Bbox3D(a), Bbox::Bbox3D(b)) = (self, other) {
+            Bbox::Bbox3D([west, south, a[2].min(b[2]), east, north, a[5].max(b[5])])
+        } else {
+            Bbox::Bbox2D([west, south, east, north])
+        }
+    }
+
+    /// The box on its first two axes, `[west, south, east, north]`.
+    fn horizontal(&self) -> [f64; 4] {
+        match *self {
+            Bbox::Bbox2D(bbox) => bbox,
+            Bbox::Bbox3D([west, south, _, east, north, _]) => [west, south, east, north],
+        }
+    }
+}
+
 impl fmt::Display for Bbox {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -87,15 +147,9 @@ impl str::FromStr for Bbox {
             return Err("Expected 4 or 6 numbers");
         }
 
-        // // check lower <= upper on axis 2
-        // if (n == 4 && numbers[1] > numbers[3]) || (n == 6 && numbers[1] > numbers[4]) {
-        //     // TODO: ensure this assumption is correct
-        //     return Err("Lower value of coordinate axis 2 must be larger than upper value!");
-        // }
-
         // check lower <= upper on axis 3
         if n == 6 && numbers[2] > numbers[5] {
-            return Err("Lower value of coordinate axis 3 must be larger than upper value!");
+            return Err("The lower value of coordinate axis 3 is above its upper value");
         }
 
         match numbers.len() {
@@ -129,6 +183,37 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
+
+    #[cfg(feature = "features")]
+    #[test]
+    fn the_extent_of_positions() {
+        let flat: [&[f64]; 3] = [&[1.0, 2.0], &[-1.0, 5.0, 7.0], &[0.0]];
+        assert_eq!(
+            Bbox::extent(flat),
+            Some(Bbox::Bbox2D([-1.0, 2.0, 1.0, 5.0]))
+        );
+        let high: [&[f64]; 2] = [&[1.0, 2.0, 3.0, 9.0], &[-1.0, 5.0, -3.0]];
+        assert_eq!(
+            Bbox::extent(high),
+            Some(Bbox::Bbox3D([-1.0, 2.0, -3.0, 1.0, 5.0, 3.0]))
+        );
+        assert_eq!(Bbox::extent(std::iter::empty()), None);
+    }
+
+    #[test]
+    fn a_union() {
+        let a = Bbox::Bbox3D([0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+        let b = Bbox::Bbox3D([2.0, 2.0, 2.0, 3.0, 3.0, 3.0]);
+        assert_eq!(a.union(&b), Bbox::Bbox3D([0.0, 0.0, 0.0, 3.0, 3.0, 3.0]));
+        let flat = Bbox::Bbox2D([0.5, 0.5, 2.5, 2.5]);
+        assert_eq!(a.union(&flat), Bbox::Bbox2D([0.0, 0.0, 2.5, 2.5]));
+        // across the antimeridian, every longitude
+        let pacific = Bbox::Bbox2D([170.0, -10.0, -170.0, 10.0]);
+        assert_eq!(
+            pacific.union(&Bbox::Bbox2D([0.0, 0.0, 10.0, 1.0])),
+            Bbox::Bbox2D([-180.0, -10.0, 180.0, 10.0])
+        );
+    }
 
     #[test]
     fn from() {
