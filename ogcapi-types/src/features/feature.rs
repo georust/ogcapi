@@ -110,13 +110,8 @@ pub struct Feature {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub place: Option<jsonfg::Geometry>,
-    /// The `GeoJSON` (WGS 84) geometry.
-    #[cfg(not(feature = "json-fg"))]
-    #[cfg_attr(feature = "utoipa", schema(schema_with = geometry))]
-    pub geometry: Geometry,
-    /// The `GeoJSON` (WGS 84) geometry, or `null`. Nullable under `json-fg` so it can be
-    /// `null` when the geometry is carried in [`place`](Feature::place).
-    #[cfg(feature = "json-fg")]
+    /// The `GeoJSON` (WGS 84) geometry, or `null` for a feature without one (RFC 7946,
+    /// section 3.2), or under `json-fg` when the geometry is carried in `place`.
     #[serde(default)]
     #[cfg_attr(feature = "utoipa", schema(schema_with = geometry))]
     pub geometry: Option<Geometry>,
@@ -187,9 +182,6 @@ impl Feature {
             coord_ref_sys: None,
             #[cfg(feature = "json-fg")]
             place: None,
-            #[cfg(not(feature = "json-fg"))]
-            geometry,
-            #[cfg(feature = "json-fg")]
             geometry: Some(geometry),
             #[cfg(feature = "stac")]
             bbox: Default::default(),
@@ -222,9 +214,7 @@ impl Feature {
     }
 }
 
-/// With `json-fg`, `geometry` is nullable, so a `Feature` has a natural empty default
-/// (null geometry, no properties). Lets callers use `..Default::default()`.
-#[cfg(feature = "json-fg")]
+/// A `Feature` without geometry and properties. Lets callers use `..Default::default()`.
 impl Default for Feature {
     fn default() -> Self {
         Feature {
@@ -232,10 +222,15 @@ impl Default for Feature {
             collection: None,
             r#type: Type::Feature,
             properties: None,
+            #[cfg(feature = "json-fg")]
             conforms_to: None,
+            #[cfg(feature = "json-fg")]
             feature_type: None,
+            #[cfg(feature = "json-fg")]
             feature_schema: None,
+            #[cfg(feature = "json-fg")]
             coord_ref_sys: None,
+            #[cfg(feature = "json-fg")]
             place: None,
             geometry: None,
             #[cfg(feature = "stac")]

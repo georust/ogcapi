@@ -57,7 +57,7 @@ impl CollectionTransactions for Db {
                 id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
                 collection text REFERENCES meta.collections(id) DEFAULT '{0}',
                 properties jsonb,
-                geom geometry(GEOMETRY, {srid}) NOT NULL,
+                geom geometry(GEOMETRY, {srid}),
                 links jsonb NOT NULL DEFAULT '[]'::jsonb,
                 assets jsonb NOT NULL DEFAULT '{{}}'::jsonb,
                 bbox jsonb

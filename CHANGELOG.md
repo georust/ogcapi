@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- BREAKING: `Feature.geometry` is an `Option`.
 - BREAKING: `Service` and `AppState` construction return a `Result`.
 - BREAKING: `Error::Exception(StatusCode, String)` is `Error::ApiException(Box<Exception>)`.
 - `ogcapi-client`'s `processes` feature no longer builds `ogcapi-processes`.
