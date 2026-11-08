@@ -6,5 +6,7 @@ The `ogcapi-processes` crate contains the [`Processor`](./src/processor.rs) trai
 
 | Process | Feature  | Description |
 | ------- | -------- | ----------- |
-| Greeter | -        | The *"Hello, World!"* process. Expects a `name` as input and returns `Hello, {name}!` |
-| Loader  | `loader` | Load vector data to PostgreSQL. |
+| Greeter | `greeter` | The *"Hello, World!"* process. Expects a `name` as input and returns `Hello, {name}!` |
+| Echo    | -         | Echoes back the inputs it receives, to verify an OGC API Processes implementation. |
+| GeoJSON loader | `geojson-loader` | Loads a GeoJSON file into a collection of a PostgreSQL database, which it replaces. |
+| GDAL loader | `gdal-loader` | Loads a layer of a file GDAL reads into a collection of a PostgreSQL database, which it replaces. |
