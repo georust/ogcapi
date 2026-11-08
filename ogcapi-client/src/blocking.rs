@@ -532,6 +532,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     #[cfg(feature = "stac")]
     fn version() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
@@ -540,6 +541,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     fn conformance() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = BlockingClient::new(endpoint).unwrap();
@@ -548,6 +550,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     fn collection() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = BlockingClient::new(endpoint).unwrap();
@@ -556,6 +559,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     fn collections() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = BlockingClient::new(endpoint).unwrap();
@@ -572,6 +576,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     #[cfg(feature = "stac")]
     fn search() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
