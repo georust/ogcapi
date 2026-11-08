@@ -6,7 +6,7 @@ use ogcapi_types::{
 
 use crate::{CollectionTransactions, FeatureTransactions};
 
-use super::Db;
+use super::{Db, items_table};
 
 #[cfg(not(feature = "stac"))]
 static ROWS: &str = "
@@ -51,10 +51,11 @@ impl FeatureTransactions for Db {
             .collection
             .as_ref()
             .context("feature.collection is required")?;
+        let table = items_table(collection_id).ok_or_else(not_found)?;
 
         let id: (String,) = sqlx::query_as(&format!(
-            r#"
-            INSERT INTO items."{collection_id}" (
+            r"
+            INSERT INTO {table} (
                 id,
                 properties,
                 geom,
@@ -64,15 +65,16 @@ impl FeatureTransactions for Db {
             ) VALUES (
                 COALESCE($1 ->> 'id', gen_random_uuid()::text),
                 $1 -> 'properties',
-                ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), (SELECT Find_SRID('items', '{collection_id}', 'geom'))),
+                ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), (SELECT Find_SRID('items', $2, 'geom'))),
                 $1 -> 'links',
                 COALESCE($1 -> 'assets', '{{}}'::jsonb),
                 $1 -> 'bbox'
             )
             RETURNING id
-            "#,
+            ",
         ))
         .bind(serde_json::to_value(feature)?)
+        .bind(collection_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -85,16 +87,20 @@ impl FeatureTransactions for Db {
         id: &str,
         crs: &Crs,
     ) -> anyhow::Result<Option<Feature>> {
+        let Some(table) = items_table(collection) else {
+            return Ok(None);
+        };
+
         let feature: Option<sqlx::types::Json<Feature>> = sqlx::query_scalar(&format!(
-            r#"
+            r"
             SELECT row_to_json(t)
             FROM (
                 SELECT {ROWS}
-                FROM items."{collection}" items JOIN meta.collections meta
+                FROM {table} items JOIN meta.collections meta
                     ON items.collection = meta.id
                 WHERE items.id = $2
             ) t
-            "#
+            "
         ))
         .bind(crs.as_srid())
         .bind(id)
@@ -105,35 +111,45 @@ impl FeatureTransactions for Db {
     }
 
     async fn update_feature(&self, feature: &Feature) -> anyhow::Result<()> {
-        sqlx::query(&format!(
-            r#"
-            UPDATE items."{0}"
+        let collection_id = feature
+            .collection
+            .as_ref()
+            .context("feature.collection is required")?;
+        let table = items_table(collection_id).ok_or_else(not_found)?;
+
+        let updated = sqlx::query(&format!(
+            r"
+            UPDATE {table}
             SET
                 properties = $1 -> 'properties',
                 geom = ST_GeomFromGeoJSON($1 -> 'geometry'),
                 links = $1 -> 'links',
                 assets = COALESCE($1 -> 'assets', '{{}}'::jsonb)
             WHERE id = $1 ->> 'id'
-            "#,
-            feature
-                .collection
-                .as_ref()
-                .context("feature.collection is required")?
+            "
         ))
         .bind(serde_json::to_value(feature)?)
         .execute(&self.pool)
         .await?;
 
+        if updated.rows_affected() == 0 {
+            return Err(not_found());
+        }
+
         Ok(())
     }
 
     async fn delete_feature(&self, collection: &str, id: &str) -> anyhow::Result<()> {
-        sqlx::query(&format!(
-            r#"DELETE FROM items."{collection}" WHERE id = $1"#
-        ))
-        .bind(id)
-        .execute(&self.pool)
-        .await?;
+        let table = items_table(collection).ok_or_else(not_found)?;
+
+        let deleted = sqlx::query(&format!("DELETE FROM {table} WHERE id = $1"))
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        if deleted.rows_affected() == 0 {
+            return Err(not_found());
+        }
 
         Ok(())
     }
@@ -143,6 +159,8 @@ impl FeatureTransactions for Db {
         collection_id: &str,
         query: &Query,
     ) -> anyhow::Result<FeatureCollection> {
+        let table = items_table(collection_id).ok_or_else(not_found)?;
+
         let mut where_conditions = vec!["TRUE".to_owned()];
 
         // bbox
@@ -163,14 +181,13 @@ impl FeatureTransactions for Db {
                 Some(collection) => match collection.storage_crs.map(|crs| crs.as_srid()) {
                     Some(srid) => srid.context("cannot determine SRID")?,
                     None => {
-                        sqlx::query_scalar(&format!(
-                            "SELECT Find_SRID('items', '{collection_id}', 'geom')"
-                        ))
-                        .fetch_one(&self.pool)
-                        .await?
+                        sqlx::query_scalar("SELECT Find_SRID('items', $1, 'geom')")
+                            .bind(collection_id)
+                            .fetch_one(&self.pool)
+                            .await?
                     }
                 },
-                None => return Err(Exception::new_from_status(404).into()),
+                None => return Err(not_found()),
             };
 
             // TODO: handle antimeridian (lower > upper on axis 1)
@@ -257,35 +274,26 @@ impl FeatureTransactions for Db {
             ));
         }
 
-        // kv
-        for (k, v) in &query.additional_parameters {
-            where_conditions.push(format!(
-                r"
-                CASE
-                    WHEN properties ? '{k}' THEN (
-                        CASE
-                            WHEN jsonb_typeof(properties -> '{k}') = 'number'
-                            THEN RTRIM(properties ->> '{k}', '.0') = RTRIM('{v}', '.0')
-                            ELSE properties ->> '{k}' = '{v}'
-                        END
-                    ) 
-                    ELSE TRUE
-                END
-                "
-            ));
-        }
-
-        let conditions = where_conditions.join(" AND ");
+        // kv, each key and value bound, from placeholder `first` on
+        let kv: Vec<(&String, &String)> = query.additional_parameters.iter().collect();
+        let conditions = |first: usize| {
+            let mut conditions = where_conditions.clone();
+            for i in 0..kv.len() {
+                let (k, v) = (first + 2 * i, first + 2 * i + 1);
+                conditions.push(format!(
+                    "CASE WHEN properties ? ${k} THEN properties ->> ${k} = ${v} ELSE TRUE END"
+                ));
+            }
+            conditions.join(" AND ")
+        };
 
         // count
-        let number_matched: (i64,) = sqlx::query_as(&format!(
-            r#"
-            SELECT count(*) FROM items."{collection_id}"
-            WHERE {conditions}
-            "#,
-        ))
-        .fetch_one(&self.pool)
-        .await?;
+        let sql = format!("SELECT count(*) FROM {table} WHERE {}", conditions(1));
+        let mut count = sqlx::query_as(&sql);
+        for (k, v) in &kv {
+            count = count.bind(k.as_str()).bind(v.as_str());
+        }
+        let number_matched: (i64,) = count.fetch_one(&self.pool).await?;
 
         // srid
         let srid = query
@@ -294,26 +302,29 @@ impl FeatureTransactions for Db {
             .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid);
 
         // fetch
-        let features: Option<sqlx::types::Json<Vec<Feature>>> = sqlx::query_scalar(&format!(
-            r#"
+        let sql = format!(
+            r"
             SELECT array_to_json(array_agg(row_to_json(t)))
             FROM (
                 SELECT {ROWS}
-                FROM items."{collection_id}" items JOIN meta.collections meta
+                FROM {table} items JOIN meta.collections meta
                     ON items.collection = meta.id
-                WHERE {conditions}
+                WHERE {}
                 LIMIT {}
                 OFFSET {}
             ) t
-            "#,
+            ",
+            conditions(2),
             query
                 .limit
                 .map_or_else(|| String::from("NULL"), |l| l.to_string()),
             query.offset.unwrap_or(0)
-        ))
-        .bind(srid)
-        .fetch_one(&self.pool)
-        .await?;
+        );
+        let mut fetch = sqlx::query_scalar(&sql).bind(srid);
+        for (k, v) in &kv {
+            fetch = fetch.bind(k.as_str()).bind(v.as_str());
+        }
+        let features: Option<sqlx::types::Json<Vec<Feature>>> = fetch.fetch_one(&self.pool).await?;
 
         let features = features.map(|f| f.0).unwrap_or_default();
         let mut fc = FeatureCollection::new(features);
@@ -321,4 +332,9 @@ impl FeatureTransactions for Db {
 
         Ok(fc)
     }
+}
+
+/// A collection or feature that doesn't exist.
+fn not_found() -> anyhow::Error {
+    Exception::new_from_status(404).into()
 }

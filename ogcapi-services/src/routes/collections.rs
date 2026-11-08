@@ -179,6 +179,10 @@ async fn read(
     responses(
         (status = 204, description = "Successfuly updataed, no content."),
         (
+            status = 404, description = "The collection does not exist.",
+            body = Exception, example = json!(Exception::new_from_status(404))
+        ),
+        (
             status = 400, description = "General HTTP error response.", 
             body = Exception, example = json!(Exception::new_from_status(400))
         ),
@@ -212,6 +216,10 @@ async fn update(
     request_body = Collection,
     responses(
         (status = 204, description = "Successfuly deleted, no content."),
+        (
+            status = 404, description = "The collection does not exist.",
+            body = Exception, example = json!(Exception::new_from_status(404))
+        ),
         (
             status = 400, description = "General HTTP error response.", 
             body = Exception, example = json!(Exception::new_from_status(400))

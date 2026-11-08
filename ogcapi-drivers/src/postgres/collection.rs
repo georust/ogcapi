@@ -1,11 +1,11 @@
 use anyhow::Context;
 use sqlx::types::Json;
 
-use ogcapi_types::common::{Collection, Collections, Crs, Query};
+use ogcapi_types::common::{Collection, Collections, Crs, Exception, Query};
 
 use crate::CollectionTransactions;
 
-use super::Db;
+use super::{Db, items_table};
 
 const COLLECTION: &str = r"
 CASE
@@ -42,11 +42,18 @@ impl CollectionTransactions for Db {
             .map_or_else(|| Crs::default2d().as_srid(), Crs::as_srid)
             .context("cannot determine SRID")?;
 
+        let table = items_table(&collection.id).ok_or_else(|| {
+            Exception::new_from_status(400).detail(
+                "a collection id holds no quote, backslash or control character \
+                and at most 63 bytes",
+            )
+        })?;
+
         let mut tx = self.pool.begin().await?;
 
         sqlx::query(&format!(
-            r#"
-            CREATE TABLE items."{0}" (
+            r"
+            CREATE TABLE {table} (
                 id text PRIMARY KEY DEFAULT gen_random_uuid()::text,
                 collection text REFERENCES meta.collections(id) DEFAULT '{0}',
                 properties jsonb,
@@ -55,32 +62,17 @@ impl CollectionTransactions for Db {
                 assets jsonb NOT NULL DEFAULT '{{}}'::jsonb,
                 bbox jsonb
             )
-            "#,
+            ",
             collection.id
         ))
         .execute(&mut *tx)
         .await?;
 
-        sqlx::query(&format!(
-            r#"CREATE INDEX ON items."{}" USING btree (collection)"#,
-            collection.id
-        ))
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query(&format!(
-            r#"CREATE INDEX ON items."{}" USING gin (properties)"#,
-            collection.id
-        ))
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query(&format!(
-            r#"CREATE INDEX ON items."{}" USING gist (geom)"#,
-            collection.id
-        ))
-        .execute(&mut *tx)
-        .await?;
+        for index in ["btree (collection)", "gin (properties)", "gist (geom)"] {
+            sqlx::query(&format!("CREATE INDEX ON {table} USING {index}"))
+                .execute(&mut *tx)
+                .await?;
+        }
 
         sqlx::query("INSERT INTO meta.collections ( id, collection ) VALUES ( $1, $2 )")
             .bind(&collection.id)
@@ -110,26 +102,38 @@ impl CollectionTransactions for Db {
     }
 
     async fn update_collection(&self, collection: &Collection) -> anyhow::Result<()> {
-        sqlx::query("UPDATE meta.collections SET collection = $2 WHERE id = $1")
+        let updated = sqlx::query("UPDATE meta.collections SET collection = $2 WHERE id = $1")
             .bind(&collection.id)
             .bind(Json(collection))
             .execute(&self.pool)
             .await?;
 
+        if updated.rows_affected() == 0 {
+            return Err(Exception::new_from_status(404).into());
+        }
+
         Ok(())
     }
 
     async fn delete_collection(&self, id: &str) -> anyhow::Result<()> {
+        let Some(table) = items_table(id) else {
+            return Err(Exception::new_from_status(404).into());
+        };
+
         let mut tx = self.pool.begin().await?;
 
-        sqlx::query(&format!(r#"DROP TABLE IF EXISTS items."{id}""#))
+        sqlx::query(&format!("DROP TABLE IF EXISTS {table}"))
             .execute(&mut *tx)
             .await?;
 
-        sqlx::query("DELETE FROM meta.collections WHERE id = $1")
+        let deleted = sqlx::query("DELETE FROM meta.collections WHERE id = $1")
             .bind(id)
-            .fetch_optional(&mut *tx)
+            .execute(&mut *tx)
             .await?;
+
+        if deleted.rows_affected() == 0 {
+            return Err(Exception::new_from_status(404).into());
+        }
 
         tx.commit().await?;
 
