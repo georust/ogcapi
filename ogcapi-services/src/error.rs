@@ -104,6 +104,6 @@ impl From<Error> for Exception {
             }
         };
 
-        Exception::new(status.as_u16()).detail(message)
+        Exception::new_from_status(status.as_u16()).detail(message)
     }
 }
