@@ -85,7 +85,7 @@ async fn query(
             Link::new(
                 url.join(&format!(
                     "items/{}",
-                    feature.id.as_ref().expect("Feature should have id")
+                    feature.id.as_ref().context("Feature should have id")?
                 ))?,
                 SELF,
             )
