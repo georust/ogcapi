@@ -4609,6 +4609,20 @@ expression: api
             },
             "description": "General HTTP error response."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": 404,
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Exception"
+                }
+              }
+            },
+            "description": "The collection or the feature does not exist."
+          },
           "500": {
             "content": {
               "application/json": {
@@ -4746,6 +4760,20 @@ expression: api
               }
             },
             "description": "General HTTP error response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": 404,
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Exception"
+                }
+              }
+            },
+            "description": "The collection or the feature does not exist."
           },
           "500": {
             "content": {
