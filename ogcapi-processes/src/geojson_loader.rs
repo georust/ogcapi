@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use geojson::FeatureCollection;
 use schemars::{JsonSchema, schema_for};
 use serde::Deserialize;
@@ -194,11 +194,8 @@ impl Processor for GeoJsonLoader {
                     None => (i * chunk_size + ii).to_string(),
                 });
                 properties.push(feature.properties.clone().map(Json));
-                let geometry = feature
-                    .geometry
-                    .as_ref()
-                    .with_context(|| format!("the feature {} has no geometry", ids[ii]))?;
-                geometries.push(Json(geometry.clone()));
+                // a feature without a geometry keeps none
+                geometries.push(feature.geometry.clone().map(Json));
             }
 
             sqlx::query(&format!(

@@ -65,7 +65,7 @@ impl FeatureTransactions for Db {
             ) VALUES (
                 COALESCE($1 ->> 'id', gen_random_uuid()::text),
                 $1 -> 'properties',
-                ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), 4326), (SELECT Find_SRID('items', $2, 'geom'))),
+                ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($1 -> 'geometry', 'null')), 4326), (SELECT Find_SRID('items', $2, 'geom'))),
                 $1 -> 'links',
                 COALESCE($1 -> 'assets', '{{}}'::jsonb),
                 $1 -> 'bbox'
@@ -122,7 +122,7 @@ impl FeatureTransactions for Db {
             UPDATE {table}
             SET
                 properties = $1 -> 'properties',
-                geom = ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($1 -> 'geometry'), 4326), (SELECT Find_SRID('items', $2, 'geom'))),
+                geom = ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($1 -> 'geometry', 'null')), 4326), (SELECT Find_SRID('items', $2, 'geom'))),
                 links = $1 -> 'links',
                 assets = COALESCE($1 -> 'assets', '{{}}'::jsonb)
             WHERE id = $1 ->> 'id'
@@ -194,7 +194,7 @@ impl FeatureTransactions for Db {
             // TODO: handle antimeridian (lower > upper on axis 1)
             let intersection = match bbox {
                 Bbox::Bbox2D(bbox) => format!(
-                    "ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}, {}, {}, {}), {storage_srid}))",
+                    "(geom IS NULL OR ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({}, {}, {}, {}, {}), {storage_srid})))",
                     bbox[order[0]],
                     bbox[order[1]],
                     bbox[order[2]],
@@ -203,7 +203,7 @@ impl FeatureTransactions for Db {
                 ),
                 Bbox::Bbox3D(bbox) => format!(
                     // FIXME: ensure proper height/box transformation handling
-                    r"ST_3DIntersects(geom, ST_Envelope(ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY[
+                    r"(geom IS NULL OR ST_3DIntersects(geom, ST_Envelope(ST_Transform(ST_SetSRID(ST_MakeLine(ARRAY[
                         ST_MakePoint({x1}, {y1}, {z1}), 
                         ST_MakePoint({x2}, {y1}, {z1}),
                         ST_MakePoint({x1}, {y2}, {z1}), 
@@ -212,7 +212,7 @@ impl FeatureTransactions for Db {
                         ST_MakePoint({x2}, {y1}, {z2}),
                         ST_MakePoint({x1}, {y2}, {z2}), 
                         ST_MakePoint({x2}, {y2}, {z2})
-                    ]), {srid}), {storage_srid})))",
+                    ]), {srid}), {storage_srid}))))",
                     x1 = bbox[order[0]],
                     y1 = bbox[order[1]],
                     z1 = bbox[2],
