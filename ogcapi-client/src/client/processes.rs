@@ -10,15 +10,8 @@ impl Client {
         process_id: &str,
         execute: &Execute,
     ) -> Result<ProcessResponseBody, Error> {
-        let url = format!("{}processes/{}/execution", self.endpoint, process_id);
-
-        let response = self
-            .client
-            .post(url)
-            .json(execute)
-            .send()
-            .await
-            .and_then(reqwest::Response::error_for_status)?;
+        let url = self.url(&["processes", process_id, "execution"])?;
+        let response = crate::client::send(self.client.post(url).json(execute)).await?;
 
         match response.status().as_u16() {
             200 => match execute.response {

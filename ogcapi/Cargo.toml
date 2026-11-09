@@ -22,15 +22,17 @@ default = [
     "features",
     "processes",
     "tiles",
+    # drivers
+    "postgres",
     # integrations
     "utoipa",
 ]
 
 # components
-types = ["ogcapi-types"]
-client = ["ogcapi-client"]
-drivers = ["ogcapi-drivers"]
-services = ["ogcapi-services"]
+types = ["dep:ogcapi-types"]
+client = ["dep:ogcapi-client"]
+drivers = ["dep:ogcapi-drivers"]
+services = ["dep:ogcapi-services"]
 
 # standards
 common = [
@@ -50,7 +52,7 @@ processes = [
     "ogcapi-client?/processes",
     "ogcapi-drivers?/processes",
     "ogcapi-services?/processes",
-    "ogcapi-processes",
+    "dep:ogcapi-processes",
 ]
 stac = [
     "ogcapi-types?/stac",
@@ -78,7 +80,9 @@ utoipa = ["ogcapi-types?/utoipa"]
 blocking = ["ogcapi-client?/blocking"]
 
 # drivers
-postgres = ["drivers", "ogcapi-drivers/postgres"]
+object = ["drivers", "ogcapi-drivers/object"]
+s3 = ["object", "ogcapi-drivers/s3"]
+postgres = ["drivers", "ogcapi-drivers/postgres", "ogcapi-services?/postgres"]
 
 # processes
 greeter = ["processes", "ogcapi-processes/greeter"]

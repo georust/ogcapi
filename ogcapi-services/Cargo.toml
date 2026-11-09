@@ -11,26 +11,35 @@ keywords.workspace = true
 include = ["/src", "/assets"]
 
 [features]
-default = ["common", "edr", "features", "processes", "tiles"]
+default = ["common", "edr", "features", "processes", "tiles", "postgres"]
 
-# standads
+# drivers
+postgres = ["ogcapi-drivers/postgres"]
+
+# standards
 common = ["ogcapi-types/common", "ogcapi-drivers/common"]
 features = ["ogcapi-types/features", "ogcapi-drivers/features"]
 edr = ["ogcapi-types/edr", "ogcapi-drivers/edr"]
 processes = [
     "ogcapi-types/processes",
     "ogcapi-drivers/processes",
-    "ogcapi-processes",
-    "schemars",
-    "mail-builder",
+    "dep:ogcapi-processes",
+    "dep:schemars",
+    "dep:mail-builder",
 ]
 stac = ["ogcapi-types/stac", "ogcapi-drivers/stac"]
 styles = ["ogcapi-types/styles", "ogcapi-drivers/styles"]
-tiles = ["ogcapi-types/tiles", "ogcapi-drivers/tiles", "dashmap", "reqwest"]
+tiles = ["ogcapi-types/tiles", "ogcapi-drivers/tiles", "dep:dashmap", "dep:reqwest"]
+
+# the server reads its drivers from `DATABASE_URL`
+[[bin]]
+name = "ogcapi-services"
+path = "src/main.rs"
+required-features = ["postgres"]
 
 [dependencies]
 anyhow = { workspace = true }
-axum = { version = "0.8.8", features = ["multipart"] }
+axum = "0.8.8"
 axum-extra = { version = "0.12.5", features = ["typed-header"] }
 clap = { version = "4.6", features = ["derive", "env"] }
 dashmap = { version = "6.1", optional = true }
@@ -45,7 +54,7 @@ reqwest = { version = "0.13.2", optional = true, default-features = false, featu
 ] }
 schemars = { version = "1.2", optional = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["float_roundtrip"] }
 serde_qs = { workspace = true }
 serde_yaml = "0.9.33"
 thiserror = { workspace = true }
@@ -75,9 +84,7 @@ utoipa-swagger-ui = { version = "10.0", features = ["axum"] }
 ogcapi-types = { path = "../ogcapi-types", version = "0.3", default-features = false, features = [
     "utoipa",
 ] }
-ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", default-features = false, features = [
-    "postgres",
-] }
+ogcapi-drivers = { path = "../ogcapi-drivers", version = "0.3", default-features = false }
 ogcapi-processes = { path = "../ogcapi-processes", version = "0.3", optional = true, default-features = false }
 
 [dev-dependencies]

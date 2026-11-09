@@ -1,4 +1,4 @@
-g# ogcapi
+# ogcapi
 
 [![Documentation](https://docs.rs/ogcapi/badge.svg)](https://docs.rs/ogcapi)
 [![Crate](https://img.shields.io/crates/v/ogcapi.svg)](https://crates.io/crates/ogcapi)
@@ -15,7 +15,7 @@ The code is organized in modules, respectively crates:
 | `types`        | Types as defined in various OGC API standards as well as STAC with `serde` support.                    |
 | `client`       | Client to access HTTP endpoints of OGC API services as well as STAC wrapping `reqwest`                 |
 | `services`     | Server implementation of various OGC API services based on `axum`.                                     |
-| `drivers`      | Drivers for different data provider backends, currently mainly PostgreSQL with PostGIS through `sqlx`. |
+| `drivers`      | Drivers for different data provider backends: PostgreSQL with PostGIS through `sqlx`, and an object store (in memory, local files or S3) laid out as a static STAC catalog. |
 | `processes`    | `Processor` trait and implementations.                                                                 |
 
 These modules are reexported within the `ogcapi` crate.
@@ -28,17 +28,17 @@ This will take a while and use quite some disk space
 # Setup the database
 podman compose up --build
 
-# Import administrative bounaries
-podman exec -ti ogcapi cargo run -p data-loader -- \
+# Import administrative boundaries
+podman exec -ti ogcapi cargo run -p data-loader --features postgres -- \
     --input data/ne_110m_admin_0_countries.geojson \
     --collection countries \
-    client --public-url http://localhost:8484
+    db
 
 # Run app
 podman exec -ti ogcapi cargo run -p demo-service
 ```
 
-Open <http://localhost:8484/> were you will find the `Landing Page`.
+Open <http://localhost:8484/> where you will find the `Landing Page`.
 
 ## Developing
 
@@ -56,17 +56,17 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 ### Setup
 
 ```bash
-# Run services
-podman compose up db minio minio-mc -d
+# Run the database, until it is healthy
+podman compose up db -d --wait
 
-# Import administrative bounaries
+# Start service
+cargo run -p demo-service &
+
+# Import administrative boundaries through the client
 cargo run -p data-loader -- \
     --input data/ne_110m_admin_0_countries.geojson \
     --collection countries \
-    client --public-url http://localhost:8484
-
-# Start service 
-cargo run -p demo-service
+    client --public-url http://localhost:8484/
 
 # Run tests
 cargo test --workspace --all-features --all-targets

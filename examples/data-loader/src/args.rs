@@ -21,6 +21,13 @@ pub struct Args {
     #[clap(long)]
     pub s_srs: Option<u32>,
 
+    /// Object store to upload the input to, a STAC asset of the collection
+    /// beside its description: `file:///<directory>` or `s3://<bucket>/<path>`
+    /// (set up by `AWS_` variables)
+    #[cfg(feature = "stac")]
+    #[clap(long, env = "STAC_ASSETS_URL")]
+    pub assets: Option<Url>,
+
     /// Loader, either `client` or `db` if features enabled
     #[command(subcommand)]
     pub command: Commands,
@@ -78,6 +85,8 @@ impl Args {
             collection: collection.to_string(),
             filter: None,
             s_srs: None,
+            #[cfg(feature = "stac")]
+            assets: None,
             command,
         }
     }

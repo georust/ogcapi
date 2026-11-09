@@ -11,15 +11,18 @@ The `ogcapi-client` crate provides a client for accessing geospatial datasets se
 
 ## Example
 
+The asynchronous `Client` is the default; this example uses the `BlockingClient` of the
+`blocking` feature, and the `stac` feature for its search.
+
 ```rust
-use ogcapi_client::Client;
+use ogcapi_client::BlockingClient;
 use ogcapi_types::common::Bbox;
 use ogcapi_types::stac::SearchParams;
 
 fn main() {
     // Setup a client for a given STAC endpoint
     let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
-    let client = Client::new(endpoint).unwrap();
+    let client = BlockingClient::new(endpoint).unwrap();
 
     // Fetch root catalog and print `id`
     let root = client.root().unwrap();
@@ -34,7 +37,7 @@ fn main() {
     let params = SearchParams::new()
         .with_bbox(bbox)
         .with_collections(["ch.swisstopo.swissalti3d"].as_slice());
-    let items = client.search(params).unwrap();
+    let items = client.search(&params).unwrap();
     println!("Found {} items!", items.count());
 }
 ```

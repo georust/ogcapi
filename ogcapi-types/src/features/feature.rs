@@ -2,7 +2,6 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
-#[cfg(feature = "stac")]
 use crate::common::Bbox;
 
 #[cfg(feature = "movingfeatures")]
@@ -14,7 +13,7 @@ use crate::movingfeatures::{
 #[cfg(feature = "movingfeatures")]
 use chrono::{DateTime, Utc};
 
-use geojson::Geometry;
+use geojson::{Geometry, GeometryValue, Position};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -44,7 +43,7 @@ impl Display for FeatureId {
     }
 }
 
-/// Geometry schema.
+/// Geometry schema: a `GeoJSON` geometry, or `null` (RFC 7946, section 3.2).
 ///
 /// # Panics
 ///
@@ -52,8 +51,14 @@ impl Display for FeatureId {
 #[cfg(feature = "utoipa")]
 #[must_use]
 pub fn geometry() -> utoipa::openapi::Schema {
-    serde_json::from_str(include_str!("../../assets/schema/Geometry.json"))
-        .expect("to be valid JSON")
+    use utoipa::openapi::schema::{Object, OneOfBuilder, Schema, Type};
+
+    let geometry: Schema = serde_json::from_str(include_str!("../../assets/schema/Geometry.json"))
+        .expect("to be valid JSON");
+    OneOfBuilder::new()
+        .item(geometry)
+        .item(Object::builder().schema_type(Type::Null))
+        .into()
 }
 
 /// Abstraction of real world phenomena (ISO 19101-1:2014)
@@ -110,15 +115,10 @@ pub struct Feature {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "utoipa", schema(value_type = Object))]
     pub place: Option<jsonfg::Geometry>,
-    /// The `GeoJSON` (WGS 84) geometry.
-    #[cfg(not(feature = "json-fg"))]
-    #[cfg_attr(feature = "utoipa", schema(schema_with = geometry))]
-    pub geometry: Geometry,
-    /// The `GeoJSON` (WGS 84) geometry, or `null`. Nullable under `json-fg` so it can be
-    /// `null` when the geometry is carried in [`place`](Feature::place).
-    #[cfg(feature = "json-fg")]
+    /// The `GeoJSON` (WGS 84) geometry, or `null` for a feature without one (RFC 7946,
+    /// section 3.2), or under `json-fg` when the geometry is carried in `place`.
     #[serde(default)]
-    #[cfg_attr(feature = "utoipa", schema(schema_with = geometry))]
+    #[cfg_attr(feature = "utoipa", schema(schema_with = geometry, required = true))]
     pub geometry: Option<Geometry>,
     /// Bounding Box of the asset represented by this Item, formatted according to RFC 7946, section 5.
     #[cfg(feature = "stac")]
@@ -170,46 +170,12 @@ pub struct Feature {
 }
 
 impl Feature {
+    /// A feature of `geometry`, with nothing else set.
     #[must_use]
     pub fn new(geometry: Geometry) -> Self {
         Feature {
-            id: Default::default(),
-            collection: Default::default(),
-            r#type: Default::default(),
-            properties: Default::default(),
-            #[cfg(feature = "json-fg")]
-            conforms_to: None,
-            #[cfg(feature = "json-fg")]
-            feature_type: None,
-            #[cfg(feature = "json-fg")]
-            feature_schema: None,
-            #[cfg(feature = "json-fg")]
-            coord_ref_sys: None,
-            #[cfg(feature = "json-fg")]
-            place: None,
-            #[cfg(not(feature = "json-fg"))]
-            geometry,
-            #[cfg(feature = "json-fg")]
             geometry: Some(geometry),
-            #[cfg(feature = "stac")]
-            bbox: Default::default(),
-            links: Default::default(),
-            #[cfg(feature = "stac")]
-            stac_version: crate::stac::stac_version(),
-            #[cfg(feature = "stac")]
-            stac_extensions: Default::default(),
-            #[cfg(feature = "stac")]
-            assets: Default::default(),
-            #[cfg(feature = "movingfeatures")]
-            time: Default::default(),
-            #[cfg(feature = "movingfeatures")]
-            crs: Default::default(),
-            #[cfg(feature = "movingfeatures")]
-            trs: Default::default(),
-            #[cfg(feature = "movingfeatures")]
-            temporal_geometry: Default::default(),
-            #[cfg(feature = "movingfeatures")]
-            temporal_properties: Default::default(),
+            ..Default::default()
         }
     }
 
@@ -222,9 +188,7 @@ impl Feature {
     }
 }
 
-/// With `json-fg`, `geometry` is nullable, so a `Feature` has a natural empty default
-/// (null geometry, no properties). Lets callers use `..Default::default()`.
-#[cfg(feature = "json-fg")]
+/// A `Feature` without geometry and properties. Lets callers use `..Default::default()`.
 impl Default for Feature {
     fn default() -> Self {
         Feature {
@@ -232,10 +196,15 @@ impl Default for Feature {
             collection: None,
             r#type: Type::Feature,
             properties: None,
+            #[cfg(feature = "json-fg")]
             conforms_to: None,
+            #[cfg(feature = "json-fg")]
             feature_type: None,
+            #[cfg(feature = "json-fg")]
             feature_schema: None,
+            #[cfg(feature = "json-fg")]
             coord_ref_sys: None,
+            #[cfg(feature = "json-fg")]
             place: None,
             geometry: None,
             #[cfg(feature = "stac")]
@@ -300,5 +269,63 @@ impl Feature {
             self.conforms_to = Some(vec![jsonfg::conformance::CORE.to_owned()]);
         }
         self
+    }
+}
+
+impl Bbox {
+    /// The box of `geometry`'s positions, those of a collection's members
+    /// too; `None` for a geometry of none.
+    #[must_use]
+    pub fn of_geometry(geometry: &Geometry) -> Option<Bbox> {
+        Bbox::extent(positions(geometry).map(Position::as_slice))
+    }
+}
+
+/// The positions of `geometry`, those of a collection's members too.
+fn positions(geometry: &Geometry) -> Box<dyn Iterator<Item = &Position> + '_> {
+    match &geometry.value {
+        GeometryValue::Point { coordinates } => Box::new(std::iter::once(coordinates)),
+        GeometryValue::MultiPoint { coordinates } | GeometryValue::LineString { coordinates } => {
+            Box::new(coordinates.iter())
+        }
+        GeometryValue::MultiLineString { coordinates } | GeometryValue::Polygon { coordinates } => {
+            Box::new(coordinates.iter().flatten())
+        }
+        GeometryValue::MultiPolygon { coordinates } => {
+            Box::new(coordinates.iter().flatten().flatten())
+        }
+        GeometryValue::GeometryCollection { geometries } => {
+            Box::new(geometries.iter().flat_map(positions))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use geojson::Geometry;
+
+    use super::{Bbox, positions};
+
+    #[test]
+    fn positions_of_nested_collections() {
+        let geometry: Geometry = serde_json::from_str(
+            r#"{"type": "GeometryCollection", "geometries": [
+                {"type": "Point", "coordinates": [1, 2]},
+                {"type": "GeometryCollection", "geometries": [
+                    {"type": "Polygon", "coordinates": [[[0, 0], [1, 0], [0, 1], [0, 0]]]}
+                ]}
+            ]}"#,
+        )
+        .unwrap();
+        let all: Vec<&[f64]> = positions(&geometry)
+            .map(geojson::Position::as_slice)
+            .collect();
+        assert_eq!(all.len(), 5);
+        assert_eq!(all[0], [1.0, 2.0]);
+        assert_eq!(all[4], [0.0, 0.0]);
+        assert_eq!(
+            Bbox::of_geometry(&geometry),
+            Some(Bbox::Bbox2D([0.0, 0.0, 1.0, 2.0]))
+        );
     }
 }

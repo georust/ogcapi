@@ -570,12 +570,14 @@ pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
 
     write_lock(&state.conformance).extend(&CONFORMANCE);
 
-    // Setup tile matrix sets
-    let tms_map = DashMap::new();
-    let web_mercartor_quad: TileMatrixSet =
-        serde_json::from_slice(WEB_MERCARTOR_QUAD).expect("parse tms");
-    tms_map.insert(web_mercartor_quad.id.clone(), web_mercartor_quad);
-    TMS.set(Arc::new(tms_map)).expect("set `TMS` content");
+    // Setup tile matrix sets, once for every service
+    TMS.get_or_init(|| {
+        let tms_map = DashMap::new();
+        let web_mercartor_quad: TileMatrixSet =
+            serde_json::from_slice(WEB_MERCARTOR_QUAD).expect("parse tms");
+        tms_map.insert(web_mercartor_quad.id.clone(), web_mercartor_quad);
+        Arc::new(tms_map)
+    });
 
     OpenApiRouter::new()
         .routes(routes!(tile_matrix_sets))

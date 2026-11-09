@@ -16,7 +16,7 @@ use ogcapi_types::{
 use crate::{
     AppState, Result,
     extractors::{Qs, RemoteUrl},
-    util::write_lock,
+    util::{url_replace_segments, write_lock},
 };
 
 const CONFORMANCE: [&str; 6] = [
@@ -81,15 +81,14 @@ async fn query(
         .await?;
 
     for feature in &mut fc.features {
+        let id = feature
+            .id
+            .as_ref()
+            .context("Feature should have id")?
+            .to_string();
         feature.links = vec![
-            Link::new(
-                url.join(&format!(
-                    "items/{}",
-                    feature.id.as_ref().expect("Feature should have id")
-                ))?,
-                SELF,
-            )
-            .mediatype(GEO_JSON),
+            Link::new(url_replace_segments(url.clone(), 1, &["items", &id])?, SELF)
+                .mediatype(GEO_JSON),
         ];
     }
 

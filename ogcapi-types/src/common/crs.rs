@@ -1,4 +1,5 @@
 use std::{
+    f64::consts::PI,
     fmt,
     str::{self, FromStr},
 };
@@ -219,8 +220,146 @@ impl FromStr for Authority {
     }
 }
 
+/// The radius of the sphere of Web Mercator (EPSG:3857), the semi-major axis
+/// of WGS 84, in meters.
+const EARTH_RADIUS: f64 = 6_378_137.0;
+
+/// How CRS84 coordinates map to those of a coordinate reference system, for
+/// CRS84 itself and Web Mercator (EPSG:3857). Web Mercator's are PROJ's
+/// computation: its `webmerc` (the spherical formulas of merc.cpp), with its
+/// longitudes wrapped (`adjlon`) and its degrees converted (`unitconvert`),
+/// equal to the bit where the platform's math library rounds as PROJ's does
+/// and a few ulps apart where it doesn't (nanometers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Projection {
+    Crs84,
+    WebMercator,
+}
+
+impl Projection {
+    /// The coordinates of a CRS84 longitude and latitude. Within 1e-10 rad of
+    /// a pole, which PROJ refuses, Web Mercator's northing is finite, far
+    /// beyond its square.
+    #[must_use]
+    pub fn forward(self, lon: f64, lat: f64) -> (f64, f64) {
+        match self {
+            Projection::Crs84 => (lon, lat),
+            Projection::WebMercator => (
+                EARTH_RADIUS * adjlon(lon.to_radians()),
+                EARTH_RADIUS * lat.to_radians().tan().asinh(),
+            ),
+        }
+    }
+
+    /// The CRS84 longitude and latitude of coordinates.
+    #[must_use]
+    pub fn inverse(self, x: f64, y: f64) -> (f64, f64) {
+        match self {
+            Projection::Crs84 => (x, y),
+            // times the reciprocal of the radius, and divided by a degree's
+            // radians rather than `to_degrees`, as PROJ rounds
+            Projection::WebMercator => (
+                adjlon(x * (1.0 / EARTH_RADIUS)) / (PI / 180.0),
+                (y * (1.0 / EARTH_RADIUS)).sinh().atan() / (PI / 180.0),
+            ),
+        }
+    }
+
+    /// The extent of the coordinates, `[min_x, min_y, max_x, max_y]`.
+    #[must_use]
+    pub fn extent(self) -> [f64; 4] {
+        match self {
+            Projection::Crs84 => [-180.0, -90.0, 180.0, 90.0],
+            Projection::WebMercator => {
+                let edge = EARTH_RADIUS * PI;
+                [-edge, -edge, edge, edge]
+            }
+        }
+    }
+}
+
+/// A longitude in radians within [-π, π], as PROJ's `adjlon` wraps it, one
+/// a little beyond (1e-12) kept as it is.
+fn adjlon(lon: f64) -> f64 {
+    if lon.abs() < PI + 1e-12 {
+        return lon;
+    }
+    let lon = lon + PI;
+    lon - 2.0 * PI * (lon / (2.0 * PI)).floor() - PI
+}
+
+impl Crs {
+    /// The projection from CRS84 to this coordinate reference system, CRS84
+    /// (`CRS84h` on its first two axes) or Web Mercator; `None` for another.
+    #[must_use]
+    pub fn projection(&self) -> Option<Projection> {
+        match (&self.authority, self.code.as_str()) {
+            (Authority::OGC, "CRS84" | "CRS84h") => Some(Projection::Crs84),
+            (Authority::EPSG, "3857") => Some(Projection::WebMercator),
+            _ => None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::Projection;
+
+    #[test]
+    fn web_mercator_as_proj() {
+        let web_mercator = Projection::WebMercator;
+        for ((lon, lat), (x, y), (back_lon, back_lat)) in [
+            (
+                (7.43861, 46.95108),
+                (828_062.277_409_752_7, 5_934_092.735_651_646),
+                (7.43861, 46.95108),
+            ),
+            (
+                (-180.0, 81.25),
+                (-20_037_508.342_789_244, 16_394_199.262_074_44),
+                (-180.0, 81.25),
+            ),
+            (
+                (0.0, 89.999_999),
+                (0.0, 118_358_352.966_090_25),
+                (0.0, 89.999_999),
+            ),
+            (
+                (179.999_999_999_9, -45.0),
+                (20_037_508.342_778_113, -5_621_521.486_192_066),
+                (179.999_999_999_9, -44.999_999_999_999_99),
+            ),
+        ] {
+            let near = |(a, b): (f64, f64), (c, d): (f64, f64)| {
+                let close = |u: f64, v: f64| (u - v).abs() <= 4.0 * f64::EPSILON * u.abs().max(1.0);
+                close(a, c) && close(b, d)
+            };
+            assert!(near(web_mercator.forward(lon, lat), (x, y)), "{lon} {lat}");
+            assert!(
+                near(web_mercator.inverse(x, y), (back_lon, back_lat)),
+                "{x} {y}"
+            );
+        }
+        // longitudes wrapped, as PROJ wraps them
+        let (x, _) = web_mercator.forward(190.0, 0.0);
+        assert_eq!(x, web_mercator.forward(-170.0, 0.0).0);
+    }
+
+    #[test]
+    fn a_projection_by_authority_and_code() {
+        use std::str::FromStr;
+
+        use crate::common::Crs;
+
+        let crs84 = Crs::from_str("urn:ogc:def:crs:OGC::CRS84").unwrap();
+        assert_eq!(crs84.projection(), Some(Projection::Crs84));
+        assert_eq!(
+            Crs::from_str("EPSG:3857").unwrap().projection(),
+            Some(Projection::WebMercator)
+        );
+        assert_eq!(Crs::from_epsg(4326).projection(), None);
+    }
+
     use std::str::FromStr;
 
     use crate::common::{Crs, OGC_CRS84};

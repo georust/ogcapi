@@ -2,6 +2,8 @@ use std::{fmt, str};
 
 use serde::{Deserialize, Serialize};
 
+use super::Crs;
+
 /// Each bounding box is provided as four or six numbers, depending on
 /// whether the coordinate reference system includes a vertical axis
 /// (height or depth):
@@ -41,6 +43,114 @@ pub enum Bbox {
     Bbox2D([f64; 4]),
     #[cfg_attr(feature = "utoipa", schema(value_type = [f64; 6]))]
     Bbox3D([f64; 6]),
+}
+
+impl Bbox {
+    /// This box, its coordinates in `crs`, as a box in CRS84; `None` where
+    /// `crs` is neither CRS84 (nor `CRS84h`) nor Web Mercator, or the box lies
+    /// outside its extent or has its south north of its north. A box of six
+    /// values keeps its heights.
+    #[must_use]
+    pub fn to_crs84(&self, crs: &Crs) -> Option<Bbox> {
+        let [west, south, east, north] = self.horizontal();
+        let projection = crs.projection()?;
+        let [min_x, min_y, max_x, max_y] = projection.extent();
+        let within = [west, east].iter().all(|x| (min_x..=max_x).contains(x))
+            && [south, north].iter().all(|y| (min_y..=max_y).contains(y));
+        if !within || south > north {
+            return None;
+        }
+        let (west, south) = projection.inverse(west, south);
+        let (east, north) = projection.inverse(east, north);
+        Some(match *self {
+            Bbox::Bbox2D(_) => Bbox::Bbox2D([west, south, east, north]),
+            Bbox::Bbox3D([_, _, bottom, _, _, top]) => {
+                Bbox::Bbox3D([west, south, bottom, east, north, top])
+            }
+        })
+    }
+
+    /// The box of `positions`, in three dimensions where every position has a
+    /// height; `None` for no positions. A position of fewer than two values
+    /// is left out.
+    #[cfg(feature = "features")]
+    #[must_use]
+    pub(crate) fn extent<'a>(positions: impl IntoIterator<Item = &'a [f64]>) -> Option<Bbox> {
+        let mut min = [f64::INFINITY; 3];
+        let mut max = [f64::NEG_INFINITY; 3];
+        let mut any = false;
+        let mut heights = true;
+        for position in positions {
+            let [x, y, rest @ ..] = position else {
+                continue;
+            };
+            any = true;
+            heights &= !rest.is_empty();
+            for (axis, value) in [x, y].into_iter().chain(rest.first()).enumerate() {
+                min[axis] = min[axis].min(*value);
+                max[axis] = max[axis].max(*value);
+            }
+        }
+        any.then(|| {
+            if heights {
+                Bbox::Bbox3D([min[0], min[1], min[2], max[0], max[1], max[2]])
+            } else {
+                Bbox::Bbox2D([min[0], min[1], max[0], max[1]])
+            }
+        })
+    }
+
+    /// The box holding this one and `other`, in three dimensions where both
+    /// are; every longitude where one of them crosses the antimeridian (its
+    /// west east of its east).
+    #[must_use]
+    pub fn union(&self, other: &Bbox) -> Bbox {
+        let [aw, a_s, ae, an] = self.horizontal();
+        let [bw, b_s, be, bn] = other.horizontal();
+        let (west, east) = if aw > ae || bw > be {
+            (-180.0, 180.0)
+        } else {
+            (aw.min(bw), ae.max(be))
+        };
+        let (south, north) = (a_s.min(b_s), an.max(bn));
+        if let (Bbox::Bbox3D(a), Bbox::Bbox3D(b)) = (self, other) {
+            Bbox::Bbox3D([west, south, a[2].min(b[2]), east, north, a[5].max(b[5])])
+        } else {
+            Bbox::Bbox2D([west, south, east, north])
+        }
+    }
+
+    /// Whether this box and `other` meet, on the axes both have. A box in
+    /// CRS84 whose west lies east of its east crosses the antimeridian.
+    #[must_use]
+    pub fn intersects(&self, other: &Bbox) -> bool {
+        let [aw, a_s, ae, an] = self.horizontal();
+        let [bw, b_s, be, bn] = other.horizontal();
+        let heights = if let (Bbox::Bbox3D(a), Bbox::Bbox3D(b)) = (self, other) {
+            a[2] <= b[5] && b[2] <= a[5]
+        } else {
+            true
+        };
+        let longitudes = |west: f64, east: f64| {
+            if west <= east {
+                [(west, east), (west, east)]
+            } else {
+                [(west, 180.0), (-180.0, east)]
+            }
+        };
+        let longitudes_meet = longitudes(aw, ae)
+            .iter()
+            .any(|a| longitudes(bw, be).iter().any(|b| a.0 <= b.1 && b.0 <= a.1));
+        heights && a_s <= bn && b_s <= an && longitudes_meet
+    }
+
+    /// The box on its first two axes, `[west, south, east, north]`.
+    fn horizontal(&self) -> [f64; 4] {
+        match *self {
+            Bbox::Bbox2D(bbox) => bbox,
+            Bbox::Bbox3D([west, south, _, east, north, _]) => [west, south, east, north],
+        }
+    }
 }
 
 impl fmt::Display for Bbox {
@@ -87,15 +197,9 @@ impl str::FromStr for Bbox {
             return Err("Expected 4 or 6 numbers");
         }
 
-        // // check lower <= upper on axis 2
-        // if (n == 4 && numbers[1] > numbers[3]) || (n == 6 && numbers[1] > numbers[4]) {
-        //     // TODO: ensure this assumption is correct
-        //     return Err("Lower value of coordinate axis 2 must be larger than upper value!");
-        // }
-
         // check lower <= upper on axis 3
         if n == 6 && numbers[2] > numbers[5] {
-            return Err("Lower value of coordinate axis 3 must be larger than upper value!");
+            return Err("The lower value of coordinate axis 3 is above its upper value");
         }
 
         match numbers.len() {
@@ -129,6 +233,87 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
+
+    #[cfg(feature = "features")]
+    #[test]
+    fn the_extent_of_positions() {
+        let flat: [&[f64]; 3] = [&[1.0, 2.0], &[-1.0, 5.0, 7.0], &[0.0]];
+        assert_eq!(
+            Bbox::extent(flat),
+            Some(Bbox::Bbox2D([-1.0, 2.0, 1.0, 5.0]))
+        );
+        let high: [&[f64]; 2] = [&[1.0, 2.0, 3.0, 9.0], &[-1.0, 5.0, -3.0]];
+        assert_eq!(
+            Bbox::extent(high),
+            Some(Bbox::Bbox3D([-1.0, 2.0, -3.0, 1.0, 5.0, 3.0]))
+        );
+        assert_eq!(Bbox::extent(std::iter::empty()), None);
+    }
+
+    #[test]
+    fn a_union_and_an_intersection() {
+        let a = Bbox::Bbox3D([0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+        let b = Bbox::Bbox3D([2.0, 2.0, 2.0, 3.0, 3.0, 3.0]);
+        assert_eq!(a.union(&b), Bbox::Bbox3D([0.0, 0.0, 0.0, 3.0, 3.0, 3.0]));
+        let flat = Bbox::Bbox2D([0.5, 0.5, 2.5, 2.5]);
+        assert_eq!(a.union(&flat), Bbox::Bbox2D([0.0, 0.0, 2.5, 2.5]));
+        // across the antimeridian, every longitude
+        let pacific = Bbox::Bbox2D([170.0, -10.0, -170.0, 10.0]);
+        assert_eq!(
+            pacific.union(&Bbox::Bbox2D([0.0, 0.0, 10.0, 1.0])),
+            Bbox::Bbox2D([-180.0, -10.0, 180.0, 10.0])
+        );
+
+        assert!(!a.intersects(&b));
+        assert!(a.intersects(&flat) && flat.intersects(&b));
+        // apart in height only
+        assert!(!a.intersects(&Bbox::Bbox3D([0.0, 0.0, 2.0, 1.0, 1.0, 3.0])));
+        // across the antimeridian
+        assert!(pacific.intersects(&Bbox::Bbox2D([175.0, 0.0, 176.0, 1.0])));
+        assert!(pacific.intersects(&Bbox::Bbox2D([-179.0, 0.0, -178.0, 1.0])));
+        assert!(!pacific.intersects(&Bbox::Bbox2D([0.0, 0.0, 1.0, 1.0])));
+        assert!(pacific.intersects(&Bbox::Bbox2D([160.0, 0.0, -175.0, 1.0])));
+    }
+
+    #[test]
+    fn a_box_in_crs84() {
+        let crs84 = Crs::default2d();
+        let switzerland = Bbox::Bbox2D([5.96, 45.82, 10.49, 47.81]);
+        assert_eq!(switzerland.to_crs84(&crs84), Some(switzerland.clone()));
+        // Across the antimeridian, but not across a pole.
+        let pacific = Bbox::Bbox2D([170.0, -10.0, -170.0, 10.0]);
+        assert!(pacific.to_crs84(&crs84).is_some());
+        assert!(
+            Bbox::Bbox2D([0.0, 10.0, 1.0, -10.0])
+                .to_crs84(&crs84)
+                .is_none()
+        );
+        assert!(
+            Bbox::Bbox2D([0.0, 0.0, 190.0, 1.0])
+                .to_crs84(&crs84)
+                .is_none()
+        );
+        // Web Mercator within its square, and no other system.
+        let mercator = Crs::from_epsg(3857);
+        let [west, south, east, north] =
+            match Bbox::Bbox2D([0.0, 0.0, 1_113_194.9, 1_118_890.0]).to_crs84(&mercator) {
+                Some(Bbox::Bbox2D(bbox)) => bbox,
+                other => panic!("{other:?}"),
+            };
+        assert!(west.abs() < 1e-9 && south.abs() < 1e-9);
+        assert!((east - 10.0).abs() < 1e-6 && (north - 10.0).abs() < 1e-4);
+        // heights are kept
+        assert!(matches!(
+            Bbox::Bbox3D([0.0, 0.0, -5.0, 1.0, 1.0, 5.0]).to_crs84(&mercator),
+            Some(Bbox::Bbox3D([_, _, -5.0, _, _, 5.0]))
+        ));
+        assert!(
+            Bbox::Bbox2D([0.0, 0.0, 3e7, 1.0])
+                .to_crs84(&mercator)
+                .is_none()
+        );
+        assert!(switzerland.to_crs84(&Crs::from_epsg(2056)).is_none());
+    }
 
     #[test]
     fn from() {

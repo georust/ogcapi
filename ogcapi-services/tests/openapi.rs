@@ -1,4 +1,5 @@
 #![cfg(all(
+    feature = "postgres",
     feature = "common",
     feature = "edr",
     feature = "features",

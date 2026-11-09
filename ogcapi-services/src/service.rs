@@ -30,7 +30,9 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use ogcapi_types::common::Exception;
 
-use crate::{ApiDoc, AppState, Config, ConfigParser, Error, routes, state::Drivers};
+use crate::{ApiDoc, AppState, Config, Error, routes};
+#[cfg(feature = "postgres")]
+use crate::{ConfigParser, state::Drivers};
 
 /// OGC API Services
 pub struct Service {
@@ -45,6 +47,7 @@ pub struct Service {
 impl Service {
     /// Create a new service by reading the configuration from environment variables and command line arguments.
     /// Proceeds to call [`try_new()`](Self::try_new) with the parsed configuration and application state.
+    #[cfg(feature = "postgres")]
     pub async fn try_new_from_env() -> Result<Self, anyhow::Error> {
         // config
         let config = Config::parse();
