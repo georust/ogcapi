@@ -15,10 +15,13 @@ use ogcapi_drivers::StyleTransactions;
 #[cfg(feature = "tiles")]
 use ogcapi_drivers::TileTransactions;
 
-use ogcapi_drivers::{CollectionTransactions, postgres::Db};
+use ogcapi_drivers::CollectionTransactions;
+#[cfg(feature = "postgres")]
+use ogcapi_drivers::postgres::Db;
 #[cfg(feature = "processes")]
 use ogcapi_processes::DynProcessor;
 use ogcapi_types::common::{Conformance, LandingPage};
+#[cfg(feature = "postgres")]
 use url::Url;
 
 /// Application state
@@ -92,6 +95,7 @@ pub struct Drivers {
     pub stac: Box<dyn StacSearch>,
 }
 
+#[cfg(feature = "postgres")]
 impl Drivers {
     /// Try to setup drivers from `DATABASE_URL` environment variable.
     pub async fn try_new_from_env() -> Result<Self, anyhow::Error> {

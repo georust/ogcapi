@@ -3,7 +3,7 @@ use std::{error::Error, fmt::Display};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-/// Exception based on [`RFC 7807`](https://datatracker.ietf.org/doc/html/rfc7807)
+/// Exception based on [`RFC 9457`](https://datatracker.ietf.org/doc/html/rfc9457)
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct Exception {
@@ -40,12 +40,22 @@ impl Exception {
         }
     }
 
+    /// The exception of `status`, its type the status's definition: in RFC
+    /// 9110, or for `428`, `429`, `431` and `511` in RFC 6585.
     #[must_use]
     pub fn new_from_status(status: u16) -> Self {
-        let exception = Exception::new(format!(
-            "https://httpwg.org/specs/rfc7231.html#status.{status}"
-        ));
-        exception.status(status)
+        let section = match status {
+            428 => Some(3),
+            429 => Some(4),
+            431 => Some(5),
+            511 => Some(6),
+            _ => None,
+        };
+        let definition = match section {
+            Some(section) => format!("https://www.rfc-editor.org/rfc/rfc6585#section-{section}"),
+            None => format!("https://httpwg.org/specs/rfc9110.html#status.{status}"),
+        };
+        Exception::new(definition).status(status)
     }
 
     #[must_use]

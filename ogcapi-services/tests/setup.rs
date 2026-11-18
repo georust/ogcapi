@@ -1,3 +1,4 @@
+#![cfg(feature = "postgres")]
 #![allow(clippy::missing_panics_doc, reason = "OK in tests")]
 
 use std::net::SocketAddr;

@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use anyhow::{Context, bail};
+use anyhow::Context;
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -11,7 +11,6 @@ use hyper::HeaderMap;
 use ogcapi_drivers::ProcessResult;
 use ogcapi_processes::ProcessExecution;
 use tracing::error;
-use url::Url;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use ogcapi_types::{
@@ -31,7 +30,7 @@ use crate::{
     AppState, Drivers, Error, Result,
     extractors::RemoteUrl,
     processes::{ProcessExecuteResponse, ProcessResultsResponse, ValidParams},
-    util::{read_lock, write_lock},
+    util::{read_lock, url_plus_segments, url_replace_segments, write_lock},
 };
 
 const CONFORMANCE: [&str; 5] = [
@@ -118,15 +117,8 @@ async fn processes(
     }
 
     for process in &mut summaries {
-        let Ok(process_description_url) = url_plus_segments(url.clone(), &[&process.id]) else {
-            error!(
-                "Cannot create process description URL for process `{}`: cannot modify URL without a base",
-                process.id
-            );
-            continue;
-        };
         process.links.insert_or_update(&[
-            Link::new(process_description_url, SELF)
+            Link::new(url_plus_segments(url.clone(), &[&process.id])?, SELF)
                 .mediatype(JSON)
                 .title("process description"),
             Link::new(
@@ -260,11 +252,8 @@ async fn execution(
         });
     }
 
-    let mut status_info = StatusInfo {
-        process_id: Some(process_id),
-        status: JobStatusCode::Accepted,
-        ..Default::default()
-    };
+    let mut status_info = StatusInfo::new("");
+    status_info.process_id = Some(process_id);
 
     let job_id = state
         .drivers
@@ -691,39 +680,7 @@ pub(crate) fn router(state: &AppState) -> OpenApiRouter<AppState> {
         .routes(routes!(results))
 }
 
-/// Helper function to add a path segment to a URL, returning an error if the URL cannot be modified.
-/// Example usage:
-/// `url_plus_segments(Url::parse("http://example.com/foo")?, &["bar", "123"])` would return `http://example.com/foo/bar/123`.
-fn url_plus_segments(mut url: Url, segments_to_add: &[&str]) -> anyhow::Result<Url> {
-    let Ok(mut segments) = url.path_segments_mut() else {
-        bail!("Cannot modify path segments of a URL without a base");
-    };
-    for segment in segments_to_add {
-        segments.push(segment);
-    }
-    drop(segments);
-    Ok(url)
-}
-
-/// Helper function to replace a path segment in a URL, returning an error if the URL cannot be modified.
-/// Example usage:
-/// `url_replace_segments(Url::parse("http://example.com/foo/bar")?, 1, &["baz"])` would return `http://example.com/foo/baz`.
-fn url_replace_segments(
-    mut url: Url,
-    num_segments_to_remove: usize,
-    segments_to_add: &[&str],
-) -> anyhow::Result<Url> {
-    let Ok(mut segments) = url.path_segments_mut() else {
-        bail!("Cannot modify path segments of a URL without a base");
-    };
-    for _ in 0..num_segments_to_remove {
-        segments.pop();
-    }
-    drop(segments);
-    url_plus_segments(url, segments_to_add)
-}
-
-#[cfg(test)]
+#[cfg(all(test, feature = "postgres"))]
 mod tests {
     #![allow(
         clippy::panic,
@@ -1123,12 +1080,7 @@ mod tests {
             }
 
             async fn status(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
-                let info = StatusInfo {
-                    job_id: "job1".to_string(),
-                    status: JobStatusCode::Accepted,
-                    ..Default::default()
-                };
-                Ok(Some(info))
+                Ok(Some(StatusInfo::new("job1")))
             }
 
             async fn finish(
@@ -1143,11 +1095,8 @@ mod tests {
             }
 
             async fn dismiss(&self, _id: &str) -> anyhow::Result<Option<StatusInfo>> {
-                let info = StatusInfo {
-                    job_id: "job1".to_string(),
-                    status: JobStatusCode::Dismissed,
-                    ..Default::default()
-                };
+                let mut info = StatusInfo::new("job1");
+                info.status = JobStatusCode::Dismissed;
                 Ok(Some(info))
             }
 
@@ -1169,7 +1118,7 @@ mod tests {
             .processors(vec![Arc::new(Echo)]);
 
         // First: act like a relative request (RemoteUrl derived from Host/X-Forwarded-Proto)
-        let base_url = Url::parse("http://example.org/subdir/").unwrap();
+        let base_url = url::Url::parse("http://example.org/subdir/").unwrap();
 
         // Call `processes` and assert the self link is the base URL
         let processes_response = processes(

@@ -1,4 +1,4 @@
-g# ogcapi
+# ogcapi
 
 [![Documentation](https://docs.rs/ogcapi/badge.svg)](https://docs.rs/ogcapi)
 [![Crate](https://img.shields.io/crates/v/ogcapi.svg)](https://crates.io/crates/ogcapi)
@@ -28,17 +28,17 @@ This will take a while and use quite some disk space
 # Setup the database
 podman compose up --build
 
-# Import administrative bounaries
-podman exec -ti ogcapi cargo run -p data-loader -- \
+# Import administrative boundaries
+podman exec -ti ogcapi cargo run -p data-loader --features postgres -- \
     --input data/ne_110m_admin_0_countries.geojson \
     --collection countries \
-    client --public-url http://localhost:8484
+    db
 
 # Run app
 podman exec -ti ogcapi cargo run -p demo-service
 ```
 
-Open <http://localhost:8484/> were you will find the `Landing Page`.
+Open <http://localhost:8484/> where you will find the `Landing Page`.
 
 ## Developing
 
@@ -56,16 +56,17 @@ cargo install sqlx-cli --no-default-features --features postgres,rustls
 ### Setup
 
 ```bash
-# Run services
-podman compose up db minio minio-mc -d
+# Run the database, until it is healthy, and the object store with its bucket
+podman compose up db -d --wait
+podman compose up rustfs-init -d
 
-# Import administrative bounaries
-cargo run -p data-loader -- \
+# Import administrative boundaries
+cargo run -p data-loader --features postgres -- \
     --input data/ne_110m_admin_0_countries.geojson \
     --collection countries \
-    client --public-url http://localhost:8484
+    db
 
-# Start service 
+# Start service
 cargo run -p demo-service
 
 # Run tests

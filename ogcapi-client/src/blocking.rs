@@ -21,7 +21,7 @@ use ogcapi_types::{
     features::FeatureCollection,
 };
 
-use crate::Error;
+use crate::{Error, client::url_below};
 
 /// Blocking client to access OGC APIs and/or SpatioTemporal Asset Catalogs (STAC).
 ///
@@ -130,13 +130,13 @@ impl BlockingClient {
     }
 
     pub fn collection(&self, id: &str) -> Result<Collection, Error> {
-        let url = self.endpoint.join(&format!("collections/{id}"))?;
+        let url = url_below(&self.endpoint, &["collections", id])?;
 
         self.fetch::<Collection>(url.as_str())
     }
 
     pub fn items(&self, id: &str) -> Result<Items, Error> {
-        let url = self.endpoint.join(&format!("collections/{id}/items"))?;
+        let url = url_below(&self.endpoint, &["collections", id, "items"])?;
 
         self.fetch::<FeatureCollection>(url.as_str())
             .map(|i| Items {
@@ -153,7 +153,7 @@ impl BlockingClient {
         id: &str,
         query: &ogcapi_types::features::Query,
     ) -> Result<Items, Error> {
-        let base = self.endpoint.join(&format!("collections/{id}/items"))?;
+        let base = url_below(&self.endpoint, &["collections", id, "items"])?;
         let qs = serde_qs::to_string(query)?;
         let url = if qs.is_empty() {
             base.to_string()
@@ -532,6 +532,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     #[cfg(feature = "stac")]
     fn version() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
@@ -540,6 +541,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     fn conformance() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = BlockingClient::new(endpoint).unwrap();
@@ -548,6 +550,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     fn collection() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = BlockingClient::new(endpoint).unwrap();
@@ -556,6 +559,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     fn collections() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = BlockingClient::new(endpoint).unwrap();
@@ -572,6 +576,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "reaches data.geo.admin.ch"]
     #[cfg(feature = "stac")]
     fn search() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";

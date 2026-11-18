@@ -14,8 +14,8 @@ include = ["/src", "/migrations"]
 default = ["common", "edr", "features", "processes", "tiles"]
 
 # drivers
-postgres = ["sqlx", "rink-core", "url"]
-s3 = ["aws-config", "aws-sdk-s3"]
+postgres = ["dep:sqlx", "dep:rink-core", "dep:url"]
+s3 = ["dep:aws-config", "dep:aws-sdk-s3"]
 
 # standards
 common = ["ogcapi-types/common"]

@@ -40,3 +40,6 @@ ogcapi = { path = "../../ogcapi", version = "0.3", default-features = false, fea
     "features",
     "types",
 ] }
+
+[lints]
+# opt out of workspace lints

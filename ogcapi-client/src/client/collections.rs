@@ -20,20 +20,19 @@ impl Client {
 
     /// Returns a single collection by id.
     pub async fn collection(&self, id: &str) -> Result<Collection, Error> {
-        let url = self.endpoint.join(&format!("collections/{id}"))?;
+        let url = self.url(&["collections", id])?;
         self.fetch::<Collection>(url.as_str()).await
     }
 
     /// Update a collection.
     pub async fn update_collection(&self, collection: &Collection) -> Result<(), Error> {
-        let id = collection.id.as_str();
-        let url = self.endpoint.join(&format!("collections/{id}"))?;
+        let url = self.url(&["collections", &collection.id])?;
         self.put(url.as_str(), collection).await
     }
 
-    /// Returns a single collection by id.
+    /// Delete a collection.
     pub async fn delete_collection(&self, id: &str) -> Result<(), Error> {
-        let url = self.endpoint.join(&format!("collections/{id}"))?;
+        let url = self.url(&["collections", id])?;
         self.delete(url.as_str()).await
     }
 
@@ -117,6 +116,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "reaches data.geo.admin.ch"]
     async fn collection() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();
@@ -125,6 +125,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "reaches data.geo.admin.ch"]
     async fn collections() {
         let endpoint = "https://data.geo.admin.ch/api/stac/v0.9/";
         let client = Client::new(endpoint).unwrap();

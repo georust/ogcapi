@@ -622,7 +622,7 @@ expression: api
       },
       "Exception": {
         "additionalProperties": {},
-        "description": "Exception based on [`RFC 7807`](https://datatracker.ietf.org/doc/html/rfc7807)",
+        "description": "Exception based on [`RFC 9457`](https://datatracker.ietf.org/doc/html/rfc9457)",
         "properties": {
           "detail": {
             "description": "A human-readable explanation specific to this occurrence of the problem.",
@@ -767,188 +767,47 @@ expression: api
           "geometry": {
             "oneOf": [
               {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 2,
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "Point"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON Point",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "items": {
-                        "type": "number"
+                "oneOf": [
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 4,
+                        "type": "array"
                       },
-                      "minItems": 2,
-                      "type": "array"
-                    },
-                    "minItems": 2,
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "LineString"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON LineString",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "items": {
+                      "coordinates": {
                         "items": {
                           "type": "number"
                         },
                         "minItems": 2,
                         "type": "array"
                       },
-                      "minItems": 4,
-                      "type": "array"
+                      "type": {
+                        "enum": [
+                          "Point"
+                        ],
+                        "type": "string"
+                      }
                     },
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "Polygon"
+                    "required": [
+                      "type",
+                      "coordinates"
                     ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON Polygon",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
+                    "title": "GeoJSON Point",
+                    "type": "object"
                   },
-                  "coordinates": {
-                    "items": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "minItems": 2,
-                      "type": "array"
-                    },
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "MultiPoint"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON MultiPoint",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "items": {
+                  {
+                    "properties": {
+                      "bbox": {
                         "items": {
                           "type": "number"
                         },
-                        "minItems": 2,
+                        "minItems": 4,
                         "type": "array"
                       },
-                      "minItems": 2,
-                      "type": "array"
-                    },
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "MultiLineString"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON MultiLineString",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "items": {
+                      "coordinates": {
                         "items": {
                           "items": {
                             "type": "number"
@@ -956,29 +815,177 @@ expression: api
                           "minItems": 2,
                           "type": "array"
                         },
+                        "minItems": 2,
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "LineString"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "coordinates"
+                    ],
+                    "title": "GeoJSON LineString",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
                         "minItems": 4,
                         "type": "array"
                       },
-                      "type": "array"
+                      "coordinates": {
+                        "items": {
+                          "items": {
+                            "items": {
+                              "type": "number"
+                            },
+                            "minItems": 2,
+                            "type": "array"
+                          },
+                          "minItems": 4,
+                          "type": "array"
+                        },
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "Polygon"
+                        ],
+                        "type": "string"
+                      }
                     },
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "MultiPolygon"
+                    "required": [
+                      "type",
+                      "coordinates"
                     ],
-                    "type": "string"
+                    "title": "GeoJSON Polygon",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 4,
+                        "type": "array"
+                      },
+                      "coordinates": {
+                        "items": {
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 2,
+                          "type": "array"
+                        },
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "MultiPoint"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "coordinates"
+                    ],
+                    "title": "GeoJSON MultiPoint",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 4,
+                        "type": "array"
+                      },
+                      "coordinates": {
+                        "items": {
+                          "items": {
+                            "items": {
+                              "type": "number"
+                            },
+                            "minItems": 2,
+                            "type": "array"
+                          },
+                          "minItems": 2,
+                          "type": "array"
+                        },
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "MultiLineString"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "coordinates"
+                    ],
+                    "title": "GeoJSON MultiLineString",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 4,
+                        "type": "array"
+                      },
+                      "coordinates": {
+                        "items": {
+                          "items": {
+                            "items": {
+                              "items": {
+                                "type": "number"
+                              },
+                              "minItems": 2,
+                              "type": "array"
+                            },
+                            "minItems": 4,
+                            "type": "array"
+                          },
+                          "type": "array"
+                        },
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "MultiPolygon"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "coordinates"
+                    ],
+                    "title": "GeoJSON MultiPolygon",
+                    "type": "object"
                   }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
                 ],
-                "title": "GeoJSON MultiPolygon",
-                "type": "object"
+                "title": "GeoJSON Geometry"
+              },
+              {
+                "type": "null"
               }
-            ],
-            "title": "GeoJSON Geometry"
+            ]
           },
           "id": {
             "oneOf": [
@@ -1065,6 +1072,9 @@ expression: api
             "type": "string"
           }
         },
+        "required": [
+          "geometry"
+        ],
         "type": "object"
       },
       "FeatureCollection": {
@@ -2338,188 +2348,47 @@ expression: api
           "intersects": {
             "oneOf": [
               {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 2,
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "Point"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON Point",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "items": {
-                        "type": "number"
+                "oneOf": [
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 4,
+                        "type": "array"
                       },
-                      "minItems": 2,
-                      "type": "array"
-                    },
-                    "minItems": 2,
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "LineString"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON LineString",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "items": {
+                      "coordinates": {
                         "items": {
                           "type": "number"
                         },
                         "minItems": 2,
                         "type": "array"
                       },
-                      "minItems": 4,
-                      "type": "array"
+                      "type": {
+                        "enum": [
+                          "Point"
+                        ],
+                        "type": "string"
+                      }
                     },
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "Polygon"
+                    "required": [
+                      "type",
+                      "coordinates"
                     ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON Polygon",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
+                    "title": "GeoJSON Point",
+                    "type": "object"
                   },
-                  "coordinates": {
-                    "items": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "minItems": 2,
-                      "type": "array"
-                    },
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "MultiPoint"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON MultiPoint",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "items": {
+                  {
+                    "properties": {
+                      "bbox": {
                         "items": {
                           "type": "number"
                         },
-                        "minItems": 2,
+                        "minItems": 4,
                         "type": "array"
                       },
-                      "minItems": 2,
-                      "type": "array"
-                    },
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "MultiLineString"
-                    ],
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
-                ],
-                "title": "GeoJSON MultiLineString",
-                "type": "object"
-              },
-              {
-                "properties": {
-                  "bbox": {
-                    "items": {
-                      "type": "number"
-                    },
-                    "minItems": 4,
-                    "type": "array"
-                  },
-                  "coordinates": {
-                    "items": {
-                      "items": {
+                      "coordinates": {
                         "items": {
                           "items": {
                             "type": "number"
@@ -2527,29 +2396,177 @@ expression: api
                           "minItems": 2,
                           "type": "array"
                         },
+                        "minItems": 2,
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "LineString"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "coordinates"
+                    ],
+                    "title": "GeoJSON LineString",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
                         "minItems": 4,
                         "type": "array"
                       },
-                      "type": "array"
+                      "coordinates": {
+                        "items": {
+                          "items": {
+                            "items": {
+                              "type": "number"
+                            },
+                            "minItems": 2,
+                            "type": "array"
+                          },
+                          "minItems": 4,
+                          "type": "array"
+                        },
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "Polygon"
+                        ],
+                        "type": "string"
+                      }
                     },
-                    "type": "array"
-                  },
-                  "type": {
-                    "enum": [
-                      "MultiPolygon"
+                    "required": [
+                      "type",
+                      "coordinates"
                     ],
-                    "type": "string"
+                    "title": "GeoJSON Polygon",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 4,
+                        "type": "array"
+                      },
+                      "coordinates": {
+                        "items": {
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 2,
+                          "type": "array"
+                        },
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "MultiPoint"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "coordinates"
+                    ],
+                    "title": "GeoJSON MultiPoint",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 4,
+                        "type": "array"
+                      },
+                      "coordinates": {
+                        "items": {
+                          "items": {
+                            "items": {
+                              "type": "number"
+                            },
+                            "minItems": 2,
+                            "type": "array"
+                          },
+                          "minItems": 2,
+                          "type": "array"
+                        },
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "MultiLineString"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "coordinates"
+                    ],
+                    "title": "GeoJSON MultiLineString",
+                    "type": "object"
+                  },
+                  {
+                    "properties": {
+                      "bbox": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 4,
+                        "type": "array"
+                      },
+                      "coordinates": {
+                        "items": {
+                          "items": {
+                            "items": {
+                              "items": {
+                                "type": "number"
+                              },
+                              "minItems": 2,
+                              "type": "array"
+                            },
+                            "minItems": 4,
+                            "type": "array"
+                          },
+                          "type": "array"
+                        },
+                        "type": "array"
+                      },
+                      "type": {
+                        "enum": [
+                          "MultiPolygon"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "coordinates"
+                    ],
+                    "title": "GeoJSON MultiPolygon",
+                    "type": "object"
                   }
-                },
-                "required": [
-                  "type",
-                  "coordinates"
                 ],
-                "title": "GeoJSON MultiPolygon",
-                "type": "object"
+                "title": "GeoJSON Geometry"
+              },
+              {
+                "type": "null"
               }
-            ],
-            "title": "GeoJSON Geometry"
+            ]
           },
           "limit": {
             "format": "int64",
@@ -3953,7 +3970,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -3967,7 +3984,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4006,7 +4023,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4041,7 +4058,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4055,7 +4072,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4099,7 +4116,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 409,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.409"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.409"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4113,7 +4130,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4162,7 +4179,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4171,12 +4188,26 @@ expression: api
             },
             "description": "General HTTP error response."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": 404,
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Exception"
+                }
+              }
+            },
+            "description": "The collection does not exist."
+          },
           "500": {
             "content": {
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4221,7 +4252,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4235,7 +4266,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4282,7 +4313,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4291,12 +4322,26 @@ expression: api
             },
             "description": "General HTTP error response."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": 404,
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Exception"
+                }
+              }
+            },
+            "description": "The collection does not exist."
+          },
           "500": {
             "content": {
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4441,7 +4486,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4455,7 +4500,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4510,7 +4555,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 409,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.409"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.409"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4524,7 +4569,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4572,7 +4617,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4581,12 +4626,26 @@ expression: api
             },
             "description": "General HTTP error response."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": 404,
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Exception"
+                }
+              }
+            },
+            "description": "The collection or the feature does not exist."
+          },
           "500": {
             "content": {
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4640,7 +4699,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4654,7 +4713,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4710,7 +4769,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4719,12 +4778,26 @@ expression: api
             },
             "description": "General HTTP error response."
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": 404,
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Exception"
+                }
+              }
+            },
+            "description": "The collection or the feature does not exist."
+          },
           "500": {
             "content": {
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4770,7 +4843,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4825,7 +4898,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -4921,7 +4994,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5139,7 +5212,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5153,7 +5226,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5189,7 +5262,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5203,7 +5276,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5267,7 +5340,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5313,7 +5386,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5357,7 +5430,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5403,7 +5476,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5439,7 +5512,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5485,7 +5558,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5551,7 +5624,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 400,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.400"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.400"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5565,7 +5638,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5579,7 +5652,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5643,188 +5716,47 @@ expression: api
             "schema": {
               "oneOf": [
                 {
-                  "properties": {
-                    "bbox": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "minItems": 4,
-                      "type": "array"
-                    },
-                    "coordinates": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "minItems": 2,
-                      "type": "array"
-                    },
-                    "type": {
-                      "enum": [
-                        "Point"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "coordinates"
-                  ],
-                  "title": "GeoJSON Point",
-                  "type": "object"
-                },
-                {
-                  "properties": {
-                    "bbox": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "minItems": 4,
-                      "type": "array"
-                    },
-                    "coordinates": {
-                      "items": {
-                        "items": {
-                          "type": "number"
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "bbox": {
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 4,
+                          "type": "array"
                         },
-                        "minItems": 2,
-                        "type": "array"
-                      },
-                      "minItems": 2,
-                      "type": "array"
-                    },
-                    "type": {
-                      "enum": [
-                        "LineString"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "coordinates"
-                  ],
-                  "title": "GeoJSON LineString",
-                  "type": "object"
-                },
-                {
-                  "properties": {
-                    "bbox": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "minItems": 4,
-                      "type": "array"
-                    },
-                    "coordinates": {
-                      "items": {
-                        "items": {
+                        "coordinates": {
                           "items": {
                             "type": "number"
                           },
                           "minItems": 2,
                           "type": "array"
                         },
-                        "minItems": 4,
-                        "type": "array"
+                        "type": {
+                          "enum": [
+                            "Point"
+                          ],
+                          "type": "string"
+                        }
                       },
-                      "type": "array"
-                    },
-                    "type": {
-                      "enum": [
-                        "Polygon"
+                      "required": [
+                        "type",
+                        "coordinates"
                       ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "coordinates"
-                  ],
-                  "title": "GeoJSON Polygon",
-                  "type": "object"
-                },
-                {
-                  "properties": {
-                    "bbox": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "minItems": 4,
-                      "type": "array"
+                      "title": "GeoJSON Point",
+                      "type": "object"
                     },
-                    "coordinates": {
-                      "items": {
-                        "items": {
-                          "type": "number"
-                        },
-                        "minItems": 2,
-                        "type": "array"
-                      },
-                      "type": "array"
-                    },
-                    "type": {
-                      "enum": [
-                        "MultiPoint"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "coordinates"
-                  ],
-                  "title": "GeoJSON MultiPoint",
-                  "type": "object"
-                },
-                {
-                  "properties": {
-                    "bbox": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "minItems": 4,
-                      "type": "array"
-                    },
-                    "coordinates": {
-                      "items": {
-                        "items": {
+                    {
+                      "properties": {
+                        "bbox": {
                           "items": {
                             "type": "number"
                           },
-                          "minItems": 2,
+                          "minItems": 4,
                           "type": "array"
                         },
-                        "minItems": 2,
-                        "type": "array"
-                      },
-                      "type": "array"
-                    },
-                    "type": {
-                      "enum": [
-                        "MultiLineString"
-                      ],
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "coordinates"
-                  ],
-                  "title": "GeoJSON MultiLineString",
-                  "type": "object"
-                },
-                {
-                  "properties": {
-                    "bbox": {
-                      "items": {
-                        "type": "number"
-                      },
-                      "minItems": 4,
-                      "type": "array"
-                    },
-                    "coordinates": {
-                      "items": {
-                        "items": {
+                        "coordinates": {
                           "items": {
                             "items": {
                               "type": "number"
@@ -5832,29 +5764,177 @@ expression: api
                             "minItems": 2,
                             "type": "array"
                           },
+                          "minItems": 2,
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "LineString"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "coordinates"
+                      ],
+                      "title": "GeoJSON LineString",
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "bbox": {
+                          "items": {
+                            "type": "number"
+                          },
                           "minItems": 4,
                           "type": "array"
                         },
-                        "type": "array"
+                        "coordinates": {
+                          "items": {
+                            "items": {
+                              "items": {
+                                "type": "number"
+                              },
+                              "minItems": 2,
+                              "type": "array"
+                            },
+                            "minItems": 4,
+                            "type": "array"
+                          },
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "Polygon"
+                          ],
+                          "type": "string"
+                        }
                       },
-                      "type": "array"
-                    },
-                    "type": {
-                      "enum": [
-                        "MultiPolygon"
+                      "required": [
+                        "type",
+                        "coordinates"
                       ],
-                      "type": "string"
+                      "title": "GeoJSON Polygon",
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "bbox": {
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 4,
+                          "type": "array"
+                        },
+                        "coordinates": {
+                          "items": {
+                            "items": {
+                              "type": "number"
+                            },
+                            "minItems": 2,
+                            "type": "array"
+                          },
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "MultiPoint"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "coordinates"
+                      ],
+                      "title": "GeoJSON MultiPoint",
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "bbox": {
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 4,
+                          "type": "array"
+                        },
+                        "coordinates": {
+                          "items": {
+                            "items": {
+                              "items": {
+                                "type": "number"
+                              },
+                              "minItems": 2,
+                              "type": "array"
+                            },
+                            "minItems": 2,
+                            "type": "array"
+                          },
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "MultiLineString"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "coordinates"
+                      ],
+                      "title": "GeoJSON MultiLineString",
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "bbox": {
+                          "items": {
+                            "type": "number"
+                          },
+                          "minItems": 4,
+                          "type": "array"
+                        },
+                        "coordinates": {
+                          "items": {
+                            "items": {
+                              "items": {
+                                "items": {
+                                  "type": "number"
+                                },
+                                "minItems": 2,
+                                "type": "array"
+                              },
+                              "minItems": 4,
+                              "type": "array"
+                            },
+                            "type": "array"
+                          },
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "MultiPolygon"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "coordinates"
+                      ],
+                      "title": "GeoJSON MultiPolygon",
+                      "type": "object"
                     }
-                  },
-                  "required": [
-                    "type",
-                    "coordinates"
                   ],
-                  "title": "GeoJSON MultiPolygon",
-                  "type": "object"
+                  "title": "GeoJSON Geometry"
+                },
+                {
+                  "type": "null"
                 }
-              ],
-              "title": "GeoJSON Geometry"
+              ]
             }
           },
           {
@@ -5900,7 +5980,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5944,7 +6024,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -5979,7 +6059,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6025,7 +6105,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 404,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.404"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.404"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6039,7 +6119,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6074,7 +6154,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6120,7 +6200,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"
@@ -6216,7 +6296,7 @@ expression: api
               "application/json": {
                 "example": {
                   "status": 500,
-                  "type": "https://httpwg.org/specs/rfc7231.html#status.500"
+                  "type": "https://httpwg.org/specs/rfc9110.html#status.500"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Exception"

@@ -15,7 +15,7 @@ pub struct JobList {
     pub links: Vec<Link>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 pub struct StatusInfo {
     #[cfg_attr(feature = "utoipa", schema(nullable = false))]
@@ -48,6 +48,25 @@ pub struct StatusInfo {
     pub progress: Option<u8>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub links: Vec<Link>,
+}
+
+impl StatusInfo {
+    /// The status of a job `job_id` accepted now, of no process yet.
+    #[must_use]
+    pub fn new(job_id: impl Into<String>) -> Self {
+        Self {
+            process_id: None,
+            r#type: JobType::Process,
+            job_id: job_id.into(),
+            status: StatusCode::Accepted,
+            message: None,
+            created: Some(Utc::now()),
+            finished: None,
+            updated: None,
+            progress: Some(0),
+            links: Vec::new(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]

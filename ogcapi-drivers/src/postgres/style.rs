@@ -18,7 +18,7 @@ impl StyleTransactions for Db {
         .fetch_one(&self.pool)
         .await?;
 
-        let styles = styles.map(|s| s.0).unwrap_or_default();
+        let styles = styles.map_or_default(|s| s.0);
         Ok(Styles { styles })
     }
 

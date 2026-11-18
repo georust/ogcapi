@@ -61,6 +61,12 @@ async fn create(
     Path(collection_id): Path<String>,
     Json(mut feature): Json<Feature>,
 ) -> Result<(StatusCode, HeaderMap)> {
+    state
+        .drivers
+        .collections
+        .read_collection(&collection_id)
+        .await?
+        .ok_or(Error::NotFound)?;
     feature.collection = Some(collection_id);
 
     let id = state.drivers.features.create_feature(&feature).await?;
@@ -158,6 +164,10 @@ async fn read(
     responses(
         (status = 204, description = "Successfuly updataed, no content."),
         (
+            status = 404, description = "The collection or the feature does not exist.",
+            body = Exception, example = json!(Exception::new_from_status(404))
+        ),
+        (
             status = 400, description = "General HTTP error response.", 
             body = Exception, example = json!(Exception::new_from_status(400))
         ),
@@ -172,8 +182,20 @@ async fn update(
     Path((collection_id, id)): Path<(String, String)>,
     Json(mut feature): Json<Feature>,
 ) -> Result<StatusCode> {
+    state
+        .drivers
+        .collections
+        .read_collection(&collection_id)
+        .await?
+        .ok_or(Error::NotFound)?;
+    // an id in the body other than the path's is refused
     match feature.id {
-        Some(ref fid) => assert_eq!(id, fid.to_string()),
+        Some(ref fid) if fid.to_string() != id => {
+            return Err(Exception::new_from_status(StatusCode::BAD_REQUEST.as_u16())
+                .detail(format!("the feature's id {fid} is not {id}"))
+                .into());
+        }
+        Some(_) => {}
         None => feature.id = Some(FeatureId::String(id)),
     }
 
@@ -193,6 +215,10 @@ async fn update(
     responses(
         (status = 204, description = "Successfuly deleted, no content."),
         (
+            status = 404, description = "The collection or the feature does not exist.",
+            body = Exception, example = json!(Exception::new_from_status(404))
+        ),
+        (
             status = 400, description = "General HTTP error response.", 
             body = Exception, example = json!(Exception::new_from_status(400))
         ),
@@ -206,6 +232,12 @@ async fn remove(
     State(state): State<AppState>,
     Path((collection_id, id)): Path<(String, String)>,
 ) -> Result<StatusCode> {
+    state
+        .drivers
+        .collections
+        .read_collection(&collection_id)
+        .await?
+        .ok_or(Error::NotFound)?;
     state
         .drivers
         .features
@@ -267,11 +299,18 @@ async fn items(
     Path(collection_id): Path<String>,
     Qs(mut query): Qs<Query>,
 ) -> Result<(HeaderMap, Json<FeatureCollection>)> {
-    // limit
-    // TODO: sync with opanapi specification
-    query.limit = query
-        .limit
-        .map_or(Some(10), |limit| Some(limit.clamp(0, 10_000)));
+    // limit: at least 1, and a larger one than the maximum is the maximum
+    // (Part 1, /req/core/fc-limit-definition and /req/core/fc-limit-response-1 C);
+    // a page of none would link to itself as the next
+    query.limit = match query.limit {
+        None => Some(10),
+        Some(0) => {
+            return Err(Exception::new_from_status(StatusCode::BAD_REQUEST.as_u16())
+                .detail("limit is at least 1")
+                .into());
+        }
+        Some(limit) => Some(limit.min(10_000)),
+    };
 
     // offset
     if query.offset.is_none() {
@@ -291,6 +330,11 @@ async fn items(
     } else {
         &Crs::default2d()
     };
+    // bbox-crs, one the collection offers too (Part 2,
+    // /req/crs/fc-bbox-crs-valid-value)
+    if let Some(bbox_crs) = query.bbox_crs.as_ref() {
+        is_supported_crs(&collection, bbox_crs)?;
+    }
 
     // queryables
     let queryables = state.drivers.features.queryables(&collection_id).await?;
@@ -329,7 +373,7 @@ async fn items(
 
         let mut next = false;
         if let Some(number_matched) = fc.number_matched
-            && number_matched > (offset + limit) as u64
+            && number_matched > offset.saturating_add(limit) as u64
         {
             next = true;
         }
@@ -339,7 +383,7 @@ async fn items(
             next = true;
         }
         if next {
-            query.offset = Some(offset + limit);
+            query.offset = Some(offset.saturating_add(limit));
             url.set_query(serde_qs::to_string(&query).ok().as_deref());
             let next = Link::new(&url, NEXT).mediatype(GEO_JSON);
             fc.links.insert_or_update(&[next]);
@@ -411,7 +455,7 @@ fn is_supported_crs(collection: &Collection, crs: &Crs) -> Result<()> {
         Ok(())
     } else {
         Err(Error::ApiException(
-            (StatusCode::BAD_REQUEST, format!("Unsuported CRS `{crs}`")).into(),
+            (StatusCode::BAD_REQUEST, format!("Unsupported CRS `{crs}`")).into(),
         ))
     }
 }

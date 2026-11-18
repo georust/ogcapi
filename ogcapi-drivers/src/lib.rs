@@ -3,21 +3,20 @@ pub mod postgres;
 #[cfg(feature = "s3")]
 pub mod s3;
 
+#[cfg(any(feature = "features", feature = "edr"))]
+use ogcapi_types::common::Crs;
 #[cfg(feature = "common")]
 use ogcapi_types::common::{Collection, Collections, Query as CollectionQuery};
 #[cfg(feature = "edr")]
 use ogcapi_types::edr::{Query as EdrQuery, QueryType};
+#[cfg(feature = "features")]
+use ogcapi_types::features::{Feature, Query as FeatureQuery, Queryables};
 #[cfg(feature = "stac")]
 use ogcapi_types::stac::SearchParams;
 #[cfg(feature = "styles")]
 use ogcapi_types::styles::Styles;
 #[cfg(feature = "tiles")]
 use ogcapi_types::tiles::TileMatrixSet;
-#[cfg(feature = "features")]
-use ogcapi_types::{
-    common::Crs,
-    features::{Feature, Query as FeatureQuery, Queryables},
-};
 #[cfg(feature = "processes")]
 use ogcapi_types::{
     common::Link,
@@ -26,6 +25,12 @@ use ogcapi_types::{
 
 #[cfg(any(feature = "features", feature = "stac", feature = "edr"))]
 use ogcapi_types::features::FeatureCollection;
+
+/// The refusal of a collection, a feature or a job that doesn't exist (404).
+#[cfg(feature = "postgres")]
+pub(crate) fn not_found() -> anyhow::Error {
+    ogcapi_types::common::Exception::new_from_status(404).into()
+}
 
 /// Trait for `Collection` transactions
 #[cfg(feature = "common")]
