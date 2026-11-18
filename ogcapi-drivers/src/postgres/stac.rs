@@ -133,7 +133,7 @@ impl StacSearch for Db {
 
         tx.commit().await?;
 
-        let features = features.map(|f| f.0).unwrap_or_default();
+        let features = features.map_or_default(|f| f.0);
         let mut fc = FeatureCollection::new(features);
         fc.number_matched = Some(number_matched.0.cast_unsigned());
 

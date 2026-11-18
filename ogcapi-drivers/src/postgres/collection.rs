@@ -150,7 +150,7 @@ impl CollectionTransactions for Db {
         .fetch_one(&self.pool)
         .await?;
 
-        let collections = collections.map(|c| c.0).unwrap_or_default();
+        let collections = collections.map_or_default(|c| c.0);
         let mut collections = Collections::new(collections);
         collections.number_matched = collections.number_returned;
 

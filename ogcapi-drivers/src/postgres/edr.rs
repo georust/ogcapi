@@ -140,8 +140,7 @@ impl EdrQuerier for Db {
         let names: Vec<&str> = query
             .parameter_name
             .as_deref()
-            .map(|names| names.split(',').collect())
-            .unwrap_or_default();
+            .map_or_default(|names| names.split(',').collect());
         let properties = if names.is_empty() {
             "properties".to_string()
         } else {
@@ -187,7 +186,7 @@ impl EdrQuerier for Db {
         }
         let features: Option<Json<Vec<Feature>>> = fetch.fetch_one(&self.pool).await?;
 
-        let features = features.map(|f| f.0).unwrap_or_default();
+        let features = features.map_or_default(|f| f.0);
         let mut fc = FeatureCollection::new(features);
         fc.number_matched = Some(number_matched.cast_unsigned());
 
