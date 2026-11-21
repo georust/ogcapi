@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multipart/related response support for raw OGC API - Processes results with multiple outputs.
 - Echo process for testing.
 - Dedicated `cite-service` for OGC Cite testsuite in CI.
+- data-loader: with the feature `stac`, `--assets <url>` uploads the input to an object store.
+- The OGC test suites run in CI against each backend.
 - Make public base url configurable via `PUBLIC_URL` environment variable.
 - Allow modifying the spawn function (`with_spawn_fn`) in `AppState`, which is used for OGC API - Processes execution, so that it can be adapted, e.g., for applying scopes.
 - Allow modifying the router and OpenAPI definition in the `Service` (`get_router_mut`), e.g., for adding additional paths or for changing the info fields in the OpenAPI definition.
@@ -28,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In OGC API - Processes, a synchronous execution can create a job, with `AppState::sync_process_calls_are_jobs(true)`.
 - `utoipa` derives (`ToSchema`, `IntoParams`) in `ogcapi-types` are now behind the default-enabled `utoipa` feature, so the types can be used without pulling in `utoipa`. `ogcapi-types::features::geometry` is only available with this feature.
 - `Bbox::union` and `Bbox::of_geometry`.
+- `Bbox::to_crs84` and `intersects` (across the antimeridian), `Projection` for CRS84 and Web Mercator as PROJ computes it, with `Crs::projection`, and `Datetime::intersects`.
+- `ObjectDriver` behind the `object` feature: collections, features and jobs in an object store laid out as a static STAC catalog, in memory, local files or S3 (`s3` feature) at `OBJECT_STORE_URL`.
 
 ### Fixed
 
@@ -59,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BREAKING: `Feature.geometry` is an `Option`.
 - BREAKING: `Service::try_new_from_env` and `Service::try_new` replace `new` and `new_with` and return a `Result`; `AppState::new` takes the `Drivers`, which `Drivers::try_new_from_env` and `Drivers::try_new_db` set up.
 - BREAKING: `Collection` and `StatusInfo` have no `Default`; use `Collection::new(id)` and `StatusInfo::new(job_id)` instead.
+- BREAKING: the `s3` feature is the `object` driver's S3 store, on `object_store` instead of the AWS SDK.
 - BREAKING: `Error::Exception(StatusCode, String)` is `Error::ApiException(Box<Exception>)`.
 - `ogcapi-client`'s `processes` feature no longer builds `ogcapi-processes`.
 - BREAKING: `ogcapi-services` has a `postgres` feature, on by default.
@@ -67,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Drop `osm` example.
 - Bump dependencies.
 - BREAKING: `utoipa` 6, `utoipa-axum` 0.3 and `utoipa-swagger-ui` 10; the `ToSchema` impls in `ogcapi-types` now target `utoipa` 6.
-- Replace MinIO with RustFS for local S3 in `docker-compose.yml` and CI, as the MinIO images are no longer on Docker Hub.
+- RustFS replaces MinIO for local S3 in `docker-compose.yml`, as the MinIO images are no longer on Docker Hub.
 - Typed `z` edr query parameter.
 - BREAKING: `ogcapi-client`: `Client` is now async by default. The previous blocking `Client` is available as `BlockingClient` behind the `blocking` feature flag.
 - BREAKING: Make features opt-out rather than opt-in for released standards.

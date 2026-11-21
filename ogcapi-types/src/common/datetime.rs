@@ -13,6 +13,29 @@ pub enum Datetime {
     },
 }
 
+impl Datetime {
+    /// Whether a time from `start` to `end` intersects this instant or
+    /// interval, whose open ends are unbounded: the test of the `datetime`
+    /// parameter.
+    #[must_use]
+    pub fn intersects(&self, start: DateTime<Utc>, end: DateTime<Utc>) -> bool {
+        match self {
+            Datetime::Datetime(instant) => start <= *instant && *instant <= end,
+            Datetime::Interval { from, to } => {
+                let after_from = match from {
+                    IntervalDatetime::Datetime(from) => end >= *from,
+                    IntervalDatetime::Open => true,
+                };
+                let before_to = match to {
+                    IntervalDatetime::Datetime(to) => start <= *to,
+                    IntervalDatetime::Open => true,
+                };
+                after_from && before_to
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum IntervalDatetime {
     Datetime(DateTime<Utc>),
@@ -83,6 +106,26 @@ impl PartialOrd for IntervalDatetime {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_time_intersects_an_instant_or_an_interval() {
+        use chrono::{DateTime, Utc};
+
+        let at = |text: &str| text.parse::<DateTime<Utc>>().unwrap();
+        let day = (at("2026-10-30T00:00:00Z"), at("2026-10-30T23:59:59Z"));
+        let intersects = |datetime: &str| {
+            datetime
+                .parse::<Datetime>()
+                .unwrap()
+                .intersects(day.0, day.1)
+        };
+        assert!(intersects("2026-10-30T12:00:00Z"));
+        assert!(!intersects("2026-10-31T12:00:00Z"));
+        assert!(intersects("2026-10-29T00:00:00Z/2026-10-30T00:00:00Z"));
+        assert!(intersects("../2026-10-30T00:00:00Z"));
+        assert!(intersects("2026-10-30T23:00:00Z/.."));
+        assert!(!intersects("2026-10-31T00:00:00Z/.."));
+    }
+
     use super::Datetime;
     use std::str::FromStr;
 

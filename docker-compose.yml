@@ -27,7 +27,8 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION}
-      AWS_CUSTOM_ENDPOINT: http://rustfs:9000
+      AWS_ENDPOINT: http://rustfs:9000
+      AWS_ALLOW_HTTP: "true"
       AWS_S3_BUCKET_NAME: ${AWS_S3_BUCKET_NAME}
     volumes:
       - ./data:/data
